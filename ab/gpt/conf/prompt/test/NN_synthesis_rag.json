@@ -1,0 +1,15 @@
+{
+  "synthesize_classification": {
+    "task": "synthesis",
+    "input_list": [],
+    "addon_list": [],
+    "prompt": [
+      "You will receive **three PyTorch building blocks** (full class definitions) delimited by triple‑back‑ticks.",
+      "�� **Design a *single* image‑classification network** named `Model` that uses *all three* blocks in a novel order, adds any adapter / skip‑connection layers needed to match tensor shapes, and finishes with a global average pool + `nn.Linear` head.",
+      "�� Do **not** copy any external code verbatim except those three blocks; small helper classes (e.g. `ConvBNAct`, `LayerScale`) are fine.",
+      "�� Return **one** python file in a fenced ```python``` block and nothing else.",
+      "",
+      "{blocks}"
+    ]
+  }
+}
