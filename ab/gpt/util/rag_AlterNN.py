@@ -1,132 +1,125 @@
 from __future__ import annotations
-import difflib, hashlib, importlib.util, json, logging, random, re, shutil
-from dataclasses import dataclass
+import ast, hashlib, json, random, re, shutil
 from pathlib import Path
-from typing import Dict, List
+from typing import List
+
 import torch
-import torch.fx as fx
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
-from ab.gpt.util.Const import conf_test_dir, epoch_dir, new_out_file, synth_dir
+from ab.rag.retriever import Retriever, BLOCKS_100
+from ..util.Const import conf_test_dir, epoch_dir, synth_dir, new_out_file
+from ..util.Util import extract_code
 from ab.nn.util.Util import create_file
-from ab.rag.retriever import Retriever
 
-# ───────────────────────── logger
-logging.basicConfig(level=logging.INFO,
-                    format="%(asctime)s [%(levelname)s] %(message)s")
-log = logging.getLogger(__name__)
+MAX_TRIES = 3
+LLM_MAX_TOKENS = 3500
+random.seed(42)
 
-# ───────────────────────── constants
-BLOCKS_DIR       = Path("blocks")
-DEFAULT_CFG      = "NN_synthesis_rag.json"
-DEFAULT_MODEL    = "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
-MAX_NEW_TOKENS   = 1500
-TEMPERATURE      = 0.7
-TOP_P            = 0.9
-DEFAULT_VARIANTS = 50
 
-PROMPT_TMPL = """
-Below are three PyTorch building blocks. ***Design a *single* image‑classification model*** that **uses all three** blocks in a novel order, inserts adapters or skip‑connections if needed, and ends with global average pooling + `nn.Linear`.
+blocks_dir = Path(__file__).resolve().parents[3] / "blocks"
+blocks_dir.mkdir(exist_ok=True)  
 
-* You may add lightweight helpers but **do NOT paste external code verbatim** beyond the three blocks.
-* The file must define **`class Model(nn.Module)`**.
-* Return *exactly* one python file inside ```python fences – nothing else.
+retriever = Retriever() 
 
-{blocks}
-"""
 
-# ───────────────────────── helpers
-def _ensure(p: Path) -> None:
-    p.mkdir(parents=True, exist_ok=True)
+def _load_block(name: str) -> str | None:
+    """
+    Return bundled code for <name>.
 
-def _load_block(name: str) -> str:
-    return (BLOCKS_DIR / f"{name}.py").read_text()
+    • If blocks/<name>.py exists, read & return it.
+    • Otherwise call Retriever.get_block(), save it under blocks/, then return.
+    • If Retriever fails, return None.
+    """
+    local_path = blocks_dir / f"{name}.py"
+    if local_path.is_file():
+        print(f"[CACHE] {name}")
+        return local_path.read_text()
 
-def _sample_blocks(k: int = 3) -> Dict[str, str]:
-    names = random.sample([p.stem for p in BLOCKS_DIR.glob("*.py")], k)
-    return {n: _load_block(n) for n in names}
+    print(f"[FETCH] {name}")
+    code = retriever.get_block(name)
+    if code:
+        local_path.write_text(code)
+    return code
 
-def _build_prompt(srcs: Dict[str, str]) -> str:
-    joined = "\n".join(f"```python\n{s}\n```" for s in srcs.values())
-    return PROMPT_TMPL.format(blocks=joined)
 
-def _call_llm(prompt: str,
-              tok: AutoTokenizer,
-              model: AutoModelForCausalLM) -> str:
-    inp = tok(prompt, return_tensors="pt").to(model.device)
-    out = model.generate(**inp,
-        max_new_tokens=MAX_NEW_TOKENS,
-        temperature=TEMPERATURE,
-        top_p=TOP_P,
-        do_sample=True,
-        eos_token_id=tok.eos_token_id)
-    return tok.decode(out[0], skip_special_tokens=True)
+def _checksum(src: str) -> str:
+    return hashlib.sha1(src.encode()).hexdigest()[:8]
 
-def _extract_py(txt: str) -> str | None:
-    m = re.search(r"```python(.*?)```", txt, re.S)
-    return m.group(1).strip() if m else None
+def alter(epochs: int, test_conf: str, llm_name: str) -> None:
+    with open(conf_test_dir / test_conf) as f:
+        template = json.load(f)["single_block_model"]
 
-@dataclass
-class Novelty:
-    ok: bool
-    reason: str = ""
-
-def _similar(a: str, b: str) -> float:
-    return difflib.SequenceMatcher(None, a, b).ratio()
-
-def _novel(code: str, parts: List[str]) -> Novelty:
-    for n in parts:
-        if _similar(code, _load_block(n)) > 0.7:
-            return Novelty(False, f"≥70% overlap with {n}")
-    try:
-        spec = importlib.util.spec_from_loader("cand", loader=None)
-        mod  = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
-        exec(code, mod.__dict__)
-        gm = fx.symbolic_trace(mod.Model())
-        if len(gm.graph.nodes) < 20:
-            return Novelty(False, "graph too small")
-    except Exception as e:
-        return Novelty(False, f"trace fail: {e}")
-    return Novelty(True)
-def alter(epochs: int,
-          test_conf : str | None = None,
-          model_name: str | None = None) -> None:
-
-    cfg = json.loads((conf_test_dir / (test_conf or DEFAULT_CFG)).read_text())
-
-    if not BLOCKS_DIR.exists():
-        log.info("Populating ./blocks …")
-        Retriever().dump_all_blocks(BLOCKS_DIR)
-
-    # ─── single tokenizer & model ───
-    mid   = model_name or DEFAULT_MODEL
-    log.info("Loading model once: %s", mid)
-    tok   = AutoTokenizer.from_pretrained(mid, trust_remote_code=True)
+    print("Loading LLM …")
+    tok = AutoTokenizer.from_pretrained(llm_name, trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
-              mid, trust_remote_code=True,
-              torch_dtype=torch.bfloat16).cuda()
+        llm_name, trust_remote_code=True, torch_dtype=torch.bfloat16
+    ).cuda()
+    print("Ready ✔")
 
     shutil.rmtree(epoch_dir(), ignore_errors=True)
 
     for ep in range(epochs):
-        root = synth_dir(epoch_dir(ep)); _ensure(root)
-        for sid, section in cfg.items():
-            variants, kept, tries = section.get("variants", DEFAULT_VARIANTS), 0, 0
-            while kept < variants and tries < variants * 3:
-                parts  = _sample_blocks()
-                prompt = _build_prompt(parts)
-                code   = _extract_py(_call_llm(prompt, tok, model))
-                tries += 1
-                if not code:                     continue
-                nov = _novel(code, list(parts.keys()))
-                if not nov.ok:                   continue
-                ck = hashlib.sha256(code.encode()).hexdigest()[:8]
-                bdir = root / f"{sid}_{kept:03d}"; _ensure(bdir)
-                (bdir / f"rag-{ck}.py").write_text(code)
-                create_file(bdir, new_out_file, prompt)
-                (bdir / "meta.json").write_text(
-                    json.dumps({"parts": list(parts.keys())}))
-                log.info("[%s] saved rag-%s.py", sid, ck)
-                kept += 1
+        queue: List[str] = BLOCKS_100.copy()
+        base_out = epoch_dir(ep)
+        idx = 0
 
-__all__ = ["alter"]
+        while queue:
+            block_name = queue.pop(random.randrange(len(queue)))
+            block_code = _load_block(block_name)
+            if block_code is None:
+                continue
+
+            m_cls = re.search(r'^\s*class\s+(\w+)', block_code, flags=re.MULTILINE)
+            block_cls = m_cls.group(1) if m_cls else block_name
+            m_sig = re.search(r'^\s*def __init__\([^\)]*\)', block_code, flags=re.MULTILINE)
+            init_sig = m_sig.group(0) if m_sig else "def __init__(self):"
+
+            prompt_base = "\n".join(template["prompt"]) \
+                .replace("{block_name}", block_name) \
+                .replace("{block_class}", block_cls) \
+                .replace("{init_signature}", init_sig)
+
+            for attempt in range(MAX_TRIES):
+                prompt = prompt_base if attempt == 0 else prompt_base + f"\n# retry {attempt}"
+                inp = tok.apply_chat_template(
+                    [{"role": "user", "content": prompt}],
+                    add_generation_prompt=True,
+                    return_tensors="pt"
+                ).to(model.device)
+
+                gen = model.generate(
+                    inp,
+                    max_new_tokens=LLM_MAX_TOKENS,
+                    temperature=0.6,
+                    top_k=50,
+                    top_p=0.95,
+                    do_sample=True,
+                    eos_token_id=tok.eos_token_id,
+                )
+
+                raw = tok.decode(gen[0][len(inp[0]):], skip_special_tokens=True)
+                wrapper_code = extract_code(raw)
+
+                if wrapper_code:
+                    cls_defs = re.findall(r'^\s*class\s+(\w+)', wrapper_code, flags=re.MULTILINE)
+                    if len(cls_defs) == 1 and wrapper_code.count(block_cls) == 1:
+                        break
+            else:
+                print(f"[WARN] LLM failed for {block_name} – skipped.")
+                continue
+
+            full_code = block_code.rstrip() + "\n\n" + wrapper_code.lstrip()
+            try:
+                ast.parse(full_code)
+            except SyntaxError as e:
+                print(f"[WARN] syntax error in {block_name}: {e} – skipped.")
+                continue
+
+            out_dir = synth_dir(base_out) / f"B{idx}"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_file = out_dir / f"rag-{_checksum(full_code)}.py"
+            out_file.write_text(full_code)
+            create_file(out_dir, new_out_file, raw)
+
+            print(f"[INFO] ✔ {block_name} → {out_file}")
+            idx += 1
