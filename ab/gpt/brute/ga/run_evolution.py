@@ -1,4 +1,4 @@
-# run_evolution_standalone.py
+# run_evolution.py
 import torch
 import torchvision
 import torchvision.transforms as transforms
