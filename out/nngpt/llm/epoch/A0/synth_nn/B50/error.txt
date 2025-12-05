@@ -1,0 +1,14 @@
+Error evaluating model B50: (0.1151, 10189023139, "Accuracy is too low: 0.1151. The minimum accepted accuracy for the 'cifar-10' dataset is 0.1.")
+
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 165, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 57, in evaluate
+    return api.check_nn(code, self.task, self.dataset, self.metric, self.prm, self.save_to_db, self.prefix, self.save_path)
+  File "/home/hafsamateen/Project_ResNet/.venv/lib/python3.10/site-packages/ab/nn/api.py", line 62, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+  File "/home/hafsamateen/Project_ResNet/.venv/lib/python3.10/site-packages/ab/nn/util/Train.py", line 253, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes, False, export_onnx, train_set, save_path=save_path)
+  File "/home/hafsamateen/Project_ResNet/.venv/lib/python3.10/site-packages/ab/nn/util/Train.py", line 157, in train_n_eval
+    raise AccuracyException(accuracy, duration,
+ab.nn.util.Exception.AccuracyException: (0.1151, 10189023139, "Accuracy is too low: 0.1151. The minimum accepted accuracy for the 'cifar-10' dataset is 0.1.")
