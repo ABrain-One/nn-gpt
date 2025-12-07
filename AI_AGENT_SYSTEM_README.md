@@ -1,141 +1,175 @@
-# AI Agent System - Multi-Agent AutoML
+# AI Agent System - LangGraph Multi-Agent Orchestration
 
-Multi-agent system for automated neural network discovery and optimization using LLM-based architecture generation.
+Multi-agent system for automated neural architecture generation using LangGraph framework to orchestrate existing nn-gpt pipeline.
 
 ## Overview
 
-This system implements a three-agent AutoML workflow:
-1. **Generator Agent**: Generates neural architectures using fine-tuned LLM
-2. **Predictor Agent**: Predicts final accuracy from early training metrics
-3. **Manager Agent**: Coordinates GPU resources across agents
+This system implements LangGraph-based multi-agent workflow:
+1. **Manager Agent**: Coordinates GPU resources and workflow routing
+2. **Generator Agent**: Wraps existing TuneNNGen.py pipeline
+3. **Predictor Agent**: Placeholder for future accuracy prediction (in development)
 
 ## Current Status
 
-- ✅ **Generator Agent**: Complete and functional
-- ⏳ **Predictor Agent**: In development (teammate)
-- ⏳ **Manager Agent**: Planned
-- ⏳ **LangGraph Integration**: Planned
-
-## Generator Agent Features
-
-### Core Functionality
-- Neural architecture generation using nn-gpt (DeepSeek Coder 1.3B)
-- 2-epoch quick evaluation for early performance signals
-- Automatic hyperparameter extraction
-
-### Intelligent Caching
-- Database lookup for duplicate models
-- Retrieves cached metrics instead of re-training
-- Reduces compute time by ~90% for known architectures
-
-### Robust Extraction
-- Multiple parsing strategies with fallbacks
-- Handles XML tags, markdown code blocks, and plain text
-- Extracts from full LLM output when primary parsing fails
+- ✅ **Manager Agent**: Complete - GPU coordination and workflow routing
+- ✅ **Generator Agent**: Complete - Wraps TuneNNGen.py in LangGraph node
+- ✅ **LangGraph Integration**: Complete - StateGraph workflow orchestration
+- ⏳ **Predictor Agent**: Placeholder (awaiting teammate's fine-tuned model)
 
 ## Architecture
+
+### LangGraph Workflow
 ```
+Manager Agent
+    ↓
+  (Decides: generate/predict/end)
+    ↓
 Generator Agent
     ↓
-nn-gpt (LLM) → Generate Architecture
+TuneNNGen.py (existing pipeline)
     ↓
-Checksum Check
+  - LLM generates architecture
+  - Trains for 2 epochs
+  - Returns metrics
     ↓
-  Exists in DB?
-  ├─ Yes → Query cached metrics
-  └─ No  → Train 2 epochs → Save metrics
+State updated with results
     ↓
-Return to Multi-Agent System
+END
 ```
+
+### Key Design Principles
+- **Wrap, don't recreate**: Uses existing TuneNNGen.py without modification
+- **Minimal code**: ~150 lines total for complete multi-agent system
+- **Clean state management**: TypedDict interface for agent communication
+- **Modern framework**: LangGraph for agent orchestration
+
+## Implementation
+
+### State Management (`src/state.py`)
+Defines shared state between agents:
+- Generator inputs: `epoch`, `conf_key`, `base_model_name`
+- Generator outputs: `model_code`, `accuracy`, `loss`, `metrics`
+- Manager control: `gpu_available`, `next_action`
+- Tracking: `experiment_id`, `status`, `found_in_cache`
+
+### Manager Agent (`src/agents/manager.py`)
+Coordinates workflow:
+- Checks GPU availability
+- Routes to generator or predictor
+- Manages workflow state
+
+### Generator Agent (`src/agents/generator.py`)
+Wraps existing pipeline:
+- Calls `TuneNNGen.main()` from nn-gpt repo
+- Reads generated model from `out/nngpt/llm/epoch/A{epoch}/synth_nn/B0/`
+- Extracts metrics from `eval_info.json`
+- Updates state with results
+
+### Main Workflow (`src/main.py`)
+LangGraph orchestration:
+- Creates StateGraph with agent nodes
+- Defines Manager → Generator flow
+- Compiles and executes workflow
 
 ## Setup
 
 ### Prerequisites
 - Python 3.10+
 - CUDA-capable GPU
-- 32GB+ RAM recommended
+- nn-gpt and nn-dataset repositories cloned
 
 ### Installation
 ```bash
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate
+# Install LangGraph and dependencies
+pip install langgraph langchain
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Initialize database (first run only)
-# Database auto-generates on first use
+# From nn-gpt root directory
+cd nn-gpt
 ```
-
-### External Dependencies
-
-This project integrates with:
-- `nn-gpt`: LLM-based architecture generation framework
-- `nn-dataset`: Training and evaluation pipeline
 
 ## Usage
 
-### Run Generator
+### Run Complete Workflow
 ```bash
-python -m src.agents.generator
+python src/main.py
 ```
 
 ### Expected Output
-```python
-{
-  "status": "success",
-  "metrics_source": "eval_info.json",  # or "database"
-  "has_metrics": true,
-  "accuracy": 0.85,
-  "model_code": "...",
-  "hyperparameters": {...}
-}
+```
+🤖 AI AGENT SYSTEM - Neural Architecture Generation
+============================================================
+�� Starting workflow with initial state...
+Epoch: 0
+Config: improve_classification_only
+
+🎛️ Manager: Coordinating workflow...
+✅ Manager: GPU available → Assigning to Generator
+📊 Manager decision: generate
+
+🤖 Generator: Starting for epoch 0
+[TuneNNGen.py output...]
+✅ TuneNNGen.py completed!
+📄 Model code read: XXXX characters
+📊 Metrics loaded: accuracy=0.XX
+✅ Generator complete! Accuracy: 0.XX
+
+============================================================
+✅ WORKFLOW COMPLETE!
+============================================================
 ```
 
 ## Project Structure
 ```
-AI_AGENT_SYSTEM/
-├── src/agents/           - Agent implementations
-│   ├── generator.py      - Generator agent (complete)
-│   ├── predictor.py      - Predictor agent (in development)
-│   └── manager.py        - Manager agent (planned)
-├── nn-gpt/              - External: LLM generation framework
-├── nn-dataset/          - External: Training pipeline
-├── db/                  - Local database (cached results)
-├── out/                 - Generated outputs (gitignored)
-└── venv/                - Virtual environment (gitignored)
+nn-gpt/
+├── src/
+│   ├── state.py              - State definition (TypedDict)
+│   ├── main.py               - LangGraph workflow entry point
+│   └── agents/
+│       ├── generator.py      - Wraps TuneNNGen.py
+│       ├── manager.py        - GPU coordinator
+│       └── predictor.py      - Placeholder
+├── ab/gpt/
+│   └── TuneNNGen.py         - Existing pipeline (unchanged)
+└── out/                      - Generated outputs
 ```
 
 ## Configuration
 
-Generator parameters (in `src/agents/generator.py`):
-- `max_new_tokens`: 12,288 (12KB - optimal for 1.3B model)
-- `temperature`: 0.8 (generation diversity)
-- `top_k`: 70 (sampling parameter)
-- `top_p`: 0.9 (nucleus sampling)
-- `nn_train_epochs`: 2 (quick evaluation)
+Generator uses TuneNNGen.py defaults:
+- LLM: OlympicCoder-7B (from nn-gpt)
+- Training epochs: 1 (controlled by `NN_TRAIN_EPOCHS`)
+- LLM fine-tuning epochs: 3 (controlled by `NUM_TRAIN_EPOCHS`)
 
-## Known Limitations
+All configuration is in existing TuneNNGen.py - no duplication.
 
-1. **Large datasets**: Places365 (26GB) may timeout during training
-2. **LLM variability**: ~30% of generations may have parsing issues
-3. **GPU memory**: Requires ~8GB VRAM for model + training
+## Integration Benefits
 
-These are expected behaviors in research code and do not affect the pipeline architecture.
+**vs. Previous Approach:**
+- ❌ Old: Recreated entire pipeline (496 lines)
+- ✅ New: Wraps existing pipeline (~40 lines per agent)
+
+**Advantages:**
+- Minimal code maintenance
+- No duplication of logic
+- Easy to extend with new agents
+- Modern agent framework (LangGraph)
 
 ## Future Work
 
-- [ ] Complete predictor agent integration
-- [ ] Implement manager agent for GPU coordination
-- [ ] Wire agents in LangGraph state machine
+- [ ] Complete predictor agent (awaiting fine-tuned model)
+- [ ] Add conditional routing based on predictions
+- [ ] Implement database caching layer
 - [ ] Add retry logic for failed generations
 - [ ] Support for multiple LLM backends
 
 ## Development
 
-This project was developed as part of a 10-credit research project on multi-agent AutoML systems.
+This project integrates LangGraph multi-agent orchestration into existing nn-gpt pipeline.
 
-**Timeline**: 2 weeks for generator agent completion
+**Framework**: LangGraph (2024)
+**Integration**: nn-gpt + nn-dataset repositories
+**Approach**: Wrapper pattern (minimal modification to existing code)
 
-**Acknowledgments**: Built on top of ABrain's nn-gpt and nn-dataset frameworks
+## Acknowledgments
+
+Built on top of ABrain's nn-gpt and nn-dataset frameworks.
