@@ -19,9 +19,9 @@ from peft import get_peft_model, prepare_model_for_kbit_training, PeftModel
 # =======================
 # Project utils
 # =======================
-from util.Const import out_dir, conf_train_dir
-from util.LLMUtil import quantization_config_4bit, tokenize
-from util.LoRA import create_peft_config, print_trainable_parameters
+from ab.gpt.util.Const import out_dir, conf_train_dir
+from ab.gpt.util.LLMUtil import quantization_config_4bit, tokenize
+from ab.gpt.util.LoRA import create_peft_config, print_trainable_parameters
 
 # =======================
 # CUDA allocator settings
