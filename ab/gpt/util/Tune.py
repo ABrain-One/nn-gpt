@@ -1,5 +1,6 @@
 import os
 import shutil
+import json
 from os import makedirs
 from os.path import isfile
 
@@ -149,26 +150,41 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
 def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix):
     # Move inside the loop to create new prompt with newly created models.
     print('Preparing prompts for generation, this might take a while...')
+    
+    # Check if delta mode is enabled (before prompt_dict gets reassigned)
+    use_delta = False
+    if isinstance(prompt_dict, dict) and conf_keys:
+        first_key = conf_keys[0] if isinstance(conf_keys, (list, tuple)) else conf_keys
+        key_config = prompt_dict.get(first_key, {})
+        if isinstance(key_config, dict):
+            use_delta = key_config.get('use_delta', False) or 'delta' in str(first_key).lower()
+    
     prompts = []
     for key in conf_keys:
         prompt = ''
-        prompt_dict = prompt_dict[key]
-        for pr in prompt_dict['prompt']:
+        key_config = prompt_dict[key]  # Store original reference
+        prompt_dict_key = key_config  # Use different variable name
+        for pr in prompt_dict_key['prompt']:
             prompt += pr + '\n'
         # Get nn-dataset codes
-        data = lemur.data(only_best_accuracy=True, task=prompt_dict['task']).groupby(by='nn').sample(n=1)[:test_nn]
-        # Get addon nn-dataset codes
-        addon_data = lemur.data(only_best_accuracy=True, task=prompt_dict['addon_task'])
+        data = lemur.data(only_best_accuracy=True, task=prompt_dict_key['task']).groupby(by='nn').sample(n=1)[:test_nn]
+        # Get addon nn-dataset codes (handle null addon_task)
+        addon_task = prompt_dict_key.get('addon_task')
+        addon_data = lemur.data(only_best_accuracy=True, task=addon_task) if addon_task else None
         for _, row in data.iterrows():
             para_dict = dict()
-            for it in prompt_dict['input_list']:
+            for it in prompt_dict_key['input_list']:
                 para_dict[it['para']] = row[it['value']]
-            ## Avoid sampling the same nn_code
-            addon_row = addon_data.loc[addon_data.nn != row['nn']].sample(n=1).iloc[0]
-            if prompt_dict.get('addon_list'):
-                for it in prompt_dict['addon_list']:
-                    para_dict[it['para']] = addon_row[it['value']]
+            ## Avoid sampling the same nn_code (only if addon_data is available)
+            if addon_data is not None and not addon_data.empty:
+                available_addon = addon_data.loc[addon_data.nn != row['nn']]
+                if not available_addon.empty:
+                    addon_row = available_addon.sample(n=1).iloc[0]
+                    if prompt_dict_key.get('addon_list'):
+                        for it in prompt_dict_key['addon_list']:
+                            para_dict[it['para']] = addon_row[it['value']]
             prompts.append((prompt.format(**para_dict), row))
+    
     # produce new CV models
     models_dir = synth_dir(out_path)
     # print(f"prompts: {prompts}")
@@ -178,21 +194,69 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
         code, hp, tr, full_out = chat_bot.chat(prompt, engineer_prompt=False, max_new_tokens=max_new_tokens)
         if save_llm_output: create_file(model_dir, new_out_file, full_out)
         makedirs(model_dir, exist_ok=True)
+        
+        # Apply delta if delta mode is enabled
+        if use_delta and origdf is not None:
+            try:
+                from ab.gpt.util.DeltaUtil import apply_delta, validate_delta
+                from ab.gpt.util.Util import extract_delta
+                
+                delta = extract_delta(full_out)
+                if delta:
+                    # Validate delta format before attempting to apply
+                    if not validate_delta(delta):
+                        print(f'[WARNING] Invalid delta format for model B{idx}, using extracted code as fallback')
+                        # code already extracted above, keep it
+                    else:
+                        baseline_code = origdf.get('nn_code', '')
+                        if baseline_code:
+                            applied_code = apply_delta(baseline_code, delta)
+                            if applied_code:
+                                code = applied_code
+                                print(f'[INFO] Successfully applied delta to baseline code for model B{idx}')
+                            else:
+                                print(f'[WARNING] Failed to apply delta for model B{idx} (delta application returned None), using extracted code as fallback')
+                                # code already extracted above, keep it
+                        else:
+                            print(f'[WARNING] No baseline code found in origdf for model B{idx}, using extracted code')
+                else:
+                    print(f'[WARNING] No delta found in LLM output for model B{idx}, using extracted code as fallback')
+            except ImportError as e:
+                print(f'[ERROR] Failed to import delta utilities for model B{idx}: {e}. Using extracted code as fallback.')
+            except Exception as e:
+                print(f'[WARNING] Unexpected error applying delta for model B{idx}: {e}. Using extracted code as fallback.')
+                # code already extracted above, keep it
+        # Save hyperparameters (optional - don't fail if missing)
         try:
             print(f'Generated params: {hp}')
-            hp = json.loads(hp.replace("'", '"'))
-            with open(model_dir / hp_file, 'w+') as f:
-                json.dump(hp, f)
+            if hp is not None and hp.strip():  # Check if hp exists and is not empty
+                hp = json.loads(hp.replace("'", '"'))
+                with open(model_dir / hp_file, 'w+') as f:
+                    json.dump(hp, f)
+            else:
+                print('[WARNING] No hyperparameters generated, skipping hp file')
         except Exception as e:
-            print(e)
-            continue
+            print(f'[WARNING] Error processing hyperparameters: {e}')
+            # Don't continue here - let it save the code even if hp fails
+        
+        # Save transformer (optional - don't fail if missing)
         try:
             print(f'Generated transformer:\n\n{tr}\n----\n')
-            create_file(model_dir, transformer_file, tr)
+            if tr is not None and tr.strip():  # Check if tr exists and is not empty
+                create_file(model_dir, transformer_file, tr)
+            else:
+                print('[WARNING] No transformer code generated')
         except Exception as e:
-            print(e)
-            continue
-        create_file(model_dir, new_nn_file, code)
+            print(f'[WARNING] Error saving transformer: {e}')
+            # Don't continue here either - let it save the code
+        
+        # ALWAYS save code (critical - only skip if completely missing)
+        if code is not None and code.strip():
+            create_file(model_dir, new_nn_file, code)
+            print(f'[INFO] Saved code to {model_dir / new_nn_file}')
+        else:
+            print(f'[ERROR] No code generated for model B{idx}')
+            continue  # Only skip if no code at all
         create_file(model_dir, new_out_file, full_out)
         df_file = model_dir / 'dataframe.df'
         if origdf is None:

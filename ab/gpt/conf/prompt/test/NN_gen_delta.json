@@ -1,0 +1,61 @@
+{
+    "improvement_classification_delta": {
+        "comment": [
+            "Delta-based generation: LLM generates code deltas instead of full code"
+        ],
+        "use_delta": true,
+        "task": "img-classification",
+        "addon_task": null,
+        "input_list": [
+            {"para": "nn_code", "value": "nn_code"},
+            {"para": "accuracy", "value": "accuracy"},
+            {"para": "epoch", "value": "epoch"},
+            {"para": "dataset", "value": "dataset"},
+            {"para": "task", "value": "task"},
+            {"para": "metric", "value": "metric"},
+            {"para": "metric_code", "value": "metric_code"},
+            {"para": "transform_code", "value": "transform_code"},
+            {"para": "prm", "value": "prm"}
+        ],
+        "no_repeat": [],
+        "keep_same": [],
+        "prompt": [
+            "Generate a code delta (unified diff) that improves the baseline model to maximize '{metric}' at epoch 1 on '{dataset}' for '{task}'.",
+            "Baseline achieved {accuracy} at epoch {epoch}.",
+            "",
+            "OUTPUT FORMAT (EXACTLY 3 XML tags, nothing else):",
+            "1. Training hyperparameters (JSON object between XML tags <hp> and </hp>):",
+            "   Keys: 'batch', 'transform', plus all from 'supported_hyperparameters'. Default: {{\"batch\": 64, \"transform\": \"norm_128_flip\"}}.",
+            "2. Transformer code (Python code between XML tags <tr> and </tr>):",
+            "   Use torchvision or custom implementations.",
+            "3. Code delta (unified diff between XML tags <delta> and </delta>):",
+            "   Shows only code changes (additions/deletions/modifications).",
+            "",
+            "DELTA FORMAT:",
+            "Must start with '--- baseline.py' and '+++ improved.py', followed by '@@' hunk headers, then lines with '-', '+', or ' ' (space).",
+            "Example:",
+            "<delta>",
+            "--- baseline.py",
+            "+++ improved.py",
+            "@@ -10,3 +10,4 @@",
+            "         nn.Conv2d(64, 128, 3),",
+            "-        nn.BatchNorm2d(128),",
+            "+        nn.BatchNorm2d(128),",
+            "+        nn.Dropout(0.2),",
+            "</delta>",
+            "",
+            "RULES:",
+            "- Delta shows ONLY code changes (additions/deletions/modifications).",
+            "- Modify architecture to differ from LEMUR Dataset models.",
+            "- NO explanations, reasoning, or text outside XML tags.",
+            "- NO markdown (```) or other formatting.",
+            "- Complete unified diff without truncation.",
+            "",
+            "Baseline:",
+            "<hp>{prm}</hp>",
+            "<tr>{transform_code}</tr>",
+            "<nn>{nn_code}</nn>",
+            "<metric>{metric_code}</metric>"
+        ]
+    }
+  }

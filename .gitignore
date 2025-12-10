@@ -1,8 +1,26 @@
 __pycache__/
 *.pyc
 .venv/
+<<<<<<< HEAD
 db/ab.nn.db
 db/ab.nn.db-journal
 out/
 data/
 .vscode/settings.json
+=======
+data/
+db/
+out/
+
+# Log files
+*.log
+
+# Checkpoint files
+*.pkl
+
+# Runtime-generated directories
+mutation_plans/
+
+# Token files (if created)
+token
+>>>>>>> ae23a33 (delta code initial)

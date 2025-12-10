@@ -59,6 +59,49 @@ def extract_transform(txt):
                                               (('<tr>', '</tr>'),))), ''))
 
 
+def extract_delta(txt):
+    """
+    Extract delta (unified diff) from text.
+    
+    Looks for:
+    1. <delta>...</delta> XML tags
+    2. Unified diff format (lines starting with ---, +++, @@)
+    
+    Args:
+        txt: Text containing delta
+        
+    Returns:
+        Delta string or None if not found
+    """
+    # Try XML tags first
+    delta = extract_str(txt.replace('< delta >', '<delta>').replace('<.delta>', '<delta>').replace('</ delta >', '</delta>'),
+                        '<delta>', '</delta>')
+    if delta:
+        return delta
+    
+    # Try to extract unified diff format
+    # Look for lines starting with ---, +++, or @@
+    lines = txt.splitlines()
+    delta_lines = []
+    in_diff = False
+    
+    for line in lines:
+        if line.startswith('---') or line.startswith('+++') or line.startswith('@@'):
+            in_diff = True
+            delta_lines.append(line)
+        elif in_diff:
+            if line.startswith('-') or line.startswith('+') or line.startswith(' '):
+                delta_lines.append(line)
+            elif line.strip() and not line.startswith('diff'):
+                # End of diff block
+                break
+    
+    if delta_lines:
+        return '\n'.join(delta_lines)
+    
+    return None
+
+
 def copy_to_lemur(df, gen_nn_dir, name):
     Path(new_lemur_nn_dir).mkdir(parents=True, exist_ok=True)
     shutil.copyfile(gen_nn_dir / new_nn_file, new_lemur_nn_dir / f'{name}.py')

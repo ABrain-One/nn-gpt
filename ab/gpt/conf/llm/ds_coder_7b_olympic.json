@@ -1,6 +1,6 @@
 {
   "base_model_name": "open-r1/OlympicCoder-7B",
-  "num_epochs": 100,
+  "num_epochs": 4,
   "num_test_epochs": 2,
   "use_deepspeed": false,
   "token_from_file": false,
