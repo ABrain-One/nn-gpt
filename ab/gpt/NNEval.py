@@ -179,7 +179,7 @@ def main(nn_name_prefix=NN_NAME_PREFIX, nn_train_epochs=NN_TRAIN_EPOCHS, only_ep
                     pref = nn_name_prefix or orig_pref
                     if pref:
                         nn_name = pref + '-' + nn_name
-                    copy_to_lemur(origdf, model_dir_path, nn_name)
+                    copy_to_lemur(model_dir_path, nn_name, task, dataset, metric)
 
                 except Exception as e:
                     error_msg = f"Error evaluating model {model_id}: {e}"
