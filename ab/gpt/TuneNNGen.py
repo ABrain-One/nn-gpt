@@ -13,7 +13,7 @@ from ab.gpt.util.Tune import tune, ds_conf
 START_LAYER = 0
 END_LAYER = 24
 TUNE_LAYERS = range(START_LAYER, END_LAYER)
-R = 16  # dimension of the updated matrices
+R = 32  # dimension of the updated matrices
 LORA_ALPHA = 32  # parameter for scaling
 LORA_DROPOUT = 0.05  # dropout probability for layers
 TARGET_MODULES = ('q_proj', 'v_proj' , 'k_proj', 'o_proj') # , 'lm_head'
@@ -21,12 +21,11 @@ TASK_TYPE = 'CAUSAL_LM'
 BiasType = Literal['none', 'all', 'lora_only']
 BIAS: BiasType = 'none'
 
-LEARNING_RATE = 1e-5 # 1e-5
+LEARNING_RATE = 1e-6 # 1e-5
 
 PEFT = None
 SKIP_EPOCHES = -1
 
-<<<<<<< HEAD
 NUM_TRAIN_EPOCHS = 3
 LR_SCHEDULER = 'cosine' # 'cosine_with_restarts" 'linear'
 PER_DEVICE_TRAIN_BATCH_SIZE = 1
@@ -34,23 +33,14 @@ GRADIENT_ACCUMULATION_STEPS = 8
 WARMUP_RATIO = 0.05
 TEST_NN = 10
 LOGGING_STEPS = 96
-=======
-NUM_TRAIN_EPOCHS = 2
-LR_SCHEDULER = 'cosine'
-PER_DEVICE_TRAIN_BATCH_SIZE = 1
-GRADIENT_ACCUMULATION_STEPS = 8
-WARMUP_RATIO = 0.05
-TEST_NN = 2
-LOGGING_STEPS = 128
->>>>>>> ae23a33 (delta code initial)
 MAX_GRAD_NORM = 1.0
 OPTIMIZER = 'paged_adamw_8bit'  # 'adamw_torch'
 LLM_TUNE_CONF = 'NN_gen.json'
 NN_GEN_CONF = 'NN_gen.json'
 NN_GEN_CONF_ID = 'improve_classification_only'
 LLM_CONF = 'ds_coder_7b_olympic.json'
-MAX_PROMPTS = 1024
-MAX_NEW_TOKENS = 8 * 1024
+MAX_PROMPTS = 4 * 1024
+MAX_NEW_TOKENS = 16 * 1024
 SAVE_LLM_OUTPUT = True
 USE_DEEPSPEED = False
 NN_NAME_PREFIX = None
