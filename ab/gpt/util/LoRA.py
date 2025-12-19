@@ -245,13 +245,34 @@ class LoRA:
             print("[WARN] Dataset does not have 'text' field. Using standard Trainer.")
             # Fallback to original Trainer if dataset format is different
             from transformers import Trainer
+            from ab.gpt.util.Metrics import Metrics
+
+            # metric_for_best_model is set in TuneNNGen.py to the raw metric name (e.g., "bleu")
+            test_metric = getattr(self.training_args, "metric_for_best_model", None)
+
+            # Transformers sometimes refers to "eval_bleu" in logs/errors; normalize to "bleu"
+            if isinstance(test_metric, str) and test_metric.startswith("eval_"):
+                test_metric = test_metric[len("eval_"):]
+
+            metrics_obj = Metrics(self.tokenizer)
+            compute_metrics = metrics_obj.init_compute_metrics(test_metric)
+
+            # Reduce memory: don't keep full logits for metrics
+            def preprocess_logits_for_metrics(logits, labels):
+                if isinstance(logits, tuple):
+                    logits = logits[0]
+                return logits.argmax(dim=-1).detach().to("cpu")
+
             trainer = Trainer(
                 model=self.peft_model,
                 train_dataset=train_dataset,
                 eval_dataset=eval_dataset,
                 args=self.training_args,
-                data_collator=collator
+                data_collator=collator,
+                compute_metrics=compute_metrics,
+                preprocess_logits_for_metrics=preprocess_logits_for_metrics if compute_metrics else None,
             )
+
 
         # verifying the datatypes before training
         dtypes = {}

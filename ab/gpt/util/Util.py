@@ -43,49 +43,10 @@ def extract_str(s: str, start: str, end: str):
         pass
     return None
 
-def _trim_to_valid_python(code: str) -> str:
-    """
-    Try to trim trailing broken code (e.g. unfinished def/class)
-    until ast.parse() succeeds, or return '' if nothing parsable remains.
-    """
-    lines = code.splitlines()
-    while lines:
-        try:
-            ast.parse("\n".join(lines))
-            return "\n".join(lines)
-        except SyntaxError as e:
-            # Drop the line where the error occurred and everything after it
-            lineno = getattr(e, "lineno", None)
-            if lineno is None or lineno > len(lines):
-                lines = lines[:-1]
-            else:
-                lines = lines[:lineno - 1]
-    return ""
-
 
 def extract_code(txt):
-    # Normalize possible spaced variants of nn tags
-    txt_norm = txt.replace('< nn >', '<nn>').replace('</ nn >', '</nn>')
-
-    # 1) Prefer explicit <nn>...</nn> block if present
-    for start, end in (('<nn>', '</nn>'), ('```python', '```'), ('```', '```')):
-        s = extract_str(txt_norm, start, end)
-        if s:
-            cleaned = _trim_to_valid_python(s.strip())
-            if cleaned:
-                return improve_code(cleaned)
-
-    # 2) Fallback: if <nn> exists but </nn> is missing, take everything after <nn>
-    if '<nn>' in txt_norm:
-        s = txt_norm.split('<nn>', 1)[1]
-        cleaned = _trim_to_valid_python(s.strip())
-        if cleaned:
-            return improve_code(cleaned)
-
-    # 3) Nothing found
-    return ''
-
-
+   return improve_code(next(filter(None, map(lambda l: extract_str(txt, *l),
+                                              (('<nn>', '</nn>'), ('```python', '```'), ('```', '```')))), ''))
 
 
 def extract_hyperparam(txt):

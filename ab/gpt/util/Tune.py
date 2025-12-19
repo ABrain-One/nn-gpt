@@ -397,7 +397,7 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
         
         # Original code path using NNGenPrompt (only executes when data_dir is not provided)
         # data_processor = NNGenPrompt(model_loader.get_max_length(), tokenizer, train_config_path)
-        data_processor = NNGenPrompt(context_length if context_length else model_loader.get_max_length(), tokenizer, train_config_path)
+        data_processor = NNGenPrompt(min(2048, context_length if context_length else model_loader.get_max_length()), tokenizer, train_config_path)
         dataset = data_processor.get_dataset(only_best_accuracy, max_prompts=max_prompts)
         # dataset = load_from_disk(nngpt_dir / 'dataset')
 
