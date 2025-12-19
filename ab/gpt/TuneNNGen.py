@@ -186,7 +186,7 @@ use_deepspeed={use_deepspeed}, nn_name_prefix={nn_name_prefix}, temperature={tem
 
     tune(test_nn, nn_train_epochs, skip_epoches, peft, llm_tune_conf, nn_gen_conf, nn_gen_conf_id, llm_conf, training_args, peft_config,
          max_prompts=max_prompts, save_llm_output=save_llm_output, max_new_tokens=max_new_tokens, nn_name_prefix=nn_name_prefix, 
-         temperature=temperature, top_k=top_k, top_p=top_p, data_dir=data_dir)
+         temperature=temperature, top_k=top_k, top_p=top_p)
     
     print("\n" + "="*70)
     print("FINE-TUNING CONFIGURATION SUMMARY")

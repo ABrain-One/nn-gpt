@@ -1,16 +1,14 @@
-import json
 import os
 import shutil
+import json
 from os import makedirs
 from os.path import isfile
 
 import ab.nn.api as lemur
 import deepspeed
 from ab.nn.util.Util import release_memory, create_file
-from datasets import Dataset
 from peft import (PeftModel)
 from tqdm import tqdm
-from transformers import AutoTokenizer
 
 import ab.gpt.NNEval as NNEval
 from ab.gpt.util.Chatbot import ChatBot
@@ -24,120 +22,6 @@ from ab.gpt.util.prompt.NNGenPrompt import NNGenPrompt
 # from datasets import load_from_disk
 
 ds_conf = conf_dir / 'DeepSpeed.json'
-
-
-# Helper functions for loading JSONL and rendering with chat template
-def load_jsonl(path):
-    """Load a JSONL file and return list of parsed JSON objects."""
-    with open(path, "r", encoding="utf-8") as f:
-        return [json.loads(line) for line in f]
-
-
-def render_rows_with_template(rows, tokenizer, add_generation_prompt=False):
-    """Render chat messages with the tokenizer's apply_chat_template."""
-    out = []
-    for r in rows:
-        msgs = r["messages"]  # system/user/assistant
-        # IMPORTANT: let HF build the right prompt for your model
-        text = tokenizer.apply_chat_template(
-            msgs, tokenize=False, add_generation_prompt=add_generation_prompt
-        )
-        out.append({"text": text})
-    return out
-
-
-def _load_chatjsonl_as_dataset(tokenizer, data_dir: str) -> Dataset:
-    """Load train.jsonl/dev.jsonl/test.jsonl and render with the model's chat template."""
-    def _load(path):
-        rows = []
-        with open(path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line:
-                    rows.append(json.loads(line))
-        return rows
-    
-    train_p = os.path.join(data_dir, "train.jsonl")
-    dev_p   = os.path.join(data_dir, "dev.jsonl")
-    test_p  = os.path.join(data_dir, "test.jsonl")
-    rows = []
-    if os.path.exists(train_p): rows += _load(train_p)
-    if os.path.exists(dev_p):   rows += _load(dev_p)
-    if os.path.exists(test_p):  rows += _load(test_p)
-    
-    # Render with the model's chat template
-    rendered = []
-    for r in rows:
-        msgs = r["messages"]
-        text = tokenizer.apply_chat_template(
-            msgs, tokenize=False, add_generation_prompt=False
-        )
-        rendered.append({"text": text})
-    return Dataset.from_list(rendered)
-
-
-def _load_chatjsonl_splits(tokenizer, data_dir: str):
-    """
-    Load chat_data → render with chat template → return splits.
-    Always produces a text field using the model's chat template (HF recommends this for instruct models).
-    No pre-tokenization or truncation - SFTTrainer will handle that internally.
-    Returns (train_ds, dev_ds) as separate Dataset objects.
-    """
-    def _load_one(path):
-        rows = []
-        with open(path, "r", encoding="utf-8") as f:
-            for line in f:
-                s = line.strip()
-                if s:
-                    rows.append(json.loads(s))
-        return rows
-
-    # Resolve absolute path if relative
-    if not os.path.isabs(data_dir):
-        data_dir = os.path.abspath(data_dir)
-    
-    # Standard filenames
-    train_p = os.path.join(data_dir, "train.jsonl")
-    dev_p = os.path.join(data_dir, "dev.jsonl")
-
-    if not os.path.exists(train_p):
-        # Build helpful error message
-        error_msg = (
-            f"[chat_data] Training file not found: train.jsonl\n"
-            f"  Expected path: {train_p}\n"
-            f"  Data directory: {data_dir}\n"
-            f"  Current working directory: {os.getcwd()}\n"
-            f"  \n"
-            f"  Please ensure train.jsonl exists in the data directory.\n"
-        )
-        raise FileNotFoundError(error_msg)
-
-    train_rows = _load_one(train_p)
-    dev_rows   = _load_one(dev_p) if os.path.exists(dev_p) else []
-
-    def _render(rows):
-        """
-        Render chat messages with chat template, keeping raw text only.
-        SFTTrainer will handle tokenization and truncation internally.
-        """
-        rendered = []
-        for r in rows:
-            msgs = r["messages"]
-            # Apply chat template but don't tokenize - let SFT handle that
-            text = tokenizer.apply_chat_template(
-                msgs, tokenize=False, add_generation_prompt=False
-            )
-            rendered.append({"text": text})
-        return Dataset.from_list(rendered) if rendered else Dataset.from_list([])
-
-    train_ds = _render(train_rows)
-    dev_ds   = _render(dev_rows)
-
-    print(f"[chat_data] train={len(train_ds)} dev={len(dev_ds)} (data_dir={data_dir})")
-    if len(train_ds) == 0:
-        raise RuntimeError("[chat_data] Empty training dataset. Check paths and JSONL contents.")
-
-    return train_ds, dev_ds
 
 
 def apply_sliding_window(example, max_length, stride, tokenizer):
@@ -172,7 +56,7 @@ def flatten_chunks(data):
 
 
 def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_conf, conf_keys, llm_conf, training_args, peft_config,
-         max_prompts=None, save_llm_output=True, max_new_tokens=16 * 1024, nn_name_prefix=None, temperature=1.0, top_k=50, top_p=0.9, data_dir=None):
+         max_prompts=None, save_llm_output=True, max_new_tokens=16 * 1024, nn_name_prefix=None, temperature=1.0, top_k=50, top_p=0.9, test_metric=None):
     if not isinstance(conf_keys, (list, tuple)):
         conf_keys = (conf_keys,)
     with open(conf_llm_dir / llm_conf) as f:
@@ -200,188 +84,37 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
     assert isinstance(prompt_dict, dict)
 
     # Load model and tokenizer
-    # Pass training_args to LLM for ZeRO-3 detection
     model_loader = LLM(
         base_model_name,
         quantization_config_4bit,
         access_token=access_token,
         use_deepspeed=use_deepspeed,
-        context_length=context_length,
-        training_args=training_args
+        context_length=context_length
     )
     model = model_loader.get_model()
     tokenizer = model_loader.get_tokenizer()
     # print(model)
-    peft_loaded = False
     if llm_path:
-        print(f'[INFO] Loading saved LoRA adapters from path: {llm_path}')
-        print(f'[INFO] Continual learning: Will continue training existing adapters (not merging)')
-        # Load PEFT checkpoint WITHOUT merging - keep adapters for continual learning
+        print(f'Load saved LoRA layer from path: {llm_path}')
         model = PeftModel.from_pretrained(model, llm_path, is_trainable=True)
-        peft_loaded = True
-        # Get the existing PEFT config from loaded model
-        if hasattr(model, 'peft_config'):
-            existing_config = list(model.peft_config.values())[0] if model.peft_config else None
-            if existing_config and peft_config is None:
-                # Use the loaded config if no new config provided
-                peft_config = existing_config
-                print(f'[INFO] Using PEFT config from loaded checkpoint: r={existing_config.r}, target_modules={existing_config.target_modules}')
+        model = model.merge_and_unload()
 
-    # recommended when using gradient checkpointing
-    try:
-        if getattr(model.config, "use_cache", True):
-            model.config.use_cache = False
-    except Exception:
-        pass
-
-    # === If data_dir is provided, fine-tune directly on chat_data and SKIP NN generation ===
-    if data_dir:
-        print(f"[INFO] Using chat_data from: {data_dir}")
-        # Load dataset with raw text only - no pre-tokenization
-        train_ds, dev_ds = _load_chatjsonl_splits(tokenizer, data_dir)
-
-        # Configure tokenizer for SFT: truncate from left (keep assistant response), pad on right
-        tokenizer.truncation_side = "left"
-        tokenizer.padding_side = "right"
-        tokenizer.model_max_length = 4096  # DeepSeek-Coder-7B-Instruct-v1.5 has ~4K context
-        
-        # Suppress sequence length warnings - SFTTrainer will handle truncation correctly
-        import warnings
-        warnings.filterwarnings("ignore", message=".*sequence length.*longer than.*maximum.*")
-        warnings.filterwarnings("ignore", message=".*Token indices sequence length.*")
-
-        # Prepare model for QLoRA training and wrap with PEFT
-        from peft import prepare_model_for_kbit_training, get_peft_model
-        from ab.gpt.util.LoRA import find_all_linear_names, create_peft_config, print_trainable_parameters
-        
-        # Only prepare for kbit training if not already a PEFT model
-        if not peft_loaded:
-            model = prepare_model_for_kbit_training(model)
-            model.gradient_checkpointing_enable()
-        else:
-            # Model already has PEFT adapters, just enable gradient checkpointing
-            model.gradient_checkpointing_enable()
-        
-        # Only wrap with new PEFT adapters if we didn't load existing ones
-        if not peft_loaded:
-            if peft_config is None:
-                modules = find_all_linear_names(model)
-                peft_config = create_peft_config(modules)
-            
-            model = get_peft_model(model, peft_config)
-        else:
-            # Model already has adapters from previous cycle - use them for continual learning
-            print(f'[INFO] Continuing training with existing LoRA adapters from checkpoint')
-            if peft_config is None:
-                # Extract config from loaded model
-                peft_config = list(model.peft_config.values())[0] if model.peft_config else None
-        
-        # Log trainable parameters
-        print(f"[LoRA] Adapters attached. Effective target_modules: {peft_config.target_modules}")
-        print("[LoRA] Trainable parameter summary:")
-        print_trainable_parameters(model)
-
-        # Use TRL's SFTTrainer on the "text" field (official path)
-        from trl import SFTTrainer, SFTConfig
-
-        # When packing=False, SFTTrainer tokenizes text and removes it
-        # We MUST allow column removal for proper tokenization
-        training_args.remove_unused_columns = True  # Let SFTTrainer remove "text" after tokenization
-        
-        # Set packing, max_seq_length, and dataset_text_field in SFTConfig
-        # Convert to SFTConfig if not already, or set attributes directly
-        # CRITICAL: packing=False to prevent concatenating different code examples
-        # This ensures each architecture remains distinct and prevents mixing
-        if isinstance(training_args, SFTConfig):
-            training_args.packing = False  # DISABLED: prevent mixing code examples
-            training_args.max_seq_length = 4096  # DeepSeek-Coder-7B-Instruct-v1.5 has ~4K context (4k/4.1k)
-            training_args.dataset_text_field = "text"  # tells SFT which column is the raw text
-            training_args.remove_unused_columns = True  # Remove "text" after tokenization
-        else:
-            # If training_args is TrainingArguments, create SFTConfig with all attributes
-            sft_config = SFTConfig(**training_args.to_dict())
-            sft_config.remove_unused_columns = True  # Remove "text" after tokenization
-            sft_config.packing = False  # DISABLED: prevent mixing code examples
-            sft_config.max_seq_length = 4096  # DeepSeek-Coder-7B-Instruct-v1.5 has ~4K context (4k/4.1k)
-            sft_config.dataset_text_field = "text"  # tells SFT which column is the raw text
-            training_args = sft_config
-        
-        print(f"[TRAINING CONFIG] packing={training_args.packing} (False prevents mixing architectures)")
-        print(f"[TRAINING CONFIG] max_seq_length={training_args.max_seq_length}")
-
-        # When packing=False with raw text, SFTTrainer handles tokenization internally
-        # We don't need (and shouldn't provide) a custom data collator
-        # SFTTrainer will:
-        #   1. Tokenize the "text" field automatically
-        #   2. Apply truncation based on max_seq_length
-        #   3. Create batches with proper padding
-        # This trains on the full text (system + user + assistant)
-        print("[TRAINING MODE] Full-text training (system + user + assistant)")
-        print("[TRAINING MODE] SFTTrainer will handle tokenization internally")
-
-        # SFTTrainer will handle tokenization and truncation internally
-        # Since chat_template already added special tokens, tokenizer will use add_special_tokens=False internally
-        # SFTTrainer will handle tokenization and truncation internally
-        # Since chat_template already added special tokens, tokenizer will use add_special_tokens=False internally
-        
-        # PATCH: Handle trl version compatibility for SFTTrainer
-        # Newer versions might use 'processing_class' instead of 'tokenizer'
-        # or might not accept 'tokenizer' if it's inferred from model/args
-        try:
-            print("[INFO] Attempting SFTTrainer init with 'tokenizer' arg...")
-            trainer = SFTTrainer(
-                model=model,
-                tokenizer=tokenizer,
-                train_dataset=train_ds,
-                eval_dataset=dev_ds if len(dev_ds) > 0 else None,
-                args=training_args
-            )
-        except TypeError as e:
-            if "unexpected keyword argument 'tokenizer'" in str(e):
-                print("[WARN] SFTTrainer rejected 'tokenizer' arg. Trying with 'processing_class'...")
-                try:
-                    trainer = SFTTrainer(
-                        model=model,
-                        processing_class=tokenizer,
-                        train_dataset=train_ds,
-                        eval_dataset=dev_ds if len(dev_ds) > 0 else None,
-                        args=training_args
-                    )
-                except TypeError as e2:
-                     if "unexpected keyword argument 'processing_class'" in str(e2):
-                        print("[WARN] SFTTrainer rejected 'processing_class' arg. Trying without tokenizer arg...")
-                        trainer = SFTTrainer(
-                            model=model,
-                            train_dataset=train_ds,
-                            eval_dataset=dev_ds if len(dev_ds) > 0 else None,
-                            args=training_args
-                        )
-                     else:
-                        raise e2
-            else:
-                raise e
-
-        trainer.train()
-        trainer.save_model("out/qlora-sft/final")
-        print("[INFO] SFT on chat_data complete.")
-        return
-
-    # NOTE: DeepSpeed initialization is deferred until training starts
-    # For inference (ChatBot), we use the model directly without DeepSpeed wrapper
-    # DeepSpeed will be initialized by the Trainer during training
-    # This avoids distributed initialization issues during inference
+    # initialize deepspeed before we do infer in ChatBot, since trainer is not initialized now.
+    if use_deepspeed:
+        deepspeed.initialize(model=model, config_params=ds_conf)
 
     lora_tuner = LoRA(
         model,
         tokenizer,
         training_args=training_args,
         access_token=access_token,
-        peft_config=peft_config)
+        peft_config=peft_config
+        # , test_metric=test_metric
+    )
 
     print('Using Max Length:', model_loader.get_max_length())
 
     # loop train and eval cycles
-    # For inference, use model directly (without DeepSpeed wrapper)
     chat_bot = ChatBot(model, tokenizer, temperature=temperature, top_k=top_k, top_p=top_p)  # Only initialize ONCE
 
     shutil.rmtree(epoch_dir(), ignore_errors=True)
@@ -394,8 +127,6 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
             nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix)
         # fine tune model for 1 epoch / Using training_args and save copy
         print(f'[DEBUG]Perform finetune at epoch {epoch}.')
-        
-        # Original code path using NNGenPrompt (only executes when data_dir is not provided)
         # data_processor = NNGenPrompt(model_loader.get_max_length(), tokenizer, train_config_path)
         data_processor = NNGenPrompt(min(2048, context_length if context_length else model_loader.get_max_length()), tokenizer, train_config_path)
         dataset = data_processor.get_dataset(only_best_accuracy, max_prompts=max_prompts)
@@ -412,18 +143,7 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
         # print('Dataset length:', len(dataset))
         print('Dataset length:', len(dataset))
         model.train()
-        
-        # Use completion-only training when using pre-rendered JSONL data
-        # This masks loss on system+user tokens, focusing training on assistant responses
-        use_completion_only = data_dir is not None  # JSONL data is pre-rendered with chat template
-        
-        model = lora_tuner.train(
-            dataset, 
-            tokenizer, 
-            out_path / base_model_name,
-            train_on_completions_only=use_completion_only,
-            response_template=None  # Auto-detect from sample
-        )
+        model = lora_tuner.train(dataset, tokenizer, out_path / base_model_name)
         del dataset
         release_memory()
 
@@ -431,26 +151,41 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
 def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix):
     # Move inside the loop to create new prompt with newly created models.
     print('Preparing prompts for generation, this might take a while...')
+    
+    # Check if delta mode is enabled (before prompt_dict gets reassigned)
+    use_delta = False
+    if isinstance(prompt_dict, dict) and conf_keys:
+        first_key = conf_keys[0] if isinstance(conf_keys, (list, tuple)) else conf_keys
+        key_config = prompt_dict.get(first_key, {})
+        if isinstance(key_config, dict):
+            use_delta = key_config.get('use_delta', False) or 'delta' in str(first_key).lower()
+    
     prompts = []
     for key in conf_keys:
         prompt = ''
-        prompt_dict = prompt_dict[key]
-        for pr in prompt_dict['prompt']:
+        key_config = prompt_dict[key]  # Store original reference
+        prompt_dict_key = key_config  # Use different variable name
+        for pr in prompt_dict_key['prompt']:
             prompt += pr + '\n'
         # Get nn-dataset codes
-        data = lemur.data(only_best_accuracy=True, task=prompt_dict['task']).groupby(by='nn').sample(n=1)[:test_nn]
-        # Get addon nn-dataset codes
-        addon_data = lemur.data(only_best_accuracy=True, task=prompt_dict['addon_task'])
+        data = lemur.data(only_best_accuracy=True, task=prompt_dict_key['task']).groupby(by='nn').sample(n=1)[:test_nn]
+        # Get addon nn-dataset codes (handle null addon_task)
+        addon_task = prompt_dict_key.get('addon_task')
+        addon_data = lemur.data(only_best_accuracy=True, task=addon_task) if addon_task else None
         for _, row in data.iterrows():
             para_dict = dict()
-            for it in prompt_dict['input_list']:
+            for it in prompt_dict_key['input_list']:
                 para_dict[it['para']] = row[it['value']]
-            ## Avoid sampling the same nn_code
-            addon_row = addon_data.loc[addon_data.nn != row['nn']].sample(n=1).iloc[0]
-            if prompt_dict.get('addon_list'):
-                for it in prompt_dict['addon_list']:
-                    para_dict[it['para']] = addon_row[it['value']]
+            ## Avoid sampling the same nn_code (only if addon_data is available)
+            if addon_data is not None and not addon_data.empty:
+                available_addon = addon_data.loc[addon_data.nn != row['nn']]
+                if not available_addon.empty:
+                    addon_row = available_addon.sample(n=1).iloc[0]
+                    if prompt_dict_key.get('addon_list'):
+                        for it in prompt_dict_key['addon_list']:
+                            para_dict[it['para']] = addon_row[it['value']]
             prompts.append((prompt.format(**para_dict), row))
+    
     # produce new CV models
     models_dir = synth_dir(out_path)
     # print(f"prompts: {prompts}")
@@ -460,21 +195,69 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
         code, hp, tr, full_out = chat_bot.chat(prompt, engineer_prompt=False, max_new_tokens=max_new_tokens)
         if save_llm_output: create_file(model_dir, new_out_file, full_out)
         makedirs(model_dir, exist_ok=True)
+        
+        # Apply delta if delta mode is enabled
+        if use_delta and origdf is not None:
+            try:
+                from ab.gpt.util.DeltaUtil import apply_delta, validate_delta
+                from ab.gpt.util.Util import extract_delta
+                
+                delta = extract_delta(full_out)
+                if delta:
+                    # Validate delta format before attempting to apply
+                    if not validate_delta(delta):
+                        print(f'[WARNING] Invalid delta format for model B{idx}, using extracted code as fallback')
+                        # code already extracted above, keep it
+                    else:
+                        baseline_code = origdf.get('nn_code', '')
+                        if baseline_code:
+                            applied_code = apply_delta(baseline_code, delta)
+                            if applied_code:
+                                code = applied_code
+                                print(f'[INFO] Successfully applied delta to baseline code for model B{idx}')
+                            else:
+                                print(f'[WARNING] Failed to apply delta for model B{idx} (delta application returned None), using extracted code as fallback')
+                                # code already extracted above, keep it
+                        else:
+                            print(f'[WARNING] No baseline code found in origdf for model B{idx}, using extracted code')
+                else:
+                    print(f'[WARNING] No delta found in LLM output for model B{idx}, using extracted code as fallback')
+            except ImportError as e:
+                print(f'[ERROR] Failed to import delta utilities for model B{idx}: {e}. Using extracted code as fallback.')
+            except Exception as e:
+                print(f'[WARNING] Unexpected error applying delta for model B{idx}: {e}. Using extracted code as fallback.')
+                # code already extracted above, keep it
+        # Save hyperparameters (optional - don't fail if missing)
         try:
             print(f'Generated params: {hp}')
-            hp = json.loads(hp.replace("'", '"'))
-            with open(model_dir / hp_file, 'w+') as f:
-                json.dump(hp, f)
+            if hp is not None and hp.strip():  # Check if hp exists and is not empty
+                hp = json.loads(hp.replace("'", '"'))
+                with open(model_dir / hp_file, 'w+') as f:
+                    json.dump(hp, f)
+            else:
+                print('[WARNING] No hyperparameters generated, skipping hp file')
         except Exception as e:
-            print(e)
-            continue
+            print(f'[WARNING] Error processing hyperparameters: {e}')
+            # Don't continue here - let it save the code even if hp fails
+        
+        # Save transformer (optional - don't fail if missing)
         try:
             print(f'Generated transformer:\n\n{tr}\n----\n')
-            create_file(model_dir, transformer_file, tr)
+            if tr is not None and tr.strip():  # Check if tr exists and is not empty
+                create_file(model_dir, transformer_file, tr)
+            else:
+                print('[WARNING] No transformer code generated')
         except Exception as e:
-            print(e)
-            continue
-        create_file(model_dir, new_nn_file, code)
+            print(f'[WARNING] Error saving transformer: {e}')
+            # Don't continue here either - let it save the code
+        
+        # ALWAYS save code (critical - only skip if completely missing)
+        if code is not None and code.strip():
+            create_file(model_dir, new_nn_file, code)
+            print(f'[INFO] Saved code to {model_dir / new_nn_file}')
+        else:
+            print(f'[ERROR] No code generated for model B{idx}')
+            continue  # Only skip if no code at all
         create_file(model_dir, new_out_file, full_out)
         df_file = model_dir / 'dataframe.df'
         if origdf is None:
