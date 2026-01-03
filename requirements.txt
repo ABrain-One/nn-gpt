@@ -11,3 +11,5 @@ overrides>=7.7.0
 datasketch # to check code novelty
 matplotlib
 optimum[onnxruntime-gpu]
+onnx>=1.16.0
+onnxruntime-gpu>=1.18.0
