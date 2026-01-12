@@ -4,16 +4,81 @@ Delta utilities for computing and applying code deltas.
 This module provides functionality to:
 1. Compute unified diffs between two code versions
 2. Apply unified diffs to reconstruct improved code from baseline
+3. Validate and repair generated Python code
 
 Uses Python's built-in difflib for minimal external dependencies.
 """
 
+import ast
 import difflib
 from typing import Optional, List, Tuple
 import re
 import tempfile
 import subprocess
 import os
+
+
+def validate_python_syntax(code: str) -> tuple:
+    """
+    Validate that code is syntactically correct Python.
+    
+    Returns:
+        Tuple of (is_valid: bool, error_message: str)
+    """
+    if not code or not code.strip():
+        return False, "Empty code"
+    try:
+        ast.parse(code)
+        return True, ""
+    except SyntaxError as e:
+        return False, f"Line {e.lineno}: {e.msg}"
+
+
+def repair_code(code: str) -> Optional[str]:
+    """
+    Attempt to repair common LLM-generated syntax errors.
+    
+    Fixes:
+    1. Stray closing brackets/parentheses on their own line
+    2. Misplaced nn.Module lines outside Sequential context
+    
+    Returns:
+        Repaired code or None if repair fails.
+    """
+    if not code:
+        return None
+    
+    lines = code.splitlines()
+    repaired_lines = []
+    
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        
+        # Skip stray brackets that appear alone
+        if stripped in [')', ']', '},', '])', '])']:
+            continue
+        
+        # Skip misplaced nn.XXX lines at wrong indentation (outside Sequential)
+        if re.match(r'^\s{12,}nn\.\w+\([^)]*\),?\s*$', line):
+            # Check if we're inside a Sequential context
+            in_sequential = False
+            for j in range(max(0, i - 10), i):
+                if 'nn.Sequential' in lines[j] or 'self.layers = nn.Sequential' in lines[j]:
+                    in_sequential = True
+                    break
+            if not in_sequential:
+                continue
+        
+        repaired_lines.append(line)
+    
+    repaired = '\n'.join(repaired_lines)
+    
+    # Validate repair worked
+    is_valid, _ = validate_python_syntax(repaired)
+    if is_valid:
+        return repaired
+    
+    return None
 
 
 def compute_delta(baseline_code: str, improved_code: str) -> str:
@@ -54,12 +119,14 @@ def apply_delta(baseline_code: str, delta: str) -> Optional[str]:
     1. Use system 'patch' command if available (most reliable)
     2. Manual application using unified diff parser (fallback)
     
+    Now includes syntax validation - only returns code that parses correctly.
+    
     Args:
         baseline_code: Original code
         delta: Unified diff string
         
     Returns:
-        Improved code or None if application failed
+        Improved code or None if application failed or result has syntax errors
     """
     if not baseline_code or not delta:
         return None
@@ -71,12 +138,26 @@ def apply_delta(baseline_code: str, delta: str) -> Optional[str]:
     # Try system patch command first (most reliable)
     result = _apply_delta_with_patch(baseline_code, delta)
     if result is not None:
-        return result
+        is_valid, error = validate_python_syntax(result)
+        if is_valid:
+            return result
+        # Try repair
+        repaired = repair_code(result)
+        if repaired:
+            return repaired
+        print(f"[DELTA] Patch result has syntax error: {error}")
     
     # Fallback to manual application
     result = _apply_delta_manual(baseline_code, delta)
     if result is not None:
-        return result
+        is_valid, error = validate_python_syntax(result)
+        if is_valid:
+            return result
+        # Try repair
+        repaired = repair_code(result)
+        if repaired:
+            return repaired
+        print(f"[DELTA] Manual result has syntax error: {error}")
     
     return None
 

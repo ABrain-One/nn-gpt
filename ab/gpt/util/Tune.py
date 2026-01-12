@@ -109,7 +109,8 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
         training_args=training_args,
         access_token=access_token,
         peft_config=peft_config,
-        test_metric=test_metric)
+        # , test_metric=test_metric
+        )
 
     print('Using Max Length:', model_loader.get_max_length())
 
@@ -198,7 +199,7 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
         # Apply delta if delta mode is enabled
         if use_delta and origdf is not None:
             try:
-                from ab.gpt.util.DeltaUtil import apply_delta, validate_delta
+                from ab.gpt.util.DeltaUtil import apply_delta, validate_delta, validate_python_syntax, repair_code
                 from ab.gpt.util.Util import extract_delta
                 
                 delta = extract_delta(full_out)
@@ -215,8 +216,15 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
                                 code = applied_code
                                 print(f'[INFO] Successfully applied delta to baseline code for model B{idx}')
                             else:
-                                print(f'[WARNING] Failed to apply delta for model B{idx} (delta application returned None), using extracted code as fallback')
-                                # code already extracted above, keep it
+                                print(f'[WARNING] Failed to apply delta for model B{idx}, trying to repair extracted code')
+                                # Try to repair extracted code as fallback
+                                if code:
+                                    is_valid, _ = validate_python_syntax(code)
+                                    if not is_valid:
+                                        repaired = repair_code(code)
+                                        if repaired:
+                                            code = repaired
+                                            print(f'[INFO] Repaired extracted code for model B{idx}')
                         else:
                             print(f'[WARNING] No baseline code found in origdf for model B{idx}, using extracted code')
                 else:
@@ -250,8 +258,22 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
             print(f'[WARNING] Error saving transformer: {e}')
             # Don't continue here either - let it save the code
         
-        # ALWAYS save code (critical - only skip if completely missing)
+        # ALWAYS save code (critical - only skip if completely missing or invalid)
         if code is not None and code.strip():
+            # Final syntax validation before saving
+            try:
+                from ab.gpt.util.DeltaUtil import validate_python_syntax, repair_code
+                is_valid, error = validate_python_syntax(code)
+                if not is_valid:
+                    print(f'[WARNING] Code for B{idx} has syntax error: {error}. Attempting repair...')
+                    repaired = repair_code(code)
+                    if repaired:
+                        code = repaired
+                        print(f'[INFO] Successfully repaired code for B{idx}')
+                    else:
+                        print(f'[ERROR] Could not repair code for B{idx}, saving anyway for debugging')
+            except ImportError:
+                pass  # DeltaUtil not available, skip validation
             create_file(model_dir, new_nn_file, code)
             print(f'[INFO] Saved code to {model_dir / new_nn_file}')
         else:

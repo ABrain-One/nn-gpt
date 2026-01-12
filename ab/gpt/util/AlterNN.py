@@ -317,7 +317,6 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
             
             # Fallback: try to extract full code if delta extraction/application failed
             if not delta or origdf is None:
-            else:
                 # Fallback: try to extract full code if delta extraction failed
                 nn_code = extract_code(out)
                 if nn_code:
