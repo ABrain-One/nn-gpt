@@ -37,6 +37,7 @@ from ab.gpt.iterative_pipeline.gpu_memory_manager import (
 )
 from ab.dup.preprocessing import curate_from_lemur
 from ab.chatprep.prompt_builder import ChatPrepConfig
+from ab.gpt.TuneNNGen import get_pipeline_defaults
 
 # Setup logging - will be configured after output_dir is known
 logger = logging.getLogger(__name__)
@@ -353,35 +354,41 @@ class IterativeFinetuner:
         
         # Add optimized training parameters if enabled
         if self.use_optimized_training:
-            optimized_params = [
-                # Training hyperparameters
-                "--learning_rate", "1e-5",        # Conservative for stability
-                "--weight_decay", "0.01",         # Regularization
-                "--warmup_steps", "20",           # ~2% of samples for stable start
-                "--num_train_epochs", str(self.num_train_epochs),  # Configurable epochs per cycle
-                "--logging_steps", "10",          # Reduce overhead
-                "--max_grad_norm", "1.0",         # Gradient clipping
-                
-                # LoRA configuration
-                "--target_modules", "q_proj,k_proj,v_proj,o_proj,up_proj,down_proj,gate_proj",  # Include MLP
-                
-                # Generation parameters
-                "--max_new_tokens", "8192",       # Balanced length
-                "--temperature", "0.2",           # More deterministic
-                "--top_k", "50",                  # Less randomness
-                
-                # Evaluation and checkpointing
-                "--evaluation_strategy", "steps",
-                "--eval_steps", "100",  # Less frequent evaluation to reduce memory spikes
-                "--per_device_eval_batch_size", "1",  # Reduce eval batch size to save memory
-                "--save_strategy", "steps",
-                "--save_steps", "100",  # Match eval_steps for consistency
-                "--save_total_limit", "3",
-                "--load_best_model_at_end",
-                "--metric_for_best_model", "eval_loss",
-            ]
+            # Get pipeline defaults from TuneNNGen.py (single source of truth)
+            pipeline_defaults = get_pipeline_defaults()
+            
+            # Build command-line arguments from defaults dict
+            optimized_params = []
+            
+            # Training hyperparameters
+            optimized_params.extend(["--learning_rate", str(pipeline_defaults['learning_rate'])])
+            optimized_params.extend(["--weight_decay", str(pipeline_defaults['weight_decay'])])
+            optimized_params.extend(["--warmup_steps", str(pipeline_defaults['warmup_steps'])])
+            optimized_params.extend(["--num_train_epochs", str(self.num_train_epochs)])  # Use instance value (may override default)
+            optimized_params.extend(["--logging_steps", str(pipeline_defaults['logging_steps'])])
+            optimized_params.extend(["--max_grad_norm", str(pipeline_defaults['max_grad_norm'])])
+            
+            # LoRA configuration
+            optimized_params.extend(["--target_modules", pipeline_defaults['target_modules']])
+            
+            # Generation parameters
+            optimized_params.extend(["--max_new_tokens", str(pipeline_defaults['max_new_tokens'])])
+            optimized_params.extend(["--temperature", str(pipeline_defaults['temperature'])])
+            optimized_params.extend(["--top_k", str(pipeline_defaults['top_k'])])
+            
+            # Evaluation and checkpointing
+            optimized_params.extend(["--evaluation_strategy", pipeline_defaults['evaluation_strategy']])
+            optimized_params.extend(["--eval_steps", str(pipeline_defaults['eval_steps'])])
+            optimized_params.extend(["--per_device_eval_batch_size", str(pipeline_defaults['per_device_eval_batch_size'])])
+            optimized_params.extend(["--save_strategy", pipeline_defaults['save_strategy']])
+            optimized_params.extend(["--save_steps", str(pipeline_defaults['save_steps'])])
+            optimized_params.extend(["--save_total_limit", str(pipeline_defaults['save_total_limit'])])
+            if pipeline_defaults['load_best_model_at_end']:
+                optimized_params.append("--load_best_model_at_end")
+            optimized_params.extend(["--metric_for_best_model", pipeline_defaults['metric_for_best_model']])
+            
             cmd.extend(optimized_params)
-            logger.info("Using optimized training configuration")
+            logger.info("Using optimized training configuration (from TuneNNGen.py defaults)")
         else:
             logger.info("Using default training configuration")
         

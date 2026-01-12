@@ -1,6 +1,5 @@
 import json
 import os
-from pathlib import Path
 
 
 def generate_cycle_results(cycle, models_base_dir, eval_results_list, model_dirs_list, successful_models, 

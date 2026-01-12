@@ -178,6 +178,47 @@ def load_model_and_tokenizer(
         hf_token: Hugging Face token
         peft_checkpoint: Optional path to PEFT checkpoint (if provided, will load adapters)
     """
+    # Validate base_model is not None or empty (prevents 'NoneType' object has no attribute 'endswith' error)
+    if base_model is None:
+        raise ValueError("base_model cannot be None in load_model_and_tokenizer()")
+    if not isinstance(base_model, str):
+        raise TypeError(f"base_model must be a string, got {type(base_model)}: {base_model}")
+    if not base_model.strip():
+        raise ValueError(f"base_model cannot be empty string, got: '{base_model}'")
+    
+    # Check if path exists (for local paths) and validate
+    base_model_path = Path(base_model)
+    path_exists = base_model_path.exists()
+    is_absolute = base_model_path.is_absolute()
+    
+    print(f"[DEBUG] Path validation: base_model='{base_model}', exists={path_exists}, is_absolute={is_absolute}")
+    
+    if path_exists:
+        if not base_model_path.is_dir():
+            raise ValueError(f"base_model path exists but is not a directory: {base_model}")
+        # Ensure it's an absolute path for consistency
+        if not is_absolute:
+            base_model = str(base_model_path.resolve())
+            print(f"[INFO] Converted relative path to absolute: {base_model}")
+        else:
+            base_model = str(base_model_path)  # Ensure it's a string
+    elif not is_absolute:
+        # Might be a relative path - try to resolve it
+        try:
+            resolved = base_model_path.resolve()
+            if resolved.exists():
+                base_model = str(resolved)
+                print(f"[INFO] Resolved relative path to: {base_model}")
+            else:
+                # Might be a HuggingFace model identifier, which is fine
+                print(f"[INFO] base_model '{base_model}' does not exist as local path, assuming HuggingFace model identifier")
+        except (OSError, RuntimeError) as e:
+            # Path resolution failed, might be a HuggingFace identifier
+            print(f"[INFO] Could not resolve path '{base_model}', assuming HuggingFace model identifier: {e}")
+    else:
+        # Absolute path that doesn't exist - might be a HuggingFace model identifier
+        print(f"[INFO] base_model '{base_model}' (absolute path) does not exist, assuming HuggingFace model identifier")
+    
     bnb_cfg = BitsAndBytesConfig(
         load_in_4bit=load_in_4bit,
         bnb_4bit_quant_type="nf4",
@@ -185,14 +226,176 @@ def load_model_and_tokenizer(
         bnb_4bit_compute_dtype=dtype,
     ) if load_in_4bit else None
 
-    tok = AutoTokenizer.from_pretrained(base_model, token=hf_token, trust_remote_code=True)
-    ensure_pad(tok)
-    mdl = AutoModelForCausalLM.from_pretrained(
-        base_model,
+    # Load tokenizer with better error handling
+    # IMPORTANT: This is a known bug in Transformers v4.57.3 (issue #42583)
+    # The error: vocab_file is None when transformers tries convert_slow_tokenizer(..., from_tiktoken=True)
+    # Root cause: Fine-tune checkpoints often don't include complete tokenizer assets
+    # Solution: Load tokenizer from base model (not checkpoint) and use slow tokenizer if fast fails
+    # Reference: https://github.com/huggingface/transformers/issues/42583
+    try:
+        print(f"[DEBUG] Loading tokenizer from: {base_model}")
+        
+        # Verify tokenizer files exist (checkpoint dirs often lack complete tokenizer assets)
+        # If missing, try loading from HuggingFace model ID instead
+        tokenizer_path = Path(base_model)
+        tokenizer_files = ["tokenizer.json", "tokenizer.model", "tokenizer_config.json"]
+        has_tokenizer_files = any((tokenizer_path / f).exists() for f in tokenizer_files)
+        
+        # Determine tokenizer source: prefer local if files exist, otherwise try HuggingFace model ID
+        tokenizer_source = base_model
+        if not has_tokenizer_files and tokenizer_path.exists() and tokenizer_path.is_dir():
+            # Local path exists but missing tokenizer files - extract HuggingFace model ID from path
+            # Path format: .../out/llm/ABrain/NNGPT-UniqueArch-Rag -> model ID: ABrain/NNGPT-UniqueArch-Rag
+            path_parts = list(tokenizer_path.parts)
+            # Look for the last two directory components that form a model ID (org/model)
+            if len(path_parts) >= 2:
+                # Try last two components: parent/name
+                parent_name = path_parts[-2]
+                model_name = path_parts[-1]
+                potential_hf_id = f"{parent_name}/{model_name}"
+                # Check if this looks like a HuggingFace model ID (not a local absolute path)
+                if not Path(potential_hf_id).is_absolute() and '/' in potential_hf_id:
+                    print(f"[INFO] Tokenizer files missing locally, trying HuggingFace model ID: {potential_hf_id}")
+                    tokenizer_source = potential_hf_id
+                else:
+                    print(f"[WARN] Tokenizer files not found in {base_model}")
+                    print(f"[WARN] Will attempt to load from local path anyway (may download from HuggingFace)")
+            else:
+                print(f"[WARN] Tokenizer files not found in {base_model}")
+                print(f"[WARN] Will attempt to load from local path anyway (may download from HuggingFace)")
+        elif not has_tokenizer_files:
+            # Path doesn't exist as directory - might be HuggingFace model ID already
+            print(f"[INFO] Path doesn't exist as directory, treating as HuggingFace model ID: {base_model}")
+            tokenizer_source = base_model
+        
+        try:
+            # Try fast tokenizer first (default behavior)
+            print(f"[DEBUG] Loading tokenizer from: {tokenizer_source}")
+            tok = AutoTokenizer.from_pretrained(tokenizer_source, token=hf_token, trust_remote_code=True, use_fast=True)
+        except AttributeError as fast_error:
+            if "'NoneType' object has no attribute 'endswith'" in str(fast_error):
+                # Known bug in Transformers v4.57.3: vocab_file is None during fast tokenizer conversion
+                # Fix: Use slow tokenizer class directly (bypasses the buggy conversion code)
+                print(f"[WARN] Fast tokenizer conversion failed (Transformers v4.57.3 bug - vocab_file=None)")
+                print(f"[WARN] Falling back to slow tokenizer to avoid the conversion bug")
+                
+                # Load config to determine tokenizer class
+                from transformers import AutoConfig
+                config = AutoConfig.from_pretrained(tokenizer_source, token=hf_token, trust_remote_code=True)
+                model_type = getattr(config, 'model_type', '').lower()
+                
+                if 'llama' in model_type or 'deepseek' in model_type:
+                    # Use slow LLaMA tokenizer directly (requires sentencepiece)
+                    try:
+                        from transformers import LlamaTokenizer
+                        tok = LlamaTokenizer.from_pretrained(tokenizer_source, token=hf_token, trust_remote_code=True)
+                        print(f"[INFO] Successfully loaded slow LlamaTokenizer")
+                    except ImportError as e:
+                        raise RuntimeError(
+                            f"Slow tokenizer requires sentencepiece. Install with: pip install sentencepiece protobuf\n"
+                            f"Original error: {e}"
+                        ) from e
+                else:
+                    # For other model types, try AutoTokenizer with use_fast=False
+                    # Note: This may still fail if the tokenizer config forces fast mode
+                    print(f"[WARN] Model type '{model_type}' detected, trying AutoTokenizer with use_fast=False")
+                    tok = AutoTokenizer.from_pretrained(
+                        tokenizer_source, 
+                        token=hf_token, 
         trust_remote_code=True,
-        torch_dtype=dtype,
-        quantization_config=bnb_cfg,
-    )
+                        use_fast=False
+                    )
+            else:
+                raise
+    except Exception as e:
+        raise RuntimeError(
+            f"Failed to load tokenizer from '{base_model}': {e}\n"
+            f"Note: Fine-tune checkpoints often lack complete tokenizer assets.\n"
+            f"Solution: Load tokenizer from the original base model path, not the checkpoint directory."
+        ) from e
+    
+    ensure_pad(tok)
+    print(f"[DEBUG] Tokenizer loaded and configured successfully", flush=True)
+    
+    # Load model with better error handling
+    # First, verify the model directory structure
+    model_path = Path(base_model)
+    print(f"[DEBUG] About to load model. base_model='{base_model}', path exists: {model_path.exists()}", flush=True)
+    
+    if model_path.exists():
+        required_files = ["config.json"]
+        missing_files = [f for f in required_files if not (model_path / f).exists()]
+        if missing_files:
+            print(f"[WARN] Model directory missing files: {missing_files}")
+        else:
+            print(f"[DEBUG] Model directory structure verified: {base_model}")
+    else:
+        print(f"[WARN] Model path does not exist: {base_model}")
+    
+    try:
+        print(f"[DEBUG] Loading model from: {base_model}", flush=True)
+        print(f"[DEBUG] Using quantization_config: {bnb_cfg is not None}", flush=True)
+        if bnb_cfg is not None:
+            print(f"[DEBUG] Quantization config details: load_in_4bit={bnb_cfg.load_in_4bit}, compute_dtype={bnb_cfg.bnb_4bit_compute_dtype}", flush=True)
+        print(f"[DEBUG] Using torch_dtype: {dtype}", flush=True)
+        
+        # Try loading with device_map="auto" if quantization is enabled (helps with path resolution)
+        load_kwargs = {
+            "trust_remote_code": True,
+            "torch_dtype": dtype,
+        }
+        
+        if bnb_cfg is not None:
+            load_kwargs["quantization_config"] = bnb_cfg
+            load_kwargs["device_map"] = "auto"  # Helps with quantization path resolution
+        
+        mdl = AutoModelForCausalLM.from_pretrained(base_model, **load_kwargs)
+        print(f"[DEBUG] Model loaded successfully")
+    except AttributeError as e:
+        if "'NoneType' object has no attribute 'endswith'" in str(e):
+            # This is a known issue with transformers when path resolution fails
+            # Often happens with quantization - try fallback without quantization
+            import traceback
+            tb_str = traceback.format_exc()
+            
+            if bnb_cfg is not None:
+                print(f"[WARN] Model loading failed with quantization. Trying fallback without quantization...")
+                try:
+                    # Fallback: try loading without quantization
+                    fallback_kwargs = {
+                        "trust_remote_code": True,
+                        "torch_dtype": dtype,
+                        "device_map": "auto",
+                    }
+                    mdl = AutoModelForCausalLM.from_pretrained(base_model, **fallback_kwargs)
+                    print(f"[INFO] Model loaded successfully without quantization (fallback)")
+                except Exception as fallback_e:
+                    # If fallback also fails, raise the original error with full context
+                    raise ValueError(
+                        f"Transformers library error: 'NoneType' object has no attribute 'endswith'. "
+                        f"This typically occurs when transformers cannot resolve the model path internally. "
+                        f"base_model='{base_model}' (exists: {model_path.exists()}), "
+                        f"quantization_config={bnb_cfg is not None}. "
+                        f"Fallback without quantization also failed: {fallback_e}. "
+                        f"Full traceback:\n{tb_str}"
+                    ) from e
+            else:
+                # No quantization, so this is a different issue
+                raise ValueError(
+                    f"Transformers library error: 'NoneType' object has no attribute 'endswith'. "
+                    f"This typically occurs when transformers cannot resolve the model path internally. "
+                    f"base_model='{base_model}' (exists: {model_path.exists()}), "
+                    f"quantization_config={bnb_cfg is not None}. "
+                    f"Full traceback:\n{tb_str}"
+                ) from e
+        raise
+    except Exception as e:
+        import traceback
+        tb_str = traceback.format_exc()
+        raise RuntimeError(
+            f"Failed to load model from '{base_model}': {e}\n"
+            f"Full traceback:\n{tb_str}"
+        ) from e
     
     # Load PEFT adapters if checkpoint is provided
     if peft_checkpoint:
@@ -460,6 +663,10 @@ def main(
     num_prompts = min(max_items, len(rows))
     total_targets = num_prompts * samples_per_prompt
 
+    # Validate base_model is not None
+    if base_model is None:
+        raise ValueError("base_model cannot be None. Please provide a model path or name.")
+
     # Check if base_model is actually a PEFT checkpoint directory
     # (In pipeline mode, checkpoint_path is passed as base_model)
     # (In standalone mode via Sft_Rag.py, base_model is a HuggingFace model name from config)
@@ -485,10 +692,13 @@ def main(
                     config = json.loads(config_path.read_text())
                     base_model_name = config.get("_name_or_path") or config.get("base_model_name_or_path")
             
-            if base_model_name:
+            if base_model_name and base_model_name.strip():
                 print(f"[INFO] Base model from adapter config: {base_model_name}")
             else:
-                raise ValueError("Could not determine base model name from checkpoint")
+                raise ValueError(
+                    f"Could not determine base model name from checkpoint. "
+                    f"adapter_config.get('base_model_name_or_path') = {adapter_config.get('base_model_name_or_path')}"
+                )
         except Exception as e:
             print(f"[ERROR] Could not read adapter config: {e}")
             print(f"[ERROR] Cannot load PEFT checkpoint without base model name")
@@ -502,14 +712,52 @@ def main(
         print(f"[INFO] Using provided path as base model: {base_model}")
         print(f"[INFO] (Not a PEFT checkpoint - no adapter_config.json found)")
     
+    # Final validation: ensure base_model_name is not None or empty before loading
+    if not base_model_name or not base_model_name.strip():
+        raise ValueError(
+            f"base_model_name is None or empty. Cannot load model. "
+            f"base_model was: {base_model}, "
+            f"base_model_name was: {base_model_name}, "
+            f"checkpoint_path exists: {checkpoint_path.exists() if base_model else False}"
+        )
+    
+    # Debug logging before calling load_model_and_tokenizer
+    print(f"[DEBUG] About to load model with base_model_name='{base_model_name}' (type: {type(base_model_name)})")
+    print(f"[DEBUG] peft_checkpoint={peft_checkpoint}")
+    
     # Load model and tokenizer (with PEFT adapters if checkpoint detected)
-    model, tokenizer = load_model_and_tokenizer(
-        base_model_name,
-        load_in_4bit=load_in_4bit,
-        dtype=torch.bfloat16,
-        hf_token=hf_token,
-        peft_checkpoint=peft_checkpoint,
-    )
+    try:
+        model, tokenizer = load_model_and_tokenizer(
+            base_model_name,
+            load_in_4bit=load_in_4bit,
+            dtype=torch.bfloat16,
+            hf_token=hf_token,
+            peft_checkpoint=peft_checkpoint,
+        )
+    except AttributeError as e:
+        if "'NoneType' object has no attribute 'endswith'" in str(e):
+            # This error occurs inside transformers library, not because we passed None
+            # It suggests transformers is trying to process a path that became None internally
+            # This can happen if the model path doesn't exist or transformers can't resolve it
+            import traceback
+            tb_str = traceback.format_exc()
+            raise ValueError(
+                f"MODEL LOADING ERROR: Transformers library error: 'NoneType' object has no attribute 'endswith'. "
+                f"This suggests an internal issue in transformers when processing the model path. "
+                f"base_model={base_model}, base_model_name={base_model_name} (type: {type(base_model_name)}), "
+                f"peft_checkpoint={peft_checkpoint}. "
+                f"Path exists: {Path(base_model_name).exists() if base_model_name else 'N/A'}. "
+                f"Full traceback:\n{tb_str}"
+            ) from e
+        raise
+    except Exception as e:
+        import traceback
+        tb_str = traceback.format_exc()
+        raise RuntimeError(
+            f"Unexpected error loading model: {e}\n"
+            f"base_model={base_model}, base_model_name={base_model_name}\n"
+            f"Full traceback:\n{tb_str}"
+        ) from e
     model.eval()
     device_obj = torch.device(device)
     model.to(device_obj)

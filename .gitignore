@@ -1,3 +1,9 @@
+dataset/
+*.pkl
+*.jsonl
+__pycache__/
+data/
+data_v2/
 __pycache__/
 *.pyc
 .venv/
@@ -9,3 +15,10 @@ data/
 curation_output/
 iterative_pipeline.log
 .gitignore
+
+# Run artifacts (do not commit)
+out/
+**/checkpoint-*
+**/tokenizer/
+output.log
+stat/

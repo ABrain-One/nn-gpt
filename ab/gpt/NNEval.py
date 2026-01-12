@@ -2,7 +2,8 @@ import argparse, json, sys, os, traceback
 from pathlib import Path
 import pandas as pd
 import time
-from ab.nn.util.Util import release_memory, uuid4, read_py_file_as_string
+from ab.nn.util.Util import release_memory, uuid4
+from ab.gpt.util.Util import read_py_file_as_string
 
 from ab.gpt.util.Const import epoch_dir, new_nn_file, nngpt_dir, synth_dir, hp_file
 from ab.gpt.util.Eval import Eval

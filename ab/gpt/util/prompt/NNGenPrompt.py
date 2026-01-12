@@ -1,6 +1,6 @@
 import json
 
-import ab.nn as lemur
+import ab.nn.api as lemur
 from overrides import override
 import pandas as pd
 from pandas import DataFrame

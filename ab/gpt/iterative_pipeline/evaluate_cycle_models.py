@@ -18,7 +18,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from ab.gpt.util.Eval import Eval
 from ab.gpt.util.Const import new_nn_file
 from ab.gpt.util.Util import copy_to_lemur
-from ab.nn.util.Util import uuid4, read_py_file_as_string
+from ab.nn.util.Util import uuid4
+from ab.gpt.util.Util import read_py_file_as_string
 
 def clear_gpu_memory():
     """Clear GPU memory cache."""

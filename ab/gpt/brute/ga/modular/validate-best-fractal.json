@@ -1,0 +1,98 @@
+{
+  "apiVersion": "batch/v1",
+  "kind": "Job",
+  "metadata": {
+    "name": "validating-best-fractal"
+  },
+  "spec": {
+    "parallelism": 1,
+    "ttlSecondsAfterFinished": 86400,
+    "template": {
+      "spec": {
+        "containers": [
+          {
+            "name": "ml",
+            "image": "abrainone/ai-linux:cu12.6.3-latest",
+            "imagePullPolicy": "Always",
+            "command": [
+              "/bin/bash",
+              "-c"
+            ],
+            "args": [
+              "cd /a/mm && pip install -r requirements.txt && python3 -u -m ab.gpt.brute.ga.modular.validate_winner"
+            ],
+            "env": [
+              {
+                "name": "POPULATION_SIZE",
+                "value": "12"
+              },
+              {
+                "name": "GENERATIONS",
+                "value": "50"
+              },
+              {
+                "name": "MUTATION_RATE",
+                "value": "0.6"
+              }
+            ],
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "runAsUser": 1017,
+              "runAsGroup": 1376
+            },
+            "resources": {
+              "requests": {
+                "nvidia.com/gpu": 1,
+                "cpu": 8,
+                "memory": "32Gi"
+              },
+              "limits": {
+                "nvidia.com/gpu": 1,
+                "cpu": 16,
+                "memory": "64Gi"
+              }
+            },
+            "volumeMounts": [
+              {
+                "mountPath": "/dev/shm",
+                "name": "shm"
+              },
+              {
+                "mountPath": "/a/mm",
+                "name": "v0"
+              },
+              {
+                "mountPath": "/a/mm/data",
+                "name": "v1"
+              }
+            ]
+          }
+        ],
+        "restartPolicy": "Never",
+        "volumes": [
+          {
+            "name": "shm",
+            "emptyDir": {
+              "medium": "Memory",
+              "sizeLimit": "16Gi"
+            }
+          },
+          {
+            "name": "v0",
+            "hostPath": {
+              "path": "/shared/ssd/home/b-a-singh/Thesis/nn-gpt",
+              "type": "Directory"
+            }
+          },
+          {
+            "name": "v1",
+            "hostPath": {
+              "path": "/shared/local/data/a-group-automl/data",
+              "type": "Directory"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

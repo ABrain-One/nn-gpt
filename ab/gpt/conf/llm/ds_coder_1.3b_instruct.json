@@ -1,5 +1,9 @@
 {
   "base_model_name": "deepseek-ai/deepseek-coder-1.3b-instruct",
+  "tokenizer_name": "deepseek-ai/deepseek-coder-1.3b-instruct",
+  "max_length": 512,
+  "model_max_length": 512,
+  "window_size": 512,
   "num_epochs": 100,
   "num_test_epochs": 2,
   "use_deepspeed": false,

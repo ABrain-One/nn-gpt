@@ -1,6 +1,9 @@
+import importlib
+import inspect
 import os.path
 import re
 import shutil
+import ast
 from pathlib import Path
 
 from ab.gpt.util.Const import new_lemur_nn_dir, new_nn_file, new_lemur_stat_dir
@@ -43,6 +46,28 @@ def extract_str(s: str, start: str, end: str):
     return None
 
 
+def read_py_file_as_string(file_path):
+    """
+    read_py_file_as_string。
+
+    param:
+        file_path (str): path of the file to read.
+
+    Return:
+        str: Content of the file.
+    """
+    try:
+        spec = importlib.util.spec_from_file_location("module_name", file_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        source_code = inspect.getsource(module)
+        return source_code
+    except Exception as e:
+        print(f"error when reading file: {e}")
+        return None
+
+
 def extract_code(txt):
     return improve_code(next(filter(None, map(lambda l: extract_str(txt, *l),
                                               (('<nn>', '</nn>'), ('```python', '```'), ('```', '```')))), ''))
@@ -78,13 +103,13 @@ def extract_delta(txt):
                         '<delta>', '</delta>')
     if delta:
         return delta
-    
+
     # Try to extract unified diff format
     # Look for lines starting with ---, +++, or @@
     lines = txt.splitlines()
     delta_lines = []
     in_diff = False
-    
+
     for line in lines:
         if line.startswith('---') or line.startswith('+++') or line.startswith('@@'):
             in_diff = True
@@ -95,10 +120,10 @@ def extract_delta(txt):
             elif line.strip() and not line.startswith('diff'):
                 # End of diff block
                 break
-    
+
     if delta_lines:
         return '\n'.join(delta_lines)
-    
+
     return None
 
 

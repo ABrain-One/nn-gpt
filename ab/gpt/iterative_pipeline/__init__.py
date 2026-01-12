@@ -5,7 +5,8 @@ This package contains the main pipeline orchestration and supporting modules
 for the iterative fine-tuning approach.
 """
 
-from ab.gpt.iterative_finetune import IterativeFinetuner
+# Note: IterativeFinetuner is NOT imported here to avoid circular imports.
+# It should be imported directly from ab.gpt.iterative_finetune when needed.
 from ab.gpt.iterative_pipeline.novelty_checker import NoveltyChecker
 from ab.gpt.iterative_pipeline.training_data_manager import TrainingDataManager
 from ab.gpt.iterative_pipeline.structural_reranker import StructuralReranker
@@ -18,7 +19,7 @@ from ab.gpt.iterative_pipeline.gpu_memory_manager import (
 )
 
 __all__ = [
-    'IterativeFinetuner',
+    # IterativeFinetuner removed to avoid circular import - import directly from ab.gpt.iterative_finetune
     'NoveltyChecker',
     'TrainingDataManager',
     'StructuralReranker',

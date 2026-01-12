@@ -25,7 +25,7 @@ def alter(epochs, test_conf, llm_name, gguf_file=None):
         out_path = epoch_dir(epoch)
 
         # --- Template ---
-        TEMPLATE_PATH = fract_dir / "Fractal_template.py"
+        TEMPLATE_PATH = fract_dir / 'pure' / "Fractal_template.py"
         template = TEMPLATE_PATH.read_text()
 
         # --- Core elements ---

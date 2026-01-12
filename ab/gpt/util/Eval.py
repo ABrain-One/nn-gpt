@@ -3,7 +3,8 @@ import re
 import ast
 
 import ab.nn.api as api
-from ab.nn.util.Util import read_py_file_as_string, uuid4
+from ab.nn.util.Util import uuid4
+from ab.gpt.util.Util import read_py_file_as_string
 import ab.nn.api as nn_dataset
 
 

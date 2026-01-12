@@ -59,7 +59,8 @@
       "<metric>{metric_code}</metric>",
       "<nn>{nn_code}</nn>",
       "Ensure the neural network code follows the LEMUR NN Dataset conventions.",
-      "Provide a single final JSON object with the hyperparameters, a single complete code of transformer and a single complete Python neural network model code, without any truncations or missing parts."
+      "Provide a single final JSON object with the hyperparameters, a single complete code of transformer and a single complete Python neural network model code, without any truncations or missing parts.",
+      "Output only three XML tags in this exact order: <hp>...</hp>, <tr>...</tr>, and <nn>...</nn>. Do not wrap them in JSON, do not add markdown fences, and do not add any explanation or extra text."
     ]
   },
   "improve_segmentation_only": {

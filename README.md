@@ -91,23 +91,36 @@ If recently added dependencies are missing in the <a href='https://hub.docker.co
 
 ## Citation
 
-The original version of this project was created at the Computer Vision Laboratory of the University of Würzburg by the authors mentioned below. If you find this project to be useful for your research, please consider citing our articles for <a target='_blank' href='https://arxiv.org/pdf/2511.20333'>NNGPT</a> and <a target='_blank' href='https://openaccess.thecvf.com/content/ICCV2025W/AIM/papers/Kochnev_Optuna_vs_Code_Llama_Are_LLMs_a_New_Paradigm_for_ICCVW_2025_paper.pdf'>hyperparameter tuning</a>:
+The original version of this project was created at the Computer Vision Laboratory of the University of Würzburg by the authors mentioned below. If you find this project to be useful for your research, please consider citing our articles for <a target='_blank' href='https://arxiv.org/pdf/2511.20333'>NNGPT</a>, <a target='_blank' href='https://arxiv.org/pdf/2601.02997'>architecture design</a> and <a target='_blank' href='https://openaccess.thecvf.com/content/ICCV2025W/AIM/papers/Kochnev_Optuna_vs_Code_Llama_Are_LLMs_a_New_Paradigm_for_ICCVW_2025_paper.pdf'>hyperparameter tuning</a> with LLMs:
 ```bibtex
 
 @article{ABrain.NNGPT,
-  title        = {NNGPT: Rethinking AutoML with Large Language Models},
-  author       = {Kochnev, Roman and Khalid, Waleed and Uzun, Tolgay Atinc and Zhang, Xi and Dhameliya, Yashkumar Sanjaybhai and Qin, Furui and Vysyaraju, Chandini and Duvvuri, Raghuvir and Goyal, Avi and Ignatov, Dmitry and Timofte, Radu},
-  journal={arXiv preprint arXiv:2511.20333},
-  year         = {2025}
+	title        = {NNGPT: Rethinking AutoML with Large Language Models},
+	author       = {Kochnev, Roman and Khalid, Waleed and Uzun, Tolgay Atinc and Zhang, Xi and Dhameliya, Yashkumar Sanjaybhai and Qin, Furui and Vysyaraju, Chandini and Duvvuri, Raghuvir and Goyal, Avi and Ignatov, Dmitry and Timofte, Radu},
+	journal = {arXiv preprint},
+  	volume  = {arXiv:2511.2033},
+  	url = {https://arxiv.org/pdf/2511.2033},
+	year = {2025}
+}
+
+@article{ABrain.Architect,
+	title={From Memorization to Creativity: LLM as a Designer of Novel Neural-Architectures},
+	author={Khalid, Waleed and Ignatov, Dmitry and Timofte, Radu},
+	journal={arXiv preprint},
+	volume  = {arXiv:2601.02997},
+	url = {https://arxiv.org/pdf/2601.02997}, 
+	year={2026}
 }
 
 @InProceedings{ABrain.HPGPT,
-	title={Optuna vs Code Llama: Are LLMs a New Paradigm for Hyperparameter Tuning?},
+	title={{Optuna vs Code Llama: Are LLMs a New Paradigm for Hyperparameter Tuning?}},
 	author={Kochnev, Roman and Goodarzi, Arash Torabi and Bentyn, Zofia Antonina and Ignatov, Dmitry and Timofte, Radu},
 	booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision Workshops (ICCVW)},
+	url={https://openaccess.thecvf.com/content/ICCV2025W/AIM/papers/Kochnev_Optuna_vs_Code_Llama_Are_LLMs_a_New_Paradigm_for_ICCVW_2025_paper.pdf},
 	pages = {5664--5674},
 	year={2025}
 }
+
 ```
 ## Licenses
 
