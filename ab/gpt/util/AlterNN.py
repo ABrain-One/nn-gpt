@@ -3,7 +3,6 @@ import os
 import shutil
 import torch
 from tqdm import tqdm
-from pathlib import Path
 import ab.nn.api as nn_dataset
 from ab.nn.util.Util import create_file
 from ab.gpt.util.Const import conf_test_dir, epoch_dir, new_nn_file, synth_dir, new_out_file
@@ -52,28 +51,7 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
 
     shutil.rmtree(epoch_dir(), ignore_errors=True)
     
-    # --- Feature 2: Analogical Prompt Injection Mechanism ---
-    # Looks for 'golden_examples.json' in root. If found, injects the first example into the prompt.
-    golden_prompt_segment = ""
-    golden_path = Path("golden_examples.json")
-    if golden_path.exists():
-        try:
-            with open(golden_path, "r") as gf:
-                g_data = json.load(gf)
-                if g_data and isinstance(g_data, list):
-                    ex = g_data[0]
-                    # Robustly handle different key names
-                    cot = ex.get('chain_of_thought', ex.get('cot', ''))
-                    code = ex.get('generated_code', ex.get('code', ''))
-                    golden_prompt_segment = (
-                        f"\n### REFERENCE EXAMPLE ###\n"
-                        f"Thinking Process:\n{cot}\n"
-                        f"Code:\n```python\n{code}\n```\n"
-                        f"### END EXAMPLE ###\n"
-                    )
-                    print("[INFO] Analogical Prompting Enabled: Injected Golden Example.")
-        except Exception as e:
-            print(f"[WARN] Failed to load golden_examples.json: {e}")
+    
 
     for epoch in range(epochs):
         out_path = epoch_dir(epoch)
@@ -84,10 +62,7 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
             prompt_base = ""
             for pr in prompt_dict[key]['prompt']:
                 prompt_base += pr + "\n"
-            
-            # Inject Golden Example if available
-            if golden_prompt_segment:
-                prompt_base = golden_prompt_segment + "\n" + prompt_base
+         
 
 
             # Fetch Data
