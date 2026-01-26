@@ -1,4 +1,3 @@
-# ab/gpt/util/LLM.py
 from ab.nn.util.Const import out_dir
 from ab.gpt.util.Const import llm_dir, llm_tokenizer_dir
 from ab.gpt.util.LLMUtil import quantization_config_4bit
@@ -9,15 +8,13 @@ import json
 import tempfile
 import shutil
 import torch
-import torch.cuda
 from transformers import (
     BitsAndBytesConfig,
     AutoTokenizer,
     AutoModelForCausalLM,
     AutoConfig,
     PreTrainedTokenizer,
-    PreTrainedModel,
-    Mxfp4Config,
+    PreTrainedModel
 )
 
 
@@ -31,32 +28,9 @@ class LLM:
                  use_deepspeed=False,
                  base_path=out_dir,
                  context_length=None,
-                 gguf_file=None,
-                 training_args=None,
-                 use_unsloth=False,
-                 load_in_4bit=True):
-        self.context_length = context_length
-        self._use_unsloth = use_unsloth
-        
-        # ===== Unsloth Fast Path =====
-        if use_unsloth:
-            self.model, self.tokenizer = FastModel.from_pretrained(
-                model_name=model_path,
-                dtype = None,
-                max_seq_length=context_length or 4096,
-                load_in_4bit=load_in_4bit,
-                token=access_token,
-                full_finetuning = False,
-            )
-            
-            if self.tokenizer.pad_token_id is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
-            self.tokenizer.padding_side = "right"
-            print(f"[Unsloth] Loaded {model_path}, 4bit={load_in_4bit}")
-            return
-        
-        # ===== Original HuggingFace Path =====
+                 gguf_file=None):
         # --- Tokenizer ---
+        self.context_length = context_length
         tok_fl_nm = llm_tokenizer_dir(base_path, model_path)
         raw_fl_nm = llm_dir(base_path, model_path)
         tokenizer_exists = exists(tok_fl_nm)
@@ -66,11 +40,13 @@ class LLM:
             trust_remote_code=True, token=access_token, gguf_file=gguf_file
         )
         self.tokenizer.add_eos_token = True
+        
+        # FIX: Ensure pad_token is set (critical for batching)
         if self.tokenizer.pad_token_id is None:
-            # Map pad_token to eos_token to avoid accidental masking or unk-id behavior
-            # This is safer for LLaMA-like models (e.g., DeepSeek-Coder)
-            self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.tokenizer.padding_side = "right"
+            self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
+            
+        # FIX: Force Left Padding for Batch Inference (generation)
+        self.tokenizer.padding_side = "left"
 
         if tokenizer_exists:
             print("Loading Tokenizer from local files:", tok_fl_nm)
@@ -105,61 +81,33 @@ class LLM:
                     tmp_cfg_dir, trust_remote_code=True, token=access_token
                 )
             finally:
-                # We can keep or clean; keeping is usually fine, but we’ll clean to avoid clutter.
+                # We can keep or clean; keeping is usually fine.
                 shutil.rmtree(tmp_cfg_dir, ignore_errors=True)
 
         if config is None:
-            # Remote (or no local config found) → normal path
             config = AutoConfig.from_pretrained(
                 model_path, trust_remote_code=True, token=access_token
             )
 
         # --- Model ---
-        # Figure out if ZeRO-3 is enabled (deepspeed arg can be dict or path)
-        # Check training_args.deepspeed first if available, otherwise use use_deepspeed boolean
-        use_zero3 = False
-        if training_args is not None:
-            deepspeed_cfg = getattr(training_args, "deepspeed", None)
-            use_zero3 = bool(deepspeed_cfg)
-        elif use_deepspeed:
-            # Fallback: if use_deepspeed is True, assume ZeRO-3 might be used
-            use_zero3 = True
-        
-        # Build model kwargs (sanitize for ZeRO-3)
-        deepspeed_specific_prm = {} if use_zero3 else {"device_map": "auto"}
         model_kwargs = dict(
             trust_remote_code=True,
-            max_memory={i: max_memory for i in range(torch.cuda.device_count())},
             token=access_token,
-            torch_dtype=torch.bfloat16,  # QLoRA compute
+            torch_dtype=torch.float16, # Use float16 for GPU efficiency
             gguf_file=gguf_file,
             config=config,
-            **deepspeed_specific_prm
+            # FIX: Use "auto" to load onto GPU, not None (CPU)
+            device_map="auto" 
         )
-        
+
         if bnb_config is not None:
             model_kwargs["quantization_config"] = bnb_config
-        
-        # --- ZeRO-3 guard: strip incompatible args ---
-        # NOTE: Other files using device_map (RAG_AlterNN.py, TuneRL.py, MergeLLM.py, etc.)
-        # are safe because they don't use DeepSpeed/ZeRO-3. Only this LLM class needs sanitization
-        # when training_args.deepspeed is set.
-        if use_zero3:
-            # Absolutely no device_map / low_cpu_mem_usage on ZeRO-3
-            model_kwargs.pop("device_map", None)
-            model_kwargs.pop("low_cpu_mem_usage", None)
-            # (optional) these can also trip sharding heuristics—keep it simple on ZeRO-3:
-            model_kwargs.pop("max_memory", None)
-            model_kwargs.pop("offload_folder", None)
-        
-        # Debug: verify nothing slipped through
-        print("[DEBUG from_pretrained kwargs]", {k: ("***" if k == "token" else v) for k, v in model_kwargs.items()})
-        
-        base_model = local_path if exists(local_path) else raw_fl_nm if exists(raw_fl_nm) else model_path
+
         self.model = AutoModelForCausalLM.from_pretrained(
-            base_model,
+            local_path if exists(local_path) else raw_fl_nm if exists(raw_fl_nm) else model_path,
             **model_kwargs
         )
+
         if exists(local_path):
             print("Loading Model from local files:", "'" + local_path + "'")
         elif exists(raw_fl_nm):
@@ -167,6 +115,7 @@ class LLM:
         else:
             self.model.save_pretrained(raw_fl_nm, access_token=access_token)
             print("Model saved to: ", raw_fl_nm)
+
 
     def get_model(self) -> PreTrainedModel:
         return self.model
