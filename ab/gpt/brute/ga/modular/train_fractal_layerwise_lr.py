@@ -1,8 +1,5 @@
 """
 Example: Training Fractal Network with Layerwise Learning Rates
-
-Demonstrates how to use the LayerwiseLR utility with the fractal_seed model.
-This is the simplest approach to apply layerwise learning rates to any CV model.
 """
 
 import sys
@@ -247,19 +244,6 @@ def main():
         train_loss, train_acc = train_epoch(model, train_loader, optimizer_llm, criterion, device)
         test_loss, test_acc = evaluate(model, test_loader, criterion, device)
         print(f"Epoch {epoch+1}: Train Loss={train_loss:.4f}, Train Acc={train_acc:.2f}% | Test Loss={test_loss:.4f}, Test Acc={test_acc:.2f}%")
-
-    print("\n" + "="*80)
-    print("Experiments completed!")
-    print("="*80)
-    print("\nKey takeaways:")
-    print("1. Layerwise LR can be easily applied to ANY PyTorch model")
-    print("2. Different strategies (uniform, linear_decay, discriminative, custom) available")
-    print("3. LLM can suggest optimal LRs based on model architecture (placeholder implemented)")
-    print("4. Simple API: just use create_optimizer_with_layerwise_lr()")
-    print("\nNext steps:")
-    print("- Integrate actual LLM for learning rate suggestion")
-    print("- Add this to TuneNNGen pipeline for LLM fine-tuning")
-    print("- Experiment with more sophisticated LR schedules")
 
 
 if __name__ == "__main__":
