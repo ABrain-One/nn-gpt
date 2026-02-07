@@ -138,7 +138,7 @@ class LoRA:
         print("[LoRA] Trainable parameter summary:")
         print_trainable_parameters(self.peft_model)
 
-    def train(self, dataset: Dataset, tokenizer, output_dir: str, train_on_completions_only=False, response_template=None):
+    def train(self, dataset: Dataset, tokenizer, output_dir: str, train_on_completions_only=False, response_template=None, layerwise_lr_config=None):
         """
         Train the model using SFTTrainer.
         
@@ -278,6 +278,19 @@ class LoRA:
                 eval_dataset=eval_dataset,
                 args=self.training_args,
                 data_collator=collator
+            )
+
+        # Apply layerwise learning rates if configured
+        if layerwise_lr_config is not None:
+            from ab.gpt.util.LoRAWithLayerwiseLR import apply_layerwise_lr_to_trainer
+            trainer = apply_layerwise_lr_to_trainer(
+                trainer,
+                layerwise_lr_config,
+                optimizer_name=self.training_args.optim,
+                weight_decay=getattr(self.training_args, 'weight_decay', 0.01),
+                scheduler_type=getattr(self.training_args, 'lr_scheduler_type', 'linear').value
+                    if hasattr(getattr(self.training_args, 'lr_scheduler_type', 'linear'), 'value')
+                    else str(getattr(self.training_args, 'lr_scheduler_type', 'linear'))
             )
 
         # verifying the datatypes before training

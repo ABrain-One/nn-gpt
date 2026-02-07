@@ -117,7 +117,8 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
          # Pipeline-specific overrides (for backward compatibility with iterative_finetune.py)
          evaluation_strategy=None, eval_steps=None, save_strategy=None, save_steps=None, 
          save_total_limit=None, load_best_model_at_end=False, metric_for_best_model=None, warmup_steps=None, weight_decay=None,
-         per_device_eval_batch_size=None, onnx_run=ONNX_RUN, unsloth_opt=UNSLOTH_OPT, trans_mode=TRANS_MODE):
+         per_device_eval_batch_size=None, onnx_run=ONNX_RUN, unsloth_opt=UNSLOTH_OPT, trans_mode=TRANS_MODE,
+         use_layerwise_lr=False, layerwise_lr_strategy='linear_decay', layerwise_decay_factor=0.95):
 
     # Unsloth conditional import
     # Unsloth should be imported before transformers and peft
@@ -268,9 +269,20 @@ unsloth_opt={unsloth_opt},  trans_mode={trans_mode}''')
         print(f"[WARN] peft_config validation warning: {e}")
         # Don't fail, just warn - actual validation happens when model is loaded
 
+    # Create layerwise LR config if requested
+    layerwise_lr_config = None
+    if use_layerwise_lr:
+        from ab.gpt.util.LayerwiseLR import LayerwiseLRConfig
+        layerwise_lr_config = LayerwiseLRConfig(
+            base_lr=learning_rate,
+            strategy=layerwise_lr_strategy,
+            decay_factor=layerwise_decay_factor
+        )
+        print(f"[LayerwiseLR] Enabled: strategy={layerwise_lr_strategy}, decay_factor={layerwise_decay_factor}")
+
     tune(test_nn, nn_train_epochs, skip_epoches, peft, llm_tune_conf, nn_gen_conf, nn_gen_conf_id, llm_conf, training_args, peft_config,
-         max_prompts=max_prompts, save_llm_output=save_llm_output, max_new_tokens=max_new_tokens, nn_name_prefix=nn_name_prefix, 
-         temperature=temperature, top_k=top_k, top_p=top_p, onnx_run=onnx_run, trans_mode=trans_mode)
+         max_prompts=max_prompts, save_llm_output=save_llm_output, max_new_tokens=max_new_tokens, nn_name_prefix=nn_name_prefix,
+         temperature=temperature, top_k=top_k, top_p=top_p, onnx_run=onnx_run, trans_mode=trans_mode, layerwise_lr_config=layerwise_lr_config)
     
     print("\n" + "="*70)
     print("FINE-TUNING CONFIGURATION SUMMARY")
@@ -445,6 +457,15 @@ if __name__ == '__main__':
     parser.add_argument('--unsloth_opt', type=bool, default=UNSLOTH_OPT,
                         help=f"Use Unsloth optimizations (default: {UNSLOTH_OPT}).")
 
+    # Layerwise learning rate arguments
+    parser.add_argument('--use_layerwise_lr', action='store_true', default=False,
+                        help='Use layerwise learning rates for LoRA fine-tuning')
+    parser.add_argument('--layerwise_lr_strategy', type=str, default='linear_decay',
+                        choices=['uniform', 'linear_decay', 'exponential_decay', 'discriminative', 'custom'],
+                        help='Layerwise LR strategy (default: linear_decay)')
+    parser.add_argument('--layerwise_decay_factor', type=float, default=0.95,
+                        help='Decay factor for layerwise LR strategies (default: 0.95)')
+
     args = parser.parse_args()
 
     # Check if iterative pipeline mode is requested
@@ -533,5 +554,8 @@ if __name__ == '__main__':
          warmup_steps=args.warmup_steps,
          weight_decay=args.weight_decay,
          onnx_run=args.onnx_run,
-         unsloth_opt = args.unsloth_opt
+         unsloth_opt=args.unsloth_opt,
+         use_layerwise_lr=args.use_layerwise_lr,
+         layerwise_lr_strategy=args.layerwise_lr_strategy,
+         layerwise_decay_factor=args.layerwise_decay_factor
     )
