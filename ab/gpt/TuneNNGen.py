@@ -116,7 +116,7 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
          nn_train_epochs=NN_TRAIN_EPOCHS, temperature=TEMPERATURE, top_k=TOP_K, top_p=TOP_P, data_dir=None, 
          # Pipeline-specific overrides (for backward compatibility with iterative_finetune.py)
          evaluation_strategy=None, eval_steps=None, save_strategy=None, save_steps=None, 
-         save_total_limit=None, load_best_model_at_end=False, metric_for_best_model=None, warmup_steps=None, weight_decay=None,
+         save_total_limit=None, load_best_model_at_end=False, metric_for_best_model=None, warmup_steps=None, weight_decay=None, enable_merge=None,
          per_device_eval_batch_size=None, onnx_run=ONNX_RUN, unsloth_opt=UNSLOTH_OPT, trans_mode=TRANS_MODE):
 
     # Unsloth conditional import
@@ -271,7 +271,12 @@ unsloth_opt={unsloth_opt},  trans_mode={trans_mode}''')
     tune(test_nn, nn_train_epochs, skip_epoches, peft, llm_tune_conf, nn_gen_conf, nn_gen_conf_id, llm_conf, training_args, peft_config,
          max_prompts=max_prompts, save_llm_output=save_llm_output, max_new_tokens=max_new_tokens, nn_name_prefix=nn_name_prefix, 
          temperature=temperature, top_k=top_k, top_p=top_p, onnx_run=onnx_run, trans_mode=trans_mode)
-    
+
+    if enable_merge:
+        print("[MERGE] Cycle marked as valid")
+    else:
+        print("[MERGE] Disabled — dry run only")
+
     print("\n" + "="*70)
     print("FINE-TUNING CONFIGURATION SUMMARY")
     print("="*70)
@@ -444,6 +449,8 @@ if __name__ == '__main__':
                         help=f"Run model generation step with LLM in ONNX format (default: {ONNX_RUN}).")
     parser.add_argument('--unsloth_opt', type=bool, default=UNSLOTH_OPT,
                         help=f"Use Unsloth optimizations (default: {UNSLOTH_OPT}).")
+    parser.add_argument('--enable_merge',action='store_true',default=False,
+                        help='[EXPERIMENTAL] Enable merging/publishing of results after evaluation(default: False).')
 
     args = parser.parse_args()
 
@@ -532,6 +539,7 @@ if __name__ == '__main__':
          metric_for_best_model=args.metric_for_best_model,
          warmup_steps=args.warmup_steps,
          weight_decay=args.weight_decay,
+         enable_merge=args.enable_merge,
          onnx_run=args.onnx_run,
          unsloth_opt = args.unsloth_opt
     )
