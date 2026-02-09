@@ -39,8 +39,8 @@ def merge(base_model_path, lora_path, output_path):
 
 
 def merge_hp_llm():
-    merge('deepseek-ai/DeepSeek-R1-Distill-Qwen-7B',
-          'finetuned_models/path', 'finetuned_models/merged_model_path')
+    merge('/home/bose/thesis/nn-gpt/out/llm/ABrain/NNGPT-DeepSeek-Coder-1.3B-Instruct',
+          '/home/bose/thesis/nn-gpt/nngpt/outputs/checkpoint-1188', '/home/bose/thesis/nn-gpt/out/llm/merged/NNGPT-DeepSeek-Coder-1.3B-Instruct')
 
 
 def merge_nn_llm(tune_epoch):
