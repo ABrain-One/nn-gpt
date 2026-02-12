@@ -1,0 +1,183 @@
+```python
+<nn>
+class Net(nn.Module):
+    def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
+        super().__init__()
+        self.device = device
+        self.n_experts = 8
+        self.top_k = 2
+        
+        # Enhanced CNN feature extractor
+        self.feature_extractor = ImprovedFeatureExtractor(in_channels=in_shape[1])
+        self.feature_dim = self.feature_extractor.output_dim
+        
+        self.output_dim = out_shape[0] if isinstance(out_shape, (list, tuple)) else out_shape
+        
+        # Larger hidden dimension for better capacity
+        self.hidden_dim = 512
+        
+        # Create 8 specialized experts
+        self.experts = nn.ModuleList([
+            ExpertWithSpecialization(self.feature_dim, self.hidden_dim, self.output_dim, i)
+            for i in range(self.n_experts)
+        ])
+        
+        # Enhanced gate
+        self.gate = ImprovedGate(self.feature_dim, self.n_experts, 256)
+        
+        # Auxiliary losses weights
+        self.load_balance_weight = 0.01
+        self.diversity_weight = 0.005
+        
+        # Label smoothing for better generalization
+        self.label_smoothing = 0.1
+        
+        self.to(device)
+        self._print_memory_info()
+
+    def _print_memory_info(self):
+        param_count = sum(p.numel() for p in self.parameters())
+        param_size_mb = param_count * 4 / (1024 * 1024)
+        print(f"Enhanced MoE-8 Model parameters: {param_count:,}")
+        print(f"Model size: {param_size_mb:.2f} MB")
+        print(f"Experts: {self.n_experts}, Top-K: {self.top_k}")
+        print(f"Feature dim: {self.feature_dim}, Hidden dim: {self.hidden_dim}, Output dim: {self.output_dim}")
+
+    def compute_load_balance_loss(self, gate_weights, expert_indices):
+        try:
+            if gate_weights is None or gate_weights.numel() == 0:
+                return torch.tensor(0.0, device=self.device)
+            
+            expert_usage = gate_weights.sum(dim=0)
+            
+            if expert_usage.numel() == 0:
+                return torch.tensor(0.0, device=self.device)
+            
+            target_usage = gate_weights.sum() / self.n_experts
+            
+            balance_loss = F.mse_loss(expert_usage, target_usage.expand_as(expert_usage))
+            
+            gate_weights_safe = gate_weights + 1e-8
+            gate_entropy = -torch.sum(gate_weights_safe * torch.log(gate_weights_safe), dim=1).mean()
+            entropy_loss = -gate_entropy
+            
+            if torch.isnan(balance_loss) or torch.isinf(balance_loss):
+                balance_loss = torch.tensor(0.0, device=self.device)
+            if torch.isnan(entropy_loss) or torch.isinf(entropy_loss):
+                entropy_loss = torch.tensor(0.0, device=self.device)
+            
+            total_loss = balance_loss + 0.1 * entropy_loss
+            return torch.clamp(total_loss, 0.0, 10.0)
+            
+        except Exception as e:
+            return torch.tensor(0.0, device=self.device)
+
+    def compute_diversity_loss(self, expert_outputs):
+        try:
+            if not expert_outputs or len(expert_outputs) < 2:
+                return torch.tensor(0.0, device=self.device)
+            
+            valid_outputs = []
+            for output in expert_outputs:
+                if output is not None and output.numel() > 0:
+                    output = output.view(-1)
+                    valid_outputs.append(output)
+            
+            if len(valid_outputs) < 2:
+                return torch.tensor(0.0, device=self.device)
+            
+            similarities = []
+            for i in range(min(len(valid_outputs), 4)):
+                for j in range(i + 1, min(len(valid_outputs), 4)):
+                    try:
+                        output_i = valid_outputs[i]
+                        output_j = valid_outputs[j]
+                        
+                        min_size = min(output_i.size(0), output_j.size(0))
+                        output_i = output_i[:min_size]
+                        output_j = output_j[:min_size]
+                        
+                        sim = F.cosine_similarity(output_i.unsqueeze(0), output_j.unsqueeze(0), dim=1).mean()
+                        
+                        if not torch.isnan(sim) and not torch.isinf(sim):
+                            similarities.append(sim)
+                    except Exception as e:
+                        continue
+            
+            if similarities:
+                avg_similarity = torch.stack(similarities).mean()
+                return torch.clamp(avg_similarity, 0.0, 1.0)
+            
+            return torch.tensor(0.0, device=self.device)
+            
+        except Exception as e:
+            return torch.tensor(0.0, device=self.device)
+
+    def forward(self, x):
+        try:
+            features = self.feature_extractor(x)
+            gate_weights, top_k_indices, gate_logits = self.gate(features)
+            batch_size = features.size(0)
+            expert_outputs = []
+            for i in range(self.n_experts):
+                expert_output = self.experts[i](features)
+                expert_outputs.append(expert_output)
+            expert_outputs = torch.stack(expert_outputs, dim=2)
+            final_output = torch.sum(expert_outputs * gate_weights.unsqueeze(1), dim=2)
+            if self.training:
+                self._last_gate_weights = gate_weights.detach()
+                self._last_expert_indices = top_k_indices.detach()
+                active_outputs = []
+                try:
+                    unique_experts = torch.unique(top_k_indices).cpu().numpy()
+                    for expert_idx in unique_experts[:4]:
+                        if expert_idx < len(expert_outputs[0]):
+                            expert_out = expert_outputs[:, :, expert_idx].detach()
+                            if expert_out.numel() > 0:
+                                active_outputs.append(expert_out.mean(dim=0))
+                    self._last_active_outputs = active_outputs
+                except Exception as e:
+                    self._last_active_outputs = []
+            return final_output
+        except Exception as e:
+            print(f"Error in forward pass: {e}")
+            return 0
+
+    def train_setup(self, prm):
+        self.to(self.device)
+        self.criteria = nn.CrossEntropyLoss().to(self.device)
+        self.optimizer = torch.optim.SGD(
+            self.parameters(), lr=prm['lr'], momentum=prm['momentum'])
+        self.scheduler = torch.optim.lr_scheduler.StepLR(
+            self.optimizer, step_size=30, gamma=0.1)
+
+    def learn(self, train_data):
+        self.train()
+        total_loss = 0
+        num_batches = 0
+        try:
+            for inputs, labels in train_data:
+                try:
+                    inputs = inputs.to(self.device, dtype=torch.float32, non_blocking=True)
+                    labels = labels.to(self.device, dtype=torch.long, non_blocking=True)
+                    self.optimizer.zero_grad()
+                    outputs = self(inputs)
+                    loss = self.criteria(outputs, labels)
+                    loss.backward()
+                    nn.utils.clip_grad_norm_(self.parameters(), 3)
+                    self.optimizer.step()
+                    total_loss += loss.item()
+                    num_batches += 1
+                    if num_batches % 10 == 0:
+                        torch.cuda.empty_cache() if torch.cuda.is_available() else None
+                except Exception as batch_error:
+                    print(f"Error in batch processing: {batch_error}")
+                    continue
+            if self.scheduler:
+                self.scheduler.step()
+            return total_loss / num_batches if num_batches > 0 else 0
+        except Exception as e:
+            print(f"Error in training loop: {e}")
+            return 0
+</nn>
+```
