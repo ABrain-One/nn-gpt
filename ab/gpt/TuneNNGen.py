@@ -442,14 +442,91 @@ if __name__ == '__main__':
                         help=f"[Pipeline] Weight decay for regularization (default: None).")
     parser.add_argument('--trans_mode', type=bool, default=TRANS_MODE,
                         help=f"Run model generation for transforms only (default: {TRANS_MODE}).")
-    parser.add_argument('--onnx_run', type=bool, default=ONNX_RUN,
-                        help=f"Run model generation step with LLM in ONNX format (default: {ONNX_RUN}).")
+    # Header-only fine-tuning flag
+    parser.add_argument('--tune_headers_only', action='store_true', default=False,
+                        help=f"Enable header-only fine-tuning mode (lm_head layer only). Reduces training time and memory.")
+    parser.add_argument('--header_lora_rank', type=int, default=None,
+                        help=f"LoRA rank for header-only training (default: auto-adjusted based on mode)")
+    parser.add_argument('--header_max_tokens', type=int, default=8192,
+                        help=f"Max output tokens for header training (default: 8192, smaller than full training)")
+    parser.add_argument('--onnx_run', type=int, choices=[0, 1], default=0,
+                    help="Enable ONNX (1) or disable (0, default)")
+    # parser.add_argument('--onnx_run', type=bool, default=ONNX_RUN,
+    # #                  help=f"Run model generation step with LLM in ONNX format (default: {ONNX_RUN}).")
     parser.add_argument('--unsloth_opt', type=bool, default=UNSLOTH_OPT,
                         help=f"Use Unsloth optimizations (default: {UNSLOTH_OPT}).")
     parser.add_argument('--prompt_batch', type=int, default=PROMPT_BATCH,
                         help=f"Batch size for prompts – Number of prompts processed simultaneously (default: {PROMPT_BATCH}).")
 
     args = parser.parse_args()
+
+        # Check if header-only fine-tuning mode is requested
+    if args.tune_headers_only:
+        # Import and run header-only fine-tuning
+        from ab.gpt.TuneHeadersNNGen import main as header_tune_main
+        
+        print("\n" + "="*70)
+        print("HEADER-ONLY FINE-TUNING MODE ENABLED")
+        print("="*70)
+        print("Target modules: lm_head (output layer only)")
+        print("Expected benefits: Reduced training time, lower memory footprint")
+        print("="*70 + "\n")
+        
+        # Adjust parameters for header-only training
+        header_lora_rank = args.header_lora_rank if args.header_lora_rank else 16
+        header_target_modules = ('lm_head',)
+        header_max_tokens = args.header_max_tokens
+        
+        # Call header-only tuning with adjusted parameters
+        header_tune_main(
+            num_train_epochs=args.num_train_epochs if args.num_train_epochs != NUM_TRAIN_EPOCHS else 2,
+            lr_scheduler=args.lr_scheduler,
+            max_grad_norm=args.max_grad_norm,
+            tune_layers=range(0, 1),  # Only output layer
+            r=header_lora_rank,
+            lora_alpha=header_lora_rank,  # Match rank for headers
+            lora_dropout=args.lora_dropout,
+            target_modules=header_target_modules,
+            task_type=args.task_type,
+            bias=args.bias,
+            learning_rate=args.learning_rate if args.learning_rate != LEARNING_RATE else 5e-6,
+            llm_tune_conf=args.llm_tune_conf,
+            nn_gen_conf=args.nn_gen_conf,
+            nn_gen_conf_id=args.nn_gen_conf_id,
+            llm_conf=args.llm_conf,
+            test_nn=args.test_nn if args.test_nn != TEST_NN else 5,
+            per_device_train_batch_size=args.per_device_train_batch_size,
+            gradient_accumulation_steps=args.gradient_accumulation_steps if args.gradient_accumulation_steps != GRADIENT_ACCUMULATION_STEPS else 4,
+            warmup_ratio=args.warmup_ratio,
+            logging_steps=args.logging_steps if args.logging_steps != LOGGING_STEPS else 48,
+            optimizer=args.optimizer,
+            peft=args.peft,
+            skip_epoches=args.skip_epoches,
+            max_prompts=args.max_prompts if args.max_prompts != MAX_PROMPTS else 2*1024,
+            max_new_tokens=header_max_tokens,
+            use_deepspeed=args.use_deepspeed,
+            save_llm_output=args.save_llm_output,
+            nn_name_prefix=args.nn_name_prefix if args.nn_name_prefix else 'header',
+            nn_train_epochs=args.nn_train_epochs,
+            temperature=args.temperature if args.temperature != TEMPERATURE else 0.7,
+            top_k=args.top_k,
+            top_p=args.top_p,
+            test_metric=args.test_metric,
+            data_dir=args.data_dir,
+            evaluation_strategy=args.evaluation_strategy,
+            eval_steps=args.eval_steps,
+            per_device_eval_batch_size=args.per_device_eval_batch_size,
+            save_strategy=args.save_strategy,
+            save_steps=args.save_steps,
+            save_total_limit=args.save_total_limit,
+            load_best_model_at_end=args.load_best_model_at_end,
+            metric_for_best_model=args.metric_for_best_model,
+            warmup_steps=args.warmup_steps,
+            weight_decay=args.weight_decay,
+            onnx_run=args.onnx_run
+        )
+        # Exit after header tuning completes
+        sys.exit(0)
 
     # Check if iterative pipeline mode is requested
     if args.run_iterative_pipeline:
