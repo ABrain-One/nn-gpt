@@ -1,0 +1,319 @@
+{
+  "improvement_classification_codeonly": {
+    "type": "change_parameters",
+    "is_generation": false,
+
+    "selection_mode": "wide",
+
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "metric": "acc",
+
+    "nn_prefixes": [],
+    "num_joint_nns": 2,
+    "improve": true,
+
+    "no_repeat": ["nn"],
+    "keep_same": ["epoch", "metric", "dataset", "task"],
+
+    "input_list": [
+      { "para": "nn_code", "value": "nn_code" },
+      { "para": "accuracy", "value": "accuracy" },
+      { "para": "epoch", "value": "epoch" },
+      { "para": "dataset", "value": "dataset" },
+      { "para": "task", "value": "task" },
+      { "para": "metric", "value": "metric" },
+      { "para": "metric_code", "value": "metric_code" },
+      { "para": "transform_code", "value": "transform_code" },
+      { "para": "prm", "value": "prm_id" },
+
+      { "para": "addon_accuracy", "value": "accuracy_2" },
+      { "para": "addon_epoch", "value": "epoch_2" },
+      { "para": "addon_nn_code", "value": "nn_code_2" },
+      { "para": "addon_transform_code", "value": "transform_code_2" },
+      { "para": "addon_prm", "value": "prm_id_2" }
+    ],
+
+    "prompt": [
+      "You are a machine learning model designer.",
+      "Your task is to generate a LEMUR Dataset neural network model that increases the '{metric}' metric value to at least {addon_accuracy} at training epoch {epoch} on the '{dataset}' dataset for an '{task}' task.",
+      "Use the following reference model, which achieved an accuracy of {accuracy} under identical evaluation conditions (metric, dataset, task, and epoch), as the baseline for architectural and training hyperparameter inspiration.",
+      "Improve it by making fundamental changes to the model design and adjusting the training process.",
+      "",
+      "Respond with:",
+      "1. A <hp> XML tag containing the training hyperparameters in valid JSON format.",
+      "2. A <tr> XML tag containing the corresponding transformer code, ready to be used on the LEMUR dataset.",
+      "3. A <nn> XML tag containing the corresponding PyTorch model code, ready to be trained on the LEMUR dataset.",
+      "",
+      "Constraints:",
+      "- Make changes that lead to improved performance.",
+      "- Output only the XML tags <hp>, <tr> and <nn> with their corresponding contents — no additional explanation.",
+      "",
+      "Baseline hyperparameters and codes:",
+      "<hp>{prm}</hp>",
+      "<tr>{transform_code}</tr>",
+      "<nn>{nn_code}</nn>",
+      "<metric>{metric_code}</metric>"
+    ],
+
+    "output": [
+      "<hp>{addon_prm}</hp>",
+      "<tr>{addon_transform_code}</tr>",
+      "<nn>{addon_nn_code}</nn>"
+    ]
+  },
+
+  "curriculum_L1_high_k2": {
+    "type": "curriculum_prompt",
+    "is_generation": true,
+
+    "selection_mode": "tall",
+
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "metric": "acc",
+
+    "nn_prefixes": [],
+    "num_joint_nns": 2,
+
+    "similarity_mode": "anchor_band_otf",
+    "similarity_band": "high",
+
+    "anchor_strategy": "fixed",
+    "anchor_nn": "rl-back-init-0b0d0b7728c47eb6cc9fe040ebb9d239",
+
+    "input_list": [
+      { "para": "dataset", "value": "dataset" },
+      { "para": "task", "value": "task" },
+      { "para": "metric", "value": "metric" },
+      { "para": "epoch", "value": "epoch" },
+      { "para": "metric_code", "value": "metric_code" },
+
+      { "para": "acc_1", "value": "acc_1" },
+      { "para": "hp_1", "value": "hp_1" },
+      { "para": "tr_1", "value": "tr_1" },
+      { "para": "nn_1", "value": "nn_1" },
+
+      { "para": "acc_2", "value": "acc_2" },
+      { "para": "hp_2", "value": "hp_2" },
+      { "para": "tr_2", "value": "tr_2" },
+      { "para": "nn_2", "value": "nn_2" }
+    ],
+
+    "prompt": [
+      "You are a machine learning model designer.",
+      "You are given TWO neural network implementations that solve the same task under identical evaluation conditions (dataset='{dataset}', task='{task}', metric='{metric}', epoch={epoch}).",
+      "Curriculum Level 1 (HIGH similarity): the two architectures are very similar. Preserve the shared backbone/pattern.",
+      "",
+      "Your goal: design ONE improved model that stays close to the shared pattern but makes small, meaningful improvements.",
+      "",
+      "Rules:",
+      "- Do NOT copy either model verbatim.",
+      "- Keep the transform compatible with the dataset/task.",
+      "- Keep changes conservative: tune depth/width, normalization, residuals, dropout placement, small block upgrades.",
+      "",
+      "Return ONLY:",
+      "1) <hp> JSON hyperparameters </hp>",
+      "2) <tr> transform code </tr>",
+      "3) <nn> PyTorch model code </nn>",
+      "",
+      "Reference A (acc={acc_1}):",
+      "<hp>{hp_1}</hp>",
+      "<tr>{tr_1}</tr>",
+      "<nn>{nn_1}</nn>",
+      "",
+      "Reference B (acc={acc_2}):",
+      "<hp>{hp_2}</hp>",
+      "<tr>{tr_2}</tr>",
+      "<nn>{nn_2}</nn>",
+      "",
+      "<metric>{metric_code}</metric>"
+    ],
+
+    "output": [
+      "<hp>{hp_1}</hp>",
+      "<tr>{tr_1}</tr>",
+      "<nn>{nn_1}</nn>"
+    ]
+  },
+
+  "curriculum_L2_medium_k3": {
+    "type": "curriculum_prompt",
+    "is_generation": true,
+
+    "selection_mode": "tall",
+
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "metric": "acc",
+
+    "nn_prefixes": [],
+    "num_joint_nns": 3,
+
+    "similarity_mode": "anchor_band_otf",
+    "similarity_band": "medium",
+
+    "anchor_strategy": "fixed",
+    "anchor_nn": "rl-back-init-0b0d0b7728c47eb6cc9fe040ebb9d239",
+
+    "input_list": [
+      { "para": "dataset", "value": "dataset" },
+      { "para": "task", "value": "task" },
+      { "para": "metric", "value": "metric" },
+      { "para": "epoch", "value": "epoch" },
+      { "para": "metric_code", "value": "metric_code" },
+
+      { "para": "acc_1", "value": "acc_1" },
+      { "para": "hp_1", "value": "hp_1" },
+      { "para": "tr_1", "value": "tr_1" },
+      { "para": "nn_1", "value": "nn_1" },
+
+      { "para": "acc_2", "value": "acc_2" },
+      { "para": "hp_2", "value": "hp_2" },
+      { "para": "tr_2", "value": "tr_2" },
+      { "para": "nn_2", "value": "nn_2" },
+
+      { "para": "acc_3", "value": "acc_3" },
+      { "para": "hp_3", "value": "hp_3" },
+      { "para": "tr_3", "value": "tr_3" },
+      { "para": "nn_3", "value": "nn_3" }
+    ],
+
+    "prompt": [
+      "You are a machine learning model designer.",
+      "You are given THREE neural network implementations that solve the same task under identical evaluation conditions (dataset='{dataset}', task='{task}', metric='{metric}', epoch={epoch}).",
+      "Curriculum Level 2 (MEDIUM similarity): the architectures share some patterns but also differ.",
+      "",
+      "Your goal: generate ONE improved model by selecting and combining the best components across the references into a single coherent architecture.",
+      "",
+      "Rules:",
+      "- Do NOT copy any single model verbatim.",
+      "- Combine at least TWO distinct architectural ideas from different references.",
+      "- Keep the transform compatible with the dataset/task.",
+      "- The resulting model must be consistent and trainable.",
+      "",
+      "Return ONLY:",
+      "1) <hp> JSON hyperparameters </hp>",
+      "2) <tr> transform code </tr>",
+      "3) <nn> PyTorch model code </nn>",
+      "",
+      "Reference A (acc={acc_1}):",
+      "<hp>{hp_1}</hp>",
+      "<tr>{tr_1}</tr>",
+      "<nn>{nn_1}</nn>",
+      "",
+      "Reference B (acc={acc_2}):",
+      "<hp>{hp_2}</hp>",
+      "<tr>{tr_2}</tr>",
+      "<nn>{nn_2}</nn>",
+      "",
+      "Reference C (acc={acc_3}):",
+      "<hp>{hp_3}</hp>",
+      "<tr>{tr_3}</tr>",
+      "<nn>{nn_3}</nn>",
+      "",
+      "<metric>{metric_code}</metric>"
+    ],
+
+    "output": [
+      "<hp>{hp_1}</hp>",
+      "<tr>{tr_1}</tr>",
+      "<nn>{nn_1}</nn>"
+    ]
+  },
+
+  "curriculum_L3_low_k4": {
+    "type": "curriculum_prompt",
+    "is_generation": true,
+
+    "selection_mode": "tall",
+
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "metric": "acc",
+
+    "nn_prefixes": [],
+    "num_joint_nns": 4,
+
+    "similarity_mode": "anchor_band_otf",
+    "similarity_band": "low",
+
+    "anchor_strategy": "fixed",
+    "anchor_nn": "rl-back-init-0b0d0b7728c47eb6cc9fe040ebb9d239",
+
+    "input_list": [
+      { "para": "dataset", "value": "dataset" },
+      { "para": "task", "value": "task" },
+      { "para": "metric", "value": "metric" },
+      { "para": "epoch", "value": "epoch" },
+      { "para": "metric_code", "value": "metric_code" },
+
+      { "para": "acc_1", "value": "acc_1" },
+      { "para": "hp_1", "value": "hp_1" },
+      { "para": "tr_1", "value": "tr_1" },
+      { "para": "nn_1", "value": "nn_1" },
+
+      { "para": "acc_2", "value": "acc_2" },
+      { "para": "hp_2", "value": "hp_2" },
+      { "para": "tr_2", "value": "tr_2" },
+      { "para": "nn_2", "value": "nn_2" },
+
+      { "para": "acc_3", "value": "acc_3" },
+      { "para": "hp_3", "value": "hp_3" },
+      { "para": "tr_3", "value": "tr_3" },
+      { "para": "nn_3", "value": "nn_3" },
+
+      { "para": "acc_4", "value": "acc_4" },
+      { "para": "hp_4", "value": "hp_4" },
+      { "para": "tr_4", "value": "tr_4" },
+      { "para": "nn_4", "value": "nn_4" }
+    ],
+
+    "prompt": [
+      "You are a machine learning model designer.",
+      "You are given FOUR neural network implementations that solve the same task under identical evaluation conditions (dataset='{dataset}', task='{task}', metric='{metric}', epoch={epoch}).",
+      "Curriculum Level 3 (LOW similarity): the architectures are diverse. You must abstract useful design ideas and synthesize them into one coherent model.",
+      "",
+      "Your goal: generate ONE improved model that integrates complementary architectural principles from multiple references.",
+      "",
+      "Rules:",
+      "- Do NOT copy any single model verbatim.",
+      "- The final architecture must be internally consistent and trainable.",
+      "- Combine at least TWO high-level ideas from different references (e.g., residual feature reuse, attention/gating, multi-scale features, normalization/regularization strategy).",
+      "- Keep the transform compatible with the dataset/task.",
+      "",
+      "Return ONLY:",
+      "1) <hp> JSON hyperparameters </hp>",
+      "2) <tr> transform code </tr>",
+      "3) <nn> PyTorch model code </nn>",
+      "",
+      "Reference A (acc={acc_1}):",
+      "<hp>{hp_1}</hp>",
+      "<tr>{tr_1}</tr>",
+      "<nn>{nn_1}</nn>",
+      "",
+      "Reference B (acc={acc_2}):",
+      "<hp>{hp_2}</hp>",
+      "<tr>{tr_2}</tr>",
+      "<nn>{nn_2}</nn>",
+      "",
+      "Reference C (acc={acc_3}):",
+      "<hp>{hp_3}</hp>",
+      "<tr>{tr_3}</tr>",
+      "<nn>{nn_3}</nn>",
+      "",
+      "Reference D (acc={acc_4}):",
+      "<hp>{hp_4}</hp>",
+      "<tr>{tr_4}</tr>",
+      "<nn>{nn_4}</nn>",
+      "",
+      "<metric>{metric_code}</metric>"
+    ],
+
+    "output": [
+      "<hp>{hp_1}</hp>",
+      "<tr>{tr_1}</tr>",
+      "<nn>{nn_1}</nn>"
+    ]
+  }
+}
