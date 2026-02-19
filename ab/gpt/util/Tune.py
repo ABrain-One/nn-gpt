@@ -56,7 +56,7 @@ def apply_sliding_window(example, max_length, stride, tokenizer):
                 "attention_mask": chunk_attention_mask
             })
     return {"chunks": chunks}
-
+#It splits long token sequences into fixed-size overlapping chunks so they can be fed into the model safely.
 
 def flatten_chunks(data):
     all_chunks = sum(data["chunks"], [])  # flatten batched list
@@ -64,7 +64,7 @@ def flatten_chunks(data):
         "input_ids": [chunk["input_ids"] for chunk in all_chunks],
         "attention_mask": [chunk["attention_mask"] for chunk in all_chunks],
     }
-
+#Each chunk becomes a standalone training example.
 
 def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_conf, conf_keys, llm_conf, training_args, peft_config,
          max_prompts=None, save_llm_output=True, max_new_tokens=16 * 1024, nn_name_prefix=None, temperature=1.0, top_k=50, top_p=0.9, test_metric=None,
@@ -322,7 +322,7 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
     lemur.data.cache_clear()
     print('The cache has been cleared.')
 
-
+#It is using the LLM to invent new neural networks.
 
 def trans_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict_global, test_nn, max_new_tokens, save_llm_output, nn_name_prefix):
     """
@@ -415,3 +415,4 @@ def trans_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict
         release_memory()
         
     print('Folder data reload will occur next epoch.')
+    #it generates transformations applied to existing artifacts.
