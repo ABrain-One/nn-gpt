@@ -52,44 +52,59 @@ def predictor_node(state: AgentState) -> Dict[str, Any]:
         # ============ CHECK PREREQUISITES ============
         epoch_1_acc = state.get('epoch_1_accuracy')
         epoch_2_acc = state.get('epoch_2_accuracy')
+        final_accuracy = state.get('accuracy')
         
-        if epoch_1_acc is None or epoch_2_acc is None:
+        # Debug: Print what we received
+        print(f"📊 Predictor: Received data:")
+        print(f"   - epoch_1_accuracy: {epoch_1_acc}")
+        print(f"   - epoch_2_accuracy: {epoch_2_acc}")
+        print(f"   - final_accuracy: {final_accuracy}")
+        
+        # Determine what accuracy data we have
+        has_epoch_data = epoch_1_acc is not None and epoch_2_acc is not None
+        
+        # ============ CHECK IF EPOCH DATA AVAILABLE ============
+        # Original behavior: Predictor REQUIRES epoch accuracies - no heuristic
+        # If epoch accuracies missing, cannot predict (matches original behavior)
+        if not has_epoch_data:
             print("⚠️ Predictor: Missing epoch accuracies - Cannot predict")
+            print("⚠️ Predictor: Predictor requires epoch_1_accuracy and epoch_2_accuracy")
             return {
-                'status': 'success',
+                'status': 'partial_success',
                 'predicted_best_accuracy': None,
                 'predicted_best_epoch': None,
-                'gpu_available': True,  # Release GPU
+                'gpu_available': True,
                 'error_message': 'Missing epoch_1_accuracy or epoch_2_accuracy',
             }
         
         # ============ CHECK MODEL AVAILABILITY ============
+        # Debug: Show where we're looking for the model
+        print(f"🔍 Predictor: Looking for model at: {MODEL_DIR}")
+        if MODEL_DIR:
+            print(f"🔍 Predictor: Model directory exists: {MODEL_DIR.exists()}")
+        
+        # If fine-tuned model not available, cannot predict (original behavior)
         if not PREDICTOR_AVAILABLE:
-            print("⚠️ Predictor: TuneAccPrediction not available - Using heuristic")
-            # Simple heuristic fallback
-            predicted_best = epoch_2_acc * 1.15
-            predicted_epoch = 10
-            
+            print("⚠️ Predictor: TuneAccPrediction not available - Cannot predict")
             return {
-                'predicted_best_accuracy': predicted_best,
-                'predicted_best_epoch': predicted_epoch,
-                'status': 'success',
+                'status': 'partial_success',
+                'predicted_best_accuracy': None,
+                'predicted_best_epoch': None,
                 'gpu_available': True,
-                'error_message': None,
+                'error_message': 'TuneAccPrediction module not available',
             }
         
-        if not MODEL_DIR.exists():
-            print("⚠️ Predictor: Fine-tuned model not available - Using heuristic")
-            # Simple heuristic fallback
-            predicted_best = epoch_2_acc * 1.15
-            predicted_epoch = 10
-            
+        if MODEL_DIR and not MODEL_DIR.exists():
+            print("⚠️ Predictor: Fine-tuned model not available - Cannot predict")
+            print(f"⚠️ Predictor: Model path checked: {MODEL_DIR}")
+            print(f"⚠️ Predictor: To use the predictor, train the model first:")
+            print(f"⚠️ Predictor:   python -m ab.gpt.TuneAccPrediction")
             return {
-                'predicted_best_accuracy': predicted_best,
-                'predicted_best_epoch': predicted_epoch,
-                'status': 'success',
+                'status': 'partial_success',
+                'predicted_best_accuracy': None,
+                'predicted_best_epoch': None,
                 'gpu_available': True,
-                'error_message': None,
+                'error_message': f'Fine-tuned model not available at {MODEL_DIR}',
             }
         
         # ============ LOAD MODEL ============

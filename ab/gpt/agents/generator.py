@@ -12,10 +12,7 @@ from pathlib import Path
 import json
 
 from ab.gpt.agents.state import AgentState
-from ab.gpt.util.Tune import nn_gen
-from ab.gpt.util.Chatbot import ChatBot
-from ab.gpt.util.LLM import LLM
-from ab.gpt.util.LLMUtil import quantization_config_4bit
+from ab.gpt.util.Tune import nn_gen, load_llm_and_chatbot, load_prompt_config, read_eval_info
 from ab.gpt.util.Const import conf_test_dir, conf_llm_dir, epoch_dir, synth_dir
 from ab.gpt.util.Util import extract_code, extract_hyperparam
 from ab.gpt.util.Code import improve_code
@@ -76,36 +73,23 @@ def generator_node(state: AgentState) -> Dict[str, Any]:
         print(f"📁 Generator: Output path: {out_path}")
         
         # ============ LOAD LLM AND CHATBOT ============
-        # TODO: Cache LLM/ChatBot if possible (expensive to load)
+        # Use extracted function from Tune.py to avoid code duplication
         print("📦 Generator: Loading LLM and tokenizer...")
-        
-        with open(conf_llm_dir / llm_conf) as f:
-            llm_config = json.load(f)
-        
-        model_loader = LLM(
-            llm_config['base_model_name'],
-            quantization_config_4bit,
-            access_token=None,
-            use_deepspeed=llm_config.get('use_deepspeed', False),
-            context_length=llm_config.get('context_length'),
+        model, tokenizer, chat_bot, model_loader = load_llm_and_chatbot(
+            llm_conf,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+            llm_path=None,  # No LoRA path for agent workflow
+            use_deepspeed=None,  # Read from config
+            context_length=None,  # Read from config
+            access_token=None  # Read from file if needed
         )
-        model = model_loader.get_model()
-        tokenizer = model_loader.get_tokenizer()
-        
-        chat_bot = ChatBot(
-            model, 
-            tokenizer, 
-            temperature=temperature, 
-            top_k=top_k, 
-            top_p=top_p
-        )
-        
         print("✅ Generator: LLM and ChatBot loaded")
         
         # ============ LOAD PROMPT CONFIG ============
-        with open(conf_test_dir / nn_gen_conf) as f:
-            prompt_dict = json.load(f)
-        
+        # Use extracted function from Tune.py to avoid code duplication
+        prompt_dict = load_prompt_config(nn_gen_conf)
         conf_keys = (nn_gen_conf_id,)  # Single config key
         
         # ============ CALL nn_gen() DIRECTLY ============
@@ -297,14 +281,13 @@ def generator_node(state: AgentState) -> Dict[str, Any]:
                 f"full_output.txt exists: {full_output_file.exists() if full_output_file else False}"
             )
         
-        # Read eval_info.json
+        # Read eval_info.json using extracted function from Tune.py
         eval_file = output_dir / 'eval_info.json'
-        if not eval_file.exists():
+        eval_info = read_eval_info(output_dir)
+        if not eval_info:
             # Try to get from database
             print("⚠️ Generator: eval_info.json not found, querying database...")
             eval_info = _get_metrics_from_database(model_code, output_dir)
-        else:
-            eval_info = json.loads(eval_file.read_text(encoding='utf-8'))
         
         print(f"📊 Generator: Eval info loaded")
         

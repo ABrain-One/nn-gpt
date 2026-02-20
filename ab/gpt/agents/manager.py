@@ -69,14 +69,36 @@ def manager_node(state: AgentState) -> Dict[str, Any]:
     # 5. CHECK PREDICTOR PREREQUISITES
     # ============================================================
     use_predictor = state.get('use_predictor', False)
-    can_predict = (
-        has_model
-        and state.get('epoch_1_accuracy') is not None
+    
+    # Check if we have epoch data (predictor REQUIRES epoch accuracies)
+    has_epoch_data = (
+        state.get('epoch_1_accuracy') is not None
         and state.get('epoch_2_accuracy') is not None
     )
     
     # ============================================================
-    # 6. DECISION LOGIC
+    # 6. CHECK IF PREDICTOR ALREADY TRIED AND FAILED (FIX FOR INFINITE LOOP)
+    # ============================================================
+    # If predictor returned partial_success with error_message about model not available,
+    # don't retry - end workflow
+    predictor_error = state.get('error_message', '')
+    predictor_tried = (
+        state.get('status') == 'partial_success' 
+        and predictor_error 
+        and ('Fine-tuned model not available' in predictor_error 
+             or 'TuneAccPrediction' in predictor_error 
+             or 'model not available' in predictor_error.lower())
+    )
+    
+    if predictor_tried:
+        print("⚠️ Manager: Predictor already tried and failed (model not available) → Ending")
+        return {
+            "next_action": "end",
+            "gpu_available": True,
+        }
+    
+    # ============================================================
+    # 7. DECISION LOGIC
     # ============================================================
     gpu_available = state.get('gpu_available', True)
     
@@ -96,8 +118,9 @@ def manager_node(state: AgentState) -> Dict[str, Any]:
     
     elif has_model and use_predictor and not has_prediction:
         # Have model, predictor enabled, need prediction
-        if not can_predict:
-            print("⚠️ Manager: Predictor prerequisites missing → Ending")
+        # Original behavior: Predictor REQUIRES epoch accuracies - no heuristic
+        if not has_epoch_data:
+            print("⚠️ Manager: Predictor prerequisites missing (epoch accuracies) → Ending")
             return {
                 "next_action": "end",
                 "gpu_available": True,
@@ -120,4 +143,3 @@ def manager_node(state: AgentState) -> Dict[str, Any]:
             "next_action": "end",
             "gpu_available": True,  # Release GPU
         }
-
