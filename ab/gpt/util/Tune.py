@@ -199,6 +199,19 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
     for idx, prompt in tqdm(enumerate(prompts)):
         model_dir = models_dir / f'B{idx}'
         prompt, origdf = prompt
+        
+        # Delta-only: unique seed per sample for diversity (prevent identical outputs)
+        if use_delta:
+            import torch
+            import random
+            import numpy as np
+            seed = epoch * 10000 + idx
+            torch.manual_seed(seed)
+            random.seed(seed)
+            np.random.seed(seed)
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed_all(seed)
+        
         code, hp, tr, full_out = chat_bot.chat(prompt, engineer_prompt=False, max_new_tokens=max_new_tokens)
         if save_llm_output: create_file(model_dir, new_out_file, full_out)
         makedirs(model_dir, exist_ok=True)
@@ -206,29 +219,71 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
         # Apply delta if delta mode is enabled
         if use_delta and origdf is not None:
             try:
-                from ab.gpt.util.DeltaUtil import apply_delta, validate_delta
+                from ab.gpt.util.DeltaUtil import apply_delta, validate_delta, validate_python_syntax, repair_code
                 from ab.gpt.util.Util import extract_delta
                 
                 delta = extract_delta(full_out)
-                if delta:
-                    # Validate delta format before attempting to apply
-                    if not validate_delta(delta):
-                        print(f'[WARNING] Invalid delta format for model B{idx}, using extracted code as fallback')
-                        # code already extracted above, keep it
-                    else:
-                        baseline_code = origdf.get('nn_code', '')
-                        if baseline_code:
-                            applied_code = apply_delta(baseline_code, delta)
-                            if applied_code:
-                                code = applied_code
-                                print(f'[INFO] Successfully applied delta to baseline code for model B{idx}')
-                            else:
-                                print(f'[WARNING] Failed to apply delta for model B{idx} (delta application returned None), using extracted code as fallback')
-                                # code already extracted above, keep it
+                delta_applied = False
+                
+                if delta and validate_delta(delta):
+                    baseline_code = origdf.get('nn_code', '')
+                    if baseline_code:
+                        applied_code = apply_delta(baseline_code, delta)
+                        if applied_code:
+                            code = applied_code
+                            print(f'[INFO] Successfully applied delta to baseline code for model B{idx}')
+                            delta_applied = True
                         else:
-                            print(f'[WARNING] No baseline code found in origdf for model B{idx}, using extracted code')
-                else:
-                    print(f'[WARNING] No delta found in LLM output for model B{idx}, using extracted code as fallback')
+                            print(f'[WARNING] Delta application failed for B{idx}, retrying with error feedback')
+                            
+                            # RETRY with error feedback
+                            retry_prompt = prompt + (
+                                "\n\nPREVIOUS ATTEMPT FAILED: Delta could not be applied to baseline code."
+                                "\nCommon issues:"
+                                "\n- Line numbers don't match the baseline"
+                                "\n- Variable names don't match (baseline uses different names)"
+                                "\n- Context lines don't match the actual baseline code"
+                                "\nPlease generate a NEW delta that EXACTLY matches the baseline structure above."
+                            )
+                            
+                            # Retry with increased temperature for more diverse attempt
+                            original_temp = chat_bot.temperature
+                            chat_bot.temperature = min(1.0, original_temp + 0.2)
+                            
+                            code_retry, hp_retry, tr_retry, full_out_retry = chat_bot.chat(
+                                retry_prompt, engineer_prompt=False, max_new_tokens=max_new_tokens
+                            )
+                            
+                            # Restore temperature
+                            chat_bot.temperature = original_temp
+                            
+                            delta_retry = extract_delta(full_out_retry)
+                            if delta_retry and validate_delta(delta_retry):
+                                applied_code = apply_delta(baseline_code, delta_retry)
+                                if applied_code:
+                                    code = applied_code
+                                    hp = hp_retry
+                                    tr = tr_retry
+                                    full_out = full_out_retry
+                                    print(f'[INFO] Retry successful for B{idx}')
+                                    delta_applied = True
+                
+                # If delta application failed (or no valid delta), try fallback
+                if not delta_applied:
+                    if delta:
+                        print(f'[WARNING] All delta attempts failed for B{idx}, using fallback')
+                    else:
+                        print(f'[WARNING] No valid delta found for B{idx}, using extracted code as fallback')
+                    
+                    # Try to repair extracted code as fallback
+                    if code:
+                        is_valid, _ = validate_python_syntax(code)
+                        if not is_valid:
+                            repaired = repair_code(code)
+                            if repaired:
+                                code = repaired
+                                print(f'[INFO] Repaired extracted code for model B{idx}')
+                    
             except ImportError as e:
                 print(f'[ERROR] Failed to import delta utilities for model B{idx}: {e}. Using extracted code as fallback.')
             except Exception as e:
@@ -258,8 +313,23 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
             print(f'[WARNING] Error saving transformer: {e}')
             # Don't continue here either - let it save the code
         
-        # ALWAYS save code (critical - only skip if completely missing)
+        # ALWAYS save code (critical - only skip if completely missing or invalid)
         if code is not None and code.strip():
+            # Delta-only: final syntax validation and repair before saving
+            if use_delta:
+                try:
+                    from ab.gpt.util.DeltaUtil import validate_python_syntax, repair_code
+                    is_valid, error = validate_python_syntax(code)
+                    if not is_valid:
+                        print(f'[WARNING] Code for B{idx} has syntax error: {error}. Attempting repair...')
+                        repaired = repair_code(code)
+                        if repaired:
+                            code = repaired
+                            print(f'[INFO] Successfully repaired code for B{idx}')
+                        else:
+                            print(f'[ERROR] Could not repair code for B{idx}, saving anyway for debugging')
+                except ImportError:
+                    pass  # DeltaUtil not available, skip validation
             create_file(model_dir, new_nn_file, code)
             print(f'[INFO] Saved code to {model_dir / new_nn_file}')
         else:
