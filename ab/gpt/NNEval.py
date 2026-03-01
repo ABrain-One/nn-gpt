@@ -110,7 +110,7 @@ def main(nn_name_prefix=NN_NAME_PREFIX, nn_train_epochs=NN_TRAIN_EPOCHS, only_ep
                         'batch': batch,
                         'dropout': dropout,
                         'momentum': momentum,
-                        'transform': transform,  # Default transform from CLI
+                        'transform': transform, # Default transform from CLI
                         # 'epoch' will be set explicitly later
                     }
                     print(f'Training model {model_id} with command-line/default training params {prm}')
