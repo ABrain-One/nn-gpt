@@ -1,0 +1,23 @@
+Error evaluating model B529: kl_div: Integral inputs not supported.
+
+Traceback (most recent call last):
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/ab/gpt/NNEval.py", line 165, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/ab/gpt/util/Eval.py", line 58, in evaluate
+    return api.check_nn(code, self.task, self.dataset, self.metric, self.prm, self.save_to_db, self.prefix, self.save_path)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/ab/nn/util/Train.py", line 474, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes, False, export_onnx, train_set, save_path=save_path)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/ab/nn/util/Train.py", line 254, in train_n_eval
+    self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/out/nn/tmp/6d7a6851bcb80d1cb3dc9e4e554b4f09.py", line 81, in learn
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/loss.py", line 558, in forward
+    return F.kl_div(
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/functional.py", line 3413, in kl_div
+    reduced = torch.kl_div(input, target, reduction_enum, log_target=log_target)
+RuntimeError: kl_div: Integral inputs not supported.

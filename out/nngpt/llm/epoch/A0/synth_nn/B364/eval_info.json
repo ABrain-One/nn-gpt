@@ -1,0 +1,41 @@
+{
+    "eval_args": {
+        "model_package": "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/out/nngpt/llm/epoch/A0/synth_nn/B364",
+        "task": "img-classification",
+        "dataset": "cifar-10",
+        "metric": "acc",
+        "prm": {
+            "lr": 0.01,
+            "batch": 64,
+            "dropout": 0.2,
+            "momentum": 0.9,
+            "transform": "norm_256_flip",
+            "epoch": 5,
+            "train_loss": 0.3862446589619302,
+            "test_loss": 0.5961665801561562,
+            "train_accuracy": 0.86924,
+            "gradient_norm": 2.9999996035846985,
+            "samples_per_second": 230.53042393352004,
+            "best_accuracy": 0.7935,
+            "best_epoch": 5,
+            "lr_now": 0.01,
+            "gpu_memory_kb": 8686992.0
+        }
+    },
+    "eval_results": [
+        "556a23eb672128d7decac70a9d444b52",
+        0.7935,
+        0.06406359194171804,
+        0.93
+    ],
+    "cli_args": {
+        "task": "img-classification",
+        "dataset": "cifar-10",
+        "metric": "acc",
+        "lr": 0.01,
+        "batch": 64,
+        "dropout": 0.2,
+        "momentum": 0.9,
+        "transform": null
+    }
+}

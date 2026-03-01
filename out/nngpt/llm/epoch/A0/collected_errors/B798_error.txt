@@ -1,0 +1,8 @@
+Error evaluating model B798: Code is missing.
+
+Traceback (most recent call last):
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/ab/gpt/NNEval.py", line 165, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/ab/gpt/util/Eval.py", line 38, in evaluate
+    raise Exception(f'Code is missing.')
+Exception: Code is missing.

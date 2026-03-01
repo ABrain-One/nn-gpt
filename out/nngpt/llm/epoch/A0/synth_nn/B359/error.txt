@@ -1,0 +1,15 @@
+Error evaluating model B359: 'stochastic_depth_prob'
+
+Traceback (most recent call last):
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/ab/gpt/NNEval.py", line 165, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/ab/gpt/util/Eval.py", line 58, in evaluate
+    return api.check_nn(code, self.task, self.dataset, self.metric, self.prm, self.save_to_db, self.prefix, self.save_path)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/ab/nn/util/Train.py", line 459, in train_new
+    trainer = Train(
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/ab/nn/util/Train.py", line 164, in __init__
+    self.model = model_net(self.in_shape, out_shape, prm, self.device)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/out/nn/tmp/1884f45cd80346534c1da78d276b4ec8.py", line 449, in __init__
+KeyError: 'stochastic_depth_prob'

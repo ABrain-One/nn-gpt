@@ -1,0 +1,8 @@
+Error evaluating model B758: The param 'dropout' is not used in the code.
+
+Traceback (most recent call last):
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/ab/gpt/NNEval.py", line 165, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/ab/gpt/util/Eval.py", line 52, in evaluate
+    raise Exception(f'The param \'{prm_key}\' is not used in the code.')
+Exception: The param 'dropout' is not used in the code.

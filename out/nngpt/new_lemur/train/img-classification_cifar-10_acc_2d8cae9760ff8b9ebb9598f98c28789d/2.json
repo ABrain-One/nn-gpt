@@ -1,0 +1,22 @@
+[
+    {
+        "accuracy": 0.4332,
+        "batch": 64,
+        "best_accuracy": 0.4332,
+        "best_epoch": 2,
+        "dropout": 0.2,
+        "duration": 356461469205,
+        "epoch": 5,
+        "gpu_memory_kb": 8686992.0,
+        "gradient_norm": 1.2872993240315358,
+        "lr": 0.01,
+        "lr_now": 0.01,
+        "momentum": 0.9,
+        "samples_per_second": 280.2368060053277,
+        "test_loss": 1.8060001036164108,
+        "train_accuracy": 0.4406,
+        "train_loss": 1.8238404413013507,
+        "transform": "norm_256_flip",
+        "uid": "789e336ae55c167e7c6552f36a236e7f"
+    }
+]
