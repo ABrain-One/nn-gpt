@@ -239,38 +239,97 @@ def extract_delta(txt):
     Extract delta (unified diff) from text.
     Looks for:
     1. <delta>...</delta> XML tags
-    2. Unified diff format (lines starting with ---, +++, @@)
-    
+    2. Full unified diff blocks (---, +++, @@) - picks the most complete one
+    3. Line-by-line diff extraction across multiple blocks
+    4. Last resort - any diff-like content
+
     Args:
         txt: Text containing delta
-        
+
     Returns:
         Delta string or None if not found
     """
-    # Try XML tags first
-    delta = extract_str(txt.replace('< delta >', '<delta>').replace('<.delta>', '</delta>').replace(' delta >', '</delta>'),
-                       '<delta>', '</delta>')
-    if delta:
-        return delta
+    if not txt:
+        return None
 
-    # Try to extract unified diff format
+    # Strategy 1: Try XML tags first (with common typo fixes)
+    cleaned = txt.replace('< delta >', '<delta>').replace('<.delta>', '<delta>')
+    cleaned = cleaned.replace('</ delta >', '</delta>').replace('< /delta>', '</delta>')
+    delta = extract_str(cleaned, '<delta>', '</delta>')
+    if delta and ('---' in delta or '@@' in delta or '+' in delta):
+        return delta.strip()
+
+    # Strategy 2: Find ALL raw unified diff blocks and pick the best one
+    diff_pattern = re.compile(
+        r'(---\s*\S+.*?\n\+\+\+\s*\S+.*?\n(?:@@[^\n]+@@\n(?:[+\- ].*?\n)*)+)',
+        re.MULTILINE | re.DOTALL
+    )
+    all_matches = diff_pattern.findall(txt)
+    if all_matches:
+        best_diff = max(all_matches, key=lambda d: (d.count('@@'), len(d)))
+        return best_diff.strip()
+
+    # Strategy 3: Line-by-line extraction - find ALL diff blocks, pick best
     lines = txt.splitlines()
-    delta_lines = []
+    all_diff_blocks = []
+    current_block = []
     in_diff = False
+    found_header = False
 
-    for line in lines:
-        if line.startswith('---') or line.startswith('+++') or line.startswith('@@'):
+    for i, line in enumerate(lines):
+        if line.startswith('---') and not line.startswith('----'):
+            if current_block and found_header and len(current_block) >= 3:
+                all_diff_blocks.append('\n'.join(current_block))
             in_diff = True
-            delta_lines.append(line)
+            found_header = True
+            current_block = [line]
+        elif in_diff and line.startswith('+++'):
+            current_block.append(line)
+        elif in_diff and line.startswith('@@'):
+            current_block.append(line)
         elif in_diff:
             if line.startswith('-') or line.startswith('+') or line.startswith(' '):
-                delta_lines.append(line)
-            elif line.strip() and not line.startswith('diff'):
-                # End of diff block
-                break
+                current_block.append(line)
+            elif line.strip() == '':
+                if i + 1 < len(lines):
+                    next_line = lines[i + 1]
+                    if next_line.startswith(('-', '+', ' ', '@@')):
+                        current_block.append(line)
+                    else:
+                        if current_block and found_header and len(current_block) >= 3:
+                            all_diff_blocks.append('\n'.join(current_block))
+                        in_diff = False
+                        found_header = False
+                        current_block = []
+            elif not line.startswith(('diff', 'index', 'new', 'old', 'Binary')):
+                if current_block and found_header and len(current_block) >= 3:
+                    all_diff_blocks.append('\n'.join(current_block))
+                in_diff = False
+                found_header = False
+                current_block = []
 
-    if delta_lines:
-        return '\n'.join(delta_lines)
+    if current_block and found_header and len(current_block) >= 3:
+        all_diff_blocks.append('\n'.join(current_block))
+
+    if all_diff_blocks:
+        return max(all_diff_blocks, key=lambda d: (d.count('@@'), len(d)))
+
+    # Strategy 4: Last resort - any diff-like content
+    if '---' in txt and '+++' in txt:
+        lines = txt.splitlines()
+        start_idx = next((i for i, l in enumerate(lines) if l.strip().startswith('---') and 'baseline' in l.lower()), -1)
+        if start_idx < 0:
+            start_idx = next((i for i, l in enumerate(lines) if l.strip().startswith('---')), -1)
+        if start_idx >= 0:
+            result_lines = []
+            for line in lines[start_idx:]:
+                if line.startswith(('---', '+++', '@@', '-', '+', ' ')) or line.strip() == '':
+                    result_lines.append(line)
+                elif result_lines and not line.startswith(('---', '+++', '@@', '-', '+', ' ')):
+                    if len(result_lines) > 3:
+                        break
+            if len(result_lines) >= 3:
+                return '\n'.join(result_lines)
 
     return None
 

@@ -134,7 +134,9 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
     from peft import LoraConfig
     from transformers import TrainingArguments
 
-    if onnx_run:
+    if nn_name_prefix == 'delta':
+        from ab.gpt.util.Tune_delta import tune, ds_conf
+    elif onnx_run:
         from ab.gpt.util.Tune_Onnx import tune, ds_conf
     else:
         from ab.gpt.util.Tune import tune, ds_conf
