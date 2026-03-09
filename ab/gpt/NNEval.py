@@ -56,7 +56,7 @@ def main(nn_name_prefix=NN_NAME_PREFIX, nn_train_epochs=NN_TRAIN_EPOCHS, only_ep
 
             # If a custom custom_synth_dir is given, use it; otherwise build from epoch_dir
             if custom_synth_dir:
-                models_base_dir = Path(custom_synth_dir)
+                models_base_dir = Path(custom_synth_dir).resolve()
             else:
                 models_base_dir = synth_dir(current_alter_epoch_path)
 
@@ -80,7 +80,16 @@ def main(nn_name_prefix=NN_NAME_PREFIX, nn_train_epochs=NN_TRAIN_EPOCHS, only_ep
                     print(f"Code file {new_nn_file} not found in {model_dir_path}. Skipping.")
                     continue
 
-                print(f"\n--- Evaluating Model: {model_dir_path.relative_to(base_nngpt_path)} ---")
+                # Skip already-evaluated models (resume support)
+                if (model_dir_path / 'eval_info.json').exists() or (model_dir_path / 'error.txt').exists():
+                    print(f"  Already evaluated: {model_id} — skipping (delete eval_info.json / error.txt to re-evaluate)")
+                    continue
+
+                try:
+                    _display_path = model_dir_path.relative_to(base_nngpt_path)
+                except ValueError:
+                    _display_path = model_dir_path
+                print(f"\n--- Evaluating Model: {_display_path} ---")
 
                 if not verify_nn_code(model_dir_path, code_file_path):
                     print(f"Code verification failed for {code_file_path}. Skipping evaluation.")
@@ -279,5 +288,5 @@ if __name__ == "__main__":
     print(f"Prefix for the names of generated neural network: {args.nn_name_prefix}")
 
     main(args.nn_name_prefix, args.nn_train_epochs, args.only_epoch, args.save_to_db, args.nn_alter_epochs,
-         args.task, args.dataset, args.metric, args.lr, args.batch_size, args.dropout, args.momentum, args.epoch_limit_minutes,
-         args.custom_synth_dir, args.cycle)
+         args.task, args.dataset, args.metric, args.lr, args.batch_size, args.dropout, args.momentum, args.transform,
+         args.epoch_limit_minutes, args.custom_synth_dir, args.cycle)
