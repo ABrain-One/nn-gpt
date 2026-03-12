@@ -65,4 +65,3 @@ class AgentState(TypedDict, total=False):
     metric: str
     transform_code: str
     nn: str
-    max_epoch: int

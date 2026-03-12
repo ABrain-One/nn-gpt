@@ -583,7 +583,6 @@ def evaluate_step(state: AgentState) -> dict:
     for field in ["nn_code", "prm", "task", "dataset", "metric", "transform_code", "nn"]:
         if field in results:
             updates[field] = results[field]
-    updates["max_epoch"] = state["nn_train_epochs"]
 
     # Route to predictor only if enabled AND we have at least 2 epochs of results
     use_predictor = state.get("use_predictor", False)

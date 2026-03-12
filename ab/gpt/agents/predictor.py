@@ -33,7 +33,6 @@ def predictor_node(state: AgentState) -> Dict[str, Any]:
                 nn=state.get("nn", ""),
                 epoch_1_accuracy=epoch_1_acc,
                 epoch_2_accuracy=epoch_2_acc,
-                max_epoch=state.get("max_epoch", 1),
             )
 
             print(f"[PREDICTOR] predicted accuracy={pred_acc:.4f}, best_epoch={pred_epoch}")
