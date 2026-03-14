@@ -68,7 +68,7 @@ def band_range(name: str) -> tuple[float, float]:
 # ---------------------- Config ----------------------
 
 TASK = os.getenv("LEMUR_TASK", "img-classification")
-DATASET = os.getenv("LEMUR_DATASET", "cifar-10")
+DATASET = os.getenv("LEMUR_DATASET", "celeba-gender")
 METRIC = os.getenv("LEMUR_METRIC", "acc")
 
 REPEATS = int(os.getenv("LEMUR_BENCH_REPEATS", "3"))
@@ -82,7 +82,7 @@ THRESH_LEGACY = float(os.getenv("LEMUR_THRESH_LEGACY", "60"))
 THRESH_VARN = float(os.getenv("LEMUR_THRESH_VARN", "30"))
 
 # for anchor-band tests
-BAND_N = int(os.getenv("LEMUR_BAND_N", "10"))
+BAND_N = int(os.getenv("LEMUR_BAND_N", "5"))
 #BANDS_TO_TEST = os.getenv("LEMUR_BANDS", "high,medium,low,very_low").split(",")
 EXTENDED = os.getenv("LEMUR_EXTENDED", "0") == "1"
 BANDS_TO_TEST = os.getenv("LEMUR_BANDS", "high,medium,low,very_low" if EXTENDED else "high").split(",")
