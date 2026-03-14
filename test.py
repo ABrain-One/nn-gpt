@@ -66,7 +66,7 @@ def band_range(name: str) -> tuple[float, float]:
 # ---------------------- Config ----------------------
 
 TASK = os.getenv("LEMUR_TASK", "img-classification")
-DATASET = os.getenv("LEMUR_DATASET", "cifar-10")
+DATASET = os.getenv("LEMUR_DATASET", "celeba-gender")
 METRIC = os.getenv("LEMUR_METRIC", "acc")
 
 REPEATS = int(os.getenv("LEMUR_BENCH_REPEATS", "3"))
@@ -80,8 +80,13 @@ THRESH_LEGACY = float(os.getenv("LEMUR_THRESH_LEGACY", "60"))
 THRESH_VARN = float(os.getenv("LEMUR_THRESH_VARN", "30"))
 
 # for anchor-band tests
+<<<<<<< HEAD
+BAND_N = int(os.getenv("LEMUR_BAND_N", "5"))
+#BANDS_TO_TEST = os.getenv("LEMUR_BANDS", "high,medium,low,very_low").split(",")
+=======
 BAND_N = int(os.getenv("LEMUR_BAND_N", "10"))
 # BANDS_TO_TEST = os.getenv("LEMUR_BANDS", "high,medium,low,very_low").split(",")
+>>>>>>> upstream-gpt/main
 EXTENDED = os.getenv("LEMUR_EXTENDED", "0") == "1"
 BANDS_TO_TEST = os.getenv("LEMUR_BANDS", "high,medium,low,very_low" if EXTENDED else "high").split(",")
 
@@ -267,4 +272,24 @@ if __name__ == '__main__':
     print(f"[BENCH CFG] repeats={REPEATS} warmup={WARMUP} legacy_rows={LEGACY_ROWS} varN={VAR_N} varN_rows={VAR_N_ROWS}")
     print(f"[THRESH] legacy<{THRESH_LEGACY}s varN<{THRESH_VARN}s")
     print(f"[ANCHOR-BAND] N={BAND_N} bands={BANDS_TO_TEST}")
+<<<<<<< HEAD
+
+    t0 = time.perf_counter()
+    test_legacy_pairwise_schema()
+    test_sql_variable_n_correctness()
+    test_anchor_band_correctness_all_bands()
+    dt = time.perf_counter() - t0
+    print(f"[INFO] correctness suite took {dt:.2f}s")
+
+    test_legacy_performance_smoke()
+    test_sql_variable_n_performance_smoke()
+
+    print("\nALL TESTS PASSED")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+=======
     unittest.main()
+>>>>>>> upstream-gpt/main

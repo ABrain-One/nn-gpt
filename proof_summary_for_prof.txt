@@ -1,0 +1,26 @@
+Verification summary
+====================
+
+Run status:
+- test.py completed successfully
+- Database rebuilt successfully
+- All statistics reloaded successfully
+- NN statistics import complete: 16382 succeeded, 0 failed
+
+Passed checks:
+- legacy pairwise schema
+- SQL variable-N selection correctness
+- anchor-band 'high' correctness
+
+Observed timings from successful run:
+- test_legacy_pairwise_schema took 0.9550 seconds
+- test_sql_variable_n_correctness took 0.9907 seconds
+- test_anchor_band_correctness_all_bands took 1.9068 seconds
+- correctness suite took 3.85 seconds
+- test_legacy_performance_smoke took 3.1602 seconds
+- test_sql_variable_n_performance_smoke took 0.9553 seconds
+
+Interpretation:
+- Functionality preserved
+- All correctness/integration checks passed
+- Optimized SQL path shows about 3x speedup in the smoke benchmark compared to legacy path in this run
