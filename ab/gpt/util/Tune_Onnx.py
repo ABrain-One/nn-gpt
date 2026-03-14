@@ -418,9 +418,29 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
         for pr in prompt_dict_key['prompt']:
             prompt += pr + '\n'
 
-        data = lemur.data(only_best_accuracy=True, task=prompt_dict_key['task']).groupby(by='nn').sample(n=1)[:test_nn]
-        addon_task = prompt_dict_key.get('addon_task')
-        addon_data = lemur.data(only_best_accuracy=True, task=addon_task) if addon_task else None
+        # data = lemur.data(only_best_accuracy=True, task=prompt_dict_key['task']).groupby(by='nn').sample(n=1)[:test_nn]
+        # addon_task = prompt_dict_key.get('addon_task')
+        # addon_data = lemur.data(only_best_accuracy=True, task=addon_task) if addon_task else None
+        from ab.nn.api import JoinConf
+
+        num_joint_nns = prompt_dict_key.get('num_joint_nns') or 1
+        if num_joint_nns >= 2:
+            data = lemur.data(
+                only_best_accuracy=True,
+                task=prompt_dict_key['task'],
+                max_rows=test_nn * 5,
+                sql=JoinConf(
+                    num_joint_nns=num_joint_nns,
+                    same_columns=tuple(prompt_dict_key.get('keep_same', [])),
+                    diff_columns=tuple(prompt_dict_key.get('no_repeat', [])),
+                    enhance_nn=prompt_dict_key.get('improve', False)
+                )
+            ).groupby(by='nn').sample(n=1)[:test_nn]
+            addon_data = None  # JoinConf already pairs the data — no separate addon needed
+        else:
+            data = lemur.data(only_best_accuracy=True, task=prompt_dict_key['task']).groupby(by='nn').sample(n=1)[:test_nn]
+            addon_task = prompt_dict_key.get('addon_task')
+            addon_data = lemur.data(only_best_accuracy=True, task=addon_task) if addon_task else None
 
         for _, row in data.iterrows():
             para_dict = dict()
