@@ -1,7 +1,7 @@
 # ab/gpt/util/Chatbot.py
 
 from transformers import PreTrainedTokenizer, PreTrainedModel, pipeline
-from ab.gpt.util.Util import extract_code, extract_hyperparam, extract_transform
+from ab.gpt.util.Util import extract_code, extract_hyperparam, extract_transform, extract_all_to_train
 import torch
 
 extra_instructions = (
@@ -208,9 +208,8 @@ class ChatBot:
                 
                 if self.__keep_memory:
                     self.__messages.append({"role": "assistant", "content": out})
-                
-                nn = extract_code(out)
-                return nn, extract_hyperparam(out), extract_transform(out), out
+
+                return (*extract_all_to_train(out), out)
                 
             except Exception as e:
                 print(f"[ERROR] Pipeline generation failed: {e}")
@@ -325,8 +324,7 @@ class ChatBot:
             if self.__keep_memory:
                 self.__messages.append({"role": "assistant", "content": out})
             
-            nn = extract_code(out)
-            return nn, extract_hyperparam(out), extract_transform(out), out
+            return (*extract_all_to_train(out), out)
             
         except Exception as e:
             print(f"[ERROR] Direct generation failed: {e}")

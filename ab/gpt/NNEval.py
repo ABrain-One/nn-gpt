@@ -2,6 +2,8 @@ import argparse, json, sys, os, traceback
 from pathlib import Path
 import pandas as pd
 import time
+from datetime import datetime
+import shutil
 from ab.nn.util.Util import release_memory, uuid4
 from ab.gpt.util.Util import read_py_file_as_string
 
@@ -131,7 +133,7 @@ def main(nn_name_prefix=NN_NAME_PREFIX, nn_train_epochs=NN_TRAIN_EPOCHS, only_ep
                             # and also add any other model-specific hyperparameters from the original model.
                             prm.update(original_prm_from_df)
 
-                        prefix_for_db = origdf.get('nn', prefix_for_db).split('-')[0]
+                        prefix_for_db = nn_name_prefix or (origdf.get('nn', 'unknown').split('-')[0] if 'nn' in origdf else prefix_for_db)
                         print(f"  Loaded metadata from dataframe.df: task={task}, dataset={dataset}, metric={metric}")
                     except Exception as e:
                         print(f"  Error loading dataframe.df from {df_file_path}: {e}. Using command-line/default parameters for task, dataset, metric, and prm structure.")
@@ -216,10 +218,18 @@ def main(nn_name_prefix=NN_NAME_PREFIX, nn_train_epochs=NN_TRAIN_EPOCHS, only_ep
             
             # Save cycle results JSON
             cycle_results_path = base_nngpt_path / "cycle_results.json"
+            #create backup
+            if cycle_results_path.exists():
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                backup_path = base_nngpt_path / f"cycle_results_{timestamp}.json"
+                shutil.copy2(cycle_results_path, backup_path)
+                print(f"Backup saved → {backup_path}")
             save_cycle_results(cycle_results, cycle_results_path)
             print(f"\n--- Cycle {current_cycle} (Epoch {current_epoch}) results saved to: {cycle_results_path} ---")
             print(f"  Found {len(eval_results_list)} successful evaluations from eval_info.json files")
             print(f"  Found {len(failed_models)} failed models")
+
+
 
 
 if __name__ == "__main__":

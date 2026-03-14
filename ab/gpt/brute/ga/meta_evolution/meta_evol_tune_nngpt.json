@@ -19,7 +19,7 @@
               "-c"
             ],
             "args": [
-              "cd /a/mm && pip install -r requirements.txt && python3 -u -m ab.gpt.brute.ga.meta_evolution.meta_evolver"
+              "cd /a/mm && pip uninstall -y flash-attn && pip install git+https://github.com/ABrain-One/nn-dataset --upgrade --extra-index-url https://download.pytorch.org/whl/cu126 && export PYTHONPATH=/a/mm && site_pkg=$(python3 -c 'import site; print(site.getusersitepackages())') && mkdir -p /a/mm/ab/nn && cp -rn $site_pkg/ab/nn/* /a/mm/ab/nn/ || true && python3 -u -m ab.gpt.brute.ga.meta_evolution.meta_evolver"
             ],
             "env": [
               {
@@ -36,7 +36,7 @@
               },
               {
                 "name": "META_ATTEMPTS",
-                "value": "10"
+                "value": "50"
               }
             ],
             "securityContext": {

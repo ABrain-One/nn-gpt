@@ -10,6 +10,7 @@ SEARCH_SPACE = {
     'dropout_prob': [0.0, 0.1, 0.2, 0.3],
     'lr': [0.01, 0.005, 0.001],
     'momentum': [0.85, 0.9, 0.95],
+    'n_blocks': [1, 2, 3, 4],
 }
 
 def create_random_chromosome():
@@ -22,6 +23,7 @@ def generate_model_code_string(chromosome: dict) -> str:
     drop = chromosome['dropout_prob']
     lr = chromosome['lr']
     mom = chromosome['momentum']
+    n_blocks = chromosome.get('n_blocks', 2)
     
     code = textwrap.dedent(f"""
         import torch
@@ -74,41 +76,55 @@ def generate_model_code_string(chromosome: dict) -> str:
             def __init__(self, in_shape, out_shape, prm, device):
                 super(Net, self).__init__()
                 self.device = device
-                
-                # FIX: Force 3 input channels for CIFAR-10 / Color data
-                # The eval harness might pass in_shape[0]=1 incorrectly
-                c_in = 3 
-                
-                # Handle Output Shape safely
+
+                c_in = 3  # Force 3 input channels for CIFAR-10 / color data
                 n_classes = out_shape[0] if out_shape else 10
-                
+
                 self.entry = nn.Sequential(
                     nn.Conv2d(c_in, {chan}, kernel_size=3, padding=1),
                     nn.BatchNorm2d({chan}),
                     nn.ReLU(inplace=True)
                 )
-                self.block1 = FractalBlock({cols}, {chan}, {drop})
-                self.pool1 = nn.MaxPool2d(2)
-                
-                self.trans = nn.Sequential(
-                    nn.Conv2d({chan}, {chan}*2, kernel_size=1),
-                    nn.BatchNorm2d({chan}*2),
-                    nn.ReLU(inplace=True)
+
+                # Dynamically build {n_blocks} fractal block(s) with channel doubling
+                blocks = []
+                pools = []
+                trans_layers = []
+                cur_chan = {chan}
+                for i in range({n_blocks}):
+                    blocks.append(FractalBlock({cols}, cur_chan, {drop}))
+                    pools.append(nn.MaxPool2d(2))
+                    if i < {n_blocks} - 1:
+                        next_chan = cur_chan * 2
+                        trans_layers.append(nn.Sequential(
+                            nn.Conv2d(cur_chan, next_chan, kernel_size=1),
+                            nn.BatchNorm2d(next_chan),
+                            nn.ReLU(inplace=True)
+                        ))
+                        cur_chan = next_chan
+                    else:
+                        trans_layers.append(None)
+
+                self.blocks = nn.ModuleList(blocks)
+                self.pools = nn.ModuleList(pools)
+                self.trans_layers = nn.ModuleList(
+                    [t for t in trans_layers if t is not None]
                 )
-                self.block2 = FractalBlock({cols}, {chan}*2, {drop})
-                self.pool2 = nn.MaxPool2d(2)
-                
+                self.final_channels = cur_chan
+
                 self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
-                self.fc = nn.Linear({chan}*2, n_classes)
+                self.fc = nn.Linear(self.final_channels, n_classes)
                 self.to(device)
 
             def forward(self, x):
                 x = self.entry(x)
-                x = self.block1(x)
-                x = self.pool1(x)
-                x = self.trans(x)
-                x = self.block2(x)
-                x = self.pool2(x)
+                t_idx = 0
+                for i, (block, pool) in enumerate(zip(self.blocks, self.pools)):
+                    x = block(x)
+                    x = pool(x)
+                    if i < len(self.trans_layers):
+                        x = self.trans_layers[t_idx](x)
+                        t_idx += 1
                 x = self.global_pool(x)
                 x = x.flatten(1)
                 x = self.fc(x)

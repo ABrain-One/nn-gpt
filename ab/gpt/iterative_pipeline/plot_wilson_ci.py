@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import argparse
 
+from ab.nn.util.Const import out_dir
+
 
 def wilson_ci(k, n, z=1.96):
     """
@@ -123,8 +125,8 @@ def main():
     # Auto-detect results directory
     if args.results_dir is None:
         possible_dirs = [
-            Path("out/iterative_cycles_v2"),
-            Path("out/iterative_cycles"),
+            out_dir / 'iterative_cycles_v2',
+            out_dir / 'iterative_cycles',
         ]
         for d in possible_dirs:
             if (d / "cycle_analysis.json").exists():

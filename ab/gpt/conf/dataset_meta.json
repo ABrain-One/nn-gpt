@@ -1,0 +1,51 @@
+{
+  "mnist": {
+    "num_train_images": 60000,
+    "img_size": 28,
+    "num_channels": 1,
+    "num_classes": 10,
+    "description": "Handwritten digits (0-9), grayscale"
+  },
+  "cifar-10": {
+    "num_train_images": 50000,
+    "img_size": 32,
+    "num_channels": 3,
+    "num_classes": 10,
+    "description": "10 object categories (airplane, car, bird...), RGB"
+  },
+  "cifar-100": {
+    "num_train_images": 50000,
+    "img_size": 32,
+    "num_channels": 3,
+    "num_classes": 100,
+    "description": "100 fine-grained object categories, RGB"
+  },
+  "svhn": {
+    "num_train_images": 73257,
+    "img_size": 32,
+    "num_channels": 3,
+    "num_classes": 10,
+    "description": "Street view house numbers, RGB"
+  },
+  "celeba-gender": {
+    "num_train_images": 162770,
+    "img_size": 64,
+    "num_channels": 3,
+    "num_classes": 2,
+    "description": "Celebrity face gender classification (male/female), RGB"
+  },
+  "imagenette": {
+    "num_train_images": 9469,
+    "img_size": 224,
+    "num_channels": 3,
+    "num_classes": 10,
+    "description": "10 easy ImageNet classes (tench, English springer...), RGB"
+  },
+  "places365": {
+    "num_train_images": 1803460,
+    "img_size": 256,
+    "num_channels": 3,
+    "num_classes": 365,
+    "description": "365 scene categories (bedroom, kitchen...), RGB"
+  }
+}

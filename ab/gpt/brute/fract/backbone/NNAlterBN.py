@@ -7,13 +7,158 @@ from pathlib import Path
 import torch
 import gc
 
+from ab.gpt.util.Const import epoch_dir, new_nn_file, synth_dir, fract_dir
 
-from ab.gpt.util.Const import conf_test_dir, epoch_dir, new_nn_file, synth_dir, fract_dir
-from ab.gpt.util.LLM import LLM
+FORWARD_PATTERNS = {
+    "Parallel_Triple": """
+    def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:
+        x_f = adaptive_pool_flatten(self.features(x))
+        x_a = adaptive_pool_flatten(self.backbone_a(x))
+        x_b = adaptive_pool_flatten(self.backbone_b(x))
+        fused = torch.cat([x_f, x_a, x_b], dim=1)
+        if is_probing: return fused
+        return self.classifier(fused)
+    """,
+    # "Residual_Bypass": """
+    # def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:
+    #     x = self._norm4d(x).to(self.device)
+    #     identity = adaptive_pool_flatten(self.backbone_a(x))
+    #     x_f = adaptive_pool_flatten(self.features(x))
+    #
+    #     mid = identity + x_f if identity.shape == x_f.shape else torch.cat([identity, x_f], dim=1)
+    #
+    #     fused = adaptive_pool_flatten(self.backbone_b(mid)) if mid.ndim == 4 else mid
+    #     if is_probing: return fused
+    #     return self.classifier(fused)
+    # """,
+    # "Fractal_First_Parallel": """
+    # def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:
+    #     x = self._norm4d(x).to(self.device)
+    #     x_f = self.features(x)
+    #     f_a = adaptive_pool_flatten(self.backbone_a(x_f))
+    #     f_b = adaptive_pool_flatten(self.backbone_b(x_f))
+    #     fused = torch.cat([f_a, f_b], dim=1)
+    #     if is_probing: return fused
+    #     return self.classifier(fused)
+    # """,
+    # "Backbone_A_First_Parallel": """
+    # def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:
+    #     x = self._norm4d(x).to(self.device)
+    #     x_a = self.backbone_a(x)
+    #     f_f = adaptive_pool_flatten(self.features(x_a))
+    #     f_b = adaptive_pool_flatten(self.backbone_b(x_a))
+    #     fused = torch.cat([f_f, f_b], dim=1)
+    #     if is_probing: return fused
+    #     return self.classifier(fused)
+    # """,
+    # "Sequential_Backbones_to_Fractal": """
+    # def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:
+    #     x = self._norm4d(x).to(self.device)
+    #     x = self.backbone_a(x)
+    #     x = self.backbone_b(x)
+    #     x = self.features(x)
+    #     fused = adaptive_pool_flatten(x)
+    #     if is_probing: return fused
+    #     return self.classifier(fused)
+    # """,
 
-def filter_backbones_by_size(max_params_millions=2):
+    # "Sequential_Fractal_to_Backbones": """
+    # def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:
+    #     x = self._norm4d(x).to(self.device)
+    #     x = self.features(x)
+    #     x = self.backbone_a(x)
+    #     x = self.backbone_b(x)
+    #     fused = adaptive_pool_flatten(x)
+    #     if is_probing: return fused
+    #     return self.classifier(fused)
+    # """,
+#     # "Ensemble_Backbones_to_Fractal": """
+#     # def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:
+#     #     x = self._norm4d(x).to(self.device)
+#     #     f_a = adaptive_pool_flatten(self.backbone_a(x))
+#     #     f_b = adaptive_pool_flatten(self.backbone_b(x))
+#     #     mid = torch.cat([f_a, f_b], dim=1)
+#     #     mid_4d = mid.unsqueeze(-1).unsqueeze(-1)
+#     #     mid_img = torch.nn.functional.interpolate(mid_4d, size=(14,14), mode='nearest')
+        
+#     #     fused = adaptive_pool_flatten(self.features(mid_img))
+#     #     if is_probing: return fused
+#     #     return self.classifier(fused)
+#     # """,
+# 
+#     # "Split_A_Parallel_BF": """
+#     # def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:
+#     #     x = self._norm4d(x).to(self.device)
+        
+#     #     f_a = adaptive_pool_flatten(self.backbone_a(x))
+        
+#     #     x_bf = self.backbone_b(x)
+#     #     if x_bf.dim() == 2:
+#     #         x_bf = x_bf.unsqueeze(-1).unsqueeze(-1)
+#     #     if x_bf.shape[-1] < 14:
+#     #         x_bf = torch.nn.functional.interpolate(x_bf, size=(14,14), mode='nearest')
+            
+#     #     f_bf = adaptive_pool_flatten(self.features(x_bf))
+#     #     fused = torch.cat([f_a, f_bf], dim=1)
+#     #     if is_probing: return fused
+#     #     return self.classifier(fused)
+#     # """,
+
+    # "Split_Fractal_Parallel_AB": """
+    # def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:
+    #     x = self._norm4d(x).to(self.device)
+    #
+    #     f_f = adaptive_pool_flatten(self.features(x))
+    #
+    #     x_ab = self.backbone_a(x)
+    #     x_ab = self.backbone_b(x_ab)
+    #     f_ab = adaptive_pool_flatten(x_ab)
+    #     fused = torch.cat([f_f, f_ab], dim=1)
+    #     if is_probing: return fused
+    #     return self.classifier(fused)
+    # """
+}
+
+CHANNEL_LOGIC = {
+    "Serial_Cascade": lambda img, a, b, f: (img, a, f),
+    "Residual_Bypass": lambda img, a, b, f: (img, img, a + f),
+    "Fractal_First_Parallel": lambda img, a, b, f: (f, img, f),
+    "Backbone_A_First_Parallel": lambda img, a, b, f: (img, a, a),
+    "Sequential_Backbones_to_Fractal": lambda img, a, b, f: (img, b, a),
+    "Sequential_Fractal_to_Backbones": lambda img, a, b, f: (f, img, a),
+    "Ensemble_Backbones_to_Fractal": lambda img, a, b, f: (img, a + b, img),
+    "Split_A_Parallel_BF": lambda img, a, b, f: (img, b, img),
+    "Split_Fractal_Parallel_AB": lambda img, a, b, f: (img, img, a)
+}
+
+CHANNEL_CACHE = {}
+
+def probe_model_output_channels(model_name):
+    if model_name in CHANNEL_CACHE:
+        return CHANNEL_CACHE[model_name]
+    try:
+        if hasattr(torchvision.models, "get_model"):
+            m = torchvision.models.get_model(model_name, weights=None)
+        else:
+            m = torchvision.models.__dict__[model_name](pretrained=False)
+        layers = list(m.children())
+        if len(layers) > 1:
+            feature_extractor = torch.nn.Sequential(*layers[:-1])
+        else:
+            feature_extractor = m
+        feature_extractor.eval()
+        with torch.no_grad():
+            dummy = torch.zeros(1, 3, 224, 224)
+            out = feature_extractor(dummy)
+            if isinstance(out, (tuple, list)): out = out[0]
+            c = out.shape[1]
+        CHANNEL_CACHE[model_name] = c
+        return c
+    except:
+        return 512
+
+def filter_backbones_by_size(max_params_millions=50):
     print(f"Filtering backbones with < {max_params_millions}M parameters...")
-
     candidates = [name for name in dir(torchvision.models)
                   if not name.startswith("_")
                   and callable(getattr(torchvision.models, name))
@@ -21,107 +166,114 @@ def filter_backbones_by_size(max_params_millions=2):
                   and "get_" not in name]
 
     safe_list = []
-
     for name in candidates:
         try:
             model = torchvision.models.get_model(name, weights=None)
-
             param_count = sum(p.numel() for p in model.parameters())
-            param_count_m = param_count / 1e6
-
-            if param_count_m < max_params_millions:
-                safe_list.append(name)
-            else:
-                pass
-
+            if (param_count / 1e6) < max_params_millions:
+                import time
+                start = time.time()
+                model.cuda()
+                for i in range(5):
+                    x = torch.randn(2, 3, 224, 224).cuda()
+                    y = model(x)
+                    y.mean().backward()
+                elapsed = time.time() - start
+                if elapsed < 0.2:
+                    safe_list.append(name)
             del model
-
         except Exception as e:
+            print(f"Failed to test {name}: {e}")
             continue
-
     gc.collect()
-    print(f"Found {len(safe_list)} safe backbones.")
     return safe_list
+
+
+def generate_conv_block():
+    conv_first = 'nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding, bias=bias)'
+    conv_mid = 'nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=bias)'
+    bn = 'nn.BatchNorm2d(out_channels)'
+    acts = ['nn.ReLU(inplace=True)', 'nn.GELU()', 'nn.SiLU(inplace=True)']
+    dropout = 'nn.Dropout2d(p=dropout_prob) if dropout_prob > 0 else nn.Identity()'
+
+    def create_sequence():
+        seq = [conv_first]
+        pool = [bn, *acts, dropout, conv_mid]
+        seq.extend(random.choices(pool, k=random.randint(2, 4)))
+        return seq
+
+    def is_valid(seq):
+        for i in range(len(seq) - 1):
+            curr, nxt = seq[i], seq[i + 1]
+            if any(a in curr for a in ['ReLU', 'GELU', 'SiLU']) and \
+                    any(a in nxt for a in ['ReLU', 'GELU', 'SiLU']):
+                return False
+            if 'BatchNorm' in curr and 'BatchNorm' in nxt:
+                return False
+            if 'BatchNorm' in nxt and 'Conv2d' not in curr:
+                return False
+        return True
+
+    for _ in range(10):
+        candidate = create_sequence()
+        if is_valid(candidate):
+            return ",\n        ".join(candidate)
+
+    return ",\n        ".join([conv_first, bn, 'nn.ReLU(inplace=True)'])
+
 
 def alter(epochs, test_conf, llm_name, gguf_file=None):
     print("Load Model Complete, Start Loop...")
 
-    # Clean out old runs
     shutil.rmtree(epoch_dir(), ignore_errors=True)
     available_backbones = filter_backbones_by_size(max_params_millions=30)
-    print(available_backbones)
+
+    for bb in available_backbones:
+        probe_model_output_channels(bb)
+
+    max_variants = 50
 
     for epoch in range(epochs):
         out_path = epoch_dir(epoch)
+        template_content = (fract_dir / 'backbone' / "FractalFusion_template.py").read_text()
 
-        # --- Template ---
-        TEMPLATE_PATH = fract_dir / 'backbone' / "FractalFusion_template.py"
-        template = TEMPLATE_PATH.read_text()
-
-        # --- Core elements for Custom CNN Stream ---
-        element_list = [
-            'nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding, bias=bias)',
-            'nn.BatchNorm2d(out_channels)',
-            'nn.ReLU(inplace=True)',
-            'nn.Dropout2d(p=dropout_prob) if dropout_prob > 0 else nn.Identity()',
-            'nn.SiLU(inplace=True)',
-            'nn.GELU()'
-        ]
-
-        # --- Generate Custom CNN Combos ---
-        cnn_combinations = []
-
-        for r in range(2, 3):
-            for seq in itertools.product(element_list, repeat=r):
-
-                if not any("Conv2d" in layer_str for layer_str in seq):
-                    continue
-
-
-                N = random.randint(2, 4)
-                num_columns = random.randint(2, 3)
-
-                cnn_combinations.append((seq, N, num_columns))
-
-        print(f"Generated {len(cnn_combinations)} valid CNN structures (with Conv2d).")
-
-        # --- Generate Variants ---
-        max_variants = 100
         counter = 0
 
-        random.shuffle(cnn_combinations)
+        for pattern_name, forward_code in FORWARD_PATTERNS.items():
+            calc_logic = CHANNEL_LOGIC.get(pattern_name, lambda i,a,b,f: (i, i, i))
 
-        while counter < max_variants:
-            if not cnn_combinations:
-                break 
+            for i in range(max_variants):
+                block_code = generate_conv_block()
+                bb_a, bb_b = random.sample(available_backbones, 2)
 
-            bb_a, bb_b = random.sample(available_backbones, 2)
+                n = random.randint(1, 2)
+                cols = random.randint(2, 3)
 
-            cnn_config = cnn_combinations[counter % len(cnn_combinations)]
-            perm, N, num_columns = cnn_config
+                val_img = 3
+                val_a = probe_model_output_channels(bb_a)
+                val_b = probe_model_output_channels(bb_b)
+                val_f = 64 * (2**(n-1))
 
-            model_dir = synth_dir(out_path) / f"B{counter}"
-            model_dir.mkdir(parents=True, exist_ok=True)
+                ch_a_in, ch_f_in, ch_b_in = calc_logic(val_img, val_a, val_b, val_f)
 
-            # Build Custom Layer Sequence
-            element_code = ",\n        ".join(perm)
+                model_dir = synth_dir(out_path) / f"B{counter}"
+                model_dir.mkdir(parents=True, exist_ok=True)
 
-            simple_perm_log = [p.split('(')[0].replace('nn.', '') for p in perm]
-            element_list_str = str(simple_perm_log)
+                nn_code = (template_content
+                           .replace("$$", block_code)
+                           .replace("?FORWARD", forward_code)
+                           .replace("?PATTERN", pattern_name)
+                           .replace("?CH_A_IN", str(ch_a_in))
+                           .replace("?CH_F_IN", str(ch_f_in))
+                           .replace("?CH_B_IN", str(ch_b_in))
+                           .replace("?N", str(n))
+                           .replace("?COLS", str(cols))
+                           .replace("?bb_a", f'"{bb_a}"')
+                           .replace("?bb_b", f'"{bb_b}"'))
 
-            # Fill template placeholders
-            nn_code = (
-                template
-                .replace("$$", element_code)
-                .replace("??", element_list_str)
-                .replace("?1", str(N))
-                .replace("?2", str(num_columns))
-                .replace("?bb_a", f'"{bb_a}"')
-                .replace("?bb_b", f'"{bb_b}"')
-            )
+                (model_dir / new_nn_file).write_text(nn_code)
 
-            (model_dir / new_nn_file).write_text(nn_code)
+                counter += 1
+                if counter % 50 == 0:
+                    print(f"Generated {counter} models total...")
 
-            if counter % 50 == 0:
-                print(f"Generated B{counter}: CNN={simple_perm_log}, BBs=[{bb_a}, {bb_b}]")
-            counter += 1

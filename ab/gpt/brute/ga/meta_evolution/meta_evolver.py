@@ -7,6 +7,7 @@ import textwrap
 import shutil
 import time
 import json
+import sys
 from datetime import datetime
 
 from ab.gpt.brute.ga.meta_evolution.llm_loader import LocalLLMLoader 
@@ -47,7 +48,7 @@ class MetaEvolver:
         self.baseline_score = 0.0
 
     def run_benchmark(self):
-        cmd = ["python3", RUNNER_SCRIPT, "--gens", str(BENCH_GENS), "--pop", str(BENCH_POP), "--clean"]
+        cmd = [sys.executable, RUNNER_SCRIPT, "--gens", str(BENCH_GENS), "--pop", str(BENCH_POP), "--clean"]
         
         try:
             # Increased timeout to 6 hours for large generations

@@ -1,0 +1,13 @@
+{
+    "token_from_file": false,
+    "base_model_name": "deepseek-ai/deepseek-coder-6.7b-instruct",
+    "num_epochs": 20,
+    "use_deepspeed": false,
+    "only_best_accuracy": true,
+    "context_length": 4096,
+    "max_input_length": 4096,
+    "use_unsloth": false,
+    "load_in_4bit": false,
+    "max_new_tokens": 2048,
+    "backbone": true
+}

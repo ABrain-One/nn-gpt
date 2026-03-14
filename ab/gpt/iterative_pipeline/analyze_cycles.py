@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
+from ab.nn.util.Const import out_dir
 from scipy import stats
 
 
@@ -23,12 +24,12 @@ def load_cycle_results(results_dir: str = None) -> List[Dict[str, Any]]:
     if results_dir is None:
         # Check common output directories
         possible_dirs = [
-            "out/iterative_cycles_v2",
-            "out/iterative_cycles",
-            "out/full_pipeline_test"
+            out_dir / 'iterative_cycles_v2',
+            out_dir / 'iterative_cycles',
+            out_dir / 'full_pipeline_test'
         ]
         for dir_path in possible_dirs:
-            results_path = Path(dir_path) / "all_cycles_results.json"
+            results_path = dir_path / "all_cycles_results.json"
             if results_path.exists():
                 results_dir = dir_path
                 break
@@ -198,7 +199,7 @@ def compute_confidence_interval(data: List[float], confidence: float = 0.95) -> 
     return (mean, lower, upper)
 
 
-def analyze_cycles(results: List[Dict[str, Any]], results_dir: str = "out/iterative_cycles") -> Dict[str, Any]:
+def analyze_cycles(results: List[Dict[str, Any]], results_dir: Path = out_dir / 'iterative_cycles') -> Dict[str, Any]:
     """Analyze cycles and compute new metrics."""
     
     analysis = {
@@ -403,9 +404,8 @@ def analyze_cycles(results: List[Dict[str, Any]], results_dir: str = "out/iterat
     return analysis
 
 
-def save_analysis(analysis: Dict[str, Any], results_dir: str = "out/iterative_cycles"):
+def save_analysis(analysis: Dict[str, Any], output_dir: Path = out_dir / 'iterative_cycles'):
     """Save analysis to JSON and CSV files."""
-    output_dir = Path(results_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Save JSON
@@ -460,7 +460,7 @@ def save_analysis(analysis: Dict[str, Any], results_dir: str = "out/iterative_cy
     print(f"Saved CSV to: {csv_path}")
 
 
-def plot_confidence_intervals(analysis: Dict[str, Any], results_dir: str = "out/iterative_cycles"):
+def plot_confidence_intervals(analysis: Dict[str, Any], results_dir: Path = out_dir / 'iterative_cycles'):
     """Create a separate visualization for confidence intervals."""
     successful_cycles = [c for c in analysis["cycles"] if c["success"]]
     
@@ -532,7 +532,7 @@ def plot_confidence_intervals(analysis: Dict[str, Any], results_dir: str = "out/
     plt.close()
 
 
-def plot_trends(analysis: Dict[str, Any], results_dir: str = "out/iterative_cycles"):
+def plot_trends(analysis: Dict[str, Any], results_dir: Path = out_dir / 'iterative_cycles'):
     """Create visualizations of key trends."""
     successful_cycles = [c for c in analysis["cycles"] if c["success"]]
     

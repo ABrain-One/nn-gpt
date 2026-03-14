@@ -23,7 +23,7 @@ For Windows:
    python3 -m pip install --upgrade pip
    ```
 
-It is assumed that CUDA 12.6 is installed; otherwise, consider replacing 'cu126' with the appropriate version. Most LLM usage scenarios require GPUs with at least 24 GB of memory.
+It is assumed that CUDA 13.0 is installed; otherwise, consider replacing 'cu130' with the appropriate version. Most LLM usage scenarios require GPUs with at least 24 GB of memory.
 
 ## Environment for NNGPT Developers
 ### Pip package manager
@@ -31,8 +31,8 @@ It is assumed that CUDA 12.6 is installed; otherwise, consider replacing 'cu126'
 Create a virtual environment, activate it, and run the following command to install all the project dependencies:
 ```bash
 python -m pip install --upgrade pip
-pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu126
-pip install -r req-no-isolation.txt --no-build-isolation --extra-index-url https://download.pytorch.org/whl/cu126
+pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu130
+pip install -r req-no-isolation.txt --no-build-isolation --extra-index-url https://download.pytorch.org/whl/cu130
 ```
 
 If there are installation problems, install the dependencies from the 'requirements.txt' file one by one.
@@ -42,16 +42,16 @@ To get the latest code and statistics, install the most recent version of the LE
 ```bash
 rm -rf db
 pip uninstall -y nn-dataset
-pip install --no-cache-dir git+https://github.com/ABrain-One/nn-dataset --extra-index-url https://download.pytorch.org/whl/cu126
+pip install --no-cache-dir git+https://github.com/ABrain-One/nn-dataset --extra-index-url https://download.pytorch.org/whl/cu130
 ```
 Installing the stable version:
 ```bash
 pip uninstall -y nn-dataset 
-pip install nn-dataset --extra-index-url https://download.pytorch.org/whl/cu126
+pip install nn-dataset --extra-index-url https://download.pytorch.org/whl/cu130
 ```
 Adding functionality to export data to Excel files and generate plots for <a href='https://github.com/ABrain-One/nn-stat'>analyzing neural network performance</a>:
 ```bash
-pip install nn-stat --extra-index-url https://download.pytorch.org/whl/cu126
+pip install nn-stat --extra-index-url https://download.pytorch.org/whl/cu130
 ```
 and export/generate:
 ```bash
@@ -61,8 +61,8 @@ python -m ab.stat.export
 ## Installation of NNGPT with pip
 
 ```bash
-   pip install nn-gpt --extra-index-url https://download.pytorch.org/whl/cu126
-   pip install nn-gpt[flash] --no-build-isolation --extra-index-url https://download.pytorch.org/whl/cu126
+   pip install nn-gpt --extra-index-url https://download.pytorch.org/whl/cu130
+   pip install nn-gpt[flash] --no-build-isolation --extra-index-url https://download.pytorch.org/whl/cu130
    ```
 
 ## Use

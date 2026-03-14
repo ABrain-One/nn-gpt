@@ -1,10 +1,13 @@
 import os
+import random
 import shutil
 import json
 from os import makedirs
 from os.path import isfile
 import glob
-
+from pathlib import Path
+import numpy as np
+import torch
 import ab.nn.api as lemur
 import deepspeed
 from ab.nn.util.Util import release_memory, create_file
@@ -17,10 +20,10 @@ from ab.gpt.util.Const import *
 
 from ab.gpt.util.LLMUtil import quantization_config_4bit
 from ab.gpt.util.LoRA import LoRA
-from ab.gpt.util.Util import exists
+from ab.gpt.util.Util import exists, extract_delta, extract_code, extract_hyperparam, extract_transform
 from ab.gpt.util.prompt.NNGenPrompt import NNGenPrompt
-
-
+from ab.gpt.util.DeltaUtil import apply_delta, validate_delta, repair_code
+from ab.gpt.util.Const import nngpt_upload
 from ab.gpt.brute.trans.TransformEval import run_eval
 from ab.gpt.util.prompt.TransformGenPrompt import TransformGenPrompt, load_data_from_folders
 
@@ -32,6 +35,9 @@ ds_conf = conf_dir / 'DeepSpeed.json'
 # Transform dir paths
 TRANSFORM_OUT_DIR = trans_dir / 'dataset_epoch1'
 TRANSFORM_RES_DIR = trans_dir / 'result_epoch1'
+
+# Delta mode constants
+_MAX_DELTA_RETRIES = 2
 
 
 
@@ -68,8 +74,7 @@ def flatten_chunks(data):
 
 def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_conf, conf_keys, llm_conf, training_args, peft_config,
          max_prompts=None, save_llm_output=True, max_new_tokens=16 * 1024, nn_name_prefix=None, temperature=1.0, top_k=50, top_p=0.9, test_metric=None,
-         onnx_run=False, trans_mode=False, prompt_batch=1):
-    
+         onnx_run=False, trans_mode=False, prompt_batch=1, use_backbone=False):
     if not isinstance(conf_keys, (list, tuple)):
         conf_keys = (conf_keys,)
     with open(conf_llm_dir / llm_conf) as f:
@@ -78,6 +83,15 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
 
     token_from_file = config['token_from_file']
     base_model_name = config['base_model_name']
+    merged_candidate = nngpt_upload / Path(base_model_name).name
+
+    if merged_candidate.exists():
+        print(f"[EVOLUTION] Using merged model: {merged_candidate}")
+        base_model_name = str(merged_candidate)
+    else:
+        print(f"[EVOLUTION] Using base model from config: {base_model_name}")
+
+
     llm_tune_epochs = int(config['num_epochs'])
     use_deepspeed = config['use_deepspeed']
     only_best_accuracy = config['only_best_accuracy']
@@ -86,6 +100,7 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
     use_unsloth = config.get('use_unsloth', False)
     unsloth_load_in_4bit = config.get('load_in_4bit', True)
     max_new_tokens = config.get('max_new_tokens', max_new_tokens)
+    use_backbone = config.get('backbone', use_backbone)
 
     access_token = None
     if token_from_file:
@@ -149,14 +164,14 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
             if trans_mode:
                 trans_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix)
             else:
-                nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix, unsloth_max_input_length, prompt_batch)
+                nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix, unsloth_max_input_length, prompt_batch, use_backbone=use_backbone)
+                
 
         # fine tune model for 1 epoch / Using training_args and save copy
         print(f'[DEBUG]Perform finetune at epoch {epoch}.')
 
         # Select data processor based on mode
         if trans_mode:
-            
             data_processor = TransformGenPrompt(
                 context_length if context_length else model_loader.get_max_length(), 
                 tokenizer, 
@@ -164,6 +179,12 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
                 TRANSFORM_OUT_DIR,
                 TRANSFORM_RES_DIR
             )
+        elif use_backbone:
+             from ab.gpt.util.prompt.SFTGenPrompt import SFTGenPrompt
+             data_processor = SFTGenPrompt(
+                context_length if context_length else model_loader.get_max_length(),
+                tokenizer
+             )
         else:
             if not use_unsloth:
                 data_processor = NNGenPrompt(context_length if context_length else model_loader.get_max_length(), tokenizer, train_config_path)
@@ -178,35 +199,32 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
         release_memory()
 
 
-def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix, unsloth_max_input_length, prompt_batch):
-    # Move inside the loop to create new prompt with newly created models.
+def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix, unsloth_max_input_length, prompt_batch, use_backbone=False):
     print('Preparing prompts for generation, this might take a while...')
-    
-    # Check if delta mode is enabled (before prompt_dict gets reassigned)
-    use_delta = False
-    if isinstance(prompt_dict, dict) and conf_keys:
+
+    # Detect delta mode from nn_name_prefix or config key
+    use_delta = nn_name_prefix == 'delta'
+    if not use_delta and isinstance(prompt_dict, dict) and conf_keys:
         first_key = conf_keys[0] if isinstance(conf_keys, (list, tuple)) else conf_keys
         key_config = prompt_dict.get(first_key, {})
         if isinstance(key_config, dict):
             use_delta = key_config.get('use_delta', False) or 'delta' in str(first_key).lower()
-    
+
     prompts = []
     for key in conf_keys:
         prompt = ''
-        key_config = prompt_dict[key]  # Store original reference
-        prompt_dict_key = key_config  # Use different variable name
+        key_config = prompt_dict[key]
+        prompt_dict_key = key_config
         for pr in prompt_dict_key['prompt']:
             prompt += pr + '\n'
-        # Get nn-dataset codes
         data = lemur.data(only_best_accuracy=True, task=prompt_dict_key['task']).groupby(by='nn').sample(n=1)[:test_nn]
-        # Get addon nn-dataset codes (handle null addon_task)
         addon_task = prompt_dict_key.get('addon_task')
         addon_data = lemur.data(only_best_accuracy=True, task=addon_task) if addon_task else None
+        from ab.gpt.util.Util import extract_str
         for _, row in data.iterrows():
             para_dict = dict()
             for it in prompt_dict_key['input_list']:
                 para_dict[it['para']] = row[it['value']]
-            ## Avoid sampling the same nn_code (only if addon_data is available)
             if addon_data is not None and not addon_data.empty:
                 available_addon = addon_data.loc[addon_data.nn != row['nn']]
                 if not available_addon.empty:
@@ -215,194 +233,226 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
                         for it in prompt_dict_key['addon_list']:
                             para_dict[it['para']] = addon_row[it['value']]
             prompts.append((prompt.format(**para_dict), row))
-    
-    # produce new CV models
+
     models_dir = synth_dir(out_path)
-    pending = []
-    # print(f"prompts: {prompts}")
-    for idx, prompt_data in tqdm(enumerate(prompts)):
-        prompt, origdf = prompt_data
 
-        if unsloth_max_input_length:
-            # skip if prompt is too long
-            in_text = [{"role": "user", "content": prompt}]
-            output = chat_bot.tokenizer.apply_chat_template(
-                in_text,
-                add_generation_prompt=True,
-            )
-            print(f'Sample prompt length: {len(output)}, max_input_length: {unsloth_max_input_length}')
-            if len(output) > unsloth_max_input_length:
-                print(f'Prompt is too long, skipping...')
-                continue
+    # Delta mode: per-sample processing with retry-and-feedback
+    if use_delta:
+        for idx, prompt_data in tqdm(enumerate(prompts)):
+            model_dir = models_dir / f'B{idx}'
+            prompt_text, origdf = prompt_data
 
-        pending.append((idx, prompt, origdf))
-
-    if prompt_batch < 1:
-        prompt_batch = 1
-    if prompt_batch > 1:
-        print(f'[INFO] Batch generation enabled: prompt_batch={prompt_batch}')
-
-    for start in range(0, len(pending), prompt_batch):
-        batch = pending[start:start + prompt_batch]
-        batch_prompts = [item[1] for item in batch]
-        
-        # Delta-only: Set unique seed per batch for diversity (prevent identical outputs)
-        if use_delta:
-            import torch
-            import random
-            import numpy as np
-            seed = epoch * 10000 + start
+            # Per-sample seed for reproducibility and diversity across epochs
+            seed = epoch * 10000 + idx
             torch.manual_seed(seed)
             random.seed(seed)
             np.random.seed(seed)
             if torch.cuda.is_available():
                 torch.cuda.manual_seed_all(seed)
-        
-        if prompt_batch > 1 and hasattr(chat_bot, 'chat_batch'):
-            batch_outputs = chat_bot.chat_batch(batch_prompts, engineer_prompt=False, max_new_tokens=max_new_tokens)
-        else:
-            batch_outputs = [chat_bot.chat(p, engineer_prompt=False, max_new_tokens=max_new_tokens) for p in batch_prompts]
 
-        for (idx, prompt, origdf), output in zip(batch, batch_outputs):
-            model_dir = models_dir / f'B{idx}'
-            code, hp, tr, full_out = output
+            if unsloth_max_input_length:
+                in_text = [{"role": "user", "content": prompt_text}]
+                token_len = len(chat_bot.tokenizer.apply_chat_template(in_text, add_generation_prompt=True))
+                print(f'Sample prompt length: {token_len}, max_input_length: {unsloth_max_input_length}')
+                if token_len > unsloth_max_input_length:
+                    print(f'Prompt is too long, skipping...')
+                    continue
+
+            baseline_code = origdf.get('nn_code', '') if origdf is not None else ''
+
+            # Initial generation
+            _, hp, tr, full_out = chat_bot.chat(prompt_text, engineer_prompt=False, max_new_tokens=max_new_tokens)
+
+            if use_backbone:
+                from ab.gpt.util.SFTUtil import skeleton_code
+                import textwrap
+
+                # Extract full blocks (including signatures)
+                block_code = extract_str(full_out, '<block>', '</block>')
+                init_code = extract_str(full_out, '<init>', '</init>')
+                forward_code = extract_str(full_out, '<forward>', '</forward>')
+
+                if block_code and init_code and forward_code:
+                    code = skeleton_code
+
+                    # Replace skeleton signatures with LLM-provided blocks (including signatures)
+                    # Ensure correct indentation for internal methods
+                    sig_block = "def drop_conv3x3_block(in_channels, out_channels, stride=1, padding=1, bias=False, dropout_prob=0.0):"
+                    code = code.replace(sig_block, textwrap.dedent(block_code))
+
+                    sig_init = "    def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:"
+                    code = code.replace(sig_init, textwrap.indent(textwrap.dedent(init_code), "    "))
+
+                    sig_forward = "    def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:"
+                    code = code.replace(sig_forward, textwrap.indent(textwrap.dedent(forward_code), "    "))
+                else:
+                    from ab.gpt.util.Util import extract_code
+                    code = extract_code(full_out)
+
+            if code is None:
+                print(f'[ERROR] No code generated for model B{idx}')
+                continue # Skip if no code is generated at all
+
+            makedirs(model_dir, exist_ok=True)
             if save_llm_output:
                 create_file(model_dir, new_out_file, full_out)
-            makedirs(model_dir, exist_ok=True)
-            
-            # Apply delta if delta mode is enabled
-            if use_delta and origdf is not None:
-                try:
-                    from ab.gpt.util.DeltaUtil import apply_delta, validate_delta, validate_python_syntax, repair_code
-                    from ab.gpt.util.Util import extract_delta
-                    
-                    delta = extract_delta(full_out)
-                    delta_applied = False
-                    
-                    if delta and validate_delta(delta):
-                        baseline_code = origdf.get('nn_code', '')
-                        if baseline_code:
-                            applied_code = apply_delta(baseline_code, delta)
-                            if applied_code:
-                                code = applied_code
-                                print(f'[INFO] Successfully applied delta to baseline code for model B{idx}')
-                                delta_applied = True
-                            else:
-                                print(f'[WARNING] Delta application failed for B{idx}, retrying with error feedback')
-                                
-                                # RETRY with error feedback
-                                retry_prompt = prompt + (
-                                    "\n\nPREVIOUS ATTEMPT FAILED: Delta could not be applied to baseline code."
-                                    "\nCommon issues:"
-                                    "\n- Line numbers don't match the baseline"
-                                    "\n- Variable names don't match (baseline uses different names)"
-                                    "\n- Context lines don't match the actual baseline code"
-                                    "\nPlease generate a NEW delta that EXACTLY matches the baseline structure above."
-                                )
-                                
-                                # Retry with increased temperature for more diverse attempt
-                                original_temp = chat_bot.temperature if hasattr(chat_bot, 'temperature') else 1.0
-                                if hasattr(chat_bot, 'temperature'):
-                                    chat_bot.temperature = min(1.0, original_temp + 0.2)
-                                
-                                code_retry, hp_retry, tr_retry, full_out_retry = chat_bot.chat(
-                                    retry_prompt, engineer_prompt=False, max_new_tokens=max_new_tokens
-                                )
-                                
-                                # Restore temperature
-                                if hasattr(chat_bot, 'temperature'):
-                                    chat_bot.temperature = original_temp
-                                
-                                delta_retry = extract_delta(full_out_retry)
-                                if delta_retry and validate_delta(delta_retry):
-                                    applied_code = apply_delta(baseline_code, delta_retry)
-                                    if applied_code:
-                                        code = applied_code
-                                        hp = hp_retry
-                                        tr = tr_retry
-                                        full_out = full_out_retry
-                                        print(f'[INFO] Retry successful for B{idx}')
-                                        delta_applied = True
-                    
-                    # If delta application failed (or no valid delta), try fallback
-                    if not delta_applied:
-                        if delta:
-                            print(f'[WARNING] All delta attempts failed for B{idx}, using fallback')
-                        else:
-                            print(f'[WARNING] No valid delta found for B{idx}, using extracted code as fallback')
-                        
-                        # Try to repair extracted code as fallback
-                        if code:
-                            is_valid, _ = validate_python_syntax(code)
-                            if not is_valid:
-                                repaired = repair_code(code)
-                                if repaired:
-                                    code = repaired
-                                    print(f'[INFO] Repaired extracted code for model B{idx}')
-                    
-                except ImportError as e:
-                    print(f'[ERROR] Failed to import delta utilities for model B{idx}: {e}. Using extracted code as fallback.')
-                except Exception as e:
-                    print(f'[WARNING] Unexpected error applying delta for model B{idx}: {e}. Using extracted code as fallback.')
-            # Save hyperparameters (optional - don't fail if missing)
+
+            # Delta extraction + application with retry-and-feedback
+            code = None
+            current_out = full_out
+            current_prompt = prompt_text
+            for attempt in range(_MAX_DELTA_RETRIES + 1):
+                if attempt > 0:
+                    _, _, _, current_out = chat_bot.chat(current_prompt, engineer_prompt=False, max_new_tokens=max_new_tokens)
+
+                delta = extract_delta(current_out)
+                if not delta:
+                    error_msg = 'No <delta>...</delta> block found in output.'
+                elif not validate_delta(delta):
+                    error_msg = 'Delta format is invalid (must be unified diff with --- / +++ headers and @@ hunks).'
+                else:
+                    applied = apply_delta(baseline_code, delta) if baseline_code else None
+                    if applied:
+                        code = applied
+                        print(f'[INFO] Applied delta for B{idx} (attempt {attempt + 1})')
+                        break
+                    else:
+                        error_msg = 'Delta patch failed to apply to the baseline code.'
+
+                if attempt < _MAX_DELTA_RETRIES:
+                    print(f'[WARNING] Delta attempt {attempt + 1} failed for B{idx}: {error_msg} Retrying with feedback...')
+                    current_prompt = (
+                        prompt_text
+                        + f'\n\n[SYSTEM FEEDBACK - Attempt {attempt + 1} failed]: {error_msg}'
+                        + '\nPlease correct the delta and output it again.'
+                    )
+
+            # Syntax-repair fallback when all delta attempts fail
+            if code is None:
+                print(f'[WARNING] All delta attempts failed for B{idx}. Trying syntax repair on extracted code.')
+                raw_code = extract_code(full_out)
+                if raw_code:
+                    repaired = repair_code(raw_code)
+                    if repaired:
+                        code = repaired
+                        print(f'[INFO] Used syntax-repaired code fallback for B{idx}')
+
+            # Re-parse hp/tr from saved output
+            hp_str = extract_hyperparam(full_out)
+            tr_str = extract_transform(full_out)
+
             try:
-                print(f'Generated params: {hp}')
-                if hp is not None and hp.strip():  # Check if hp exists and is not empty
-                    hp = json.loads(hp.replace("'", '"'))
+                print(f'Generated params: {hp_str}')
+                if hp_str is not None and hp_str.strip():
+                    hp_obj = json.loads(hp_str.replace("'", '"'))
                     with open(model_dir / hp_file, 'w+') as f:
-                        json.dump(hp, f)
+                        json.dump(hp_obj, f)
                 else:
                     print('[WARNING] No hyperparameters generated, skipping hp file')
             except Exception as e:
                 print(f'[WARNING] Error processing hyperparameters: {e}')
-                # Don't continue here - let it save the code even if hp fails
-            
-            # Save transformer (optional - don't fail if missing)
+
             try:
-                print(f'Generated transformer:\n\n{tr}\n----\n')
-                if tr is not None and tr.strip():  # Check if tr exists and is not empty
-                    create_file(model_dir, transformer_file, tr)
+                print(f'Generated transformer:\n\n{tr_str}\n----\n')
+                if tr_str is not None and tr_str.strip():
+                    create_file(model_dir, transformer_file, tr_str)
                 else:
                     print('[WARNING] No transformer code generated')
             except Exception as e:
                 print(f'[WARNING] Error saving transformer: {e}')
-                # Don't continue here either - let it save the code
-            
-            # ALWAYS save code (critical - only skip if completely missing or invalid)
+
             if code is not None and code.strip():
-                # Delta-only: final syntax validation and repair before saving
-                if use_delta:
-                    try:
-                        from ab.gpt.util.DeltaUtil import validate_python_syntax, repair_code
-                        is_valid, error = validate_python_syntax(code)
-                        if not is_valid:
-                            print(f'[WARNING] Code for B{idx} has syntax error: {error}. Attempting repair...')
-                            repaired = repair_code(code)
-                            if repaired:
-                                code = repaired
-                                print(f'[INFO] Successfully repaired code for B{idx}')
-                            else:
-                                print(f'[ERROR] Could not repair code for B{idx}, saving anyway for debugging')
-                    except ImportError:
-                        pass  # DeltaUtil not available, skip validation
                 create_file(model_dir, new_nn_file, code)
                 print(f'[INFO] Saved code to {model_dir / new_nn_file}')
             else:
                 print(f'[ERROR] No code generated for model B{idx}')
-                continue  # Only skip if no code at all
+                continue
+
             create_file(model_dir, new_out_file, full_out)
             df_file = model_dir / 'dataframe.df'
             if origdf is None:
-                if isfile(df_file):  # Clean up dataframe.df, if no additional information generated this time.
+                if isfile(df_file):
                     os.remove(df_file)
                     print(f'[DEBUG]Removed unmatched file: {df_file}')
             else:
                 create_file(model_dir, f"original_{origdf['nn']}.py", origdf['nn_code'])
-                # Store DataFrame information, mainly for passing parameters to evaluator.
                 origdf.to_pickle(df_file)
+
+    # Standard mode: batch processing
+    else:
+        pending = []
+        for idx, prompt_data in tqdm(enumerate(prompts)):
+            prompt, origdf = prompt_data
+
+            if unsloth_max_input_length:
+                in_text = [{"role": "user", "content": prompt}]
+                output = chat_bot.tokenizer.apply_chat_template(in_text, add_generation_prompt=True)
+                print(f'Sample prompt length: {len(output)}, max_input_length: {unsloth_max_input_length}')
+                if len(output) > unsloth_max_input_length:
+                    print(f'Prompt is too long, skipping...')
+                    continue
+
+            pending.append((idx, prompt, origdf))
+
+        if prompt_batch < 1:
+            prompt_batch = 1
+        if prompt_batch > 1:
+            print(f'[INFO] Batch generation enabled: prompt_batch={prompt_batch}')
+
+        for start in range(0, len(pending), prompt_batch):
+            batch = pending[start:start + prompt_batch]
+            batch_prompts = [item[1] for item in batch]
+
+            if prompt_batch > 1 and hasattr(chat_bot, 'chat_batch'):
+                batch_outputs = chat_bot.chat_batch(batch_prompts, engineer_prompt=False, max_new_tokens=max_new_tokens)
+            else:
+                batch_outputs = [chat_bot.chat(p, engineer_prompt=False, max_new_tokens=max_new_tokens) for p in batch_prompts]
+
+            for (idx, prompt, origdf), output in zip(batch, batch_outputs):
+                model_dir = models_dir / f'B{idx}'
+                code, hp, tr, full_out = output
+                if save_llm_output:
+                    create_file(model_dir, new_out_file, full_out)
+                makedirs(model_dir, exist_ok=True)
+
+                try:
+                    print(f'Generated params: {hp}')
+                    if hp is not None and hp.strip():
+                        hp = json.loads(hp.replace("'", '"'))
+                        with open(model_dir / hp_file, 'w+') as f:
+                            json.dump(hp, f)
+                    else:
+                        print('[WARNING] No hyperparameters generated, skipping hp file')
+                except Exception as e:
+                    print(f'[WARNING] Error processing hyperparameters: {e}')
+
+                try:
+                    print(f'Generated transformer:\n\n{tr}\n----\n')
+                    if tr is not None and tr.strip():
+                        create_file(model_dir, transformer_file, tr)
+                    else:
+                        print('[WARNING] No transformer code generated')
+                except Exception as e:
+                    print(f'[WARNING] Error saving transformer: {e}')
+
+                if code is not None and code.strip():
+                    create_file(model_dir, new_nn_file, code)
+                    print(f'[INFO] Saved code to {model_dir / new_nn_file}')
+                else:
+                    print(f'[ERROR] No code generated for model B{idx}')
+                    continue
+                create_file(model_dir, new_out_file, full_out)
+                df_file = model_dir / 'dataframe.df'
+                if origdf is None:
+                    if isfile(df_file):
+                        os.remove(df_file)
+                        print(f'[DEBUG]Removed unmatched file: {df_file}')
+                else:
+                    create_file(model_dir, f"original_{origdf['nn']}.py", origdf['nn_code'])
+                    origdf.to_pickle(df_file)
+
     print('[DEBUG] Release memory.')
     release_memory()
-    # evaluate produced CV models
     if exists(models_dir):
         NNEval.main(nn_name_prefix, nn_train_epochs, epoch)
         print('[DEBUG] Release_memory.')
@@ -410,7 +460,6 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
     print('Clear LEMUR query cache.')
     lemur.data.cache_clear()
     print('The cache has been cleared.')
-
 
 
 def trans_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict_global, test_nn, max_new_tokens, save_llm_output, nn_name_prefix):
@@ -473,11 +522,9 @@ def trans_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict
         if save_llm_output: create_file(model_dir, new_out_file, full_out)
         makedirs(model_dir, exist_ok=True)
 
-
         if tr is not None and tr.strip():
             print(f'Generated transformer:\n\n{tr}\n----\n')
             create_file(model_dir, transformer_file, tr)
-            
         else:
             print(f'[ERROR] No code generated for model B{idx}')
             continue  

@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 from collections import defaultdict
 
+from ab.nn.util.Const import out_dir
+
 
 class TrainingDataManager:
     """Manage training data augmentation for iterative fine-tuning."""
@@ -186,7 +188,7 @@ class TrainingDataManager:
                 {"role": "assistant", "content": assistant_content}
             ],
             "meta": {
-                "source_path": f"out/iterative_cycles/cycle_{metadata.get('cycle', 0)}/nneval/{model_id}/new_nn.py",
+                "source_path": out_dir / 'iterative_cycles' / f"cycle_{metadata.get('cycle', 0)}/nneval/{model_id}/new_nn.py",
                 "has_module": True,
                 "family": "generated",
                 "param_estimate": params,
@@ -315,7 +317,7 @@ class TrainingDataManager:
 def main():
     """Test training data manager."""
     # Initialize with base data
-    manager = TrainingDataManager("curation_output/chat_data")
+    manager = TrainingDataManager(out_dir / "curation_output/chat_data")
     
     # Create a test example
     test_code = """

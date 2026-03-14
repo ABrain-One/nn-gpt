@@ -13,14 +13,15 @@ faiss-cpu
 overrides>=7.7.0
 datasketch # to check code novelty
 
+# transformers @ git+https://github.com/huggingface/transformers.git@main
 # Unsloth dependencies (official installation)
-unsloth_zoo[base] @ git+https://github.com/unslothai/unsloth-zoo
-unsloth[base] @ git+https://github.com/unslothai/unsloth
-triton_kernels @ git+https://github.com/triton-lang/triton.git@05b2c186c1b6c9a08375389d5efe9cb4c401c075#subdirectory=python/triton_kernels
+unsloth==2026.3.4
+unsloth-zoo==2026.3.2
+triton_kernels @ git+https://github.com/triton-lang/triton.git@v3.5.0#subdirectory=python/triton_kernels
 triton>=3.4.0
 
 matplotlib
-optimum
 optimum[onnxruntime-gpu]
 onnx>=1.16.0
 onnxruntime-gpu>=1.18.0
+kernels

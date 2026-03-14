@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Dict, List, Set, Any, Optional
 from collections import defaultdict
 
+from ab.nn.util.Const import out_dir
+
 
 class StructuralHasher:
     """Extract structural signature from PyTorch model code."""
@@ -144,7 +146,7 @@ class NoveltyChecker:
     def __init__(self, cache_file: Optional[Path] = None):
         self.seen_hashes: Set[str] = set()
         self.seen_signatures: Dict[str, Dict] = {}
-        self.cache_file = cache_file or Path("out/iterative_cycles/seen_models.json")
+        self.cache_file = cache_file or out_dir / 'iterative_cycles' / 'seen_models.json'
         self.hasher = StructuralHasher()
         
         # Load existing cache if available

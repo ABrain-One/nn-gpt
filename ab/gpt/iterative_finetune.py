@@ -38,6 +38,7 @@ from ab.gpt.iterative_pipeline.gpu_memory_manager import (
 from ab.dup.preprocessing import curate_from_lemur
 from ab.chatprep.prompt_builder import ChatPrepConfig
 from ab.gpt.TuneNNGen import get_pipeline_defaults
+from ab.nn.util.Const import out_dir
 
 # Setup logging - will be configured after output_dir is known
 logger = logging.getLogger(__name__)
@@ -45,27 +46,25 @@ logger = logging.getLogger(__name__)
 
 class IterativeFinetuner:
     """Orchestrates the iterative fine-tuning pipeline."""
-    
+
     def __init__(
-        self,
-        base_data_dir: str,
-        output_dir: str,
-        llm_conf: str,
-        cycles: int = 5,
-        models_per_cycle: int = 150,
-        samples_per_prompt: int = 1,
-        accuracy_threshold: float = 0.40,
-        min_selected_k: int = 15,
-        fallback_threshold: float = 0.35,
-        adaptive_threshold: bool = False,
-        novelty_check: bool = True,
-        resume_from_cycle: Optional[int] = None,
-        max_retries: int = 3,
-        use_optimized_training: bool = True,
-        num_train_epochs: int = 5,
+            self,
+            llm_conf: str,
+            cycles: int = 5,
+            models_per_cycle: int = 150,
+            samples_per_prompt: int = 1,
+            accuracy_threshold: float = 0.40,
+            min_selected_k: int = 15,
+            fallback_threshold: float = 0.35,
+            adaptive_threshold: bool = False,
+            novelty_check: bool = True,
+            resume_from_cycle: Optional[int] = None,
+            max_retries: int = 3,
+            use_optimized_training: bool = True,
+            num_train_epochs: int = 5,
     ):
-        self.base_data_dir = Path(base_data_dir)
-        self.output_dir = Path(output_dir)
+        self.output_dir = out_dir / 'curation_output'
+        self.base_data_dir = self.output_dir / 'chat_data'
         self.llm_conf = llm_conf
         self.cycles = cycles
         self.models_per_cycle = models_per_cycle
@@ -79,55 +78,55 @@ class IterativeFinetuner:
         self.max_retries = max_retries
         self.use_optimized_training = use_optimized_training
         self.num_train_epochs = num_train_epochs
-        
+
         # Initialize components
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Configure logging to use output directory (not relative path)
         # Remove any existing handlers to avoid duplicates
         logger.handlers.clear()
         logger.setLevel(logging.INFO)
-        
+
         # Create formatter
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        
+
         # File handler - log to output directory, not current working directory
         log_file = self.output_dir / "iterative_pipeline.log"
         file_handler = logging.FileHandler(log_file)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
-        
+
         # Console handler
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
-        
+
         self.novelty_checker = NoveltyChecker(self.output_dir / "seen_models.json")
-        
+
         # Track results across cycles
         self.cycle_results = []
-        
+
         # Resolve LLM config path (if relative, resolve to ab/gpt/conf/llm/)
         self.llm_conf = self._resolve_llm_config_path(self.llm_conf)
-        
+
         # Ensure curation data exists in curation_output/ (create if missing)
         self._ensure_curation_output_data()
-        
+
         # TrainingDataManager loads from base_data_dir (curation_output/chat_data)
         self.data_manager = TrainingDataManager(str(self.base_data_dir))
-        
+
         # Initialize novelty checker with original training data
         if self.novelty_check_enabled:
             self._initialize_novelty_checker()
-        
+
         # Validate prerequisites
         self._validate_prerequisites()
-    
+
     def _initialize_novelty_checker(self):
         """Load original training data into novelty checker."""
         logger.info("Initializing novelty checker with original training data...")
         train_data = self.data_manager._load_jsonl(self.base_data_dir / "train.jsonl")
-        
+
         for example in train_data:
             # Extract code from assistant message
             for msg in example.get("messages", []):
@@ -137,19 +136,19 @@ class IterativeFinetuner:
                     if "```python" in content:
                         code = content.split("```python")[1].split("```")[0].strip()
                         self.novelty_checker.add_training_data(code, source="original_training")
-        
+
         stats = self.novelty_checker.get_stats()
         logger.info(f"Loaded {stats['total_seen']} models from training data")
         self.novelty_checker.save_cache()
-    
+
     def _resolve_llm_config_path(self, config_path: str) -> str:
         """Resolve LLM config path to absolute path."""
         config_file = Path(config_path)
-        
+
         # If it's already an absolute path and exists, use it
         if config_file.is_absolute() and config_file.exists():
             return str(config_file)
-        
+
         # Try to resolve relative to ab/gpt/conf/llm/
         try:
             from ab.gpt.util.Const import conf_llm_dir, conf_test_dir, conf_train_dir
@@ -159,23 +158,23 @@ class IterativeFinetuner:
                 return str(resolved_path)
         except Exception as e:
             logger.warning(f"Failed to resolve config path using conf_llm_dir: {e}")
-        
+
         # Try current directory
         if Path(config_path).exists():
             return config_path
-        
+
         # Return as-is (will fail validation if doesn't exist)
         return config_path
-    
+
     def _ensure_curation_output_data(self):
         """Ensure curation data exists in curation_output/, create if missing."""
-        curation_output_dir = Path("curation_output")
+        curation_output_dir = out_dir / 'curation_output'
         curation_chat_data = curation_output_dir / "chat_data"
-        
+
         train_file = curation_chat_data / "train.jsonl"
         dev_file = curation_chat_data / "dev.jsonl"
         test_file = curation_chat_data / "test.jsonl"
-        
+
         # Check if curation data already exists
         if train_file.exists() and test_file.exists():
             logger.info(f"✓ Curation data found in {curation_chat_data}")
@@ -184,41 +183,42 @@ class IterativeFinetuner:
             if dev_file.exists():
                 logger.info(f"  - Dev: {dev_file}")
             return
-        
+
         # Generate curation data if missing
         logger.info("")
-        logger.info("="*80)
+        logger.info("=" * 80)
         logger.info("GENERATING CURATION DATA")
-        logger.info("="*80)
+        logger.info("=" * 80)
         logger.info(f"Target: {curation_chat_data}")
-        
+
         try:
             # Step 1: Curate from LEMUR
             logger.info("Step 1: Curating models from LEMUR...")
-            curate_result = curate_from_lemur()
+            curate_result = curate_from_lemur(curation_output_dir)
             logger.info(f"✓ Curation from LEMUR completed: {curate_result}")
-            
+
             # Step 2: Build chat data (ChatPrepConfig writes to curation_output by default)
             logger.info("Step 2: Building chat data using ChatPrepConfig...")
-            
+
             # Ensure directory exists
             curation_chat_data.mkdir(parents=True, exist_ok=True)
-            
+
             # Build chat data (writes to curation_output/chat_data/)
             logger.info("  Building train/dev/test data...")
             config = ChatPrepConfig(
-                accepted_dir="curation_output/accepted_code"
+                out_dir=out_dir / "curation_output/chat_data",
+                accepted_dir=out_dir / "curation_output/accepted_code"
             )
             config.run()
-            
+
             # Verify the output was created
             if train_file.exists() and test_file.exists():
                 logger.info(f"✓ Curation data successfully created in {curation_chat_data}")
-                logger.info("="*80)
+                logger.info("=" * 80)
             else:
                 logger.error(f"✗ Curation data creation failed")
                 raise RuntimeError(f"Curation data creation failed")
-                
+
         except ImportError as e:
             logger.error(f"✗ Failed to import curation modules: {e}")
             logger.error("Please ensure ab.dup.preprocessing and ab.chatprep.prompt_builder are available")
@@ -227,18 +227,17 @@ class IterativeFinetuner:
             logger.error(f"✗ Curation data creation failed: {e}")
             logger.error("Please create curation data manually or fix the issue above")
             raise
-    
-    
+
     def _validate_prerequisites(self):
         """Validate all prerequisites before starting pipeline."""
-        logger.info("="*80)
+        logger.info("=" * 80)
         logger.info("VALIDATING PIPELINE PREREQUISITES")
-        logger.info("="*80)
-        
+        logger.info("=" * 80)
+
         # Training data is in base_data_dir (curation_output/chat_data)
         validator = PipelineValidator()
         results = validator.validate_all(self.base_data_dir, Path(self.llm_conf))
-        
+
         all_passed = True
         for check_name, (passed, message) in results["results"].items():
             status = "✓" if passed else "✗"
@@ -246,13 +245,13 @@ class IterativeFinetuner:
             if not passed:
                 all_passed = False
                 logger.error(f"Prerequisite check failed: {check_name} - {message}")
-        
+
         if not all_passed:
             logger.error("\n✗ Prerequisites validation failed. Cannot proceed.")
             raise RuntimeError("Prerequisites validation failed. Please fix issues before running pipeline.")
-        
+
         logger.info("\n✓ All prerequisites validated successfully!")
-        
+
         # Check for resume capability
         if self.resume_from_cycle is None:
             last_cycle = ErrorRecovery.find_last_successful_cycle(self.output_dir)
@@ -263,7 +262,7 @@ class IterativeFinetuner:
                     logger.warning(f"[RESUME] To resume from cycle {last_cycle + 1}, use: --resume_from_cycle {last_cycle + 1}")
                 else:
                     logger.info(f"[INFO] Previous run found but cannot resume: {msg}")
-    
+
     def run_finetuning(self, cycle: int, data_dir: Path) -> Dict[str, Any]:
         """
         Run fine-tuning for one cycle.
@@ -272,28 +271,28 @@ class IterativeFinetuner:
             Dictionary with training metrics (time, loss, etc.)
         """
         logger.info("")
-        logger.info("="*80)
+        logger.info("=" * 80)
         logger.info(f"CYCLE {cycle}: FINE-TUNING")
-        logger.info("="*80)
+        logger.info("=" * 80)
         logger.info(f"Training data: {data_dir}")
-        
+
         # Set PyTorch memory allocator to reduce fragmentation (helps with CUDA OOM)
         import os
         if "PYTORCH_CUDA_ALLOC_CONF" not in os.environ:
             os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
             logger.info("Set PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to reduce memory fragmentation")
-        
+
         # Clear GPU cache before fine-tuning
         logger.info("Clearing GPU cache before fine-tuning...")
         clear_gpu_cache()
-        
+
         # Kill any other GPU processes (except this one)
         import os
         current_pid = str(os.getpid())
         logger.info("Checking for other GPU processes...")
         kill_gpu_processes(exclude_pids=[current_pid])
         clear_gpu_cache()
-        
+
         # Check GPU memory availability
         has_memory, msg = check_gpu_memory(min_free_gb=8.0)  # Need at least 8GB for 7B model
         if not has_memory:
@@ -310,7 +309,7 @@ class IterativeFinetuner:
                     "error": f"insufficient_gpu_memory: {msg}",
                     "training_time_minutes": 0,
                 }
-        
+
         # Check if checkpoint already exists (from previous incomplete run)
         isolated_checkpoint = self.output_dir / f"cycle_{cycle}" / "checkpoint"
         if isolated_checkpoint.exists():
@@ -328,38 +327,38 @@ class IterativeFinetuner:
             else:
                 logger.warning(f"Existing checkpoint found but validation failed: {msg}")
                 logger.warning("Will re-run fine-tuning to create a new checkpoint")
-        
+
         total, used, free = get_gpu_memory_info()
         logger.info(f"GPU memory before fine-tuning: {free:.2f}GB free / {total:.2f}GB total")
-        
+
         # Output directory for this cycle's fine-tuning
         ft_output_dir = self.output_dir / f"cycle_{cycle}" / "finetuning_output"
         ft_output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         cmd = [
             "python", "-m", "ab.gpt.TuneNNGen",
             "--llm_conf", self.llm_conf,
             "--data_dir", str(data_dir),
         ]
-        
+
         # Load previous cycle's checkpoint for continual learning (cycle 2+)
         if cycle > 1:
-            prev_checkpoint = self.output_dir / f"cycle_{cycle-1}" / "checkpoint"
+            prev_checkpoint = self.output_dir / f"cycle_{cycle - 1}" / "checkpoint"
             if prev_checkpoint.exists():
                 logger.info(f"Loading previous cycle checkpoint: {prev_checkpoint}")
                 cmd.extend(["--peft", str(prev_checkpoint)])
             else:
                 logger.warning(f"Previous cycle checkpoint not found: {prev_checkpoint}")
                 logger.warning("Starting from base model instead")
-        
+
         # Add optimized training parameters if enabled
         if self.use_optimized_training:
             # Get pipeline defaults from TuneNNGen.py (single source of truth)
             pipeline_defaults = get_pipeline_defaults()
-            
+
             # Build command-line arguments from defaults dict
             optimized_params = []
-            
+
             # Training hyperparameters
             optimized_params.extend(["--learning_rate", str(pipeline_defaults['learning_rate'])])
             optimized_params.extend(["--weight_decay", str(pipeline_defaults['weight_decay'])])
@@ -367,15 +366,15 @@ class IterativeFinetuner:
             optimized_params.extend(["--num_train_epochs", str(self.num_train_epochs)])  # Use instance value (may override default)
             optimized_params.extend(["--logging_steps", str(pipeline_defaults['logging_steps'])])
             optimized_params.extend(["--max_grad_norm", str(pipeline_defaults['max_grad_norm'])])
-            
+
             # LoRA configuration
             optimized_params.extend(["--target_modules", pipeline_defaults['target_modules']])
-            
+
             # Generation parameters
             optimized_params.extend(["--max_new_tokens", str(pipeline_defaults['max_new_tokens'])])
             optimized_params.extend(["--temperature", str(pipeline_defaults['temperature'])])
             optimized_params.extend(["--top_k", str(pipeline_defaults['top_k'])])
-            
+
             # Evaluation and checkpointing
             optimized_params.extend(["--evaluation_strategy", pipeline_defaults['evaluation_strategy']])
             optimized_params.extend(["--eval_steps", str(pipeline_defaults['eval_steps'])])
@@ -386,20 +385,20 @@ class IterativeFinetuner:
             if pipeline_defaults['load_best_model_at_end']:
                 optimized_params.append("--load_best_model_at_end")
             optimized_params.extend(["--metric_for_best_model", pipeline_defaults['metric_for_best_model']])
-            
+
             cmd.extend(optimized_params)
             logger.info("Using optimized training configuration (from TuneNNGen.py defaults)")
         else:
             logger.info("Using default training configuration")
-        
+
         logger.info(f"Running fine-tuning: {' '.join(cmd)}")
         start_time = time.time()
-        
+
         # Retry fine-tuning with exponential backoff
         def run_finetuning_cmd():
             # Clear GPU cache before each attempt
             clear_gpu_cache()
-            
+
             # Stream output in real-time while still capturing return code
             result = subprocess.run(
                 cmd,
@@ -416,7 +415,7 @@ class IterativeFinetuner:
                 clear_gpu_cache()  # Clear cache after failure
                 raise subprocess.CalledProcessError(result.returncode, cmd)
             return result
-        
+
         try:
             result = RetryHandler.retry_with_backoff(
                 run_finetuning_cmd,
@@ -445,10 +444,10 @@ class IterativeFinetuner:
                 "error": f"fine-tuning_failed: {str(e)}",
                 "training_time_minutes": training_time / 60,
             }
-        
+
         training_time = time.time() - start_time
-        logger.info(f"Fine-tuning completed in {training_time/60:.1f} minutes")
-        
+        logger.info(f"Fine-tuning completed in {training_time / 60:.1f} minutes")
+
         # Find the final checkpoint from fine-tuning
         # TuneNNGen saves to out/qlora-sft/final, but we'll copy it to isolated directory
         source_checkpoint = Path("out/qlora-sft/final")
@@ -459,11 +458,11 @@ class IterativeFinetuner:
                 "error": "checkpoint_not_found",
                 "training_time_minutes": training_time / 60,
             }
-        
+
         # Copy to isolated checkpoint directory for this cycle
         isolated_checkpoint = self.output_dir / f"cycle_{cycle}" / "checkpoint"
         isolated_checkpoint.mkdir(parents=True, exist_ok=True)
-        
+
         # Copy checkpoint files with retry
         def copy_checkpoint():
             logger.info(f"Copying checkpoint to isolated directory: {isolated_checkpoint}")
@@ -471,7 +470,7 @@ class IterativeFinetuner:
                 shutil.rmtree(isolated_checkpoint)
             shutil.copytree(source_checkpoint, isolated_checkpoint)
             return True
-        
+
         try:
             RetryHandler.retry_with_backoff(
                 copy_checkpoint,
@@ -488,7 +487,7 @@ class IterativeFinetuner:
                 "error": f"checkpoint_copy_failed: {str(e)}",
                 "training_time_minutes": training_time / 60,
             }
-        
+
         # Validate checkpoint
         is_valid, msg = StageValidator.validate_finetuning_output(isolated_checkpoint)
         if not is_valid:
@@ -498,16 +497,16 @@ class IterativeFinetuner:
                 "error": f"checkpoint_validation_failed: {msg}",
                 "training_time_minutes": training_time / 60,
             }
-        
+
         logger.info(f"Checkpoint validated and saved to: {isolated_checkpoint}")
-        
+
         return {
             "success": True,
             "checkpoint_dir": str(isolated_checkpoint),
             "source_checkpoint": str(source_checkpoint),
             "training_time_minutes": training_time / 60,
         }
-    
+
     def generate_models(self, cycle: int, checkpoint_path: str, starting_checksum: int = 0, data_dir: Optional[Path] = None) -> Dict[str, Any]:
         """
         Generate models using Sft_Rag.py (nn_sftcodegen_rag).
@@ -522,25 +521,25 @@ class IterativeFinetuner:
             Dictionary with generation results (paths, counts, etc.)
         """
         logger.info("")
-        logger.info("="*80)
+        logger.info("=" * 80)
         logger.info(f"CYCLE {cycle}: MODEL GENERATION")
-        logger.info("="*80)
+        logger.info("=" * 80)
         logger.info(f"Checkpoint: {checkpoint_path}")
         # Calculate number of prompts needed based on models_per_cycle and samples_per_prompt
         num_prompts = (self.models_per_cycle + self.samples_per_prompt - 1) // self.samples_per_prompt
         logger.info(f"Generating {self.models_per_cycle} models ({self.samples_per_prompt} per prompt, {num_prompts} prompts)")
-        
+
         # Output directory for generation (accepted_code will be created inside)
         output_dir = self.output_dir / f"cycle_{cycle}" / "generation"
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Import the generation function directly
         from ab.gpt.util.nn_sftcodegen_rag import main as sft_gen_main
-        
+
         logger.info(f"Calling nn_sftcodegen_rag with checkpoint: {checkpoint_path}")
         logger.info(f"Output directory: {output_dir}")
         logger.info(f"Generating {self.models_per_cycle} models ({self.samples_per_prompt} per prompt)")
-        
+
         # Retry generation with exponential backoff
         def run_generation():
             try:
@@ -561,7 +560,7 @@ class IterativeFinetuner:
             except Exception as e:
                 logger.error(f"Generation function failed: {e}")
                 raise
-        
+
         try:
             RetryHandler.retry_with_backoff(
                 run_generation,
@@ -575,7 +574,7 @@ class IterativeFinetuner:
             logger.error(f"Model generation failed after {self.max_retries} retries: {e}")
             logger.error("This cycle will be marked as failed. Pipeline will stop.")
             return {"success": False, "error": f"generation_failed: {str(e)}"}
-        
+
         # Validate generation output
         is_valid, msg = StageValidator.validate_generation_output(
             output_dir,
@@ -584,13 +583,13 @@ class IterativeFinetuner:
         if not is_valid:
             logger.warning(f"Generation validation warning: {msg}")
             # Don't fail completely, but log warning
-        
+
         # Parse results
         results_file = output_dir / "results.jsonl"
         if not results_file.exists():
             logger.error(f"Results file not found: {results_file}")
             return {"success": False, "error": "results_not_found"}
-        
+
         results = []
         with open(results_file, 'r') as f:
             for line in f:
@@ -600,26 +599,26 @@ class IterativeFinetuner:
                         results.append(json.loads(line))
                     except json.JSONDecodeError:
                         pass
-        
+
         # Post-process code files (accepted_code directory)
         accepted_code_dir = output_dir / "accepted_code"
         if accepted_code_dir.exists():
             logger.info("Post-processing generated code files to fix missing imports...")
             self._fix_generated_code(accepted_code_dir)
-            
+
             logger.info("Re-validating all generated code files...")
             results = self._revalidate_generated_models(results, accepted_code_dir)
         else:
             logger.warning(f"accepted_code directory not found: {accepted_code_dir}")
-        
+
         # Update results.jsonl with corrected validation status
         with open(results_file, 'w') as f:
             for r in results:
                 f.write(json.dumps(r) + '\n')
-        
+
         successful = [r for r in results if r.get("ok", False)]
         logger.info(f"After re-validation: {len(successful)}/{len(results)} models are valid")
-        
+
         return {
             "success": True,
             "output_dir": str(output_dir),
@@ -627,7 +626,7 @@ class IterativeFinetuner:
             "successful": len(successful),
             "results": results,
         }
-    
+
     def _fix_generated_code(self, accepted_code_dir: Path) -> None:
         """
         Post-process generated code files to fix common issues:
@@ -641,32 +640,32 @@ class IterativeFinetuner:
         """
         if not accepted_code_dir.exists():
             return
-        
+
         logger.info("Post-processing generated code files to fix missing imports...")
-        
+
         import re
-        
+
         required_imports = "import torch\nimport torch.nn as nn\n"
         fixed_count = 0
-        
+
         # Look for new_nn.py files in B* subdirectories
         code_files = list(accepted_code_dir.glob("B*/new_nn.py"))
         total_files = len(code_files)
         logger.info(f"Found {total_files} code files to process")
-        
+
         for code_file in sorted(code_files):
             try:
                 content = code_file.read_text()
                 original_content = content
-                
+
                 # Check if imports are missing
                 has_torch_import = "import torch" in content
                 has_nn_import = "import torch.nn" in content or "import torch.nn as nn" in content
                 has_f_import = "import torch.nn.functional as F" in content or "import torch.nn.functional" in content
-                
+
                 # Check if functional API is used (F.relu, F.max_pool2d, etc.)
                 uses_functional_api = bool(re.search(r'\bF\.(relu|max_pool2d|avg_pool2d|adaptive_avg_pool2d|dropout|sigmoid|tanh|softmax)', content))
-                
+
                 # Fix missing imports
                 if not has_torch_import or not has_nn_import:
                     logger.debug(f"  Missing imports in {code_file.name}, fixing...")
@@ -674,10 +673,10 @@ class IterativeFinetuner:
                     lines = content.split('\n')
                     filtered_lines = []
                     for line in lines:
-                        if not (line.strip().startswith("import torch") or 
+                        if not (line.strip().startswith("import torch") or
                                 line.strip().startswith("from torch")):
                             filtered_lines.append(line)
-                    
+
                     # Add required imports at the start
                     imports_to_add = required_imports
                     if uses_functional_api and not has_f_import:
@@ -698,7 +697,7 @@ class IterativeFinetuner:
                             break
                     lines.insert(insert_idx, "import torch.nn.functional as F")
                     content = '\n'.join(lines)
-                
+
                 # Remove duplicate class Net definitions (keep only the first one)
                 if content.count("class Net(") > 1:
                     lines = content.split('\n')
@@ -706,7 +705,7 @@ class IterativeFinetuner:
                     net_count = 0
                     in_net_class = False
                     skip_until_next_def = False
-                    
+
                     for line in lines:
                         if line.strip().startswith("class Net("):
                             net_count += 1
@@ -729,8 +728,8 @@ class IterativeFinetuner:
                         elif in_net_class:
                             # Check if we're leaving the class (next top-level definition)
                             if line.strip() and not line.startswith(' ') and not line.startswith('\t'):
-                                if (line.strip().startswith("class ") or 
-                                    (line.strip().startswith("def ") and not line.strip().startswith("def __"))):
+                                if (line.strip().startswith("class ") or
+                                        (line.strip().startswith("def ") and not line.strip().startswith("def __"))):
                                     in_net_class = False
                                     if not line.strip().startswith("class Net("):
                                         new_lines.append(line)
@@ -741,9 +740,9 @@ class IterativeFinetuner:
                         else:
                             # Outside Net class, keep all lines
                             new_lines.append(line)
-                    
+
                     content = '\n'.join(new_lines)
-                
+
                 # Remove duplicate function definitions (e.g., supported_hyperparameters)
                 if content.count("def supported_hyperparameters(") > 1:
                     lines = content.split('\n')
@@ -751,7 +750,7 @@ class IterativeFinetuner:
                     seen_supported_hyperparameters = False
                     in_function = False
                     skip_lines = False
-                    
+
                     for line in lines:
                         if re.search(r'^\s*def\s+supported_hyperparameters\s*\(', line):
                             if seen_supported_hyperparameters:
@@ -779,9 +778,9 @@ class IterativeFinetuner:
                                 # Empty line might be end of function
                                 in_function = False
                             new_lines.append(line)
-                    
+
                     content = '\n'.join(new_lines)
-                
+
                 # Replace F.adaptive_avg_pool2d with nn.AdaptiveAvgPool2d
                 # Pattern: x = F.adaptive_avg_pool2d(x, (1, 1))
                 # Replace with: x = nn.AdaptiveAvgPool2d((1, 1))(x)
@@ -792,22 +791,22 @@ class IterativeFinetuner:
                         r'nn.AdaptiveAvgPool2d((\2))(\1)',
                         content
                     )
-                
+
                 # Add missing required methods/functions for evaluation
                 has_supported_hyperparameters = re.search(r'\bdef\s+supported_hyperparameters\s*\(', content)
                 has_train_setup = re.search(r'\bdef\s+train_setup\s*\(', content)
                 has_learn = re.search(r'\bdef\s+learn\s*\(', content)
-                
+
                 if not has_supported_hyperparameters or not has_train_setup or not has_learn:
                     lines = content.split('\n')
-                    
+
                     # Find the Net class boundaries
                     class_start = None
                     class_end = None
                     forward_end = None
                     in_class = False
                     indent_level = None
-                    
+
                     for i, line in enumerate(lines):
                         if 'class Net(' in line:
                             class_start = i
@@ -826,7 +825,7 @@ class IterativeFinetuner:
                             # Find end of forward method
                             if re.search(r'\s+def\s+forward\s*\(', line):
                                 # Find end of forward method (next method or end of class)
-                                for j in range(i+1, len(lines)):
+                                for j in range(i + 1, len(lines)):
                                     if lines[j].strip():
                                         # Check if it's a method definition or end of class
                                         if not lines[j].startswith(' ') and not lines[j].startswith('\t'):
@@ -837,18 +836,18 @@ class IterativeFinetuner:
                                             break
                                 if forward_end:
                                     break
-                    
+
                     # If we didn't find class end, it's at the end of file
                     if class_end is None:
                         class_end = len(lines)
-                    
+
                     # If forward_end not found, use class_end
                     if forward_end is None:
                         forward_end = class_end
-                    
+
                     # Build additions list
                     additions = []
-                    
+
                     # Add train_setup and learn methods INSIDE the class (after forward)
                     if not has_train_setup:
                         additions.append('    def train_setup(self, prm):')
@@ -856,7 +855,7 @@ class IterativeFinetuner:
                         additions.append('        self.criteria = (nn.CrossEntropyLoss().to(self.device),)')
                         additions.append('        self.optimizer = torch.optim.SGD(self.parameters(), lr=prm[\'lr\'], momentum=prm[\'momentum\'])')
                         additions.append('')
-                    
+
                     if not has_learn:
                         additions.append('    def learn(self, train_data):')
                         additions.append('        self.train()')
@@ -869,7 +868,7 @@ class IterativeFinetuner:
                         additions.append('            torch.nn.utils.clip_grad_norm_(self.parameters(), 3)')
                         additions.append('            self.optimizer.step()')
                         additions.append('')
-                    
+
                     # Insert methods INSIDE the class (after forward, before class_end)
                     if additions:
                         # Ensure we're inserting inside the class
@@ -877,15 +876,15 @@ class IterativeFinetuner:
                         lines[insert_pos:insert_pos] = additions
                         # Update class_end since we added lines
                         class_end += len(additions)
-                    
+
                     # Add supported_hyperparameters function OUTSIDE Net class (after class ends)
                     if not has_supported_hyperparameters:
                         lines.insert(class_end, '')
                         lines.insert(class_end, 'def supported_hyperparameters():')
                         lines.insert(class_end + 1, "    return {'lr', 'momentum'}")
-                    
+
                     content = '\n'.join(lines)
-                
+
                 # Only write if content changed
                 if content != original_content:
                     code_file.write_text(content)
@@ -893,16 +892,16 @@ class IterativeFinetuner:
                     logger.debug(f"  ✓ Fixed {code_file.name}")
                 else:
                     logger.debug(f"  - {code_file.name} already has imports")
-                    
+
             except Exception as e:
                 logger.warning(f"Failed to fix {code_file.name}: {e}")
                 logger.debug(traceback.format_exc())
-        
+
         if fixed_count > 0:
             logger.info(f"Fixed {fixed_count}/{total_files} generated code files (added imports, removed duplicates)")
         else:
             logger.info(f"All {total_files} code files already have required imports")
-    
+
     def _revalidate_generated_models(self, results: List[Dict[str, Any]], accepted_code_dir: Path) -> List[Dict[str, Any]]:
         """
         Re-validate all generated code files.
@@ -919,35 +918,35 @@ class IterativeFinetuner:
         """
         import torch
         import torch.nn as nn
-        
+
         if not accepted_code_dir.exists():
             logger.warning(f"Accepted code directory not found: {accepted_code_dir}")
             return results
-        
+
         logger.info(f"Re-validating {len(results)} models from {accepted_code_dir}...")
-        
+
         # Build a map of index -> result for easy lookup
         results_map = {i: r for i, r in enumerate(results)}
         updated_count = 0
         newly_valid_count = 0
-        
+
         for i, result in enumerate(results):
             model_id = f"B{i}"  # Model directories are named B0, B1, etc.
             model_dir = accepted_code_dir / model_id
             code_file = model_dir / "new_nn.py"
-            
+
             # Skip if already marked as ok and file exists
             if result.get("ok", False) and code_file.exists():
                 continue
-            
+
             # If code file doesn't exist, skip
             if not code_file.exists():
                 continue
-            
+
             # Re-validate this model
             try:
                 code = code_file.read_text()
-                
+
                 # Build execution namespace (same as nn_sftcodegen_rag.py)
                 g = {
                     "__name__": "__gen__",
@@ -963,23 +962,23 @@ class IterativeFinetuner:
                     "Dict": dict,
                     "Tensor": torch.Tensor,
                 }
-                
+
                 # Execute code
                 exec(code, g)
-                
+
                 # Get Net class
                 Net = g.get("Net")
                 if not Net:
                     continue  # Still invalid
-                
+
                 # Check required functions/methods
                 supported_hyperparameters = g.get("supported_hyperparameters")
                 if not supported_hyperparameters:
                     continue  # Still invalid
-                
+
                 if not hasattr(Net, 'train_setup') or not hasattr(Net, 'learn'):
                     continue  # Still invalid
-                
+
                 # Try instantiation
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
                 C, H, W = 3, 32, 32
@@ -987,46 +986,46 @@ class IterativeFinetuner:
                 in_shape = (1, C, H, W)
                 out_shape = (num_classes,)
                 prm = {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9}
-                
+
                 try:
                     model = Net(in_shape, out_shape, prm, device)
                     model.to(device)
-                    
+
                     # Try forward pass
                     x = torch.randn(1, 3, 32, 32).to(device)
                     with torch.no_grad():
                         output = model(x)
-                    
+
                     # Check output shape
                     if output.shape != (1, num_classes):
                         continue  # Still invalid
-                    
+
                     # Model is valid!
                     was_invalid = not result.get("ok", False)
                     result["ok"] = True
-                    
+
                     # Update file path if it was None (model was marked as failed)
                     if result.get("file") is None:
                         result["file"] = str(code_file)
-                    
+
                     updated_count += 1
-                    
+
                     if was_invalid:
                         newly_valid_count += 1
                         logger.info(f"  ✓ {model_id}: Re-validated as valid (was marked as failed)")
-                    
+
                 except Exception as e:
                     # Instantiation or forward pass failed - still invalid
                     continue
-                    
+
             except Exception as e:
                 # Code execution failed - still invalid
                 continue
-        
+
         logger.info(f"Re-validation complete: {updated_count} models updated ({newly_valid_count} newly validated)")
-        
+
         return results
-    
+
     def evaluate_models(self, cycle: int, generation_dir: Path, starting_checksum: int = 0) -> Dict[str, Any]:
         """
         Evaluate generated models using NNEval.py.
@@ -1040,22 +1039,22 @@ class IterativeFinetuner:
             Dictionary with evaluation results (accuracies, etc.)
         """
         logger.info("")
-        logger.info("="*80)
+        logger.info("=" * 80)
         logger.info(f"CYCLE {cycle}: MODEL EVALUATION")
-        logger.info("="*80)
+        logger.info("=" * 80)
         logger.info(f"Starting checksum: {starting_checksum}")
-        
+
         # Prepare models for NNEval
         nneval_dir = self.output_dir / f"cycle_{cycle}" / "nneval"
         nneval_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Check if evaluation already exists - will be handled by evaluate_cycle_models.py
         # which will skip already-evaluated models and only evaluate missing ones
         evaluation_results_file = nneval_dir.parent / "evaluation_results.json"
         if evaluation_results_file.exists():
             logger.info(f"✓ Existing evaluation results found: {evaluation_results_file}")
             logger.info("Will check for missing models and only evaluate those")
-        
+
         # Read generation results
         results_file = generation_dir / "results.jsonl"
         results = []
@@ -1067,7 +1066,7 @@ class IterativeFinetuner:
                         results.append(json.loads(line))
                     except json.JSONDecodeError:
                         pass
-        
+
         # Models are in generation_dir/accepted_code (B0, B1, etc.)
         accepted_code_dir = generation_dir / "accepted_code"
         if not accepted_code_dir.exists():
@@ -1077,11 +1076,11 @@ class IterativeFinetuner:
                 "models_trained": 0,
                 "accuracies": [],
             }
-        
+
         # Rank models by structural quality before evaluation
         logger.info("Ranking models by structural quality...")
         reranker = StructuralReranker()
-        
+
         valid_models = []
         for i, rec in enumerate(results):
             if not rec.get("ok", False):
@@ -1092,7 +1091,7 @@ class IterativeFinetuner:
             if not code_path.exists():
                 continue
             valid_models.append((i, rec, code_path))
-        
+
         if len(valid_models) == 0:
             logger.warning("No valid models to evaluate")
             return {
@@ -1100,17 +1099,17 @@ class IterativeFinetuner:
                 "models_trained": 0,
                 "accuracies": [],
             }
-        
+
         # Score all valid models
         scored_models = []
         for i, rec, code_path in valid_models:
             code = code_path.read_text()
             score_result = reranker.score_model(code, rec.get("id", f"gen_{i}"))
             scored_models.append((i, rec, code_path, score_result["score"], score_result))
-        
+
         # Sort by score descending (best first)
         scored_models.sort(key=lambda x: x[3], reverse=True)
-        
+
         # Save rankings
         rankings_file = generation_dir / "structural_rankings.json"
         rankings_data = [
@@ -1125,14 +1124,14 @@ class IterativeFinetuner:
         with open(rankings_file, 'w') as f:
             json.dump(rankings_data, f, indent=2)
         logger.info(f"Saved structural rankings to {rankings_file}")
-        
+
         # Log top models
         logger.info("Top 5 models by structural score:")
         for rank, (idx, rec, code_path, score, details) in enumerate(scored_models[:5], 1):
             logger.info(f"  {rank}. {code_path.name} - Score: {score:.2f}")
             if "breakdown" in details:
                 logger.info(f"     Patterns: {details['breakdown']}")
-        
+
         # Prepare models for evaluation (in ranked order)
         # Apply starting_checksum offset for model naming
         # IMPORTANT: Use original idx (not sorted position) to preserve mapping
@@ -1142,11 +1141,11 @@ class IterativeFinetuner:
             eval_idx = starting_checksum + idx
             model_dir = nneval_dir / f"gen_{eval_idx:04d}"
             model_dir.mkdir(exist_ok=True)
-            
+
             # Copy code
             code = code_path.read_text()
             (model_dir / "new_nn.py").write_text(code)
-            
+
             # Create metadata (include structural score)
             metadata = {
                 "source": str(code_path),
@@ -1157,18 +1156,18 @@ class IterativeFinetuner:
                 "structural_patterns": details.get("patterns", {}),
             }
             (model_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
-            
+
             prepared += 1
-        
+
         logger.info(f"Prepared {prepared} models for training (ranked by structural quality)")
-        
+
         if prepared == 0:
             return {
                 "success": True,
                 "models_trained": 0,
                 "accuracies": [],
             }
-        
+
         # Run evaluation using Eval API wrapper (bypasses NNEval argument bug)
         # NOTE: NNEval.py has an argument misalignment bug that prevents custom_synth_dir
         # from being passed correctly. We use a wrapper script that directly calls Eval API.
@@ -1177,9 +1176,9 @@ class IterativeFinetuner:
             "--cycle", str(cycle),
             "--nneval_dir", str(nneval_dir),
         ]
-        
+
         logger.info(f"Running evaluation wrapper: {' '.join(cmd)}")
-        
+
         # Retry evaluation with exponential backoff
         def run_evaluation_cmd():
             # Stream output in real-time
@@ -1196,7 +1195,7 @@ class IterativeFinetuner:
                 # Don't raise immediately - allow partial result collection
                 # The validation step will catch if no results are available
             return result
-        
+
         evaluation_succeeded = True
         try:
             result = RetryHandler.retry_with_backoff(
@@ -1227,7 +1226,7 @@ class IterativeFinetuner:
             logger.warning(f"Model evaluation failed with unexpected error: {e}")
             logger.warning("Attempting to collect partial evaluation results...")
             # Continue to result collection - will handle empty results gracefully
-        
+
         # Validate evaluation output
         is_valid, msg = StageValidator.validate_evaluation_output(nneval_dir, min_expected=1)
         if not is_valid:
@@ -1236,12 +1235,12 @@ class IterativeFinetuner:
             else:
                 logger.warning(f"Evaluation failed, but checking for partial results: {msg}")
             # Continue but log warning - will handle empty results gracefully
-        
+
         # Load results from evaluation_results.json (written by evaluate_cycle_models.py)
         # This avoids loading stale results from previous runs
         evaluation_results_file = nneval_dir.parent / "evaluation_results.json"
         accuracies = []
-        
+
         if evaluation_results_file.exists():
             try:
                 eval_data = json.loads(evaluation_results_file.read_text())
@@ -1254,16 +1253,16 @@ class IterativeFinetuner:
                             "code_file": model["code_file"],
                             "metadata_file": "",  # Not used in current flow
                         })
-                        logger.info(f"Model {model['model_id']}: {model['accuracy']*100:.2f}% accuracy")
+                        logger.info(f"Model {model['model_id']}: {model['accuracy'] * 100:.2f}% accuracy")
             except Exception as e:
                 logger.error(f"Failed to load evaluation_results.json: {e}")
                 logger.warning("Falling back to scanning nneval directory...")
-                
+
                 # Fallback: Scan directory for 1.json files (old behavior)
                 for model_dir in nneval_dir.glob("gen_*"):
                     if not model_dir.is_dir():
                         continue
-                    
+
                     result_file = model_dir / "1.json"
                     if result_file.exists():
                         try:
@@ -1277,17 +1276,17 @@ class IterativeFinetuner:
                                         "metadata_file": str(model_dir / "metadata.json"),
                                         "code_file": str(model_dir / "new_nn.py"),
                                     })
-                                    logger.info(f"Model {model_dir.name}: {acc*100:.2f}% accuracy")
+                                    logger.info(f"Model {model_dir.name}: {acc * 100:.2f}% accuracy")
                         except Exception as e2:
                             logger.debug(f"Failed to read {result_file}: {e2}")
         else:
             logger.warning(f"evaluation_results.json not found at {evaluation_results_file}")
             logger.warning("Expected file to be created by evaluate_cycle_models.py")
-        
+
         if len(accuracies) == 0:
             logger.warning("No evaluation results found. This may indicate evaluation failed completely.")
             logger.warning("Cycle will continue but no models will be selected for training.")
-        
+
         # Load the full evaluation_results.json to get the "models" format expected by filter_successful_novel
         evaluation_results_file = nneval_dir.parent / "evaluation_results.json"
         if evaluation_results_file.exists():
@@ -1304,7 +1303,7 @@ class IterativeFinetuner:
                 }
             except Exception as e:
                 logger.warning(f"Failed to load full evaluation_results.json: {e}")
-        
+
         # Fallback: Convert accuracies to models format
         models_list = []
         for acc_info in accuracies:
@@ -1314,7 +1313,7 @@ class IterativeFinetuner:
                 "accuracy": acc_info["accuracy"],
                 "code_file": acc_info.get("code_file", ""),
             })
-        
+
         return {
             "success": True,  # Always return success - empty results handled gracefully
             "models_trained": len(accuracies),
@@ -1323,12 +1322,12 @@ class IterativeFinetuner:
             "best_accuracy": max([a["accuracy"] for a in accuracies]) if accuracies else 0.0,
             "avg_accuracy": sum([a["accuracy"] for a in accuracies]) / len(accuracies) if accuracies else 0.0,
         }
-    
+
     def filter_successful_novel(
-        self,
-        generation_results: Dict[str, Any],
-        evaluation_results: Dict[str, Any],
-        starting_checksum: int = 0,
+            self,
+            generation_results: Dict[str, Any],
+            evaluation_results: Dict[str, Any],
+            starting_checksum: int = 0,
     ) -> List[Dict[str, Any]]:
         """
         Filter for successful AND novel models with adaptive threshold and top-K fallback.
@@ -1342,34 +1341,34 @@ class IterativeFinetuner:
             List of selected models with metadata
         """
         import numpy as np
-        
+
         # Load from evaluation_results["models"] (written by evaluate_cycle_models.py)
         # Filter only successful evaluations with accuracy
         accuracies = {a["model_id"]: a for a in evaluation_results.get("models", []) if a.get("success", False) and "accuracy" in a}
-        
+
         # Build candidate list with novelty pre-check
         candidates = []
         results_list = generation_results.get("results", [])
         logger.info(f"Building candidates from {len(results_list)} generation results")
         logger.info(f"Accuracies dict has {len(accuracies)} successful evaluations")
         logger.info(f"Starting checksum: {starting_checksum}")
-        
+
         if not results_list:
             logger.error("ERROR: generation_results.get('results', []) returned empty list!")
             logger.error(f"generation_results keys: {list(generation_results.keys())}")
             logger.error(f"generation_results type: {type(generation_results)}")
-        
+
         for i, result in enumerate(results_list):
             if not result.get("ok", False):
                 logger.debug(f"  gen_{i:04d}: skipped (ok=False)")
                 continue
-            
+
             # Use starting_checksum offset to match evaluation model_ids
             model_id = f"gen_{starting_checksum + i:04d}"
             if model_id not in accuracies:
                 logger.debug(f"  gen_{i:04d} → {model_id}: skipped (not in accuracies)")
                 continue
-            
+
             acc_info = accuracies[model_id]
             accuracy = acc_info["accuracy"]
             code_file_str = acc_info["code_file"]
@@ -1378,7 +1377,7 @@ class IterativeFinetuner:
             if not code_path.is_absolute():
                 # If relative, resolve relative to current working directory
                 code_path = code_path.resolve()
-            
+
             # Check novelty if enabled
             is_novel = True
             if self.novelty_check_enabled:
@@ -1390,14 +1389,14 @@ class IterativeFinetuner:
                         code = code_path.read_text()
                         is_novel = self.novelty_checker.is_novel(code, model_id)
                         if not is_novel:
-                            logger.info(f"Model {model_id} rejected: not novel (acc={accuracy*100:.2f}%)")
+                            logger.info(f"Model {model_id} rejected: not novel (acc={accuracy * 100:.2f}%)")
                         else:
-                            logger.debug(f"Model {model_id} is novel (acc={accuracy*100:.2f}%)")
+                            logger.debug(f"Model {model_id} is novel (acc={accuracy * 100:.2f}%)")
                 except Exception as e:
                     logger.error(f"Error checking novelty for {model_id}: {e}")
                     logger.debug(traceback.format_exc())
                     is_novel = False  # Fail-safe: mark as non-novel on error
-            
+
             candidates.append({
                 "model_id": model_id,
                 "code_file": str(code_path),  # Ensure it's a string, not Path
@@ -1406,102 +1405,102 @@ class IterativeFinetuner:
                 "metadata": {k: (str(v) if isinstance(v, Path) else v) for k, v in acc_info.items()},  # Convert any Path objects to strings
                 "is_novel": is_novel,
             })
-            logger.info(f"  Added candidate: {model_id}, acc={accuracy*100:.2f}%, novel={is_novel}, file={code_path.name}")
-        
+            logger.info(f"  Added candidate: {model_id}, acc={accuracy * 100:.2f}%, novel={is_novel}, file={code_path.name}")
+
         logger.info(f"Built {len(candidates)} candidates from generation and evaluation results")
-        
+
         # Sort by accuracy descending
         candidates.sort(key=lambda x: x["accuracy"], reverse=True)
-        
+
         # Compute effective threshold
         effective_threshold = self.accuracy_threshold
         if self.adaptive_threshold_enabled and len(candidates) >= 10:
             all_accs = [c["accuracy"] for c in candidates]
             p65 = np.percentile(all_accs, 65)
             effective_threshold = max(self.accuracy_threshold, p65)
-            logger.info(f"Adaptive threshold: {effective_threshold*100:.2f}% (65th percentile: {p65*100:.2f}%)")
+            logger.info(f"Adaptive threshold: {effective_threshold * 100:.2f}% (65th percentile: {p65 * 100:.2f}%)")
         else:
-            logger.info(f"Using fixed threshold: {effective_threshold*100:.2f}%")
-        
+            logger.info(f"Using fixed threshold: {effective_threshold * 100:.2f}%")
+
         # Phase 1: Select all novel models above effective threshold
         selected = []
-        logger.info(f"Filtering {len(candidates)} candidates with threshold {effective_threshold*100:.2f}%")
+        logger.info(f"Filtering {len(candidates)} candidates with threshold {effective_threshold * 100:.2f}%")
         for candidate in candidates:
             is_above_threshold = candidate["accuracy"] >= effective_threshold
-            logger.debug(f"  {candidate['model_id']}: acc={candidate['accuracy']*100:.2f}%, novel={candidate['is_novel']}, above_threshold={is_above_threshold}")
+            logger.debug(f"  {candidate['model_id']}: acc={candidate['accuracy'] * 100:.2f}%, novel={candidate['is_novel']}, above_threshold={is_above_threshold}")
             if candidate["is_novel"] and is_above_threshold:
                 selected.append(candidate)
-                logger.info(f"Model {candidate['model_id']} selected: acc={candidate['accuracy']*100:.2f}%, params={candidate['params']}")
-        
+                logger.info(f"Model {candidate['model_id']} selected: acc={candidate['accuracy'] * 100:.2f}%, params={candidate['params']}")
+
         # Phase 2: Top-K fallback if needed
         fallback_added = 0
         if len(selected) < self.min_selected_k:
             logger.warning(f"Only {len(selected)} models above threshold (target: {self.min_selected_k})")
-            logger.info(f"Applying top-K fallback (fallback threshold: {self.fallback_threshold*100:.2f}%)")
-            
+            logger.info(f"Applying top-K fallback (fallback threshold: {self.fallback_threshold * 100:.2f}%)")
+
             for candidate in candidates:
                 if len(selected) >= self.min_selected_k:
                     break
-                
+
                 # Skip if already selected or below fallback threshold
                 if candidate in selected or candidate["accuracy"] < self.fallback_threshold:
                     continue
-                
+
                 # Only select novel models in fallback
                 if candidate["is_novel"]:
                     selected.append(candidate)
                     fallback_added += 1
-                    logger.info(f"Model {candidate['model_id']} selected (fallback): acc={candidate['accuracy']*100:.2f}%")
-            
+                    logger.info(f"Model {candidate['model_id']} selected (fallback): acc={candidate['accuracy'] * 100:.2f}%")
+
             if fallback_added > 0:
                 logger.info(f"Added {fallback_added} models via fallback (total: {len(selected)})")
-        
+
         # Re-sort final selection by accuracy
         selected.sort(key=lambda x: x["accuracy"], reverse=True)
-        
+
         logger.info(f"Final selection: {len(selected)} models out of {len(accuracies)} evaluated")
         if len(selected) > 0:
-            logger.info(f"Accuracy range: {selected[0]['accuracy']*100:.2f}% - {selected[-1]['accuracy']*100:.2f}%")
+            logger.info(f"Accuracy range: {selected[0]['accuracy'] * 100:.2f}% - {selected[-1]['accuracy'] * 100:.2f}%")
         else:
             logger.warning("No models selected - all evaluations failed or below threshold")
-        
+
         # Save novelty checker cache
         if self.novelty_check_enabled:
             self.novelty_checker.save_cache()
-        
+
         return selected
-    
+
     def convert_to_training_data(
-        self,
-        selected_models: List[Dict[str, Any]],
-        cycle: int,
-        checkpoint: str,
+            self,
+            selected_models: List[Dict[str, Any]],
+            cycle: int,
+            checkpoint: str,
     ) -> List[Dict[str, Any]]:
         """Convert selected models to chat training examples."""
         logger.info(f"Converting {len(selected_models)} models to training examples...")
-        
+
         chat_examples = []
         for model_info in selected_models:
             code_path = Path(model_info["code_file"])
             code = code_path.read_text()
-            
+
             metadata = {
                 "accuracy": model_info["accuracy"],
                 "params": model_info["params"],
                 "cycle": cycle,
                 "checkpoint": checkpoint,
             }
-            
+
             chat_example = self.data_manager.convert_code_to_chat_example(
                 code,
                 model_info["model_id"],
                 metadata
             )
-            
+
             chat_examples.append(chat_example)
-        
+
         return chat_examples
-    
+
     def generate_final_report(self) -> Dict[str, Any]:
         """
         Generate analysis, plots, and summary report after pipeline completion.
@@ -1510,16 +1509,16 @@ class IterativeFinetuner:
             Dictionary with success status and list of generated files
         """
         logger.info("")
-        logger.info("="*80)
+        logger.info("=" * 80)
         logger.info("GENERATING FINAL ANALYSIS AND REPORTS")
-        logger.info("="*80)
-        
+        logger.info("=" * 80)
+
         results = {
             "success": True,
             "files_generated": [],
             "errors": []
         }
-        
+
         try:
             # Step 1: Run cycle analysis (generates cycle_analysis.json and plots)
             logger.info("Running cycle analysis...")
@@ -1527,14 +1526,14 @@ class IterativeFinetuner:
                 "python", "-m", "ab.gpt.iterative_pipeline.analyze_cycles",
                 "--results_dir", str(self.output_dir)
             ]
-            
+
             analyze_result = subprocess.run(
                 analyze_cmd,
                 capture_output=True,
                 text=True,
                 check=False
             )
-            
+
             if analyze_result.returncode == 0:
                 logger.info("✓ Cycle analysis completed")
                 results["files_generated"].extend([
@@ -1547,21 +1546,21 @@ class IterativeFinetuner:
                 error_msg = f"Cycle analysis failed: {analyze_result.stderr}"
                 logger.warning(error_msg)
                 results["errors"].append(error_msg)
-            
+
             # Step 2: Generate Wilson CI plots
             logger.info("Generating Wilson confidence interval plots...")
             wilson_cmd = [
                 "python", "-m", "ab.gpt.iterative_pipeline.plot_wilson_ci",
                 "--results_dir", str(self.output_dir)
             ]
-            
+
             wilson_result = subprocess.run(
                 wilson_cmd,
                 capture_output=True,
                 text=True,
                 check=False
             )
-            
+
             if wilson_result.returncode == 0:
                 logger.info("✓ Wilson CI plots generated")
                 plots_dir = self.output_dir / "plots"
@@ -1573,7 +1572,7 @@ class IterativeFinetuner:
                 error_msg = f"Wilson CI plotting failed: {wilson_result.stderr}"
                 logger.warning(error_msg)
                 results["errors"].append(error_msg)
-            
+
             # Step 3: Generate text summary
             logger.info("Creating text summary...")
             try:
@@ -1585,68 +1584,68 @@ class IterativeFinetuner:
                 error_msg = f"Failed to create text summary: {e}"
                 logger.warning(error_msg)
                 results["errors"].append(error_msg)
-            
+
             # Overall status
             if results["errors"]:
                 logger.warning(f"Report generation completed with {len(results['errors'])} errors")
                 results["success"] = False
             else:
                 logger.info(f"✓ All reports generated successfully ({len(results['files_generated'])} files)")
-            
+
             return results
-            
+
         except Exception as e:
             logger.error(f"Unexpected error during report generation: {e}")
             results["success"] = False
             results["errors"].append(str(e))
             return results
-    
+
     def _generate_text_summary(self):
         """Generate human-readable text summary of pipeline results."""
         summary_file = self.output_dir / "pipeline_summary.txt"
-        
+
         with open(summary_file, 'w') as f:
-            f.write("="*80 + "\n")
+            f.write("=" * 80 + "\n")
             f.write("ITERATIVE FINE-TUNING PIPELINE - SUMMARY REPORT\n")
-            f.write("="*80 + "\n\n")
+            f.write("=" * 80 + "\n\n")
             f.write(f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"Output Directory: {self.output_dir}\n\n")
-            
+
             # Configuration
-            f.write("-"*80 + "\n")
+            f.write("-" * 80 + "\n")
             f.write("CONFIGURATION\n")
-            f.write("-"*80 + "\n")
+            f.write("-" * 80 + "\n")
             f.write(f"Cycles: {self.cycles}\n")
             f.write(f"Models per cycle: {self.models_per_cycle}\n")
             f.write(f"Samples per prompt: {self.samples_per_prompt}\n")
-            f.write(f"Accuracy threshold: {self.accuracy_threshold*100:.1f}%\n")
+            f.write(f"Accuracy threshold: {self.accuracy_threshold * 100:.1f}%\n")
             f.write(f"Optimized training: {self.use_optimized_training}\n")
             f.write(f"Novelty checking: {self.novelty_check_enabled}\n")
             f.write(f"LLM config: {self.llm_conf}\n")
             f.write("\n")
-            
+
             # Results per cycle
-            f.write("-"*80 + "\n")
+            f.write("-" * 80 + "\n")
             f.write("CYCLE RESULTS\n")
-            f.write("-"*80 + "\n\n")
-            
+            f.write("-" * 80 + "\n\n")
+
             successful_cycles = [r for r in self.cycle_results if r.get("success")]
-            
+
             for result in self.cycle_results:
                 if result.get("success"):
                     cycle = result["cycle"]
                     eval_data = result.get("evaluation", {})
                     gen_data = result.get("generation", {})
                     train_data = result.get("training", {})
-                    
+
                     f.write(f"Cycle {cycle}:\n")
                     f.write(f"  Generation:\n")
                     f.write(f"    Total generated: {gen_data.get('total_generated', 0)}\n")
-                    f.write(f"    Success rate: {eval_data.get('success_rate', 0)*100:.1f}%\n")
+                    f.write(f"    Success rate: {eval_data.get('success_rate', 0) * 100:.1f}%\n")
                     f.write(f"  Evaluation:\n")
                     f.write(f"    Models trained: {eval_data.get('models_trained', 0)}\n")
-                    f.write(f"    Best accuracy: {eval_data.get('best_accuracy', 0)*100:.2f}%\n")
-                    f.write(f"    Avg accuracy: {eval_data.get('avg_accuracy', 0)*100:.2f}%\n")
+                    f.write(f"    Best accuracy: {eval_data.get('best_accuracy', 0) * 100:.2f}%\n")
+                    f.write(f"    Avg accuracy: {eval_data.get('avg_accuracy', 0) * 100:.2f}%\n")
                     f.write(f"  Selection:\n")
                     f.write(f"    Models selected: {gen_data.get('selected_for_training', 0)}\n")
                     f.write(f"    Novel models: {gen_data.get('novel', 0)}\n")
@@ -1658,54 +1657,54 @@ class IterativeFinetuner:
                     cycle = result.get("cycle", "?")
                     error = result.get("error", "unknown")
                     f.write(f"Cycle {cycle}: FAILED ({error})\n\n")
-            
+
             # Summary statistics
             if successful_cycles:
-                f.write("-"*80 + "\n")
+                f.write("-" * 80 + "\n")
                 f.write("SUMMARY STATISTICS\n")
-                f.write("-"*80 + "\n")
-                
+                f.write("-" * 80 + "\n")
+
                 first = successful_cycles[0]
                 last = successful_cycles[-1]
-                
+
                 f.write(f"Total successful cycles: {len(successful_cycles)}\n")
                 f.write(f"Total pipeline time: {sum(r.get('cycle_time_minutes', 0) for r in successful_cycles) / 60:.1f} hours\n\n")
-                
+
                 f.write("Improvement (First → Last Cycle):\n")
-                f.write(f"  Success rate: {first['evaluation']['success_rate']*100:.1f}% → {last['evaluation']['success_rate']*100:.1f}% ")
-                f.write(f"({(last['evaluation']['success_rate'] - first['evaluation']['success_rate'])*100:+.1f}%)\n")
-                f.write(f"  Best accuracy: {first['evaluation']['best_accuracy']*100:.2f}% → {last['evaluation']['best_accuracy']*100:.2f}% ")
-                f.write(f"({(last['evaluation']['best_accuracy'] - first['evaluation']['best_accuracy'])*100:+.2f}%)\n")
+                f.write(f"  Success rate: {first['evaluation']['success_rate'] * 100:.1f}% → {last['evaluation']['success_rate'] * 100:.1f}% ")
+                f.write(f"({(last['evaluation']['success_rate'] - first['evaluation']['success_rate']) * 100:+.1f}%)\n")
+                f.write(f"  Best accuracy: {first['evaluation']['best_accuracy'] * 100:.2f}% → {last['evaluation']['best_accuracy'] * 100:.2f}% ")
+                f.write(f"({(last['evaluation']['best_accuracy'] - first['evaluation']['best_accuracy']) * 100:+.2f}%)\n")
                 f.write(f"  Training examples: {first['training']['total_examples']} → {last['training']['total_examples']} ")
                 f.write(f"(+{last['training']['total_examples'] - first['training']['total_examples']})\n")
-            
-            f.write("\n" + "-"*80 + "\n")
+
+            f.write("\n" + "-" * 80 + "\n")
             f.write("GENERATED FILES\n")
-            f.write("-"*80 + "\n")
+            f.write("-" * 80 + "\n")
             f.write(f"Detailed analysis: {self.output_dir / 'cycle_analysis.json'}\n")
             f.write(f"CSV metrics: {self.output_dir / 'cycle_metrics.csv'}\n")
             f.write(f"Main plots: {self.output_dir / 'cycle_analysis.png'}\n")
             f.write(f"Wilson CI plots: {self.output_dir / 'plots/'}\n")
             f.write(f"All results: {self.output_dir / 'all_cycles_results.json'}\n")
-            f.write("\n" + "="*80 + "\n")
-    
+            f.write("\n" + "=" * 80 + "\n")
+
     def run_cycle(self, cycle: int) -> Dict[str, Any]:
         """Run a single fine-tuning cycle."""
         logger.info("")
-        logger.info("="*80)
+        logger.info("=" * 80)
         logger.info(f"STARTING CYCLE {cycle}")
-        logger.info("="*80)
-        
+        logger.info("=" * 80)
+
         cycle_start = time.time()
-        
+
         # Get training data directory for this cycle
         # For cycle 1, use base_data_dir (curation_output/chat_data)
         # For subsequent cycles, use augmented data from previous cycle
         if cycle == 1:
             data_dir = self.base_data_dir
         else:
-            data_dir = self.data_manager.get_training_data_dir(cycle-1, self.output_dir)
-        
+            data_dir = self.data_manager.get_training_data_dir(cycle - 1, self.output_dir)
+
         # Step 1: Fine-tune (skip if checkpoint exists)
         checkpoint_path = self.output_dir / f"cycle_{cycle}" / "checkpoint"
         if checkpoint_path.exists() and (checkpoint_path / "adapter_config.json").exists():
@@ -1721,7 +1720,7 @@ class IterativeFinetuner:
                     "error": ft_result.get("error", "unknown"),
                 }
             checkpoint_path = Path(ft_result["checkpoint_dir"])
-        
+
         # Step 2: Generate models (skip if generation results exist)
         generation_dir = self.output_dir / f"cycle_{cycle}" / "generation"
         results_file = generation_dir / "results.jsonl"
@@ -1754,7 +1753,7 @@ class IterativeFinetuner:
                     "success": False,
                     "error": gen_result.get("error", "unknown"),
                 }
-        
+
         # Step 3: Evaluate models
         # Calculate starting checksum based on previous cycles
         starting_checksum = 0
@@ -1767,10 +1766,10 @@ class IterativeFinetuner:
                         starting_checksum += prev_results.get("generation", {}).get("total_generated", 0)
                 except Exception as e:
                     logger.warning(f"Could not read previous cycle results: {e}")
-        
+
         logger.info(f"Starting checksum for cycle {cycle} evaluation: {starting_checksum}")
         eval_result = self.evaluate_models(cycle, Path(gen_result["output_dir"]), starting_checksum=starting_checksum)
-        
+
         # Step 4: Filter successful & novel models
         # Ensure gen_result has 'results' key - reload if missing (safety check for resume scenarios)
         if "results" not in gen_result or not gen_result.get("results"):
@@ -1789,10 +1788,10 @@ class IterativeFinetuner:
                 logger.info(f"Reloaded {len(results)} results from {results_file}")
             else:
                 logger.error(f"Cannot reload results - file not found: {results_file}")
-        
+
         logger.info(f"Filtering with {len(gen_result.get('results', []))} generation results")
         selected_models = self.filter_successful_novel(gen_result, eval_result, starting_checksum=starting_checksum)
-        
+
         # Step 5: Convert to training data
         if selected_models:
             # Ensure checkpoint_path is a string (not Path) for JSON serialization
@@ -1802,14 +1801,14 @@ class IterativeFinetuner:
                 cycle,
                 checkpoint_str
             )
-            
+
             # Step 6: Update training data
             augment_stats = self.data_manager.augment_training_data(
                 chat_examples,
                 cycle,
                 self.output_dir
             )
-            
+
             # Step 6b: Mark selected models as seen in novelty checker
             # (Only models actually added to training should be in seen set)
             if self.novelty_check_enabled:
@@ -1817,7 +1816,7 @@ class IterativeFinetuner:
                     code_path = Path(model_info["code_file"])
                     code = code_path.read_text()
                     self.novelty_checker.mark_as_seen(
-                        code, 
+                        code,
                         model_id=model_info["model_id"],
                         source=f"cycle_{cycle}_selected"
                     )
@@ -1832,9 +1831,9 @@ class IterativeFinetuner:
                 cycle,
                 self.output_dir
             )
-        
+
         cycle_time = time.time() - cycle_start
-        
+
         # Compile results
         result = {
             "cycle": cycle,
@@ -1859,31 +1858,31 @@ class IterativeFinetuner:
             },
             "cycle_time_minutes": cycle_time / 60,
         }
-        
+
         # Save cycle results
         cycle_results_file = self.output_dir / f"cycle_{cycle}" / "cycle_results.json"
         cycle_results_file.parent.mkdir(parents=True, exist_ok=True)
         cycle_results_file.write_text(json.dumps(result, indent=2))
-        
+
         return result
-    
+
     def run(self):
         """Run the full iterative fine-tuning pipeline."""
-        logger.info("="*80)
+        logger.info("=" * 80)
         logger.info("ITERATIVE FINE-TUNING PIPELINE")
-        logger.info("="*80)
+        logger.info("=" * 80)
         logger.info(f"Base data: {self.base_data_dir}")
         logger.info(f"Output dir: {self.output_dir}")
         logger.info(f"Cycles: {self.cycles}")
         logger.info(f"Models per cycle: {self.models_per_cycle}")
         logger.info(f"Samples per prompt: {self.samples_per_prompt}")
-        logger.info(f"Accuracy threshold: {self.accuracy_threshold*100:.1f}%")
+        logger.info(f"Accuracy threshold: {self.accuracy_threshold * 100:.1f}%")
         logger.info(f"Novelty check: {self.novelty_check_enabled}")
         logger.info(f"Max retries per operation: {self.max_retries}")
         if self.resume_from_cycle:
             logger.info(f"Resuming from cycle: {self.resume_from_cycle}")
-        logger.info("="*80)
-        
+        logger.info("=" * 80)
+
         # Determine starting cycle
         start_cycle = 1
         if self.resume_from_cycle:
@@ -1898,24 +1897,24 @@ class IterativeFinetuner:
                     except Exception as e:
                         logger.warning(f"Failed to load results for cycle {cycle}: {e}")
             logger.info(f"Loaded {len(self.cycle_results)} previous cycle results")
-        
+
         # Run cycles
         for cycle in range(start_cycle, self.cycles + 1):
             try:
                 result = self.run_cycle(cycle)
                 self.cycle_results.append(result)
-                
+
                 # Save intermediate results after each cycle
                 all_results_file = self.output_dir / "all_cycles_results.json"
                 all_results_file.write_text(json.dumps(self.cycle_results, indent=2))
                 logger.info(f"Saved intermediate results to {all_results_file}")
-                
+
                 if not result.get("success", False):
                     error = result.get("error", "unknown")
                     logger.error(f"Cycle {cycle} failed: {error}")
-                    logger.error("="*80)
+                    logger.error("=" * 80)
                     logger.error("PIPELINE STOPPED DUE TO CYCLE FAILURE")
-                    logger.error("="*80)
+                    logger.error("=" * 80)
                     logger.error(f"Failed cycle: {cycle}")
                     logger.error(f"Error: {error}")
                     logger.error("")
@@ -1923,15 +1922,15 @@ class IterativeFinetuner:
                     logger.error(f"  python iterative_finetune.py --resume_from_cycle {cycle + 1} ...")
                     logger.error("")
                     logger.error("The pipeline has saved all results up to this point.")
-                    logger.error("="*80)
+                    logger.error("=" * 80)
                     break
-                
+
                 # Validate cycle completion
                 cycle_file = self.output_dir / f"cycle_{cycle}" / "cycle_results.json"
                 if not cycle_file.exists():
                     logger.error(f"Cycle {cycle} results file not found after completion!")
                     break
-                    
+
             except KeyboardInterrupt:
                 logger.warning(f"\nPipeline interrupted by user at cycle {cycle}")
                 logger.info(f"Results saved. Resume with: --resume_from_cycle {cycle + 1}")
@@ -1940,20 +1939,20 @@ class IterativeFinetuner:
                 logger.exception(f"Unexpected error in cycle {cycle}: {e}")
                 logger.error(f"Pipeline stopped due to unexpected error. Resume with: --resume_from_cycle {cycle + 1}")
                 break
-        
+
         # Save all results
         all_results_file = self.output_dir / "all_cycles_results.json"
         all_results_file.write_text(json.dumps(self.cycle_results, indent=2))
-        
+
         # Generate final analysis and reports
         logger.info("")
-        logger.info("="*80)
+        logger.info("=" * 80)
         logger.info("GENERATING FINAL ANALYSIS")
-        logger.info("="*80)
-        
+        logger.info("=" * 80)
+
         try:
             report_result = self.generate_final_report()
-            
+
             if report_result["success"]:
                 logger.info("\n✓ All reports generated successfully!")
                 logger.info("\nGenerated files:")
@@ -1967,18 +1966,18 @@ class IterativeFinetuner:
                 logger.info("\nPipeline results are saved. You can generate reports manually:")
                 logger.info(f"  python -m ab.gpt.iterative_pipeline.analyze_cycles --results_dir {self.output_dir}")
                 logger.info(f"  python -m ab.gpt.iterative_pipeline.plot_wilson_ci --results_dir {self.output_dir}")
-                
+
         except Exception as e:
             logger.error(f"\n✗ Failed to generate final reports: {e}")
             logger.info("\nPipeline results are saved. Generate reports manually:")
             logger.info(f"  python -m ab.gpt.iterative_pipeline.analyze_cycles --results_dir {self.output_dir}")
             logger.info(f"  python -m ab.gpt.iterative_pipeline.plot_wilson_ci --results_dir {self.output_dir}")
-        
+
         logger.info("")
         logger.info("")
-        logger.info("="*80)
+        logger.info("=" * 80)
         logger.info("PIPELINE COMPLETE")
-        logger.info("="*80)
+        logger.info("=" * 80)
         logger.info(f"Results saved to: {all_results_file}")
         logger.info("")
         logger.info("Summary:")
@@ -1990,14 +1989,14 @@ class IterativeFinetuner:
                 avg_acc = result["evaluation"]["avg_accuracy"] * 100
                 added = result["training"]["new_examples_added"]
                 logger.info(f"  Cycle {cycle}: {success_rate:.1f}% success, "
-                           f"best={best_acc:.2f}%, avg={avg_acc:.2f}%, added={added} examples")
+                            f"best={best_acc:.2f}%, avg={avg_acc:.2f}%, added={added} examples")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Iterative Fine-Tuning Pipeline")
     parser.add_argument("--base_data_dir", type=str, required=True,
                         help="Path to original chat_data directory")
-    parser.add_argument("--output_dir", type=str, default="out/iterative_cycles",
+    parser.add_argument("--output_dir", type=str, default=out_dir / 'iterative_cycles',
                         help="Output directory for all cycle results")
     parser.add_argument("--llm_conf", type=str, required=True,
                         help="LLM configuration file (e.g., ds_coder_7b_instruct.json)")
@@ -2024,7 +2023,7 @@ def main():
                         help="Resume pipeline from a specific cycle (1-5)")
     parser.add_argument("--max_retries", type=int, default=3,
                         help="Maximum retry attempts for transient failures (default: 3)")
-    
+
     # Training optimization arguments
     parser.add_argument("--use_optimized_training", action="store_true", default=True,
                         help="Use optimized training hyperparameters for stability and quality (default: True)")
@@ -2032,19 +2031,17 @@ def main():
                         help="Use original default training hyperparameters")
     parser.add_argument("--num_train_epochs", type=int, default=5,
                         help="Number of fine-tuning epochs per cycle (default: 5)")
-    
+
     args = parser.parse_args()
-    
+
     # Validate resume cycle
     if args.resume_from_cycle is not None:
         if args.resume_from_cycle < 1 or args.resume_from_cycle > args.cycles:
             print(f"[ERROR] Invalid resume_from_cycle: {args.resume_from_cycle}. Must be between 1 and {args.cycles}")
             sys.exit(1)
-    
+
     # Create pipeline
     pipeline = IterativeFinetuner(
-        base_data_dir=args.base_data_dir,
-        output_dir=args.output_dir,
         llm_conf=args.llm_conf,
         cycles=args.cycles,
         models_per_cycle=args.models_per_cycle,
@@ -2059,11 +2056,10 @@ def main():
         use_optimized_training=args.use_optimized_training,
         num_train_epochs=args.num_train_epochs,
     )
-    
+
     # Run pipeline
     pipeline.run()
 
 
 if __name__ == "__main__":
     main()
-

@@ -48,15 +48,16 @@ class GeneticAlgorithm:
     def mutate_gene(self, current_value, possible_values):
         """
         Return a new gene value.
-        The LLM will optimize this function logic.
         """
-        if len(possible_values) > 1:
-            possible_values.remove(current_value)
-        else:
-            return current_value
+        if not isinstance(possible_values, list):
+            raise ValueError('possible_values should be a list')
+        if not possible_values:
+            return
+        if len(possible_values) == 1:
+            return possible_values[0]
         new_value = random.choice(possible_values)
-        if random.random() < 0.5:
-            return current_value
+        while new_value == current_value:
+            new_value = random.choice(possible_values)
         return new_value
     def _mutate(self, chromosome):
         mutated_chromo = chromosome.copy()
@@ -110,6 +111,6 @@ class GeneticAlgorithm:
                 next_gen.append({'chromosome': child, 'fitness': None})
             
             self.population = next_gen
-            self._save_checkpoint(gen + 1)
+            # self._save_checkpoint(gen + 1)
             
         return best_overall, fitness_history

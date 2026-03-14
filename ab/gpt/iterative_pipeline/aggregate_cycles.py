@@ -10,6 +10,8 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Any
 
+from ab.nn.util.Const import out_dir
+
 
 def load_cycle_results(results_file: Path) -> List[Dict[str, Any]]:
     """Load results from all_cycles_results.json."""
@@ -207,9 +209,9 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description="Aggregate results across fine-tuning cycles")
-    parser.add_argument("--results_dir", type=str, default="out/iterative_cycles",
+    parser.add_argument("--results_dir", type=str, default=out_dir / 'iterative_cycles',
                         help="Directory containing all_cycles_results.json")
-    parser.add_argument("--output_file", type=str, default="out/iterative_cycles/cycles_summary.json",
+    parser.add_argument("--output_file", type=str, default=out_dir / 'iterative_cycles' / 'cycles_summary.json',
                         help="Output file for aggregated summary")
     
     args = parser.parse_args()

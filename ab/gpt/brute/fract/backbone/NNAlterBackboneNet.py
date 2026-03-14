@@ -1,6 +1,6 @@
 import argparse
 
-from ab.gpt.brute.fract.NNAlterBN import alter
+from ab.gpt.brute.fract.backbone.NNAlterBN import alter
 
 
 def main():

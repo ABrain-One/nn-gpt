@@ -17,6 +17,8 @@ from typing import Dict, List, Any
 
 import matplotlib.pyplot as plt
 import matplotlib
+from ab.nn.util.Const import out_dir
+
 matplotlib.use('Agg')  # Non-interactive backend
 import numpy as np
 
@@ -374,9 +376,9 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description="Generate plots for fine-tuning cycles")
-    parser.add_argument("--results_dir", type=str, default="out/iterative_cycles",
+    parser.add_argument("--results_dir", type=str, default=out_dir / 'iterative_cycles',
                         help="Directory containing all_cycles_results.json")
-    parser.add_argument("--output_dir", type=str, default="out/iterative_cycles/plots",
+    parser.add_argument("--output_dir", type=str, default=out_dir / 'iterative_cycles' / "plots",
                         help="Output directory for plots")
     
     args = parser.parse_args()

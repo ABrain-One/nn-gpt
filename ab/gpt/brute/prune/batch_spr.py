@@ -26,6 +26,7 @@ sys.path.append(str(gw_root / 'ab' / 'gpt' / 'util'))
 
 # Custom Project Imports (Must be after sys.path setup)
 import ab.nn.api as nn_dataset
+from ab.nn.util.Const import core_nn_cls
 import Const as const
 
 # Constants
@@ -375,7 +376,7 @@ def process_single_model(model_name, index, temp_dir):
 # ---------------------------------------------------------
 
 def main():
-    targets = const.core_nns
+    targets = core_nn_cls
     temp_dir = Path("temp_batch_models")
     temp_dir.mkdir(exist_ok=True)
 

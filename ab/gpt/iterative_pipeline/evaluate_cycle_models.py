@@ -12,6 +12,8 @@ import traceback
 import gc
 from pathlib import Path
 
+from ab.nn.util.Const import out_dir
+
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -315,7 +317,7 @@ def main():
         nneval_dir = Path(args.nneval_dir)
     else:
         # Auto-detect from cycle number
-        nneval_dir = Path(f"out/iterative_cycles/cycle_{args.cycle}/nneval")
+        nneval_dir = out_dir / 'iterative_cycles' / f"cycle_{args.cycle}/nneval"
     
     evaluate_cycle_models(args.cycle, nneval_dir)
 

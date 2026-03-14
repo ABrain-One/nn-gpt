@@ -109,7 +109,16 @@ class LoRA:
         if use_unsloth:
             # Use Unsloth's native LoRA attachment (keeps bfloat16 dtypes)
             try:
-                from unsloth import FastModel
+                # Late-import Unsloth only if requested and available
+                inner_unsloth_available = True
+                try:
+                    from unsloth import FastModel
+                except ImportError:
+                    inner_unsloth_available = False
+
+                if not inner_unsloth_available:
+                     raise ImportError("Unsloth not installed")
+
                 self.peft_model = FastModel.get_peft_model(
                     self.model,
                     r=self.peft_config.r,
@@ -260,7 +269,7 @@ class LoRA:
             # Since chat_template already added special tokens, tokenizer will use add_special_tokens=False internally
             trainer = SFTTrainer(
                 model=self.peft_model,
-                tokenizer=self.tokenizer,
+                processing_class=self.tokenizer,
                 train_dataset=train_dataset,
                 eval_dataset=eval_dataset,
                 args=self.training_args,
