@@ -1,0 +1,58 @@
+[
+  {
+    "model": "PR_0009",
+    "architecture": "ResNet",
+    "scheduler": "CosineWarmRestarts_T5",
+    "accuracy": 0.8339,
+    "status": "completed"
+  },
+  {
+    "model": "PR_0006",
+    "architecture": "ResNet",
+    "scheduler": "CosineAnnealingLR_T20",
+    "accuracy": 0.8101,
+    "status": "completed"
+  },
+  {
+    "model": "PR_0004",
+    "architecture": "ResNet",
+    "scheduler": "ExponentialLR_g09",
+    "accuracy": 0.7927,
+    "status": "completed"
+  },
+  {
+    "model": "PR_0007",
+    "architecture": "ResNet",
+    "scheduler": "MultiStepLR_m5_10_g05",
+    "accuracy": 0.7761,
+    "status": "completed"
+  },
+  {
+    "model": "PR_0005",
+    "architecture": "ResNet",
+    "scheduler": "CosineAnnealingLR_T10",
+    "accuracy": 0.775,
+    "status": "completed"
+  },
+  {
+    "model": "PR_0002",
+    "architecture": "ResNet",
+    "scheduler": "StepLR_s5_g03",
+    "accuracy": 0.7509,
+    "status": "completed"
+  },
+  {
+    "model": "PR_0001",
+    "architecture": "ResNet",
+    "scheduler": "StepLR_s10_g05",
+    "accuracy": 0.7285,
+    "status": "completed"
+  },
+  {
+    "model": "PR_0010",
+    "architecture": "ResNet",
+    "scheduler": "LinearLR_sf01",
+    "accuracy": 0.6514,
+    "status": "completed"
+  }
+]

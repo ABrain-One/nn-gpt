@@ -1,0 +1,10 @@
+{
+  "lr": 0.01,
+  "batch": 64,
+  "dropout": 0.2,
+  "momentum": 0.9,
+  "transform": "norm_256_flip",
+  "start_factor": 0.1,
+  "total_iters": 5,
+  "weight_decay": 0.0001
+}
