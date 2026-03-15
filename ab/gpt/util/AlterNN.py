@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import torch
 
@@ -9,6 +10,10 @@ from tqdm import tqdm
 
 from ab.gpt.util.Const import conf_test_dir, epoch_dir, new_nn_file, synth_dir, new_out_file
 from ab.gpt.util.LLM import LLM
+from ab.gpt.util.AnalogicalPrompt import (
+    get_nn_alter_analogical_prefill,
+    get_nn_alter_analogical_prompt,
+)
 from ab.gpt.util.Util import extract_code, extract_delta
 
 
@@ -44,9 +49,54 @@ def format_prompt_with_supporting_models(prompt_template, para_dict, supporting_
 
     return formatted_prompt
 
+
+def repair_generated_nn_code(nn_code: str) -> str:
+    if not nn_code:
+        return nn_code
+
+    fixed = nn_code
+
+    needs_torch_import = "torch." in fixed or "torch.device" in fixed
+    needs_nn_import = "nn." in fixed or "nn.Module" in fixed
+    needs_optim_import = "optim." in fixed
+
+    if needs_torch_import and "import torch" not in fixed:
+        fixed = "import torch\n" + fixed
+    if needs_nn_import and "import torch.nn as nn" not in fixed:
+        prefix = "import torch\n" if fixed.startswith("import torch\n") else ""
+        body = fixed[len(prefix):]
+        fixed = f"{prefix}import torch.nn as nn\n{body}"
+    if needs_optim_import and "import torch.optim as optim" not in fixed:
+        header = ""
+        body = fixed
+        if body.startswith("import torch\n"):
+            header += "import torch\n"
+            body = body[len("import torch\n"):]
+        if body.startswith("import torch.nn as nn\n"):
+            header += "import torch.nn as nn\n"
+            body = body[len("import torch.nn as nn\n"):]
+        fixed = f"{header}import torch.optim as optim\n{body}"
+
+    fixed = re.sub(r"\bc_in\s*=\s*in_shape\[0\]", "c_in = in_shape[1]", fixed)
+
+    # Shape-safe fallback for common classifier failures under larger image transforms.
+    # Convert the first fixed-width post-flatten Linear into LazyLinear so the classifier
+    # binds to the real feature size at runtime instead of hallucinated spatial dims.
+    if "nn.LazyLinear" not in fixed and ("flatten" in fixed.lower() or ".view(" in fixed):
+        fixed = re.sub(
+            r"nn\.Linear\(\s*([0-9][0-9\s\*\+\-\/]*|[A-Za-z_][A-Za-z0-9_]*\s*[\*\+\-\/][^,\n]+)\s*,\s*([A-Za-z_][A-Za-z0-9_]*|\d+)\s*\)",
+            r"nn.LazyLinear(\2)",
+            fixed,
+            count=1,
+        )
+
+    return fixed
+
+
 def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top_k=50, *args, **kwargs):
     inference_gpt_oss = kwargs.get('inference_gpt_oss', False)
     inference_gpt_oss_max_input_length = kwargs.get('inference_gpt_oss_max_input_length', None)
+    analogical = kwargs.get("analogical", False)
 
     if inference_gpt_oss and inference_gpt_oss_max_input_length is None:
         inference_gpt_oss_max_input_length = 10**18
@@ -60,7 +110,19 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
     model_loader = LLM(llm_name, gguf_file=gguf_file)
     model = model_loader.get_model()
     tokenizer = model_loader.get_tokenizer()
+    analogical_prompt = None
+    analogical_prefill_ids = None
+    analogical_prefill_text = None
+    if analogical:
+        analogical_prompt = get_nn_alter_analogical_prompt()
+        analogical_prefill_text = get_nn_alter_analogical_prefill()
+        analogical_prefill_ids = tokenizer(
+            analogical_prefill_text,
+            add_special_tokens=False,
+        ).input_ids
     print(f"Load Model Complete, Start Loop... (Will fetch {n} supporting models per prompt)")
+    if analogical:
+        print("[INFO] Analogical prompting enabled for NNAlter.")
 
     shutil.rmtree(epoch_dir(), ignore_errors=True)
     for epoch in range(epochs):
@@ -69,9 +131,12 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
         # Generate Prompts
         prompts = []
         for key in prompt_dict.keys():
-            prompt = ""
-            for pr in prompt_dict[key]['prompt']:
-                prompt += pr + "\n"
+            if analogical_prompt is not None:
+                prompt = analogical_prompt
+            else:
+                prompt = ""
+                for pr in prompt_dict[key]['prompt']:
+                    prompt += pr + "\n"
             # Get nn-dataset codes
             data = nn_dataset.data(only_best_accuracy=True, task=prompt_dict[key]['task']).groupby(by="nn").sample(n=1)
             # Get addon nn-dataset codes
@@ -129,6 +194,8 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
                         except TypeError:
                             rendered = tokenizer.apply_chat_template([{'role': 'user', 'content': p_text}], add_generation_prompt=True, tokenize=False)
                             ids = tokenizer(rendered, add_special_tokens=False).input_ids
+                        if analogical_prefill_ids:
+                            ids = ids + analogical_prefill_ids
                         if inference_gpt_oss and inference_gpt_oss_max_input_length is not None:
                             if len(ids) > inference_gpt_oss_max_input_length:
                                 print(f"[INFO] Skipping prompt in batch: length {len(ids)} > {inference_gpt_oss_max_input_length}")
@@ -152,9 +219,12 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
                             start = int(inputs.attention_mask[k].sum().item()) if hasattr(inputs, "attention_mask") else input_len
                         decoded_outputs.append(tokenizer.decode(outputs[k, start:], skip_special_tokens=True))
                     for out, origdf in zip(decoded_outputs, batch_rows):
+                        if analogical_prefill_text:
+                            out = analogical_prefill_text + out
                         print("Response Available!")
                         nn_code = extract_code(out)
                         if nn_code:
+                            nn_code = repair_generated_nn_code(nn_code)
                             model_dir = synth_dir(out_path) / f"B{B_index}"
                             code_file = model_dir / new_nn_file
                             df_file = model_dir / 'dataframe.df'
@@ -186,6 +256,9 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
                 inputs = inputs.input_ids.to(model.device)
             else:
                 inputs = inputs.to(model.device)
+            if analogical_prefill_ids:
+                prefill_tensor = torch.tensor([analogical_prefill_ids], device=model.device, dtype=inputs.dtype)
+                inputs = torch.cat([inputs, prefill_tensor], dim=-1)
 
             if inference_gpt_oss:
                 # Skip prompts that are too long to avoid O(n²) attention OOM
@@ -198,9 +271,12 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
                 outputs = model.generate(inputs, max_new_tokens=8*1024, do_sample=True, temperature=temperature, top_k=top_k, top_p=0.95, num_return_sequences=1,
                                      eos_token_id=tokenizer.eos_token_id)
             out = tokenizer.decode(outputs[0][len(inputs[0]):], skip_special_tokens=True)
+            if analogical_prefill_text:
+                out = analogical_prefill_text + out
             print("Response Available!")
             nn_code = extract_code(out)
             if nn_code:
+                nn_code = repair_generated_nn_code(nn_code)
                 print(f"[INFO]Saving code to: {code_file}")
                 code_file.parent.mkdir(exist_ok=True, parents=True)  # Move here to avoid empty folder
                 with open(code_file, 'w') as file:
