@@ -51,7 +51,7 @@ def tokenizer_dir(base):
     return base / 'tokenizer'
 
 nngpt_model = model_dir(out_dir)
-nngpt_upload = nngpt_model / 'upload'
+nngpt_upload = out_dir / 'llm_to_upload'
 llm_tokenizer_out = tokenizer_dir(out_dir)
 
 def llm_dir(base, name):
