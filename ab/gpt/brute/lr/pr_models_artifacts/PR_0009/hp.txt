@@ -1,0 +1,10 @@
+{
+  "lr": 0.01,
+  "batch": 64,
+  "dropout": 0.2,
+  "momentum": 0.9,
+  "transform": "norm_256_flip",
+  "T_0": 5,
+  "eta_min": 1e-06,
+  "weight_decay": 0.0001
+}

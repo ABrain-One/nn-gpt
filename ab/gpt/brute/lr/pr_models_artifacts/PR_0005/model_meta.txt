@@ -1,0 +1,5 @@
+architecture: ResNet
+scheduler: CosineAnnealingLR_T10
+weight_decay: 0.0001
+original_hp: ['lr', 'momentum']
+added_hp: ['T_max', 'eta_min']

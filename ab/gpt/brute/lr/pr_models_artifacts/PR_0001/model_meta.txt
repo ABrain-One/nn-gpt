@@ -1,0 +1,5 @@
+architecture: ResNet
+scheduler: StepLR_s10_g05
+weight_decay: 0.0001
+original_hp: ['lr', 'momentum']
+added_hp: ['step_size', 'gamma']

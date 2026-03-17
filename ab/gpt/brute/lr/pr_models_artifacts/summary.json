@@ -1,0 +1,92 @@
+[
+  {
+    "model": "PR_0009",
+    "architecture": "ResNet",
+    "scheduler": "CosineWarmRestarts_T5",
+    "weight_decay": "0.0001",
+    "status": "completed",
+    "loss": "PR-3f504c442a3b49606bafcbdf26495cf1",
+    "accuracy": 0.8339
+  },
+  {
+    "model": "PR_0006",
+    "architecture": "ResNet",
+    "scheduler": "CosineAnnealingLR_T20",
+    "weight_decay": "0.0001",
+    "status": "completed",
+    "loss": "PR-f5a0986cead1eecf5462faea43d20e73",
+    "accuracy": 0.8101
+  },
+  {
+    "model": "PR_0004",
+    "architecture": "ResNet",
+    "scheduler": "ExponentialLR_g09",
+    "weight_decay": "0.0001",
+    "status": "completed",
+    "loss": "PR-94485497b53ab21edbc8a5b604220772",
+    "accuracy": 0.7927
+  },
+  {
+    "model": "PR_0007",
+    "architecture": "ResNet",
+    "scheduler": "MultiStepLR_m5_10_g05",
+    "weight_decay": "0.0001",
+    "status": "completed",
+    "loss": "PR-df2817f3c59927c959fcc65054681c61",
+    "accuracy": 0.7761
+  },
+  {
+    "model": "PR_0005",
+    "architecture": "ResNet",
+    "scheduler": "CosineAnnealingLR_T10",
+    "weight_decay": "0.0001",
+    "status": "completed",
+    "loss": "PR-347235cb7834f7480d013b477641a3ef",
+    "accuracy": 0.775
+  },
+  {
+    "model": "PR_0002",
+    "architecture": "ResNet",
+    "scheduler": "StepLR_s5_g03",
+    "weight_decay": "0.0001",
+    "status": "completed",
+    "loss": "PR-ff55ac9ac223a055800a680cafa53bed",
+    "accuracy": 0.7509
+  },
+  {
+    "model": "PR_0001",
+    "architecture": "ResNet",
+    "scheduler": "StepLR_s10_g05",
+    "weight_decay": "0.0001",
+    "status": "completed",
+    "loss": "PR-c0b0de481957db50c936d37b7d55391a",
+    "accuracy": 0.7285
+  },
+  {
+    "model": "PR_0010",
+    "architecture": "ResNet",
+    "scheduler": "LinearLR_sf01",
+    "weight_decay": "0.0001",
+    "status": "completed",
+    "loss": "PR-a7714b2ed64ff3b8b96f4af7ac15a764",
+    "accuracy": 0.6514
+  },
+  {
+    "model": "PR_0003",
+    "architecture": "ResNet",
+    "scheduler": "ExponentialLR_g095",
+    "weight_decay": "0.0001",
+    "status": "failed",
+    "loss": "",
+    "accuracy": ""
+  },
+  {
+    "model": "PR_0008",
+    "architecture": "ResNet",
+    "scheduler": "OneCycleLR_005",
+    "weight_decay": "0.0001",
+    "status": "failed",
+    "loss": "",
+    "accuracy": ""
+  }
+]
