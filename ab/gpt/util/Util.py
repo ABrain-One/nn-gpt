@@ -101,9 +101,9 @@ def extract_str(s: str, start: str, end: str):
 def extract_by_pattern(name, res, options) -> str:
     res = improve_code(next(filter(None, map(lambda l: extract_str(res, *l), options)), None))
     if res:
-        print(f'[EXTRACT] ✓ Found {name}: {len(res)} chars')
+        print(f'[EXTRACT] Found {name}: {len(res)} chars')
     else:
-        print(f'[EXTRACT] ✗ No {name} found')
+        print(f'[EXTRACT] No {name} found')
     return res
 
 
