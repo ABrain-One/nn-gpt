@@ -1,265 +1,415 @@
+import math
 from collections import OrderedDict
+from functools import partial
+from typing import Callable, List, Optional, Sequence, Tuple
 
+import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from torch._C import _disabled_torch_function_impl
-from torch.nn import init, Module, Conv2d, Linear
-from torch.nn.functional import relu, max_pool2d
-
-import torch
-from torch import nn
-
-class NGL(nn.Module):
-    def __init__(self):
-        super(NGL, self).__init__()
-
-    def forward(self, x, target):
-        target = torch.nn.functional.one_hot(target, num_classes=x.size(1))
-        x = torch.softmax(x, dim=-1)
-        loss = torch.mean(torch.exp(2.4092 - x - x*target) - torch.cos(torch.cos(torch.sin(x))))
-        return loss
+from torch import nn, Tensor
+from torchvision.ops.misc import Conv2dNormActivation, SqueezeExcitation
+from torchvision.ops.stochastic_depth import StochasticDepth
 
 
-
-def _retrieve_elements_from_indices(tensor, indices):
-    flattened_tensor = tensor.flatten(start_dim=-2)
-    output = flattened_tensor.gather(dim=-1, index=indices.flatten(start_dim=-2)).view_as(indices)
-    return output
-
-
-def apply_complex(fr, fi, input, dtype=torch.complex64):
-    return (fr(input.real) - fi(input.imag)).type(dtype) \
-        + 1j * (fr(input.imag) + fi(input.real)).type(dtype)
-
-
-def complex_relu(input):
-    return relu(input.real).type(torch.complex64) + 1j * relu(input.imag).type(torch.complex64)
-
-
-def complex_max_pool2d(input, kernel_size, stride=None, padding=0,
-                       dilation=1, ceil_mode=False, return_indices=False):
-    absolute_value, indices = max_pool2d(
-        input.abs(),
-        kernel_size=kernel_size,
-        stride=stride,
-        padding=padding,
-        dilation=dilation,
-        ceil_mode=ceil_mode,
-        return_indices=True
+def _get_conv_output_shape(input_size: Tuple[int, int], kernel_size: int, stride: int, padding: int) -> Tuple[int, int]:
+    return (
+        (input_size[0] - kernel_size + 2 * padding) // stride + 1,
+        (input_size[1] - kernel_size + 2 * padding) // stride + 1,
     )
-    absolute_value = absolute_value.type(torch.complex64)
-    angle = torch.atan2(input.imag, input.real)
-    angle = _retrieve_elements_from_indices(angle, indices)
-    return absolute_value \
-        * (torch.cos(angle).type(torch.complex64) + 1j * torch.sin(angle).type(torch.complex64))
 
 
-class _ParameterMeta(torch._C._TensorMeta):
-    def __instancecheck__(self, instance):
-        if self is Parameter:
-            if isinstance(instance, torch.Tensor) and getattr(
-                    instance, "_is_param", False
-            ):
-                return True
-        return super().__instancecheck__(instance)
+def _make_block_input_shapes(input_size: Tuple[int, int], n_blocks: int) -> List[Tuple[int, int]]:
+    shapes = []
+    block_input_shape = _get_conv_output_shape(input_size, 3, 2, 1)
+    for _ in range(n_blocks):
+        block_input_shape = _get_conv_output_shape(block_input_shape, 3, 2, 1)
+        shapes.append(block_input_shape)
+    return shapes
 
 
-class Parameter(torch.Tensor, metaclass=_ParameterMeta):
-    def __new__(cls, data=None, requires_grad=True):
-        if data is None:
-            data = torch.empty(0)
-        if type(data) is torch.Tensor or type(data) is Parameter:
-            return torch.Tensor._make_subclass(cls, data, requires_grad)
+def _get_relative_position_index(height: int, width: int) -> torch.Tensor:
+    coords = torch.stack(torch.meshgrid([torch.arange(height), torch.arange(width)]))
+    coords_flat = torch.flatten(coords, 1)
+    relative_coords = coords_flat[:, :, None] - coords_flat[:, None, :]
+    relative_coords = relative_coords.permute(1, 2, 0).contiguous()
+    relative_coords[:, :, 0] += height - 1
+    relative_coords[:, :, 1] += width - 1
+    relative_coords[:, :, 0] *= 2 * width - 1
+    return relative_coords.sum(-1)
 
-        t = data.detach().requires_grad_(requires_grad)
-        if type(t) is not type(data):
-            raise RuntimeError(
-                f"Creating a Parameter from an instance of type {type(data).__name__} "
-                "requires that detach() returns an instance of the same type, but return "
-                f"type {type(t).__name__} was found instead. To use the type as a "
-                "Parameter, please correct the detach() semantics defined by "
-                "its __torch_dispatch__() implementation."
-            )
-        t._is_param = True
-        return t
 
-    def __deepcopy__(self, memo):
-        if id(self) in memo:
-            return memo[id(self)]
+class MBConv(nn.Module):
+    def __init__(
+            self,
+            in_channels: int,
+            out_channels: int,
+            expansion_ratio: float,
+            squeeze_ratio: float,
+            stride: int,
+            activation_layer: Callable[..., nn.Module],
+            norm_layer: Callable[..., nn.Module],
+            p_stochastic_dropout: float = 0.0,
+    ) -> None:
+        super().__init__()
+
+        proj: Sequence[nn.Module]
+        self.proj: nn.Module
+
+        should_proj = stride != 1 or in_channels != out_channels
+        if should_proj:
+            proj = [nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, bias=True)]
+            if stride == 2:
+                proj = [nn.AvgPool2d(kernel_size=3, stride=stride, padding=1)] + proj
+            self.proj = nn.Sequential(*proj)
         else:
-            result = type(self)(
-                self.data.clone(memory_format=torch.preserve_format), self.requires_grad
-            )
-            memo[id(self)] = result
-            return result
+            self.proj = nn.Identity()
 
-    def __repr__(self):
-        return "Parameter containing:\n" + super().__repr__()
+        mid_channels = int(out_channels * expansion_ratio)
+        sqz_channels = int(out_channels * squeeze_ratio)
 
-    def __reduce_ex__(self, proto):
-        state = torch._utils._get_obj_state(self)
+        if p_stochastic_dropout:
+            self.stochastic_depth = StochasticDepth(p_stochastic_dropout, mode="row")
+        else:
+            self.stochastic_depth = nn.Identity()
 
-        hooks = OrderedDict()
-        if not state:
-            return (
-                torch._utils._rebuild_parameter,
-                (self.data, self.requires_grad, hooks),
-            )
+        _layers = OrderedDict()
+        _layers["pre_norm"] = norm_layer(in_channels)
+        _layers["conv_a"] = Conv2dNormActivation(
+            in_channels,
+            mid_channels,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            activation_layer=activation_layer,
+            norm_layer=norm_layer,
+            inplace=None,
+        )
+        _layers["conv_b"] = Conv2dNormActivation(
+            mid_channels,
+            mid_channels,
+            kernel_size=3,
+            stride=stride,
+            padding=1,
+            activation_layer=activation_layer,
+            norm_layer=norm_layer,
+            groups=mid_channels,
+            inplace=None,
+        )
+        _layers["squeeze_excitation"] = SqueezeExcitation(mid_channels, sqz_channels, activation=nn.SiLU)
+        _layers["conv_c"] = nn.Conv2d(in_channels=mid_channels, out_channels=out_channels, kernel_size=1, bias=True)
 
-        return (
-            torch._utils._rebuild_parameter_with_state,
-            (self.data, self.requires_grad, hooks, state),
+        self.layers = nn.Sequential(_layers)
+
+    def forward(self, x: Tensor) -> Tensor:
+        res = self.proj(x)
+        x = self.stochastic_depth(self.layers(x))
+        return res + x
+
+
+class RelativePositionalMultiHeadAttention(nn.Module):
+    def __init__(
+            self,
+            feat_dim: int,
+            head_dim: int,
+            max_seq_len: int,
+    ) -> None:
+        super().__init__()
+
+        if feat_dim % head_dim != 0:
+            raise ValueError(f"feat_dim: {feat_dim} must be divisible by head_dim: {head_dim}")
+
+        self.n_heads = feat_dim // head_dim
+        self.head_dim = head_dim
+        self.size = int(math.sqrt(max_seq_len))
+        self.max_seq_len = max_seq_len
+
+        self.to_qkv = nn.Linear(feat_dim, self.n_heads * self.head_dim * 3)
+        self.scale_factor = feat_dim ** -0.5
+
+        self.merge = nn.Linear(self.head_dim * self.n_heads, feat_dim)
+        self.relative_position_bias_table = nn.parameter.Parameter(
+            torch.empty(((2 * self.size - 1) * (2 * self.size - 1), self.n_heads), dtype=torch.float32),
         )
 
-    __torch_function__ = _disabled_torch_function_impl
+        self.register_buffer("relative_position_index", _get_relative_position_index(self.size, self.size))
+        torch.nn.init.trunc_normal_(self.relative_position_bias_table, std=0.02)
+
+    def get_relative_positional_bias(self) -> torch.Tensor:
+        bias_index = self.relative_position_index.view(-1)
+        relative_bias = self.relative_position_bias_table[bias_index].view(self.max_seq_len, self.max_seq_len, -1)
+        relative_bias = relative_bias.permute(2, 0, 1).contiguous()
+        return relative_bias.unsqueeze(0)
+
+    def forward(self, x: Tensor) -> Tensor:
+        B, G, P, D = x.shape
+        H, DH = self.n_heads, self.head_dim
+
+        qkv = self.to_qkv(x)
+        q, k, v = torch.chunk(qkv, 3, dim=-1)
+
+        q = q.reshape(B, G, P, H, DH).permute(0, 1, 3, 2, 4)
+        k = k.reshape(B, G, P, H, DH).permute(0, 1, 3, 2, 4)
+        v = v.reshape(B, G, P, H, DH).permute(0, 1, 3, 2, 4)
+
+        k = k * self.scale_factor
+        dot_prod = torch.einsum("B G H I D, B G H J D -> B G H I J", q, k)
+        pos_bias = self.get_relative_positional_bias()
+
+        dot_prod = F.softmax(dot_prod + pos_bias, dim=-1)
+
+        out = torch.einsum("B G H I J, B G H J D -> B G H I D", dot_prod, v)
+        out = out.permute(0, 1, 3, 2, 4).reshape(B, G, P, D)
+
+        out = self.merge(out)
+        return out
 
 
-class _ComplexBatchNorm(Module):
+class SwapAxes(nn.Module):
+    def __init__(self, a: int, b: int) -> None:
+        super().__init__()
+        self.a = a
+        self.b = b
 
-    def __init__(self, num_features, eps=1e-5, momentum=0.1, affine=True,
-                 track_running_stats=True):
-        super(_ComplexBatchNorm, self).__init__()
-        self.num_features = num_features
-        self.eps = eps
-        self.momentum = momentum
-        self.affine = affine
-        self.track_running_stats = track_running_stats
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        if self.affine:
-            self.weight = Parameter(torch.Tensor(num_features, 3)).to(self.device)
-            self.bias = Parameter(torch.Tensor(num_features, 2)).to(self.device)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        res = torch.swapaxes(x, self.a, self.b)
+        return res
+
+
+class WindowPartition(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x: Tensor, p: int) -> Tensor:
+        B, C, H, W = x.shape
+        P = p
+        x = x.reshape(B, C, H // P, P, W // P, P)
+        x = x.permute(0, 2, 4, 3, 5, 1)
+        x = x.reshape(B, (H // P) * (W // P), P * P, C)
+        return x
+
+
+class WindowDepartition(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x: Tensor, p: int, h_partitions: int, w_partitions: int) -> Tensor:
+        B, G, PP, C = x.shape
+        P = p
+        HP, WP = h_partitions, w_partitions
+        x = x.reshape(B, HP, WP, P, P, C)
+        x = x.permute(0, 5, 1, 3, 2, 4)
+        x = x.reshape(B, C, HP * P, WP * P)
+        return x
+
+
+class PartitionAttentionLayer(nn.Module):
+    def __init__(
+            self,
+            in_channels: int,
+            head_dim: int,
+            partition_size: int,
+            partition_type: str,
+            grid_size: Tuple[int, int],
+            mlp_ratio: int,
+            activation_layer: Callable[..., nn.Module],
+            norm_layer: Callable[..., nn.Module],
+            attention_dropout: float,
+            mlp_dropout: float,
+            p_stochastic_dropout: float,
+    ) -> None:
+        super().__init__()
+
+        self.n_heads = in_channels // head_dim
+        self.head_dim = head_dim
+        self.n_partitions = grid_size[0] // partition_size
+        self.partition_type = partition_type
+        self.grid_size = grid_size
+
+        if partition_type not in ["grid", "window"]:
+            raise ValueError("partition_type must be either 'grid' or 'window'")
+
+        if partition_type == "window":
+            self.p, self.g = partition_size, self.n_partitions
         else:
-            self.register_parameter('weight', None)
-            self.register_parameter('bias', None)
-        if self.track_running_stats:
-            self.register_buffer('running_mean', torch.zeros(num_features, dtype=torch.complex64))
-            self.register_buffer('running_covar', torch.zeros(num_features, 3))
-            self.running_covar[:, 0] = 1.4142135623730951
-            self.running_covar[:, 1] = 1.4142135623730951
-            self.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long))
-        else:
-            self.register_parameter('running_mean', None)
-            self.register_parameter('running_covar', None)
-            self.register_parameter('num_batches_tracked', None)
-        self.reset_parameters()
+            self.p, self.g = self.n_partitions, partition_size
 
-    def reset_running_stats(self):
-        if self.track_running_stats:
-            self.running_mean.zero_()
-            self.running_covar.zero_()
-            self.running_covar[:, 0] = 1.4142135623730951
-            self.running_covar[:, 1] = 1.4142135623730951
-            self.num_batches_tracked.zero_()
+        self.partition_op = WindowPartition()
+        self.departition_op = WindowDepartition()
+        self.partition_swap = SwapAxes(-2, -3) if partition_type == "grid" else nn.Identity()
+        self.departition_swap = SwapAxes(-2, -3) if partition_type == "grid" else nn.Identity()
 
-    def reset_parameters(self):
-        self.reset_running_stats()
-        if self.affine:
-            init.constant_(self.weight[:, :2], 1.4142135623730951)
-            init.zeros_(self.weight[:, 2])
-            init.zeros_(self.bias)
+        self.attn_layer = nn.Sequential(
+            norm_layer(in_channels),
+            RelativePositionalMultiHeadAttention(in_channels, head_dim, partition_size ** 2),
+            nn.Dropout(attention_dropout),
+        )
 
+        self.mlp_layer = nn.Sequential(
+            nn.LayerNorm(in_channels),
+            nn.Linear(in_channels, in_channels * mlp_ratio),
+            activation_layer(),
+            nn.Linear(in_channels * mlp_ratio, in_channels),
+            nn.Dropout(mlp_dropout),
+        )
 
-class ComplexBatchNorm2d(_ComplexBatchNorm):
+        self.stochastic_dropout = StochasticDepth(p_stochastic_dropout, mode="row")
 
-    def forward(self, input):
-        exponential_average_factor = 0.0
+    def forward(self, x: Tensor) -> Tensor:
+        gh, gw = self.grid_size[0] // self.p, self.grid_size[1] // self.p
+        torch._assert(
+            self.grid_size[0] % self.p == 0 and self.grid_size[1] % self.p == 0,
+            "Grid size must be divisible by partition size. Got grid size of {} and partition size of {}".format(
+                self.grid_size, self.p
+            ),
+        )
 
-        if self.training and self.track_running_stats:
-            if self.num_batches_tracked is not None:
-                self.num_batches_tracked += 1
-                if self.momentum is None:
-                    exponential_average_factor = 1.0 / float(self.num_batches_tracked)
-                else:
-                    exponential_average_factor = self.momentum
+        x = self.partition_op(x, self.p)
+        x = self.partition_swap(x)
+        x = x + self.stochastic_dropout(self.attn_layer(x))
+        x = x + self.stochastic_dropout(self.mlp_layer(x))
+        x = self.departition_swap(x)
+        x = self.departition_op(x, self.p, gh, gw)
 
-        if self.training or (not self.training and not self.track_running_stats):
-            mean_r = input.real.mean([0, 2, 3]).type(torch.complex64)
-            mean_i = input.imag.mean([0, 2, 3]).type(torch.complex64)
-            mean = mean_r + 1j * mean_i
-        else:
-            mean = self.running_mean
-
-        if self.training and self.track_running_stats:
-            with torch.no_grad():
-                self.running_mean = exponential_average_factor * mean \
-                                    + (1 - exponential_average_factor) * self.running_mean
-
-        input = input - mean[None, :, None, None]
-
-        if self.training or (not self.training and not self.track_running_stats):
-            n = input.numel() / input.size(1)
-            Crr = 1. / n * input.real.pow(2).sum(dim=[0, 2, 3]) + self.eps
-            Cii = 1. / n * input.imag.pow(2).sum(dim=[0, 2, 3]) + self.eps
-            Cri = (input.real.mul(input.imag)).mean(dim=[0, 2, 3])
-        else:
-            Crr = self.running_covar[:, 0] + self.eps
-            Cii = self.running_covar[:, 1] + self.eps
-            Cri = self.running_covar[:, 2]
-
-        if self.training and self.track_running_stats:
-            with torch.no_grad():
-                self.running_covar[:, 0] = exponential_average_factor * Crr * n / (n - 1) \
-                                           + (1 - exponential_average_factor) * self.running_covar[:, 0]
-
-                self.running_covar[:, 1] = exponential_average_factor * Cii * n / (n - 1) \
-                                           + (1 - exponential_average_factor) * self.running_covar[:, 1]
-
-                self.running_covar[:, 2] = exponential_average_factor * Cri * n / (n - 1) \
-                                           + (1 - exponential_average_factor) * self.running_covar[:, 2]
-
-        det = Crr * Cii - Cri.pow(2)
-        s = torch.sqrt(det)
-        t = torch.sqrt(Cii + Crr + 2 * s)
-        inverse_st = 1.0 / (s * t)
-        Rrr = (Cii + s) * inverse_st
-        Rii = (Crr + s) * inverse_st
-        Rri = -Cri * inverse_st
-
-        input = (Rrr[None, :, None, None] * input.real + Rri[None, :, None, None] * input.imag).type(torch.complex64) \
-                + 1j * (Rii[None, :, None, None] * input.imag + Rri[None, :, None, None] * input.real).type(torch.complex64)
-
-        if self.affine:
-            input = (self.weight[None, :, 0, None, None] * input.real + self.weight[None, :, 2, None, None] * input.imag + \
-                     self.bias[None, :, 0, None, None]).type(torch.complex64) \
-                    + 1j * (self.weight[None, :, 2, None, None] * input.real + self.weight[None, :, 1, None, None] * input.imag + \
-                            self.bias[None, :, 1, None, None]).type(torch.complex64)
-
-        return input
+        return x
 
 
-class ComplexConv2d(Module):
+class MaxVitLayer(nn.Module):
+    def __init__(
+            self,
+            in_channels: int,
+            out_channels: int,
+            squeeze_ratio: float,
+            expansion_ratio: float,
+            stride: int,
+            norm_layer: Callable[..., nn.Module],
+            activation_layer: Callable[..., nn.Module],
+            head_dim: int,
+            mlp_ratio: int,
+            mlp_dropout: float,
+            attention_dropout: float,
+            p_stochastic_dropout: float,
+            partition_size: int,
+            grid_size: Tuple[int, int],
+    ) -> None:
+        super().__init__()
 
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0,
-                 dilation=1, groups=1, bias=True):
-        super(ComplexConv2d, self).__init__()
-        self.conv_r = Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
-        self.conv_i = Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
+        layers: OrderedDict = OrderedDict()
 
-    def forward(self, input):
-        return apply_complex(self.conv_r, self.conv_i, input)
+        layers["MBconv"] = MBConv(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            expansion_ratio=expansion_ratio,
+            squeeze_ratio=squeeze_ratio,
+            stride=stride,
+            activation_layer=activation_layer,
+            norm_layer=norm_layer,
+            p_stochastic_dropout=p_stochastic_dropout,
+        )
+        layers["window_attention"] = PartitionAttentionLayer(
+            in_channels=out_channels,
+            head_dim=head_dim,
+            partition_size=partition_size,
+            partition_type="window",
+            grid_size=grid_size,
+            mlp_ratio=mlp_ratio,
+            activation_layer=activation_layer,
+            norm_layer=nn.LayerNorm,
+            attention_dropout=attention_dropout,
+            mlp_dropout=mlp_dropout,
+            p_stochastic_dropout=p_stochastic_dropout,
+        )
+        layers["grid_attention"] = PartitionAttentionLayer(
+            in_channels=out_channels,
+            head_dim=head_dim,
+            partition_size=partition_size,
+            partition_type="grid",
+            grid_size=grid_size,
+            mlp_ratio=mlp_ratio,
+            activation_layer=activation_layer,
+            norm_layer=nn.LayerNorm,
+            attention_dropout=attention_dropout,
+            mlp_dropout=mlp_dropout,
+            p_stochastic_dropout=p_stochastic_dropout,
+        )
+        self.layers = nn.Sequential(layers)
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.layers(x)
+        return x
 
 
-class ComplexLinear(Module):
+class MaxVitBlock(nn.Module):
+    def __init__(
+            self,
+            in_channels: int,
+            out_channels: int,
+            squeeze_ratio: float,
+            expansion_ratio: float,
+            norm_layer: Callable[..., nn.Module],
+            activation_layer: Callable[..., nn.Module],
+            head_dim: int,
+            mlp_ratio: int,
+            mlp_dropout: float,
+            attention_dropout: float,
+            partition_size: int,
+            input_grid_size: Tuple[int, int],
+            n_layers: int,
+            p_stochastic: List[float],
+    ) -> None:
+        super().__init__()
+        if not len(p_stochastic) == n_layers:
+            raise ValueError(f"p_stochastic must have length n_layers={n_layers}, got p_stochastic={p_stochastic}.")
 
-    def __init__(self, in_features, out_features):
-        super(ComplexLinear, self).__init__()
-        self.fc_r = Linear(in_features, out_features)
-        self.fc_i = Linear(in_features, out_features)
+        self.layers = nn.ModuleList()
+        self.grid_size = _get_conv_output_shape(input_grid_size, kernel_size=3, stride=2, padding=1)
 
-    def forward(self, input):
-        return apply_complex(self.fc_r, self.fc_i, input)
+        for idx, p in enumerate(p_stochastic):
+            stride = 2 if idx == 0 else 1
+            self.layers += [
+                MaxVitLayer(
+                    in_channels=in_channels if idx == 0 else out_channels,
+                    out_channels=out_channels,
+                    squeeze_ratio=squeeze_ratio,
+                    expansion_ratio=expansion_ratio,
+                    stride=stride,
+                    norm_layer=norm_layer,
+                    activation_layer=activation_layer,
+                    head_dim=head_dim,
+                    mlp_ratio=mlp_ratio,
+                    mlp_dropout=mlp_dropout,
+                    attention_dropout=attention_dropout,
+                    partition_size=partition_size,
+                    grid_size=self.grid_size,
+                    p_stochastic_dropout=p,
+                ),
+            ]
+
+    def forward(self, x: Tensor) -> Tensor:
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
+
+args = [
+    (299, 299),
+    64,
+    1,
+    [64, 128, 256, 512],
+    [2, 2, 5, 2],
+    32,
+    0.2,
+]
 
 
 def supported_hyperparameters():
-    return {'lr'}
+    return {'lr', 'dropout', 'attention_dropout', 'stochastic_depth_prob'}
 
 
 class Net(nn.Module):
 
     def train_setup(self, prm):
         self.to(self.device)
-        self.criteria = (NGL().to(self.device),)
+        self.criteria = (nn.NLLLoss().to(self.device),)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=prm['lr'])
 
     def learn(self, train_data):
@@ -273,37 +423,118 @@ class Net(nn.Module):
             self.optimizer.step()
 
     def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
-        super(Net, self).__init__()
+        super().__init__()
         self.device = device
-        self.in_channels = in_shape[1]
-        self.in_height = in_shape[2]
-        self.in_width = in_shape[3]
-        self.conv1 = ComplexConv2d(self.in_channels, 10, 5, 1)
-        self.bn = ComplexBatchNorm2d(10)
-        self.conv2 = ComplexConv2d(10, 20, 5, 1)
-        self.to(self.device)
-        tmp_input = torch.full(in_shape, fill_value=0.1).type(torch.complex64).to(self.device)
-        x = self.forward1(tmp_input)
-        self.interim_size = int(x.view(-1).size()[0] / in_shape[0])
-        self.fc1 = ComplexLinear(self.interim_size, 500)
-        self.fc2 = ComplexLinear(500, out_shape[0])
+        input_size: Tuple[int, int] = in_shape[2:]
+        stem_channels: int = 64
+        partition_size: int = 1
+        block_channels = None
+        block_layers = None
 
-    def forward1(self, x):
-        x = x.view(-1, self.in_channels, self.in_height, self.in_width)
-        x = self.conv1(x)
-        x = complex_relu(x)
-        x = complex_max_pool2d(x, 2, 2)
-        x = self.bn(x)
-        x = complex_relu(self.conv2(x))
-        x = complex_max_pool2d(x, 2, 2)
+        head_dim: int = 32
+        stochastic_depth_prob: float = prm['stochastic_depth_prob']
+        norm_layer: Optional[Callable[..., nn.Module]] = None
+        activation_layer: Callable[..., nn.Module] = nn.GELU
+        squeeze_ratio: float = 0.25
+        expansion_ratio: float = 4
+        mlp_ratio: int = 4
+        mlp_dropout: float = prm['dropout']
+        attention_dropout: float = prm['attention_dropout']
+        num_classes: int = out_shape[0]
+        if block_layers is None:
+            block_layers = [2, 2, 5, 2]
+        if block_channels is None:
+            block_channels = [64, 128, 256, 512]
+        input_channels = in_shape[1]
+
+        if norm_layer is None:
+            norm_layer = partial(nn.BatchNorm2d, eps=1e-3, momentum=0.01)
+
+        block_input_sizes = _make_block_input_shapes(input_size, len(block_channels))
+        for idx, block_input_size in enumerate(block_input_sizes):
+            if block_input_size[0] % partition_size != 0 or block_input_size[1] % partition_size != 0:
+                raise ValueError(
+                    f"Input size {block_input_size} of block {idx} is not divisible by partition size {partition_size}. "
+                    f"Consider changing the partition size or the input size.\n"
+                    f"Current configuration yields the following block input sizes: {block_input_sizes}."
+                )
+
+        self.stem = nn.Sequential(
+            Conv2dNormActivation(
+                input_channels,
+                stem_channels,
+                3,
+                stride=2,
+                norm_layer=norm_layer,
+                activation_layer=activation_layer,
+                bias=False,
+                inplace=None,
+            ),
+            Conv2dNormActivation(
+                stem_channels, stem_channels, 3, stride=1, norm_layer=None, activation_layer=None, bias=True
+            ),
+        )
+
+        input_size = _get_conv_output_shape(input_size, kernel_size=3, stride=2, padding=1)
+        self.partition_size = partition_size
+
+        self.blocks = nn.ModuleList()
+        in_channels = [stem_channels] + block_channels[:-1]
+        out_channels = block_channels
+
+        p_stochastic = np.linspace(0, stochastic_depth_prob, sum(block_layers)).tolist()
+
+        p_idx = 0
+        for in_channel, out_channel, num_layers in zip(in_channels, out_channels, block_layers):
+            self.blocks.append(
+                MaxVitBlock(
+                    in_channels=in_channel,
+                    out_channels=out_channel,
+                    squeeze_ratio=squeeze_ratio,
+                    expansion_ratio=expansion_ratio,
+                    norm_layer=norm_layer,
+                    activation_layer=activation_layer,
+                    head_dim=head_dim,
+                    mlp_ratio=mlp_ratio,
+                    mlp_dropout=mlp_dropout,
+                    attention_dropout=attention_dropout,
+                    partition_size=partition_size,
+                    input_grid_size=input_size,
+                    n_layers=num_layers,
+                    p_stochastic=p_stochastic[p_idx: p_idx + num_layers],
+                ),
+            )
+            input_size = self.blocks[-1].grid_size
+            p_idx += num_layers
+
+        self.classifier = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.LayerNorm(block_channels[-1]),
+            nn.Linear(block_channels[-1], block_channels[-1]),
+            nn.Tanh(),
+            nn.Linear(block_channels[-1], num_classes, bias=False),
+        )
+
+        self._init_weights()
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.stem(x)
+        for block in self.blocks:
+            x = block(x)
+        x = self.classifier(x)
         return x
 
-    def forward(self, x):
-        x = self.forward1(x)
-        x = x.view(-1, self.interim_size)
-        x = self.fc1(x)
-        x = complex_relu(x)
-        x = self.fc2(x)
-        x = x.abs()
-        x = F.log_softmax(x, dim=1)
-        return x
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.normal_(m.weight, std=0.02)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, std=0.02)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)

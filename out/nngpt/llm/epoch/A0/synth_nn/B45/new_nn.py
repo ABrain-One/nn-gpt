@@ -1,89 +1,125 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
 
 
 def supported_hyperparameters():
-    return {'lr'}
+    return {'lr', 'dropout'}
 
 
-# Define DPNBlock with Group Convolutions
-class DPNBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1):
-        super(DPNBlock, self).__init__()
-        self.conv1 = nn.Conv2d(
-            in_channels, out_channels, kernel_size=3, stride=stride, padding=1, groups=4, bias=False
+class BagNetBottleneck(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, bottleneck_factor=4):
+        super().__init__()
+        mid_channels = out_channels // bottleneck_factor
+
+        self.conv1 = self.conv1x1_block(in_channels, mid_channels)
+        self.conv2 = self.conv_block(mid_channels, mid_channels, kernel_size, stride)
+        self.conv3 = self.conv1x1_block(mid_channels, out_channels, activation=False)
+
+    def conv1x1_block(self, in_channels, out_channels, activation=True):
+        layers = [nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)]
+        if activation:
+            layers.append(nn.ReLU(inplace=True))
+        return nn.Sequential(*layers)
+
+    def conv_block(self, in_channels, out_channels, kernel_size, stride):
+        padding = (kernel_size - 1) // 2
+        return nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
         )
-        self.bn1 = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(
-            out_channels, out_channels, kernel_size=3, padding=1, groups=4, bias=False
-        )
-        self.bn2 = nn.BatchNorm2d(out_channels)
-
-    def forward(self, x):
-        residual = x
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out += residual  # Residual connection
-        return self.relu(out)
-
-
-# Memory-Optimized DPN107
-class DPN107(nn.Module):
-    def __init__(self, in_channels, num_classes, num_blocks, growth_rate):
-        super(DPN107, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, growth_rate, kernel_size=3, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(growth_rate)
-        self.relu = nn.ReLU(inplace=True)
-
-        self.blocks = nn.Sequential(
-            *[DPNBlock(growth_rate, growth_rate) for _ in range(num_blocks)]
-        )
-
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(growth_rate, num_classes)
 
     def forward(self, x):
         x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.blocks(x)
-        x = self.avgpool(x)
-        x = torch.flatten(x, 1)
-        x = self.fc(x)
+        x = self.conv2(x)
+        x = self.conv3(x)
         return x
+
+
+class BagNetUnit(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride):
+        super().__init__()
+        self.resize_identity = (in_channels != out_channels) or (stride != 1)
+        self.body = BagNetBottleneck(in_channels, out_channels, kernel_size, stride)
+
+        if self.resize_identity:
+            self.identity_conv = self.conv1x1_block(in_channels, out_channels, activation=False)
+        self.activ = nn.ReLU(inplace=True)
+
+    def conv1x1_block(self, in_channels, out_channels, activation=True):
+        layers = [nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)]
+        if activation:
+            layers.append(nn.ReLU(inplace=True))
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        identity = x
+        if self.resize_identity:
+            identity = self.identity_conv(x)
+
+        x = self.body(x)
+
+        if x.size(2) != identity.size(2) or x.size(3) != identity.size(3):
+            identity = nn.functional.interpolate(identity, size=(x.size(2), x.size(3)), mode='bilinear', align_corners=False)
+
+        return self.activ(x + identity)
 
 
 class Net(nn.Module):
     def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
-        super(Net, self).__init__()
+        super().__init__()
         self.device = device
-        model_class = DPN107
-        self.channel_number = in_shape[1]
-        self.image_size = in_shape[2]
-        self.class_number = out_shape[0]
+        channel_number = in_shape[1]
+        image_size = in_shape[2]
+        class_number = out_shape[0]
+        learning_rate = prm['lr']
+        momentum = prm['momentum']
+        dropout = prm['dropout']
 
-        self.model = model_class(self.channel_number, self.class_number, num_blocks=3, growth_rate=32)
-        self.learning_rate = prm['lr']
-        self.momentum = prm['momentum']
+        self.channels = [[64, 64, 64], [128, 128, 128], [256, 256, 256], [512, 512, 512]]
+        self.in_size = image_size
+        self.num_classes = class_number
+
+        self.features = nn.Sequential(
+            nn.Conv2d(channel_number, 64, kernel_size=7, stride=2, padding=3, bias=False),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+        )
+
+        in_channels = 64
+        for i, stage_channels in enumerate(self.channels):
+            stage = nn.Sequential()
+            for j, out_channels in enumerate(stage_channels):
+                stride = 2 if (j == 0 and i > 0) else 1
+                stage.add_module(f"unit{j + 1}", BagNetUnit(in_channels, out_channels, kernel_size=3, stride=stride))
+                in_channels = out_channels
+            self.features.add_module(f"stage{i + 1}", stage)
+
+        self.features.add_module("final_pool", nn.AdaptiveAvgPool2d(1))
+        self.output = nn.Linear(in_channels, self.num_classes)
+
+        self.learning_rate = learning_rate
+        self.momentum = momentum
+        self.dropout = dropout
 
     def forward(self, x):
-        return self.model(x)
+        x = self.features(x)
+        x = torch.flatten(x, 1)
+        return self.output(x)
 
     def train_setup(self, prm):
         self.to(self.device)
         self.criteria = (nn.NLLLoss().to(self.device),)
         self.optimizer = torch.optim.RMSprop(self.parameters(), lr=prm['lr'])
 
+        if self.dropout > 0:
+            self.dropout_layer = nn.Dropout(self.dropout)
+
     def learn(self, train_data):
         self.train()
         for inputs, labels in train_data:
             inputs, labels = inputs.to(self.device), labels.to(self.device)
-            inputs = inputs.float()
             self.optimizer.zero_grad()
             outputs = self(inputs)
             loss = self.criteria(outputs, labels)

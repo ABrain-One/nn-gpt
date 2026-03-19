@@ -25,6 +25,24 @@ DROPOUT = 0.2
 MOMENTUM = 0.9
 TRANSFORM = 'norm_256_flip'  # A common default, used by NNEval if prm is None
 
+STOCHASTIC_DEPTH_PROB = 0.0
+NORM_EPS = 1e-5
+NORM_STD = 0.5
+TIE_WEIGHTS = 0.0
+DROPOUT_AUX = 0.0
+ATTENTION_DROPOUT = 0.0
+NORM_MOMENTUM = 0.1
+SCORE_THRESH = 0.01
+NMS_THRESH = 0.45
+IOU_THRESH = 0.5
+DETECTIONS_PER_IMG = 0.5
+TOPK_CANDIDATES = 0.5
+NEG_TO_POS_RATIO = 0.5
+PRETRAINED = 0.0
+PATCH_SIZE = 0.125
+
+PRM_JSON = None  # Optional JSON string to override hyperparameters, e.g. '{"lr": 0.017, "batch": 32}'
+
 SAVE_TO_DB = True
 NN_NAME_PREFIX = None
 NN_ALTER_EPOCHS = None
@@ -36,7 +54,12 @@ CYCLE = None  # Cycle number (separate from epoch - cycle is the finetuning iter
 
 def main(nn_name_prefix=NN_NAME_PREFIX, nn_train_epochs=NN_TRAIN_EPOCHS, only_epoch=ONLY_EPOCH, save_to_db=SAVE_TO_DB,
          nn_alter_epochs=NN_ALTER_EPOCHS, task=TASK, dataset=DATASET, metric=METRIC, lr=LR, batch=BATCH, dropout=DROPOUT, momentum=MOMENTUM,
-         transform=TRANSFORM, epoch_limit_minutes=EPOCH_LIMIT_MINUTES, custom_synth_dir=CUSTOM_SYNTH_DIR, cycle=CYCLE):
+         transform=TRANSFORM, epoch_limit_minutes=EPOCH_LIMIT_MINUTES, custom_synth_dir=CUSTOM_SYNTH_DIR, cycle=CYCLE,
+         stochastic_depth_prob=STOCHASTIC_DEPTH_PROB, norm_eps=NORM_EPS, norm_std=NORM_STD, tie_weights=TIE_WEIGHTS,
+         dropout_aux=DROPOUT_AUX, attention_dropout=ATTENTION_DROPOUT, norm_momentum=NORM_MOMENTUM,
+         score_thresh=SCORE_THRESH, nms_thresh=NMS_THRESH, iou_thresh=IOU_THRESH, detections_per_img=DETECTIONS_PER_IMG,
+         topk_candidates=TOPK_CANDIDATES, neg_to_pos_ratio=NEG_TO_POS_RATIO, pretrained=PRETRAINED, patch_size=PATCH_SIZE,
+         prm_json=PRM_JSON):
     base_nngpt_path = nngpt_dir  # out/nngpt
     if nn_alter_epochs is None:
         if epoch_dir().is_dir():
@@ -112,6 +135,21 @@ def main(nn_name_prefix=NN_NAME_PREFIX, nn_train_epochs=NN_TRAIN_EPOCHS, only_ep
                         'momentum': momentum,
                         'transform': transform, # Default transform from CLI
                         # 'epoch' will be set explicitly later
+                        'stochastic_depth_prob': stochastic_depth_prob,
+                        'norm_eps': norm_eps,
+                        'norm_std': norm_std,
+                        'tie_weights': tie_weights,
+                        'dropout_aux': dropout_aux,
+                        'attention_dropout': attention_dropout,
+                        'norm_momentum': norm_momentum,
+                        'score_thresh': score_thresh,
+                        'nms_thresh': nms_thresh,
+                        'iou_thresh': iou_thresh,
+                        'detections_per_img': detections_per_img,
+                        'topk_candidates': topk_candidates,
+                        'neg_to_pos_ratio': neg_to_pos_ratio,
+                        'pretrained': pretrained,
+                        'patch_size': patch_size,
                     }
                     print(f'Training model {model_id} with command-line/default training params {prm}')
                 prefix_for_db = nn_name_prefix  # Default prefix
@@ -139,6 +177,10 @@ def main(nn_name_prefix=NN_NAME_PREFIX, nn_train_epochs=NN_TRAIN_EPOCHS, only_ep
                         print(f"  Error loading dataframe.df from {df_file_path}: {e}. Using command-line/default parameters for task, dataset, metric, and prm structure.")
                 else:
                     print(f"  No dataframe.df found. Using command-line/default evaluation parameters.")
+
+                if prm_json:
+                    prm.update(prm_json)
+                    print(f"  Applied --prm_json overrides: {prm_json}")
 
                 # Crucial: set training epochs for this evaluation from nn_train_epochs
                 # This overrides any 'epoch' value that might have come from original_prm_from_df
@@ -258,6 +300,38 @@ if __name__ == "__main__":
                         help=f"Momentum for NNEval if not in dataframe.df's prm (default: {MOMENTUM}).")
     parser.add_argument('--transform', type=str, default=TRANSFORM,
                         help=f"Default transform for NNEval if not in dataframe.df's prm (default: {TRANSFORM}). Stored as 'transform' in prm.")
+    parser.add_argument('--stochastic_depth_prob', type=float, default=STOCHASTIC_DEPTH_PROB,
+                        help=f"Stochastic depth probability (default: {STOCHASTIC_DEPTH_PROB}).")
+    parser.add_argument('--norm_eps', type=float, default=NORM_EPS,
+                        help=f"Epsilon for normalization layers (default: {NORM_EPS}).")
+    parser.add_argument('--norm_std', type=float, default=NORM_STD,
+                        help=f"Std for normalization (default: {NORM_STD}).")
+    parser.add_argument('--tie_weights', type=float, default=TIE_WEIGHTS,
+                        help=f"Tie weights flag as float, >0.5 means True (default: {TIE_WEIGHTS}).")
+    parser.add_argument('--dropout_aux', type=float, default=DROPOUT_AUX,
+                        help=f"Auxiliary dropout rate (default: {DROPOUT_AUX}).")
+    parser.add_argument('--attention_dropout', type=float, default=ATTENTION_DROPOUT,
+                        help=f"Attention dropout rate (default: {ATTENTION_DROPOUT}).")
+    parser.add_argument('--norm_momentum', type=float, default=NORM_MOMENTUM,
+                        help=f"Momentum for normalization layers (default: {NORM_MOMENTUM}).")
+    parser.add_argument('--score_thresh', type=float, default=SCORE_THRESH,
+                        help=f"Score threshold for detection (default: {SCORE_THRESH}).")
+    parser.add_argument('--nms_thresh', type=float, default=NMS_THRESH,
+                        help=f"NMS threshold for detection (default: {NMS_THRESH}).")
+    parser.add_argument('--iou_thresh', type=float, default=IOU_THRESH,
+                        help=f"IoU threshold for detection (default: {IOU_THRESH}).")
+    parser.add_argument('--detections_per_img', type=float, default=DETECTIONS_PER_IMG,
+                        help=f"Detections per image as float in [0,1] (default: {DETECTIONS_PER_IMG}).")
+    parser.add_argument('--topk_candidates', type=float, default=TOPK_CANDIDATES,
+                        help=f"Top-k candidates as float in [0,1] (default: {TOPK_CANDIDATES}).")
+    parser.add_argument('--neg_to_pos_ratio', type=float, default=NEG_TO_POS_RATIO,
+                        help=f"Neg-to-pos ratio as float in [0,1] (default: {NEG_TO_POS_RATIO}).")
+    parser.add_argument('--pretrained', type=float, default=PRETRAINED,
+                        help=f"Use pretrained weights as float, >0.5 means True (default: {PRETRAINED}).")
+    parser.add_argument('--patch_size', type=float, default=PATCH_SIZE,
+                        help=f"Patch size as fraction of image size, used by VisionTransformer (default: {PATCH_SIZE}).")
+    parser.add_argument('--prm_json', type=str, default=PRM_JSON,
+                        help='JSON string of hyperparameter overrides applied last, e.g. \'{"lr": 0.017, "batch": 32}\'. Overrides all other sources except epoch.')
 
     # Other NNEval options
     parser.add_argument('--save_to_db', action=argparse.BooleanOptionalAction, default=SAVE_TO_DB,
@@ -287,6 +361,20 @@ if __name__ == "__main__":
     print(f"Save to DB: {args.save_to_db}")
     print(f"Prefix for the names of generated neural network: {args.nn_name_prefix}")
 
+    prm_json_dict = None
+    if args.prm_json:
+        try:
+            prm_json_dict = json.loads(args.prm_json)
+            print(f"--prm_json overrides: {prm_json_dict}")
+        except json.JSONDecodeError as e:
+            print(f"Error parsing --prm_json: {e}", file=sys.stderr)
+            sys.exit(1)
+
     main(args.nn_name_prefix, args.nn_train_epochs, args.only_epoch, args.save_to_db, args.nn_alter_epochs,
-         args.task, args.dataset, args.metric, args.lr, args.batch_size, args.dropout, args.momentum, args.epoch_limit_minutes,
-         args.custom_synth_dir, args.cycle)
+         args.task, args.dataset, args.metric, args.lr, args.batch_size, args.dropout, args.momentum,
+         args.transform, args.epoch_limit_minutes, args.custom_synth_dir, args.cycle,
+         args.stochastic_depth_prob, args.norm_eps, args.norm_std, args.tie_weights,
+         args.dropout_aux, args.attention_dropout, args.norm_momentum,
+         args.score_thresh, args.nms_thresh, args.iou_thresh, args.detections_per_img,
+         args.topk_candidates, args.neg_to_pos_ratio, args.pretrained, args.patch_size,
+         prm_json_dict)

@@ -1,415 +1,203 @@
+import copy
 import math
-from collections import OrderedDict
+from dataclasses import dataclass
 from functools import partial
-from typing import Callable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, List, Optional, Sequence, Tuple, Union
 
-import numpy as np
 import torch
-import torch.nn.functional as F
 from torch import nn, Tensor
+from torchvision.models._api import WeightsEnum
+from torchvision.models._utils import _make_divisible, _ovewrite_named_param
+from torchvision.ops import StochasticDepth
 from torchvision.ops.misc import Conv2dNormActivation, SqueezeExcitation
-from torchvision.ops.stochastic_depth import StochasticDepth
 
 
-def _get_conv_output_shape(input_size: Tuple[int, int], kernel_size: int, stride: int, padding: int) -> Tuple[int, int]:
-    return (
-        (input_size[0] - kernel_size + 2 * padding) // stride + 1,
-        (input_size[1] - kernel_size + 2 * padding) // stride + 1,
-    )
+@dataclass
+class _MBConvConfig:
+    expand_ratio: float
+    kernel: int
+    stride: int
+    input_channels: int
+    out_channels: int
+    num_layers: int
+    block: Callable[..., nn.Module]
+
+    @staticmethod
+    def adjust_channels(channels: int, width_mult: float, min_value: Optional[int] = None) -> int:
+        return _make_divisible(channels * width_mult, 8, min_value)
 
 
-def _make_block_input_shapes(input_size: Tuple[int, int], n_blocks: int) -> List[Tuple[int, int]]:
-    shapes = []
-    block_input_shape = _get_conv_output_shape(input_size, 3, 2, 1)
-    for _ in range(n_blocks):
-        block_input_shape = _get_conv_output_shape(block_input_shape, 3, 2, 1)
-        shapes.append(block_input_shape)
-    return shapes
+class MBConvConfig(_MBConvConfig):
+    def __init__(
+            self,
+            expand_ratio: float,
+            kernel: int,
+            stride: int,
+            input_channels: int,
+            out_channels: int,
+            num_layers: int,
+            width_mult: float = 1.0,
+            depth_mult: float = 1.0,
+            block: Optional[Callable[..., nn.Module]] = None,
+    ) -> None:
+        input_channels = self.adjust_channels(input_channels, width_mult)
+        out_channels = self.adjust_channels(out_channels, width_mult)
+        num_layers = self.adjust_depth(num_layers, depth_mult)
+        if block is None:
+            block = MBConv
+        super().__init__(expand_ratio, kernel, stride, input_channels, out_channels, num_layers, block)
+
+    @staticmethod
+    def adjust_depth(num_layers: int, depth_mult: float):
+        return int(math.ceil(num_layers * depth_mult))
 
 
-def _get_relative_position_index(height: int, width: int) -> torch.Tensor:
-    coords = torch.stack(torch.meshgrid([torch.arange(height), torch.arange(width)]))
-    coords_flat = torch.flatten(coords, 1)
-    relative_coords = coords_flat[:, :, None] - coords_flat[:, None, :]
-    relative_coords = relative_coords.permute(1, 2, 0).contiguous()
-    relative_coords[:, :, 0] += height - 1
-    relative_coords[:, :, 1] += width - 1
-    relative_coords[:, :, 0] *= 2 * width - 1
-    return relative_coords.sum(-1)
+class FusedMBConvConfig(_MBConvConfig):
+    def __init__(
+            self,
+            expand_ratio: float,
+            kernel: int,
+            stride: int,
+            input_channels: int,
+            out_channels: int,
+            num_layers: int,
+            block: Optional[Callable[..., nn.Module]] = None,
+    ) -> None:
+        if block is None:
+            block = FusedMBConv
+        super().__init__(expand_ratio, kernel, stride, input_channels, out_channels, num_layers, block)
 
 
 class MBConv(nn.Module):
     def __init__(
             self,
-            in_channels: int,
-            out_channels: int,
-            expansion_ratio: float,
-            squeeze_ratio: float,
-            stride: int,
-            activation_layer: Callable[..., nn.Module],
+            cnf: MBConvConfig,
+            stochastic_depth_prob: float,
             norm_layer: Callable[..., nn.Module],
-            p_stochastic_dropout: float = 0.0,
+            se_layer: Callable[..., nn.Module] = SqueezeExcitation,
     ) -> None:
         super().__init__()
 
-        proj: Sequence[nn.Module]
-        self.proj: nn.Module
+        if not (1 <= cnf.stride <= 2):
+            raise ValueError("illegal stride value")
 
-        should_proj = stride != 1 or in_channels != out_channels
-        if should_proj:
-            proj = [nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, bias=True)]
-            if stride == 2:
-                proj = [nn.AvgPool2d(kernel_size=3, stride=stride, padding=1)] + proj
-            self.proj = nn.Sequential(*proj)
-        else:
-            self.proj = nn.Identity()
+        self.use_res_connect = cnf.stride == 1 and cnf.input_channels == cnf.out_channels
 
-        mid_channels = int(out_channels * expansion_ratio)
-        sqz_channels = int(out_channels * squeeze_ratio)
-
-        if p_stochastic_dropout:
-            self.stochastic_depth = StochasticDepth(p_stochastic_dropout, mode="row")
-        else:
-            self.stochastic_depth = nn.Identity()
-
-        _layers = OrderedDict()
-        _layers["pre_norm"] = norm_layer(in_channels)
-        _layers["conv_a"] = Conv2dNormActivation(
-            in_channels,
-            mid_channels,
-            kernel_size=1,
-            stride=1,
-            padding=0,
-            activation_layer=activation_layer,
-            norm_layer=norm_layer,
-            inplace=None,
-        )
-        _layers["conv_b"] = Conv2dNormActivation(
-            mid_channels,
-            mid_channels,
-            kernel_size=3,
-            stride=stride,
-            padding=1,
-            activation_layer=activation_layer,
-            norm_layer=norm_layer,
-            groups=mid_channels,
-            inplace=None,
-        )
-        _layers["squeeze_excitation"] = SqueezeExcitation(mid_channels, sqz_channels, activation=nn.SiLU)
-        _layers["conv_c"] = nn.Conv2d(in_channels=mid_channels, out_channels=out_channels, kernel_size=1, bias=True)
-
-        self.layers = nn.Sequential(_layers)
-
-    def forward(self, x: Tensor) -> Tensor:
-        res = self.proj(x)
-        x = self.stochastic_depth(self.layers(x))
-        return res + x
-
-
-class RelativePositionalMultiHeadAttention(nn.Module):
-    def __init__(
-            self,
-            feat_dim: int,
-            head_dim: int,
-            max_seq_len: int,
-    ) -> None:
-        super().__init__()
-
-        if feat_dim % head_dim != 0:
-            raise ValueError(f"feat_dim: {feat_dim} must be divisible by head_dim: {head_dim}")
-
-        self.n_heads = feat_dim // head_dim
-        self.head_dim = head_dim
-        self.size = int(math.sqrt(max_seq_len))
-        self.max_seq_len = max_seq_len
-
-        self.to_qkv = nn.Linear(feat_dim, self.n_heads * self.head_dim * 3)
-        self.scale_factor = feat_dim ** -0.5
-
-        self.merge = nn.Linear(self.head_dim * self.n_heads, feat_dim)
-        self.relative_position_bias_table = nn.parameter.Parameter(
-            torch.empty(((2 * self.size - 1) * (2 * self.size - 1), self.n_heads), dtype=torch.float32),
-        )
-
-        self.register_buffer("relative_position_index", _get_relative_position_index(self.size, self.size))
-        torch.nn.init.trunc_normal_(self.relative_position_bias_table, std=0.02)
-
-    def get_relative_positional_bias(self) -> torch.Tensor:
-        bias_index = self.relative_position_index.view(-1)
-        relative_bias = self.relative_position_bias_table[bias_index].view(self.max_seq_len, self.max_seq_len, -1)
-        relative_bias = relative_bias.permute(2, 0, 1).contiguous()
-        return relative_bias.unsqueeze(0)
-
-    def forward(self, x: Tensor) -> Tensor:
-        B, G, P, D = x.shape
-        H, DH = self.n_heads, self.head_dim
-
-        qkv = self.to_qkv(x)
-        q, k, v = torch.chunk(qkv, 3, dim=-1)
-
-        q = q.reshape(B, G, P, H, DH).permute(0, 1, 3, 2, 4)
-        k = k.reshape(B, G, P, H, DH).permute(0, 1, 3, 2, 4)
-        v = v.reshape(B, G, P, H, DH).permute(0, 1, 3, 2, 4)
-
-        k = k * self.scale_factor
-        dot_prod = torch.einsum("B G H I D, B G H J D -> B G H I J", q, k)
-        pos_bias = self.get_relative_positional_bias()
-
-        dot_prod = F.softmax(dot_prod + pos_bias, dim=-1)
-
-        out = torch.einsum("B G H I J, B G H J D -> B G H I D", dot_prod, v)
-        out = out.permute(0, 1, 3, 2, 4).reshape(B, G, P, D)
-
-        out = self.merge(out)
-        return out
-
-
-class SwapAxes(nn.Module):
-    def __init__(self, a: int, b: int) -> None:
-        super().__init__()
-        self.a = a
-        self.b = b
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        res = torch.swapaxes(x, self.a, self.b)
-        return res
-
-
-class WindowPartition(nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-
-    def forward(self, x: Tensor, p: int) -> Tensor:
-        B, C, H, W = x.shape
-        P = p
-        x = x.reshape(B, C, H // P, P, W // P, P)
-        x = x.permute(0, 2, 4, 3, 5, 1)
-        x = x.reshape(B, (H // P) * (W // P), P * P, C)
-        return x
-
-
-class WindowDepartition(nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-
-    def forward(self, x: Tensor, p: int, h_partitions: int, w_partitions: int) -> Tensor:
-        B, G, PP, C = x.shape
-        P = p
-        HP, WP = h_partitions, w_partitions
-        x = x.reshape(B, HP, WP, P, P, C)
-        x = x.permute(0, 5, 1, 3, 2, 4)
-        x = x.reshape(B, C, HP * P, WP * P)
-        return x
-
-
-class PartitionAttentionLayer(nn.Module):
-    def __init__(
-            self,
-            in_channels: int,
-            head_dim: int,
-            partition_size: int,
-            partition_type: str,
-            grid_size: Tuple[int, int],
-            mlp_ratio: int,
-            activation_layer: Callable[..., nn.Module],
-            norm_layer: Callable[..., nn.Module],
-            attention_dropout: float,
-            mlp_dropout: float,
-            p_stochastic_dropout: float,
-    ) -> None:
-        super().__init__()
-
-        self.n_heads = in_channels // head_dim
-        self.head_dim = head_dim
-        self.n_partitions = grid_size[0] // partition_size
-        self.partition_type = partition_type
-        self.grid_size = grid_size
-
-        if partition_type not in ["grid", "window"]:
-            raise ValueError("partition_type must be either 'grid' or 'window'")
-
-        if partition_type == "window":
-            self.p, self.g = partition_size, self.n_partitions
-        else:
-            self.p, self.g = self.n_partitions, partition_size
-
-        self.partition_op = WindowPartition()
-        self.departition_op = WindowDepartition()
-        self.partition_swap = SwapAxes(-2, -3) if partition_type == "grid" else nn.Identity()
-        self.departition_swap = SwapAxes(-2, -3) if partition_type == "grid" else nn.Identity()
-
-        self.attn_layer = nn.Sequential(
-            norm_layer(in_channels),
-            RelativePositionalMultiHeadAttention(in_channels, head_dim, partition_size ** 2),
-            nn.Dropout(attention_dropout),
-        )
-
-        self.mlp_layer = nn.Sequential(
-            nn.LayerNorm(in_channels),
-            nn.Linear(in_channels, in_channels * mlp_ratio),
-            activation_layer(),
-            nn.Linear(in_channels * mlp_ratio, in_channels),
-            nn.Dropout(mlp_dropout),
-        )
-
-        self.stochastic_dropout = StochasticDepth(p_stochastic_dropout, mode="row")
-
-    def forward(self, x: Tensor) -> Tensor:
-        gh, gw = self.grid_size[0] // self.p, self.grid_size[1] // self.p
-        torch._assert(
-            self.grid_size[0] % self.p == 0 and self.grid_size[1] % self.p == 0,
-            "Grid size must be divisible by partition size. Got grid size of {} and partition size of {}".format(
-                self.grid_size, self.p
-            ),
-        )
-
-        x = self.partition_op(x, self.p)
-        x = self.partition_swap(x)
-        x = x + self.stochastic_dropout(self.attn_layer(x))
-        x = x + self.stochastic_dropout(self.mlp_layer(x))
-        x = self.departition_swap(x)
-        x = self.departition_op(x, self.p, gh, gw)
-
-        return x
-
-
-class MaxVitLayer(nn.Module):
-    def __init__(
-            self,
-            in_channels: int,
-            out_channels: int,
-            squeeze_ratio: float,
-            expansion_ratio: float,
-            stride: int,
-            norm_layer: Callable[..., nn.Module],
-            activation_layer: Callable[..., nn.Module],
-            head_dim: int,
-            mlp_ratio: int,
-            mlp_dropout: float,
-            attention_dropout: float,
-            p_stochastic_dropout: float,
-            partition_size: int,
-            grid_size: Tuple[int, int],
-    ) -> None:
-        super().__init__()
-
-        layers: OrderedDict = OrderedDict()
-
-        layers["MBconv"] = MBConv(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            expansion_ratio=expansion_ratio,
-            squeeze_ratio=squeeze_ratio,
-            stride=stride,
-            activation_layer=activation_layer,
-            norm_layer=norm_layer,
-            p_stochastic_dropout=p_stochastic_dropout,
-        )
-        layers["window_attention"] = PartitionAttentionLayer(
-            in_channels=out_channels,
-            head_dim=head_dim,
-            partition_size=partition_size,
-            partition_type="window",
-            grid_size=grid_size,
-            mlp_ratio=mlp_ratio,
-            activation_layer=activation_layer,
-            norm_layer=nn.LayerNorm,
-            attention_dropout=attention_dropout,
-            mlp_dropout=mlp_dropout,
-            p_stochastic_dropout=p_stochastic_dropout,
-        )
-        layers["grid_attention"] = PartitionAttentionLayer(
-            in_channels=out_channels,
-            head_dim=head_dim,
-            partition_size=partition_size,
-            partition_type="grid",
-            grid_size=grid_size,
-            mlp_ratio=mlp_ratio,
-            activation_layer=activation_layer,
-            norm_layer=nn.LayerNorm,
-            attention_dropout=attention_dropout,
-            mlp_dropout=mlp_dropout,
-            p_stochastic_dropout=p_stochastic_dropout,
-        )
-        self.layers = nn.Sequential(layers)
-
-    def forward(self, x: Tensor) -> Tensor:
-        x = self.layers(x)
-        return x
-
-
-class MaxVitBlock(nn.Module):
-    def __init__(
-            self,
-            in_channels: int,
-            out_channels: int,
-            squeeze_ratio: float,
-            expansion_ratio: float,
-            norm_layer: Callable[..., nn.Module],
-            activation_layer: Callable[..., nn.Module],
-            head_dim: int,
-            mlp_ratio: int,
-            mlp_dropout: float,
-            attention_dropout: float,
-            partition_size: int,
-            input_grid_size: Tuple[int, int],
-            n_layers: int,
-            p_stochastic: List[float],
-    ) -> None:
-        super().__init__()
-        if not len(p_stochastic) == n_layers:
-            raise ValueError(f"p_stochastic must have length n_layers={n_layers}, got p_stochastic={p_stochastic}.")
-
-        self.layers = nn.ModuleList()
-        self.grid_size = _get_conv_output_shape(input_grid_size, kernel_size=3, stride=2, padding=1)
-
-        for idx, p in enumerate(p_stochastic):
-            stride = 2 if idx == 0 else 1
-            self.layers += [
-                MaxVitLayer(
-                    in_channels=in_channels if idx == 0 else out_channels,
-                    out_channels=out_channels,
-                    squeeze_ratio=squeeze_ratio,
-                    expansion_ratio=expansion_ratio,
-                    stride=stride,
+        layers: List[nn.Module] = []
+        activation_layer = nn.SiLU
+        expanded_channels = cnf.adjust_channels(cnf.input_channels, cnf.expand_ratio)
+        if expanded_channels != cnf.input_channels:
+            layers.append(
+                Conv2dNormActivation(
+                    cnf.input_channels,
+                    expanded_channels,
+                    kernel_size=1,
                     norm_layer=norm_layer,
                     activation_layer=activation_layer,
-                    head_dim=head_dim,
-                    mlp_ratio=mlp_ratio,
-                    mlp_dropout=mlp_dropout,
-                    attention_dropout=attention_dropout,
-                    partition_size=partition_size,
-                    grid_size=self.grid_size,
-                    p_stochastic_dropout=p,
-                ),
-            ]
+                )
+            )
 
-    def forward(self, x: Tensor) -> Tensor:
-        for layer in self.layers:
-            x = layer(x)
-        return x
+        layers.append(
+            Conv2dNormActivation(
+                expanded_channels,
+                expanded_channels,
+                kernel_size=cnf.kernel,
+                stride=cnf.stride,
+                groups=expanded_channels,
+                norm_layer=norm_layer,
+                activation_layer=activation_layer,
+            )
+        )
+
+        squeeze_channels = max(1, cnf.input_channels // 4)
+        layers.append(se_layer(expanded_channels, squeeze_channels, activation=partial(nn.SiLU, inplace=True)))
+
+        layers.append(
+            Conv2dNormActivation(
+                expanded_channels, cnf.out_channels, kernel_size=1, norm_layer=norm_layer, activation_layer=None
+            )
+        )
+
+        self.block = nn.Sequential(*layers)
+        self.stochastic_depth = StochasticDepth(stochastic_depth_prob, "row")
+        self.out_channels = cnf.out_channels
+
+    def forward(self, input: Tensor) -> Tensor:
+        result = self.block(input)
+        if self.use_res_connect:
+            result = self.stochastic_depth(result)
+            result += input
+        return result
 
 
-args = [
-    (299, 299),
-    64,
-    1,
-    [64, 128, 256, 512],
-    [2, 2, 5, 2],
-    32,
-    0.2,
-]
+class FusedMBConv(nn.Module):
+    def __init__(
+            self,
+            cnf: FusedMBConvConfig,
+            stochastic_depth_prob: float,
+            norm_layer: Callable[..., nn.Module],
+    ) -> None:
+        super().__init__()
+
+        if not (1 <= cnf.stride <= 2):
+            raise ValueError("illegal stride value")
+
+        self.use_res_connect = cnf.stride == 1 and cnf.input_channels == cnf.out_channels
+
+        layers: List[nn.Module] = []
+        activation_layer = nn.SiLU
+
+        expanded_channels = cnf.adjust_channels(cnf.input_channels, cnf.expand_ratio)
+        if expanded_channels != cnf.input_channels:
+            layers.append(
+                Conv2dNormActivation(
+                    cnf.input_channels,
+                    expanded_channels,
+                    kernel_size=cnf.kernel,
+                    stride=cnf.stride,
+                    norm_layer=norm_layer,
+                    activation_layer=activation_layer,
+                )
+            )
+
+            layers.append(
+                Conv2dNormActivation(
+                    expanded_channels, cnf.out_channels, kernel_size=1, norm_layer=norm_layer, activation_layer=None
+                )
+            )
+        else:
+            layers.append(
+                Conv2dNormActivation(
+                    cnf.input_channels,
+                    cnf.out_channels,
+                    kernel_size=cnf.kernel,
+                    stride=cnf.stride,
+                    norm_layer=norm_layer,
+                    activation_layer=activation_layer,
+                )
+            )
+
+        self.block = nn.Sequential(*layers)
+        self.stochastic_depth = StochasticDepth(stochastic_depth_prob, "row")
+        self.out_channels = cnf.out_channels
+
+    def forward(self, input: Tensor) -> Tensor:
+        result = self.block(input)
+        if self.use_res_connect:
+            result = self.stochastic_depth(result)
+            result += input
+        return result
 
 
 def supported_hyperparameters():
-    return {'lr', 'dropout', 'attention_dropout', 'stochastic_depth_prob'}
+    return {'lr', 'dropout'}
 
 
 class Net(nn.Module):
 
     def train_setup(self, prm):
         self.to(self.device)
-        self.criteria = (nn.NLLLoss().to(self.device),)
+        self.criteria = (nn.CrossEntropyLoss().to(self.device),)
         self.optimizer = torch.optim.RMSprop(self.parameters(), lr=prm['lr'])
 
     def learn(self, train_data):
@@ -425,116 +213,174 @@ class Net(nn.Module):
     def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
         super().__init__()
         self.device = device
-        input_size: Tuple[int, int] = in_shape[2:]
-        stem_channels: int = 64
-        partition_size: int = 1
-        block_channels = None
-        block_layers = None
-
-        head_dim: int = 32
-        stochastic_depth_prob: float = prm['stochastic_depth_prob']
-        norm_layer: Optional[Callable[..., nn.Module]] = None
-        activation_layer: Callable[..., nn.Module] = nn.GELU
-        squeeze_ratio: float = 0.25
-        expansion_ratio: float = 4
-        mlp_ratio: int = 4
-        mlp_dropout: float = prm['dropout']
-        attention_dropout: float = prm['attention_dropout']
+        inverted_residual_setting: Sequence[Union[MBConvConfig, FusedMBConvConfig]] = None
+        dropout: float = prm['dropout']
+        stochastic_depth_prob: float = 0.2
         num_classes: int = out_shape[0]
-        if block_layers is None:
-            block_layers = [2, 2, 5, 2]
-        if block_channels is None:
-            block_channels = [64, 128, 256, 512]
-        input_channels = in_shape[1]
+        norm_layer: Optional[Callable[..., nn.Module]] = None
+        last_channel: Optional[int] = None
+        if inverted_residual_setting is None:
+            bneck_conf = partial(MBConvConfig, width_mult=1.0, depth_mult=1.0)
+            inverted_residual_setting = [
+                bneck_conf(1, 3, 1, 32, 16, 1),
+                bneck_conf(6, 3, 2, 16, 24, 2),
+                bneck_conf(6, 5, 2, 24, 40, 2),
+                bneck_conf(6, 3, 2, 40, 80, 3),
+                bneck_conf(6, 5, 1, 80, 112, 3),
+                bneck_conf(6, 5, 2, 112, 192, 4),
+                bneck_conf(6, 3, 1, 192, 320, 1),
+            ]
+
+        if not inverted_residual_setting:
+            raise ValueError("The inverted_residual_setting should not be empty")
+        elif not (
+                isinstance(inverted_residual_setting, Sequence)
+                and all([isinstance(s, _MBConvConfig) for s in inverted_residual_setting])
+        ):
+            raise TypeError("The inverted_residual_setting should be List[MBConvConfig]")
 
         if norm_layer is None:
-            norm_layer = partial(nn.BatchNorm2d, eps=1e-3, momentum=0.01)
+            norm_layer = nn.BatchNorm2d
 
-        block_input_sizes = _make_block_input_shapes(input_size, len(block_channels))
-        for idx, block_input_size in enumerate(block_input_sizes):
-            if block_input_size[0] % partition_size != 0 or block_input_size[1] % partition_size != 0:
-                raise ValueError(
-                    f"Input size {block_input_size} of block {idx} is not divisible by partition size {partition_size}. "
-                    f"Consider changing the partition size or the input size.\n"
-                    f"Current configuration yields the following block input sizes: {block_input_sizes}."
-                )
+        layers: List[nn.Module] = []
 
-        self.stem = nn.Sequential(
+        firstconv_output_channels = inverted_residual_setting[0].input_channels
+        layers.append(
             Conv2dNormActivation(
-                input_channels,
-                stem_channels,
-                3,
-                stride=2,
-                norm_layer=norm_layer,
-                activation_layer=activation_layer,
-                bias=False,
-                inplace=None,
-            ),
-            Conv2dNormActivation(
-                stem_channels, stem_channels, 3, stride=1, norm_layer=None, activation_layer=None, bias=True
-            ),
-        )
-
-        input_size = _get_conv_output_shape(input_size, kernel_size=3, stride=2, padding=1)
-        self.partition_size = partition_size
-
-        self.blocks = nn.ModuleList()
-        in_channels = [stem_channels] + block_channels[:-1]
-        out_channels = block_channels
-
-        p_stochastic = np.linspace(0, stochastic_depth_prob, sum(block_layers)).tolist()
-
-        p_idx = 0
-        for in_channel, out_channel, num_layers in zip(in_channels, out_channels, block_layers):
-            self.blocks.append(
-                MaxVitBlock(
-                    in_channels=in_channel,
-                    out_channels=out_channel,
-                    squeeze_ratio=squeeze_ratio,
-                    expansion_ratio=expansion_ratio,
-                    norm_layer=norm_layer,
-                    activation_layer=activation_layer,
-                    head_dim=head_dim,
-                    mlp_ratio=mlp_ratio,
-                    mlp_dropout=mlp_dropout,
-                    attention_dropout=attention_dropout,
-                    partition_size=partition_size,
-                    input_grid_size=input_size,
-                    n_layers=num_layers,
-                    p_stochastic=p_stochastic[p_idx: p_idx + num_layers],
-                ),
+                in_shape[1], firstconv_output_channels, kernel_size=3, stride=2, norm_layer=norm_layer, activation_layer=nn.SiLU
             )
-            input_size = self.blocks[-1].grid_size
-            p_idx += num_layers
-
-        self.classifier = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Flatten(),
-            nn.LayerNorm(block_channels[-1]),
-            nn.Linear(block_channels[-1], block_channels[-1]),
-            nn.Tanh(),
-            nn.Linear(block_channels[-1], num_classes, bias=False),
         )
 
-        self._init_weights()
+        total_stage_blocks = sum(cnf.num_layers for cnf in inverted_residual_setting)
+        stage_block_id = 0
+        for cnf in inverted_residual_setting:
+            stage: List[nn.Module] = []
+            for _ in range(cnf.num_layers):
+                block_cnf = copy.copy(cnf)
 
-    def forward(self, x: Tensor) -> Tensor:
-        x = self.stem(x)
-        for block in self.blocks:
-            x = block(x)
+                if stage:
+                    block_cnf.input_channels = block_cnf.out_channels
+                    block_cnf.stride = 1
+
+                sd_prob = stochastic_depth_prob * float(stage_block_id) / total_stage_blocks
+
+                stage.append(block_cnf.block(block_cnf, sd_prob, norm_layer))
+                stage_block_id += 1
+
+            layers.append(nn.Sequential(*stage))
+
+        lastconv_input_channels = inverted_residual_setting[-1].out_channels
+        lastconv_output_channels = last_channel if last_channel is not None else 4 * lastconv_input_channels
+        layers.append(
+            Conv2dNormActivation(
+                lastconv_input_channels,
+                lastconv_output_channels,
+                kernel_size=1,
+                norm_layer=norm_layer,
+                activation_layer=nn.SiLU,
+            )
+        )
+
+        self.features = nn.Sequential(*layers)
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.classifier = nn.Sequential(
+            nn.Dropout(p=dropout, inplace=True),
+            nn.Linear(lastconv_output_channels, num_classes),
+        )
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode="fan_out")
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.Linear):
+                init_range = 1.0 / math.sqrt(m.out_features)
+                nn.init.uniform_(m.weight, -init_range, init_range)
+                nn.init.zeros_(m.bias)
+
+    def _forward_impl(self, x: Tensor) -> Tensor:
+        x = self.features(x)
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
         x = self.classifier(x)
         return x
 
-    def _init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.normal_(m.weight, std=0.02)
-                if m.bias is not None:
-                    nn.init.zeros_(m.bias)
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, std=0.02)
-                if m.bias is not None:
-                    nn.init.zeros_(m.bias)
+    def forward(self, x: Tensor) -> Tensor:
+        return self._forward_impl(x)
+
+
+def _efficientnet(
+        inverted_residual_setting: Sequence[Union[MBConvConfig, FusedMBConvConfig]],
+        dropout: float,
+        last_channel: Optional[int],
+        weights: Optional[WeightsEnum],
+        progress: bool,
+        **kwargs: Any,
+) -> Net:
+    if weights is not None:
+        _ovewrite_named_param(kwargs, "num_classes", len(weights.meta["categories"]))
+
+    model = Net(inverted_residual_setting, dropout, last_channel=last_channel, **kwargs)
+
+    if weights is not None:
+        model.load_state_dict(weights.get_state_dict(progress=progress, check_hash=True))
+
+    return model
+
+
+def _efficientnet_conf(
+        arch: str,
+        **kwargs: Any,
+) -> Tuple[Sequence[Union[MBConvConfig, FusedMBConvConfig]], Optional[int]]:
+    inverted_residual_setting: Sequence[Union[MBConvConfig, FusedMBConvConfig]]
+    if arch.startswith("efficientnet_b"):
+        bneck_conf = partial(MBConvConfig, width_mult=kwargs.pop("width_mult"), depth_mult=kwargs.pop("depth_mult"))
+        inverted_residual_setting = [
+            bneck_conf(1, 3, 1, 32, 16, 1),
+            bneck_conf(6, 3, 2, 16, 24, 2),
+            bneck_conf(6, 5, 2, 24, 40, 2),
+            bneck_conf(6, 3, 2, 40, 80, 3),
+            bneck_conf(6, 5, 1, 80, 112, 3),
+            bneck_conf(6, 5, 2, 112, 192, 4),
+            bneck_conf(6, 3, 1, 192, 320, 1),
+        ]
+        last_channel = None
+    elif arch.startswith("efficientnet_v2_s"):
+        inverted_residual_setting = [
+            FusedMBConvConfig(1, 3, 1, 24, 24, 2),
+            FusedMBConvConfig(4, 3, 2, 24, 48, 4),
+            FusedMBConvConfig(4, 3, 2, 48, 64, 4),
+            MBConvConfig(4, 3, 2, 64, 128, 6),
+            MBConvConfig(6, 3, 1, 128, 160, 9),
+            MBConvConfig(6, 3, 2, 160, 256, 15),
+        ]
+        last_channel = 1280
+    elif arch.startswith("efficientnet_v2_m"):
+        inverted_residual_setting = [
+            FusedMBConvConfig(1, 3, 1, 24, 24, 3),
+            FusedMBConvConfig(4, 3, 2, 24, 48, 5),
+            FusedMBConvConfig(4, 3, 2, 48, 80, 5),
+            MBConvConfig(4, 3, 2, 80, 160, 7),
+            MBConvConfig(6, 3, 1, 160, 176, 14),
+            MBConvConfig(6, 3, 2, 176, 304, 18),
+            MBConvConfig(6, 3, 1, 304, 512, 5),
+        ]
+        last_channel = 1280
+    elif arch.startswith("efficientnet_v2_l"):
+        inverted_residual_setting = [
+            FusedMBConvConfig(1, 3, 1, 32, 32, 4),
+            FusedMBConvConfig(4, 3, 2, 32, 64, 7),
+            FusedMBConvConfig(4, 3, 2, 64, 96, 7),
+            MBConvConfig(4, 3, 2, 96, 192, 10),
+            MBConvConfig(6, 3, 1, 192, 224, 19),
+            MBConvConfig(6, 3, 2, 224, 384, 25),
+            MBConvConfig(6, 3, 1, 384, 640, 7),
+        ]
+        last_channel = 1280
+    else:
+        raise ValueError(f"Unsupported model type {arch}")
+
+    return inverted_residual_setting, last_channel

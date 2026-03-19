@@ -3,7 +3,7 @@
     "task": "img-classification",
     "dataset": "cifar-10",
     "metric": "acc",
-    "model": "bff9b63ee18cb674e57fd53a97e5192f"
+    "model": "5882bea748a7c6e85e17f1ee6100fd41"
   },
   "hyperparameters": {
     "lr": 0.01,
@@ -12,15 +12,24 @@
     "momentum": 0.9,
     "transform": "norm_256_flip",
     "epoch": 5,
-    "train_loss": 1.7288573033669417,
-    "test_loss": 1.7285251457979725,
-    "train_accuracy": 0.34468,
-    "gradient_norm": 3.000000153044545,
-    "samples_per_second": 267.4750002515177,
-    "best_accuracy": 0.3418,
+    "train_loss": 0.4917998413753022,
+    "test_loss": 0.6069300548665842,
+    "train_accuracy": 0.83192,
+    "gradient_norm": 0.6154035587336281,
+    "samples_per_second": 275.10064984918694,
+    "best_accuracy": 0.7966,
     "best_epoch": 5,
-    "lr_now": 0.01,
-    "gpu_memory_kb": 8696134.5
+    "cpu_type": "x86_64",
+    "cpu_count": 16,
+    "total_ram_kb": 31935512.0,
+    "gpu_type": "NVIDIA GeForce RTX 4090",
+    "gpu_total_memory_kb": 24670016.0,
+    "occupied_ram_kb": 23868296.0,
+    "ram_usage_percent": 74.7,
+    "cpu_usage_percent": 8.7,
+    "occupied_gpu_memory_kb": 197048.0,
+    "gpu_memory_usage_percent": 0.8,
+    "gpu_memory_kb": 5710981.5
   },
   "model_info": {
     "input_shape": [
@@ -33,14 +42,28 @@
       10
     ]
   },
+  "system_info": {
+    "cpu_type": "x86_64",
+    "cpu_count": 16,
+    "total_ram_kb": 31935512.0,
+    "gpu_type": "NVIDIA GeForce RTX 4090",
+    "gpu_total_memory_kb": 24670016.0
+  },
   "training_summary": {
     "total_epochs": 5,
-    "best_accuracy": 0.3418,
+    "best_accuracy": 0.7966,
     "best_epoch": 5,
-    "final_train_loss": 1.7288573033669417,
-    "final_test_loss": 1.7285251457979725,
-    "final_accuracy": 0.3418,
-    "gpu_memory_kb": 8696134.5
+    "final_train_loss": 0.4917998413753022,
+    "final_test_loss": 0.6069300548665842,
+    "final_accuracy": 0.7966,
+    "gpu_memory_kb": 5710981.5
+  },
+  "final_resource_usage": {
+    "occupied_ram_kb": 23868272.0,
+    "ram_usage_percent": 74.7,
+    "cpu_usage_percent": 7.0,
+    "occupied_gpu_memory_kb": 197048.0,
+    "gpu_memory_usage_percent": 0.8
   },
   "learning_curves": {
     "epochs": [
@@ -51,32 +74,32 @@
       5
     ],
     "train_loss": [
-      2.166062939807277,
-      1.9388852143836448,
-      1.8237880111655311,
-      1.7707537173310204,
-      1.7288573033669417
+      1.5686135305772961,
+      0.999745922396555,
+      0.744156345877501,
+      0.512794100186404,
+      0.4917998413753022
     ],
     "test_loss": [
-      2.1657904014465914,
-      1.9370931470470063,
-      1.81999760448553,
-      1.7704918703455834,
-      1.7285251457979725
+      1.5652785407509773,
+      1.012792247116186,
+      0.8136174492775254,
+      0.6056845727240204,
+      0.6069300548665842
     ],
     "train_accuracy": [
-      0.19236,
-      0.27366,
-      0.30418,
-      0.32822,
-      0.34468
+      0.43178,
+      0.64362,
+      0.741,
+      0.8243,
+      0.83192
     ],
     "test_accuracy": [
-      0.1932,
-      0.2712,
-      0.3006,
-      0.3194,
-      0.3418
+      0.4338,
+      0.6372,
+      0.7142,
+      0.7928,
+      0.7966
     ],
     "lr": [
       0.01,
@@ -86,63 +109,63 @@
       0.01
     ],
     "gradient_norm": [
-      3.0000001613168896,
-      2.9999998839088073,
-      3.000000151692672,
-      3.000000071241654,
-      3.000000153044545
+      0.8387838574862242,
+      0.8199208094321808,
+      0.6621641395511639,
+      1.0063467686226477,
+      0.6154035587336281
     ]
   },
   "epoch_details": [
     {
       "epoch": 1,
-      "train_loss": 2.166062939807277,
-      "test_loss": 2.1657904014465914,
-      "train_accuracy": 0.19236,
-      "test_accuracy": 0.1932,
+      "train_loss": 1.5686135305772961,
+      "test_loss": 1.5652785407509773,
+      "train_accuracy": 0.43178,
+      "test_accuracy": 0.4338,
       "lr": 0.01,
-      "gradient_norm": 3.0000001613168896,
-      "samples_per_second": 264.4470531852646
+      "gradient_norm": 0.8387838574862242,
+      "samples_per_second": 279.2080420923821
     },
     {
       "epoch": 2,
-      "train_loss": 1.9388852143836448,
-      "test_loss": 1.9370931470470063,
-      "train_accuracy": 0.27366,
-      "test_accuracy": 0.2712,
+      "train_loss": 0.999745922396555,
+      "test_loss": 1.012792247116186,
+      "train_accuracy": 0.64362,
+      "test_accuracy": 0.6372,
       "lr": 0.01,
-      "gradient_norm": 2.9999998839088073,
-      "samples_per_second": 264.6463874661791
+      "gradient_norm": 0.8199208094321808,
+      "samples_per_second": 282.05664408520903
     },
     {
       "epoch": 3,
-      "train_loss": 1.8237880111655311,
-      "test_loss": 1.81999760448553,
-      "train_accuracy": 0.30418,
-      "test_accuracy": 0.3006,
+      "train_loss": 0.744156345877501,
+      "test_loss": 0.8136174492775254,
+      "train_accuracy": 0.741,
+      "test_accuracy": 0.7142,
       "lr": 0.01,
-      "gradient_norm": 3.000000151692672,
-      "samples_per_second": 263.18646119757847
+      "gradient_norm": 0.6621641395511639,
+      "samples_per_second": 277.27729216990446
     },
     {
       "epoch": 4,
-      "train_loss": 1.7707537173310204,
-      "test_loss": 1.7704918703455834,
-      "train_accuracy": 0.32822,
-      "test_accuracy": 0.3194,
+      "train_loss": 0.512794100186404,
+      "test_loss": 0.6056845727240204,
+      "train_accuracy": 0.8243,
+      "test_accuracy": 0.7928,
       "lr": 0.01,
-      "gradient_norm": 3.000000071241654,
-      "samples_per_second": 264.29284870496264
+      "gradient_norm": 1.0063467686226477,
+      "samples_per_second": 276.3875975372741
     },
     {
       "epoch": 5,
-      "train_loss": 1.7288573033669417,
-      "test_loss": 1.7285251457979725,
-      "train_accuracy": 0.34468,
-      "test_accuracy": 0.3418,
+      "train_loss": 0.4917998413753022,
+      "test_loss": 0.6069300548665842,
+      "train_accuracy": 0.83192,
+      "test_accuracy": 0.7966,
       "lr": 0.01,
-      "gradient_norm": 3.000000153044545,
-      "samples_per_second": 267.4750002515177
+      "gradient_norm": 0.6154035587336281,
+      "samples_per_second": 275.10064984918694
     }
   ]
 }

@@ -1,139 +1,138 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import math
+from typing import Dict, List, Union, cast
 
 import torch
+import torch.nn.functional as F
 from torch import nn
 
-class NGL(nn.Module):
-    def __init__(self):
-        super(NGL, self).__init__()
 
-    def forward(self, x, target):
-        target = torch.nn.functional.one_hot(target, num_classes=x.size(1))
-        x = torch.softmax(x, dim=-1)
-        loss = torch.mean(torch.exp(2.4092 - x - x*target) - torch.cos(torch.cos(torch.sin(x))))
-        return loss
-
-
-
-class AirBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, groups=1, ratio=2):
-        super(AirBlock, self).__init__()
-        mid_channels = out_channels // ratio
-        self.conv1 = nn.Conv2d(in_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False)
-        self.bn1 = nn.BatchNorm2d(mid_channels)
-        self.pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.conv2 = nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, groups=groups, bias=False)
-        self.bn2 = nn.BatchNorm2d(mid_channels)
-        self.conv3 = nn.Conv2d(mid_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
-        self.bn3 = nn.BatchNorm2d(out_channels)
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        x = torch.relu(self.bn1(self.conv1(x)))
-        x = self.pool(x)
-        x = torch.relu(self.bn2(self.conv2(x)))
-        x = F.interpolate(x, scale_factor=2, mode="bilinear", align_corners=True)
-        x = self.bn3(self.conv3(x))
-        x = self.sigmoid(x)
-        return x
-
-
-class AirNeXtUnit(nn.Module):
-    def __init__(self, in_channels, out_channels, stride, cardinality, bottleneck_width, ratio):
-        super(AirNeXtUnit, self).__init__()
-        mid_channels = out_channels // 4
-        D = int(math.floor(mid_channels * (bottleneck_width / 64.0)))
-        group_width = cardinality * D
-        self.use_air_block = (stride == 1 and mid_channels < 512)
-
-        self.conv1 = nn.Conv2d(in_channels, group_width, kernel_size=1, stride=1, padding=0, bias=False)
-        self.conv2 = nn.Conv2d(group_width, group_width, kernel_size=3, stride=stride, padding=1, groups=cardinality, bias=False)
-        self.conv3 = nn.Conv2d(group_width, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
-        if self.use_air_block:
-            self.air = AirBlock(in_channels, group_width, groups=(cardinality // ratio), ratio=ratio)
-
-        self.resize_identity = (in_channels != out_channels) or (stride != 1)
-        if self.resize_identity:
-            self.identity_conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False)
-        self.activ = nn.ReLU(inplace=True)
-
-    def forward(self, x):
-        if self.use_air_block:
-            att = self.air(x)
-            att = F.interpolate(att, size=x.shape[2:], mode="bilinear", align_corners=True)  # Ensure att matches x dimensions
-        identity = self.identity_conv(x) if self.resize_identity else x
-        x = self.conv1(x)
-        x = self.conv2(x)
-        if self.use_air_block:
-            x = x * att
-        x = self.conv3(x)
-        x = x + identity
-        x = self.activ(x)
-        return x
-
-
-class Net(nn.Module):
-    def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
-        super(Net, self).__init__()
-        self.device = device
-        channel_number = in_shape[1]
-        image_size = in_shape[2]
-        class_number = out_shape[0]
-
-        channels = [[64, 64, 64], [128, 128, 128], [256, 256, 256], [512, 512, 512]]
-        init_block_channels = 64
-        cardinality = 32
-        bottleneck_width = 4
-        ratio = 2
-
-        self.in_size = image_size
-        self.num_classes = class_number
-
-        self.features = nn.Sequential(
-            nn.Conv2d(channel_number, init_block_channels, kernel_size=7, stride=2, padding=3, bias=False),
-            nn.BatchNorm2d(init_block_channels),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+class VGG(nn.Module):
+    def __init__(self, features: nn.Module, num_classes: int = 1000, init_weights: bool = True, dropout: float = 0.5) -> None:
+        super().__init__()
+        self.features = features
+        self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
+        self.classifier = nn.Sequential(
+            nn.Linear(512 * 7 * 7, 4096),
+            nn.ReLU(True),
+            nn.Dropout(p=dropout),
+            nn.Linear(4096, 4096),
+            nn.ReLU(True),
+            nn.Dropout(p=dropout),
+            nn.Linear(4096, num_classes),
         )
-        in_channels = init_block_channels
-        for i, channels_per_stage in enumerate(channels):
-            stage = nn.Sequential()
-            for j, out_channels in enumerate(channels_per_stage):
-                stride = 2 if (j == 0) and (i != 0) else 1
-                stage.add_module("unit{}".format(j + 1), AirNeXtUnit(in_channels, out_channels, stride, cardinality, bottleneck_width, ratio))
-                in_channels = out_channels
-            self.features.add_module("stage{}".format(i + 1), stage)
+        if init_weights:
+            for m in self.modules():
+                if isinstance(m, nn.Conv2d):
+                    nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+                    if m.bias is not None:
+                        nn.init.constant_(m.bias, 0)
+                elif isinstance(m, nn.BatchNorm2d):
+                    nn.init.constant_(m.weight, 1)
+                    nn.init.constant_(m.bias, 0)
+                elif isinstance(m, nn.Linear):
+                    nn.init.normal_(m.weight, 0, 0.01)
+                    nn.init.constant_(m.bias, 0)
 
-        self.features.add_module("final_pool", nn.AdaptiveAvgPool2d(1))
-        self.output = nn.Linear(in_channels, class_number)
-
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.features(x)
-        x = x.view(x.size(0), -1)
-        x = self.output(x)
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.classifier(x)
         return x
 
-    def train_setup(self, prm):
-        self.to(self.device)
-        self.criteria = (NGL().to(self.device),)
-        self.optimizer = torch.optim.SGD(self.parameters(), lr=prm['lr'], momentum=prm.get('momentum', 0.9))
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=5, gamma=0.5)
 
-    def learn(self, train_data):
-        self.train()
-        for inputs, labels in train_data:
-            inputs, labels = inputs.to(self.device), labels.to(self.device)
-            self.optimizer.zero_grad()
-            outputs = self(inputs)
-            loss = self.criteria(outputs, labels)
-            loss.backward()
-            nn.utils.clip_grad_norm_(self.parameters(), 3)
-            self.optimizer.step()
-        self.scheduler.step()
+def make_layers(cfg: List[Union[str, int]], batch_norm: bool = False) -> nn.Sequential:
+    layers: List[nn.Module] = []
+    in_channels = 3
+    for v in cfg:
+        if v == "M":
+            layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
+        else:
+            v = cast(int, v)
+            conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
+            if batch_norm:
+                layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
+            else:
+                layers += [conv2d, nn.ReLU(inplace=True)]
+            in_channels = v
+    return nn.Sequential(*layers)
+
+
+vgg_cfgs: Dict[str, List[Union[str, int]]] = {
+    "A": [64, "M", 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
+    "B": [64, 64, "M", 128, 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
+    "D": [64, 64, "M", 128, 128, "M", 256, 256, 256, "M", 512, 512, 512, "M", 512, 512, 512, "M"],
+    "E": [64, 64, "M", 128, 128, "M", 256, 256, 256, 256, "M", 512, 512, 512, 512, "M", 512, 512, 512, 512, "M"],
+}
+
+
+class FCNHead(nn.Sequential):
+    def __init__(self, in_channels: int, channels: int) -> None:
+        inter_channels = in_channels // 4
+        layers = [
+            nn.Conv2d(in_channels, inter_channels, 3, padding=1, bias=False),
+            nn.BatchNorm2d(inter_channels),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Conv2d(inter_channels, channels, 1),
+        ]
+
+        super().__init__(*layers)
 
 
 def supported_hyperparameters():
     return {'lr', 'momentum', 'dropout'}
+
+
+class Net(nn.Module):
+
+    def train_setup(self, prm):
+        self.to(self.device)
+        self.criteria = (nn.CrossEntropyLoss(ignore_index=-1).to(self.device),)
+        params_list = [{'params': self.backbone.parameters(), 'lr': prm['lr']}]
+        for module in self.exclusive:
+            params_list.append({'params': getattr(self, module).parameters(), 'lr': prm['lr'] * 10})
+        self.optimizer = torch.optim.SGD(self.parameters(), lr=prm['lr'], momentum=prm.get('momentum', 0.9))
+
+    def learn(self, train_data):
+        for inputs, labels in train_data:
+            inputs, labels = inputs.to(self.device), labels.to(self.device)
+            self.optimizer.zero_grad()
+            outputs = self(inputs)
+            loss = self.criteria[0](outputs, labels)
+            loss.backward()
+            nn.utils.clip_grad_norm_(self.parameters(), 3)
+            self.optimizer.step()
+
+    def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
+        super(Net, self).__init__()
+        self.device = device
+        backbone_num_classes = None
+        init_weights = True
+        dropout = prm['dropout']
+        num_classes = out_shape[0]
+        backbone = VGG(make_layers(vgg_cfgs["D"]), num_classes=num_classes if (backbone_num_classes == None) else backbone_num_classes, init_weights=init_weights, dropout=dropout)
+        features = list(backbone.features.children())
+
+        self.backbone = backbone.features
+
+        self.features4 = nn.Sequential(*features[: 24])
+        self.features5 = nn.Sequential(*features[24:])
+
+        self.score_pool4 = nn.Conv2d(512, num_classes, kernel_size=1)
+        self.score_pool4.weight.data.zero_()
+        self.score_pool4.bias.data.zero_()
+
+        self.head = FCNHead(512, num_classes)
+
+        self.__setattr__('exclusive', ['score_pool4', 'head'])
+
+    def forward(self, x):
+        pool4 = self.features4(x)
+        pool5 = self.features5(pool4)
+
+        score_fr = self.head(pool5)
+        upscore2 = F.interpolate(score_fr, pool4.size()[2:], mode='bilinear', align_corners=True)
+
+        fuse_pool4 = upscore2 + upscore2
+        out = F.interpolate(fuse_pool4, x.size()[2:], mode='bilinear', align_corners=True)
+        return out

@@ -20,7 +20,7 @@ class Net(nn.Module):
 
     def train_setup(self, prm):
         self.to(self.device)
-        self.criteria = (nn.MultiMarginLoss().to(self.device),)
+        self.criteria = (nn.NLLLoss().to(self.device),)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=prm['lr'])
 
     def learn(self, train_data):

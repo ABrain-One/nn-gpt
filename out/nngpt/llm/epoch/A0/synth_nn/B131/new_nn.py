@@ -1,335 +1,125 @@
-import math
-from collections import OrderedDict
-from functools import partial
-from typing import Any, Callable, List, Optional, Tuple
-
 import torch
-from torch import nn, Tensor
-from torchvision.models._api import WeightsEnum
-from torchvision.models._utils import _make_divisible, _ovewrite_named_param
-from torchvision.ops.misc import Conv2dNormActivation, SqueezeExcitation
+import torch.nn as nn
+import torch.nn.functional as F
+import math
 
 
-class SimpleStemIN(Conv2dNormActivation):
-    def __init__(
-            self,
-            width_in: int,
-            width_out: int,
-            norm_layer: Callable[..., nn.Module],
-            activation_layer: Callable[..., nn.Module],
-    ) -> None:
-        super().__init__(
-            width_in, width_out, kernel_size=3, stride=2, norm_layer=norm_layer, activation_layer=activation_layer
-        )
+class AirBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, groups=1, ratio=2):
+        super(AirBlock, self).__init__()
+        mid_channels = out_channels // ratio
+        self.conv1 = nn.Conv2d(in_channels, mid_channels, kernel_size=1, stride=1, padding=0, bias=False)
+        self.bn1 = nn.BatchNorm2d(mid_channels)
+        self.pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.conv2 = nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=1, padding=1, groups=groups, bias=False)
+        self.bn2 = nn.BatchNorm2d(mid_channels)
+        self.conv3 = nn.Conv2d(mid_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
+        self.bn3 = nn.BatchNorm2d(out_channels)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        x = torch.relu(self.bn1(self.conv1(x)))
+        x = self.pool(x)
+        x = torch.relu(self.bn2(self.conv2(x)))
+        x = F.interpolate(x, scale_factor=2, mode="bilinear", align_corners=True)
+        x = self.bn3(self.conv3(x))
+        x = self.sigmoid(x)
+        return x
 
 
-class BottleneckTransform(nn.Sequential):
-    def __init__(
-            self,
-            width_in: int,
-            width_out: int,
-            stride: int,
-            norm_layer: Callable[..., nn.Module],
-            activation_layer: Callable[..., nn.Module],
-            group_width: int,
-            bottleneck_multiplier: float,
-            se_ratio: Optional[float],
-    ) -> None:
-        layers: OrderedDict[str, nn.Module] = OrderedDict()
-        w_b = int(round(width_out * bottleneck_multiplier))
-        g = w_b // group_width
+class AirNeXtUnit(nn.Module):
+    def __init__(self, in_channels, out_channels, stride, cardinality, bottleneck_width, ratio):
+        super(AirNeXtUnit, self).__init__()
+        mid_channels = out_channels // 4
+        D = int(math.floor(mid_channels * (bottleneck_width / 64.0)))
+        group_width = cardinality * D
+        self.use_air_block = (stride == 1 and mid_channels < 512)
 
-        layers["a"] = Conv2dNormActivation(
-            width_in, w_b, kernel_size=1, stride=1, norm_layer=norm_layer, activation_layer=activation_layer
-        )
-        layers["b"] = Conv2dNormActivation(
-            w_b, w_b, kernel_size=3, stride=stride, groups=g, norm_layer=norm_layer, activation_layer=activation_layer
-        )
+        self.conv1 = nn.Conv2d(in_channels, group_width, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv2 = nn.Conv2d(group_width, group_width, kernel_size=3, stride=stride, padding=1, groups=cardinality, bias=False)
+        self.conv3 = nn.Conv2d(group_width, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
+        if self.use_air_block:
+            self.air = AirBlock(in_channels, group_width, groups=(cardinality // ratio), ratio=ratio)
 
-        if se_ratio:
-            width_se_out = int(round(se_ratio * width_in))
-            layers["se"] = SqueezeExcitation(
-                input_channels=w_b,
-                squeeze_channels=width_se_out,
-                activation=activation_layer,
-            )
+        self.resize_identity = (in_channels != out_channels) or (stride != 1)
+        if self.resize_identity:
+            self.identity_conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False)
+        self.activ = nn.ReLU(inplace=True)
 
-        layers["c"] = Conv2dNormActivation(
-            w_b, width_out, kernel_size=1, stride=1, norm_layer=norm_layer, activation_layer=None
-        )
-        super().__init__(layers)
-
-
-class ResBottleneckBlock(nn.Module):
-    def __init__(
-            self,
-            width_in: int,
-            width_out: int,
-            stride: int,
-            norm_layer: Callable[..., nn.Module],
-            activation_layer: Callable[..., nn.Module],
-            group_width: int = 1,
-            bottleneck_multiplier: float = 1.0,
-            se_ratio: Optional[float] = None,
-    ) -> None:
-        super().__init__()
-        self.proj = None
-        should_proj = (width_in != width_out) or (stride != 1)
-        if should_proj:
-            self.proj = Conv2dNormActivation(
-                width_in, width_out, kernel_size=1, stride=stride, norm_layer=norm_layer, activation_layer=None
-            )
-        self.f = BottleneckTransform(
-            width_in,
-            width_out,
-            stride,
-            norm_layer,
-            activation_layer,
-            group_width,
-            bottleneck_multiplier,
-            se_ratio,
-        )
-        self.activation = activation_layer(inplace=True)
-
-    def forward(self, x: Tensor) -> Tensor:
-        if self.proj is not None:
-            x = self.proj(x) + self.f(x)
-        else:
-            x = x + self.f(x)
-        return self.activation(x)
-
-
-class AnyStage(nn.Sequential):
-    def __init__(
-            self,
-            width_in: int,
-            width_out: int,
-            stride: int,
-            depth: int,
-            block_constructor: Callable[..., nn.Module],
-            norm_layer: Callable[..., nn.Module],
-            activation_layer: Callable[..., nn.Module],
-            group_width: int,
-            bottleneck_multiplier: float,
-            se_ratio: Optional[float] = None,
-            stage_index: int = 0,
-    ) -> None:
-        super().__init__()
-
-        for i in range(depth):
-            block = block_constructor(
-                width_in if i == 0 else width_out,
-                width_out,
-                stride if i == 0 else 1,
-                norm_layer,
-                activation_layer,
-                group_width,
-                bottleneck_multiplier,
-                se_ratio,
-            )
-
-            self.add_module(f"block{stage_index}-{i}", block)
-
-
-class BlockParams:
-    def __init__(
-            self,
-            depths: List[int],
-            widths: List[int],
-            group_widths: List[int],
-            bottleneck_multipliers: List[float],
-            strides: List[int],
-            se_ratio: Optional[float] = None,
-    ) -> None:
-        self.depths = depths
-        self.widths = widths
-        self.group_widths = group_widths
-        self.bottleneck_multipliers = bottleneck_multipliers
-        self.strides = strides
-        self.se_ratio = se_ratio
-
-    @classmethod
-    def from_init_params(
-            cls,
-            depth: int,
-            w_0: int,
-            w_a: float,
-            w_m: float,
-            group_width: int,
-            bottleneck_multiplier: float = 1.0,
-            se_ratio: Optional[float] = None
-    ) -> "BlockParams":
-        QUANT = 8
-        STRIDE = 2
-
-        if w_a < 0 or w_0 <= 0 or w_m <= 1 or w_0 % 8 != 0:
-            raise ValueError("Invalid RegNet settings")
-        widths_cont = torch.arange(depth) * w_a + w_0
-        block_capacity = torch.round(torch.log(widths_cont / w_0) / math.log(w_m))
-        block_widths = (torch.round(torch.divide(w_0 * torch.pow(w_m, block_capacity), QUANT)) * QUANT).int().tolist()
-        num_stages = len(set(block_widths))
-
-        split_helper = zip(
-            block_widths + [0],
-            [0] + block_widths,
-            block_widths + [0],
-            [0] + block_widths,
-        )
-        splits = [w != wp or r != rp for w, wp, r, rp in split_helper]
-
-        stage_widths = [w for w, t in zip(block_widths, splits[:-1]) if t]
-        stage_depths = torch.diff(torch.tensor([d for d, t in enumerate(splits) if t])).int().tolist()
-
-        strides = [STRIDE] * num_stages
-        bottleneck_multipliers = [bottleneck_multiplier] * num_stages
-        group_widths = [group_width] * num_stages
-
-        stage_widths, group_widths = cls._adjust_widths_groups_compatibilty(
-            stage_widths, bottleneck_multipliers, group_widths
-        )
-
-        return cls(
-            depths=stage_depths,
-            widths=stage_widths,
-            group_widths=group_widths,
-            bottleneck_multipliers=bottleneck_multipliers,
-            strides=strides,
-            se_ratio=se_ratio,
-        )
-
-    def _get_expanded_params(self):
-        return zip(self.widths, self.strides, self.depths, self.group_widths, self.bottleneck_multipliers)
-
-    @staticmethod
-    def _adjust_widths_groups_compatibilty(
-            stage_widths: List[int], bottleneck_ratios: List[float], group_widths: List[int]
-    ) -> Tuple[List[int], List[int]]:
-        widths = [int(w * b) for w, b in zip(stage_widths, bottleneck_ratios)]
-        group_widths_min = [min(g, w_bot) for g, w_bot in zip(group_widths, widths)]
-
-        ws_bot = [_make_divisible(w_bot, g) for w_bot, g in zip(widths, group_widths_min)]
-        stage_widths = [int(w_bot / b) for w_bot, b in zip(ws_bot, bottleneck_ratios)]
-        return stage_widths, group_widths_min
-
-
-def supported_hyperparameters():
-    return {'lr'}
+    def forward(self, x):
+        if self.use_air_block:
+            att = self.air(x)
+            att = F.interpolate(att, size=x.shape[2:], mode="bilinear", align_corners=True)  # Ensure att matches x dimensions
+        identity = self.identity_conv(x) if self.resize_identity else x
+        x = self.conv1(x)
+        x = self.conv2(x)
+        if self.use_air_block:
+            x = x * att
+        x = self.conv3(x)
+        x = x + identity
+        x = self.activ(x)
+        return x
 
 
 class Net(nn.Module):
+    def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
+        super(Net, self).__init__()
+        self.device = device
+        channel_number = in_shape[1]
+        image_size = in_shape[2]
+        class_number = out_shape[0]
+
+        channels = [[64, 64, 64], [128, 128, 128], [256, 256, 256], [512, 512, 512]]
+        init_block_channels = 64
+        cardinality = 32
+        bottleneck_width = 4
+        ratio = 2
+
+        self.in_size = image_size
+        self.num_classes = class_number
+
+        self.features = nn.Sequential(
+            nn.Conv2d(channel_number, init_block_channels, kernel_size=7, stride=2, padding=3, bias=False),
+            nn.BatchNorm2d(init_block_channels),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        )
+        in_channels = init_block_channels
+        for i, channels_per_stage in enumerate(channels):
+            stage = nn.Sequential()
+            for j, out_channels in enumerate(channels_per_stage):
+                stride = 2 if (j == 0) and (i != 0) else 1
+                stage.add_module("unit{}".format(j + 1), AirNeXtUnit(in_channels, out_channels, stride, cardinality, bottleneck_width, ratio))
+                in_channels = out_channels
+            self.features.add_module("stage{}".format(i + 1), stage)
+
+        self.features.add_module("final_pool", nn.AdaptiveAvgPool2d(1))
+        self.output = nn.Linear(in_channels, class_number)
+
+    def forward(self, x):
+        x = self.features(x)
+        x = x.view(x.size(0), -1)
+        x = self.output(x)
+        return x
 
     def train_setup(self, prm):
         self.to(self.device)
-        self.criteria = (nn.MultiMarginLoss().to(self.device),)
+        self.criteria = (nn.CrossEntropyLoss().to(self.device),)
         self.optimizer = torch.optim.Adadelta(self.parameters(), lr=prm['lr'])
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=5, gamma=0.5)
 
     def learn(self, train_data):
+        self.train()
         for inputs, labels in train_data:
             inputs, labels = inputs.to(self.device), labels.to(self.device)
             self.optimizer.zero_grad()
             outputs = self(inputs)
-            loss = self.criteria[0](outputs, labels)
+            loss = self.criteria(outputs, labels)
             loss.backward()
             nn.utils.clip_grad_norm_(self.parameters(), 3)
             self.optimizer.step()
-
-    def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
-        super().__init__()
-        self.device = device
-        block_params: BlockParams = BlockParams.from_init_params(depth=16, w_0=48, w_a=27.89, w_m=2.09, group_width=8, se_ratio=0.25)
-        num_classes: int = out_shape[0]
-        stem_width: int = 32
-        stem_type: Optional[Callable[..., nn.Module]] = None
-        block_type: Optional[Callable[..., nn.Module]] = None
-        norm_layer: Optional[Callable[..., nn.Module]] = None
-        activation: Optional[Callable[..., nn.Module]] = None
-        if stem_type is None:
-            stem_type = SimpleStemIN
-        if norm_layer is None:
-            norm_layer = nn.BatchNorm2d
-        if block_type is None:
-            block_type = ResBottleneckBlock
-        if activation is None:
-            activation = nn.ReLU
-
-        self.stem = stem_type(
-            in_shape[1],
-            stem_width,
-            norm_layer,
-            activation,
-        )
-
-        current_width = stem_width
-
-        blocks = []
-        for i, (
-                width_out,
-                stride,
-                depth,
-                group_width,
-                bottleneck_multiplier,
-        ) in enumerate(block_params._get_expanded_params()):
-            blocks.append(
-                (
-                    f"block{i + 1}",
-                    AnyStage(
-                        current_width,
-                        width_out,
-                        stride,
-                        depth,
-                        block_type,
-                        norm_layer,
-                        activation,
-                        group_width,
-                        bottleneck_multiplier,
-                        block_params.se_ratio,
-                        stage_index=i + 1,
-                    ),
-                )
-            )
-
-            current_width = width_out
-
-        self.trunk_output = nn.Sequential(OrderedDict(blocks))
-
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(in_features=current_width, out_features=num_classes)
-
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                nn.init.normal_(m.weight, mean=0.0, std=math.sqrt(2.0 / fan_out))
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.ones_(m.weight)
-                nn.init.zeros_(m.bias)
-            elif isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, mean=0.0, std=0.01)
-                nn.init.zeros_(m.bias)
-
-    def forward(self, x: Tensor) -> Tensor:
-        x = self.stem(x)
-        x = self.trunk_output(x)
-
-        x = self.avgpool(x)
-        x = x.flatten(start_dim=1)
-        x = self.fc(x)
-
-        return x
+        self.scheduler.step()
 
 
-def _regnet(
-        block_params: BlockParams,
-        weights: Optional[WeightsEnum],
-        progress: bool,
-        **kwargs: Any,
-) -> Net:
-    if weights is not None:
-        _ovewrite_named_param(kwargs, "num_classes", len(weights.meta["categories"]))
-
-    norm_layer = kwargs.pop("norm_layer", partial(nn.BatchNorm2d, eps=1e-05, momentum=0.1))
-    model = Net(block_params, norm_layer=norm_layer, **kwargs)
-
-    if weights is not None:
-        model.load_state_dict(weights.get_state_dict(progress=progress, check_hash=True))
-
-    return model
+def supported_hyperparameters():
+    return {'lr', 'dropout'}

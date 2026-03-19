@@ -2,6 +2,20 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+import torch
+from torch import nn
+
+class NGL(nn.Module):
+    def __init__(self):
+        super(NGL, self).__init__()
+
+    def forward(self, x, target):
+        target = torch.nn.functional.one_hot(target, num_classes=x.size(1))
+        x = torch.softmax(x, dim=-1)
+        loss = torch.mean(torch.exp(2.4092 - x - x*target) - torch.cos(torch.cos(torch.sin(x))))
+        return loss
+
+
 
 def supported_hyperparameters():
     return {'lr'}
@@ -76,7 +90,7 @@ class Net(nn.Module):
 
     def train_setup(self, prm):
         self.to(self.device)
-        self.criteria = (nn.CrossEntropyLoss().to(self.device),)
+        self.criteria = (NGL().to(self.device),)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=prm['lr'])
 
     def learn(self, train_data):

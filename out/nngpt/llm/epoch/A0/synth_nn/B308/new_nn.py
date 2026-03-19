@@ -1,137 +1,84 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
-
+import torch.nn.functional as F
 
 def supported_hyperparameters():
-    return {'lr', 'dropout'}
+    return {'lr'}
 
-
-class UNet2DModel(nn.Module):
-    def __init__(
-            self,
-            sample_size=32,
-            in_channels=3,
-            out_channels=128,
-            layers_per_block=2,
-            block_out_channels=(32, 64, 128),
-            down_block_types=("DownBlock2D", "AttnDownBlock2D", "DownBlock2D"),
-            up_block_types=("UpBlock2D", "AttnUpBlock2D", "UpBlock2D"),
-    ):
-        super(UNet2DModel, self).__init__()
-        self.sample_size = sample_size
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.layers_per_block = layers_per_block
-
-        self.down_blocks = nn.ModuleList()
-        in_ch = in_channels
-        for out_ch, block_type in zip(block_out_channels, down_block_types):
-            self.down_blocks.append(self._make_block(in_ch, out_ch, block_type))
-            in_ch = out_ch
-
-        self.up_blocks = nn.ModuleList()
-        for out_ch, block_type in zip(block_out_channels[::-1], up_block_types):
-            self.up_blocks.append(self._make_block(in_ch, out_ch, block_type))
-            in_ch = out_ch
-
-        self.final_conv = nn.Conv2d(in_ch, out_channels, kernel_size=1)
-
-    def _make_block(self, in_channels, out_channels, block_type):
-        if block_type.startswith("Down"):
-            return nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=2, padding=1),
-                nn.ReLU(),
-                nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
-                nn.ReLU(),
-            )
-        elif block_type.startswith("Up"):
-            return nn.Sequential(
-                nn.ConvTranspose2d(
-                    in_channels, out_channels, kernel_size=2, stride=2
-                ),
-                nn.ReLU(),
-                nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
-                nn.ReLU(),
-            )
-        else:
-            return nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
-                nn.ReLU(),
-            )
-
-    def forward(self, x, timesteps):
-        down_features = []
-        for block in self.down_blocks:
-            x = block(x)
-            down_features.append(x)
-
-        for block in self.up_blocks:
-            x = block(x)
-
-        x = self.final_conv(x)
-        return nn.Identity()(x)
-
-
+class UNet(nn.Module):
+    def __init__(self, in_channels, num_classes, hidden_dim=64):
+        super().__init__()
+        self.time_embed = nn.Sequential(
+            nn.Linear(1, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim)
+        )
+        
+        self.encoder = nn.Sequential(
+            nn.Conv2d(in_channels, hidden_dim, 3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(hidden_dim, hidden_dim, 3, padding=1),
+            nn.ReLU()
+        )
+        
+        self.classifier = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(hidden_dim, num_classes)
+        )
+        
+    def forward(self, x, t):
+        x = x.real if torch.is_complex(x) else x
+        
+        # Time embedding
+        t_emb = self.time_embed(t.float().unsqueeze(-1))
+        t_emb = t_emb.view(t_emb.shape[0], -1, 1, 1)
+        
+        # Feature extraction
+        x = self.encoder(x)
+        x = x + t_emb
+        
+        # Classification
+        return self.classifier(x)
 class Net(nn.Module):
-    def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
-        super(Net, self).__init__()
+    def __init__(self, in_shape, out_shape, prm, device=torch.device('cuda')):
+        super().__init__()
         self.device = device
-
-        channel_number = in_shape[1]
-        image_size = in_shape[2]
-        class_number = out_shape[0]
-
-        self.unet = UNet2DModel(
-            sample_size=image_size,
-            in_channels=channel_number,
-            out_channels=128,
-            layers_per_block=2,
-            block_out_channels=(32, 64, 128),
-            down_block_types=("DownBlock2D", "AttnDownBlock2D", "DownBlock2D"),
-            up_block_types=("UpBlock2D", "AttnUpBlock2D", "UpBlock2D"), )
-        self.classifier = nn.Sequential(nn.Dropout(prm['dropout']), nn.Linear(128, class_number))
-        self._initialize_weights()
-
-    def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-
+        self.timesteps = 100
+        self.channels = in_shape[1]
+        self.num_classes = out_shape[0]
+        # UNet for diffusion and classification
+        self.unet = UNet(self.channels, self.num_classes)
+        # Initialize diffusion parameters
+        self.beta = torch.linspace(0.00001, 0.01, self.timesteps).to(device) 
+        self.alpha = 1. - self.beta
+        self.alpha_bar = torch.cumprod(self.alpha, dim=0)
+        
     def forward(self, x):
-        batch_size = x.shape[0]
-        timesteps = torch.full((batch_size,), 50, dtype=torch.long, device=x.device)
-        unet_output = self.unet(x, timesteps)
-        unet_output = unet_output.to(torch.float32)
-        pooled_features = unet_output.mean(dim=(2, 3))
-        logits = self.classifier(pooled_features)
-        return logits
-
+        if self.training:
+            t = torch.randint(0, self.timesteps, (x.shape[0],), device=self.device)
+            x = self.add_noise(x, t)
+        else:
+            t = torch.zeros(x.shape[0], device=self.device)
+        return self.unet(x, t)
+        
+    def add_noise(self, x, t):
+        noise = torch.randn_like(x).to(self.device)
+        alpha_t = self.alpha_bar[t].view(-1, 1, 1, 1)
+        return torch.sqrt(alpha_t) * x + torch.sqrt(1 - alpha_t) * noise
+    
     def train_setup(self, prm):
         self.to(self.device)
-        self.criteria = (nn.MultiMarginLoss().to(self.device),)
-
-        lr = prm['lr']
-        momentum = prm['momentum']
-
+        self.criteria = (nn.CrossEntropyLoss().to(self.device),)
         self.optimizer = torch.optim.AdamW(self.parameters(), lr=prm['lr'])
-
+    
     def learn(self, train_data):
         self.train()
         for inputs, labels in train_data:
             inputs, labels = inputs.to(self.device), labels.to(self.device)
             self.optimizer.zero_grad()
             outputs = self(inputs)
-            loss = self.criteria(outputs, labels)
+            loss = self.criteria[0](outputs, labels)
             loss.backward()
             nn.utils.clip_grad_norm_(self.parameters(), 3)
             self.optimizer.step()
