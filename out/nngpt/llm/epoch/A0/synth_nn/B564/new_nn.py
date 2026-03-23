@@ -91,7 +91,7 @@ class Net(nn.Module):
         super().__init__()
         self.device = device
         num_classes: int = out_shape[0]
-        stochastic_depth_prob: float = prm['stochastic_depth_prob']
+        stochastic_depth_prob: float = prm.get('stochastic_depth_prob', 0.0)
         layer_scale: float = 1e-6
         block_setting = None
         block: Optional[Callable[..., nn.Module]] = None
@@ -111,7 +111,7 @@ class Net(nn.Module):
         if block is None:
             block = CNBlock
         if norm_layer is None:
-            norm_layer = partial(LayerNorm2d, eps=prm['norm_eps'])
+            norm_layer = partial(LayerNorm2d, eps=prm.get('norm_eps', 1e-5))
         layers: List[nn.Module] = []
         firstconv_output_channels = block_setting[0].input_channels
         layers.append(
@@ -157,7 +157,7 @@ class Net(nn.Module):
 
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, nn.Linear)):
-                nn.init.trunc_normal_(m.weight, std=prm['norm_std'])
+                nn.init.trunc_normal_(m.weight, std=prm.get('norm_std', 0.02))
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
 

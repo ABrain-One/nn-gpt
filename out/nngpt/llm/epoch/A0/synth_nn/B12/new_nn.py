@@ -55,7 +55,7 @@ class Net(nn.Module):
         blocks: Optional[List[Callable[..., nn.Module]]] = None
         num_classes: int = out_shape[0]
         dropout = prm['dropout']
-        dropout_aux: float = prm['dropout_aux']
+        dropout_aux: float = prm.get('dropout_aux', 0.7)
 
         if blocks is None:
             blocks = [BasicConv2d, Inception, InceptionAux]

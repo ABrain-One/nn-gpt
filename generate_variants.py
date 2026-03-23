@@ -1,4 +1,5 @@
 # generate_variants.py
+import json
 import re
 from pathlib import Path
 import sys
@@ -22,9 +23,7 @@ class NGL(nn.Module):
 # ---------- Losses / optims you want ----------
 LOSS_SPECS = {
     "CrossEntropyLoss": ("nn.CrossEntropyLoss()", {"needs_log_softmax": False}),
-    "MultiMarginLoss": ("nn.MultiMarginLoss()", {"needs_log_softmax": False}),
     "NLLLoss": ("nn.NLLLoss()", {"needs_log_softmax": True}),
-    "KLDivLoss": ("nn.KLDivLoss(reduction='batchmean')", {"needs_log_softmax": True}),
     "NGL": ("NGL()", {"needs_log_softmax": False}),
 }
 
@@ -136,7 +135,7 @@ def _ctor_name_without_parens(ctor: str) -> str:
     return s
 
 
-def replace_loss_line(block: str, loss_attr: str, new_loss_ctor: str) -> str:
+def replace_loss_line(block: str, loss_attr: str, new_loss_ctor: str, use_tuple: bool = True) -> str:
     lines = block.splitlines(True)
     out = []
     i = 0
@@ -165,7 +164,7 @@ def replace_loss_line(block: str, loss_attr: str, new_loss_ctor: str) -> str:
                 except Exception:
                     args_str = ""
 
-            if loss_attr == "criteria":
+            if loss_attr == "criteria" and use_tuple:
                 out.append(f"{indent}self.criteria = ({new_name}({args_str}).to(self.device),)\n")
             else:
                 out.append(f"{indent}self.{loss_attr} = {new_name}({args_str}).to(self.device)\n")
@@ -248,6 +247,13 @@ def ensure_ngl_injected(src: str) -> str:
     return "".join(lines)
 
 
+
+# ---------- Default hyperparameter injection ----------
+NET_INIT_RE = re.compile(
+    r"^\s*def\s+__init__\s*\([^)]*\bprm\b[^)]*\)\s*(?:->.*?)?\s*:",
+    re.M,
+)
+
 # ---------- Variant creation ----------
 def make_variant(src: str, loss_name: str, optim_name: str):
     block_info = get_train_setup_block(src)
@@ -263,9 +269,10 @@ def make_variant(src: str, loss_name: str, optim_name: str):
     optim_spec = OPTIM_SPECS[optim_name]
     optim_expr = optim_spec["code"]
     needs_momentum = optim_spec["needs_momentum"]
+    use_tuple = not _meta.get("no_tuple", False)
 
     new_block = block
-    new_block = replace_loss_line(new_block, loss_attr, loss_ctor)
+    new_block = replace_loss_line(new_block, loss_attr, loss_ctor, use_tuple)
     new_block = replace_optimizer_line(new_block, optim_expr)
 
     new_src = src[:start] + new_block + src[end:]
@@ -327,6 +334,10 @@ def main():
                 model_path = variant_dir / "new_nn.py"
                 model_path.write_text(new_src, encoding="utf-8")
 
+                # Write variant_meta.json so NNEval can build the DB name prefix
+                meta = {"base_nn": base_model_name, "loss": loss_name, "optimizer": optim_name}
+                (variant_dir / "variant_meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+
                 variant_counter += 1
 
     print(f"\n{'=' * 60}")
@@ -335,7 +346,7 @@ def main():
     if skipped_counter > 0:
         print(f"Skipped {skipped_counter} variants due to errors")
     print(f"\nTo evaluate, run:")
-    print(f"  python ab/gpt/NNEval.py --nn_alter_epochs 1 --nn_train_epochs 5 --cycle 1")
+    print(f"  python -m ab.gpt.NNEval --nn_alter_epochs 1 --nn_train_epochs 5")
     print(f"{'=' * 60}\n")
 
 

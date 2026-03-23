@@ -160,7 +160,7 @@ class Net(nn.Module):
         if block is None:
             block = InvertedResidual
         if norm_layer is None:
-            norm_layer = partial(nn.BatchNorm2d, eps=prm['norm_eps'], momentum=prm['norm_momentum'])
+            norm_layer = partial(nn.BatchNorm2d, eps=prm.get('norm_eps', 1e-5), momentum=prm.get('norm_momentum', 0.1))
 
         layers: List[nn.Module] = []
 

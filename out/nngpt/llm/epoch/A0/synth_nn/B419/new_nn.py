@@ -170,13 +170,13 @@ class Net(nn.Module):
         super().__init__()
         self.device = device
         image_size: int = in_shape[2]
-        patch_size: int = get_closest_split(image_size, int(image_size * prm['patch_size']))
+        patch_size: int = get_closest_split(image_size, int(image_size * prm.get('patch_size', 0.125)))
         num_layers: int = 12
         num_heads: int = 12
         hidden_dim: int = 768
         mlp_dim: int = 3072
         dropout: float = prm['dropout']
-        attention_dropout: float = prm['attention_dropout']
+        attention_dropout: float = prm.get('attention_dropout', 0.0)
         num_classes: int = out_shape[0]
         representation_size: Optional[int] = None
         norm_layer: Callable[..., torch.nn.Module] = partial(nn.LayerNorm, eps=1e-6)

@@ -446,14 +446,14 @@ class Net(nn.Module):
         block_layers = None
 
         head_dim: int = 32
-        stochastic_depth_prob: float = prm['stochastic_depth_prob']
+        stochastic_depth_prob: float = prm.get('stochastic_depth_prob', 0.0)
         norm_layer: Optional[Callable[..., nn.Module]] = None
         activation_layer: Callable[..., nn.Module] = nn.GELU
         squeeze_ratio: float = 0.25
         expansion_ratio: float = 4
         mlp_ratio: int = 4
         mlp_dropout: float = prm['dropout']
-        attention_dropout: float = prm['attention_dropout']
+        attention_dropout: float = prm.get('attention_dropout', 0.0)
         num_classes: int = out_shape[0]
         if block_layers is None:
             block_layers = [2, 2, 5, 2]

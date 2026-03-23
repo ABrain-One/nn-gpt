@@ -395,8 +395,8 @@ class Net(nn.Module):
         window_size = None
         mlp_ratio: float = 4.0
         dropout: float = prm['dropout']
-        attention_dropout: float = prm['attention_dropout']
-        stochastic_depth_prob: float = prm['stochastic_depth_prob']
+        attention_dropout: float = prm.get('attention_dropout', 0.0)
+        stochastic_depth_prob: float = prm.get('stochastic_depth_prob', 0.0)
         num_classes: int = out_shape[0]
         norm_layer: Optional[Callable[..., nn.Module]] = None
         block: Optional[Callable[..., nn.Module]] = None
