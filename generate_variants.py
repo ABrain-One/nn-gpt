@@ -56,6 +56,7 @@ OPTIM_SPECS = {
 
 # ---------- Regex helpers ----------
 TRAIN_SETUP_DEF_RE = re.compile(r"^\s*def\s+train_setup\s*\(\s*self\s*,", re.M)
+LEARN_DEF_RE = re.compile(r"^\s*def\s+learn\s*\(\s*self\s*,", re.M)
 DEF_LINE_RE = re.compile(r"^\s*def\s+\w+\s*\(", re.M)
 SUPPORTED_HYPERPARAMS_RE = re.compile(
     r"^\s*def\s+supported_hyperparameters\s*\(\s*\)\s*(?:->.*?)?:\s*$",
@@ -67,15 +68,10 @@ LOSS_ASSIGN_RE = re.compile(
     re.M,
 )
 
-CRITERIA_TUPLE_RE = re.compile(
-    r"^\s*self\.criteria\s*=\s*\(\s*(?:nn\.)?\w*Loss\s*\(",
-    re.M,
-)
-
 
 # ---------- File/block extraction ----------
-def get_train_setup_block(src: str):
-    m = TRAIN_SETUP_DEF_RE.search(src)
+def _get_block(src: str, def_re: re.Pattern):
+    m = def_re.search(src)
     if not m:
         return None
     start = m.start()
@@ -84,8 +80,15 @@ def get_train_setup_block(src: str):
     return start, end, src[start:end]
 
 
+def get_train_setup_block(src: str):
+    return _get_block(src, TRAIN_SETUP_DEF_RE)
+
+
+def get_learn_block(src: str):
+    return _get_block(src, LEARN_DEF_RE)
+
+
 def get_supported_hyperparameters_block(src: str):
-    """Extract the entire supported_hyperparameters() function."""
     m = SUPPORTED_HYPERPARAMS_RE.search(src)
     if not m:
         return None
@@ -108,6 +111,11 @@ def detect_loss_attr_any(train_setup_block: str) -> str | None:
 
     m = LOSS_ASSIGN_RE.search(train_setup_block)
     return m.group("attr") if m else None
+
+
+def detect_use_tuple(src: str, loss_attr: str) -> bool:
+    """Return True if learn() indexes into the loss attr with [0], meaning it expects a tuple."""
+    return bool(re.search(rf"\bself\.{re.escape(loss_attr)}\[0\]\s*\(", src))
 
 
 # ---------- Argument-preserving loss replacement ----------
@@ -135,7 +143,7 @@ def _ctor_name_without_parens(ctor: str) -> str:
     return s
 
 
-def replace_loss_line(block: str, loss_attr: str, new_loss_ctor: str, use_tuple: bool = True) -> str:
+def replace_loss_line(block: str, loss_attr: str, new_loss_ctor: str, use_tuple: bool = False) -> str:
     lines = block.splitlines(True)
     out = []
     i = 0
@@ -155,17 +163,19 @@ def replace_loss_line(block: str, loss_attr: str, new_loss_ctor: str, use_tuple:
                 par += lines[i].count("(") - lines[i].count(")")
                 i += 1
 
+            # NGL takes no constructor args — never carry over originals
             args_str = ""
-            m_call = re.search(r"(?:nn\.)?\w*Loss\s*\(|NGL\s*\(", assign_text)
-            if m_call:
-                lparen_idx = assign_text.find("(", m_call.start())
-                try:
-                    args_str, _ = _extract_call_args(assign_text, lparen_idx)
-                except Exception:
-                    args_str = ""
+            if new_name != "NGL":
+                m_call = re.search(r"(?:nn\.)?\w*Loss\s*\(|NGL\s*\(", assign_text)
+                if m_call:
+                    lparen_idx = assign_text.find("(", m_call.start())
+                    try:
+                        args_str, _ = _extract_call_args(assign_text, lparen_idx)
+                    except Exception:
+                        args_str = ""
 
-            if loss_attr == "criteria" and use_tuple:
-                out.append(f"{indent}self.criteria = ({new_name}({args_str}).to(self.device),)\n")
+            if use_tuple:
+                out.append(f"{indent}self.{loss_attr} = ({new_name}({args_str}).to(self.device),)\n")
             else:
                 out.append(f"{indent}self.{loss_attr} = {new_name}({args_str}).to(self.device)\n")
             continue
@@ -198,13 +208,49 @@ def replace_optimizer_line(block: str, new_optim_expr: str) -> str:
     return "".join(out)
 
 
+# ---------- Spatial output fix in learn() ----------
+def fix_learn_spatial_outputs(src: str) -> str:
+    """Inject a global-average-pool guard after 'var = self(inputs)' in learn().
+
+    Segmentation models return (B, C, H, W); classification datasets provide (B,)
+    labels.  Pooling collapses the spatial dims so the loss receives (B, C).
+    The guard is a no-op for models that already return 2-D logits.
+    """
+    block_info = get_learn_block(src)
+    if not block_info:
+        return src
+    start, end, block = block_info
+
+    # Match:  <indent><var> = self(<single identifier>)
+    # and insert the pooling guard on the next line.
+    new_block = re.sub(
+        r"(^(\s*)(\w+)\s*=\s*self\(\w+\)\n)",
+        r"\1\2if \3.dim() == 4:\n\2    \3 = \3.mean(dim=(2, 3))\n",
+        block,
+        flags=re.M,
+    )
+
+    if new_block == block:
+        return src
+    return src[:start] + new_block + src[end:]
+
+
 # ---------- supported_hyperparameters replacement ----------
+def _get_used_prm_keys(src: str) -> set[str]:
+    """Return all param keys actually accessed as prm['key'] or prm.get('key'...) in source."""
+    keys: set[str] = set()
+    keys.update(re.findall(r"""prm\[['"](\w+)['"]\]""", src))
+    keys.update(re.findall(r"""prm\.get\(['"](\w+)['"]""", src))
+    return keys
+
+
 def replace_supported_hyperparameters(src: str, needs_momentum: bool) -> str:
     block_info = get_supported_hyperparameters_block(src)
     if not block_info:
         return src
 
     start, end, block = block_info
+    used_keys = _get_used_prm_keys(src)
 
     lines = block.splitlines(True)
     new_lines = []
@@ -221,6 +267,12 @@ def replace_supported_hyperparameters(src: str, needs_momentum: bool) -> str:
                         items.append("momentum")
                 else:
                     items = [item for item in items if item != "momentum"]
+
+                # Remove params that are declared but never referenced in the code
+                items = [
+                    item for item in items
+                    if item in used_keys or item == "lr"  # 'lr' is always required
+                ]
 
                 indent = re.match(r"^(\s*)", line).group(1)
                 items_str = ", ".join(f"'{item}'" for item in items)
@@ -247,13 +299,6 @@ def ensure_ngl_injected(src: str) -> str:
     return "".join(lines)
 
 
-
-# ---------- Default hyperparameter injection ----------
-NET_INIT_RE = re.compile(
-    r"^\s*def\s+__init__\s*\([^)]*\bprm\b[^)]*\)\s*(?:->.*?)?\s*:",
-    re.M,
-)
-
 # ---------- Variant creation ----------
 def make_variant(src: str, loss_name: str, optim_name: str):
     block_info = get_train_setup_block(src)
@@ -269,7 +314,9 @@ def make_variant(src: str, loss_name: str, optim_name: str):
     optim_spec = OPTIM_SPECS[optim_name]
     optim_expr = optim_spec["code"]
     needs_momentum = optim_spec["needs_momentum"]
-    use_tuple = not _meta.get("no_tuple", False)
+
+    # Detect whether learn() uses criteria[0](...) — keep tuple if so
+    use_tuple = detect_use_tuple(src, loss_attr)
 
     new_block = block
     new_block = replace_loss_line(new_block, loss_attr, loss_ctor, use_tuple)
@@ -280,6 +327,11 @@ def make_variant(src: str, loss_name: str, optim_name: str):
     if loss_name == "NGL":
         new_src = ensure_ngl_injected(new_src)
 
+    # Inject spatial-output guard into learn() so segmentation models work
+    # on classification datasets (4-D output → global avg pool → 2-D logits)
+    new_src = fix_learn_spatial_outputs(new_src)
+
+    # Strip hyperparams that are declared but never used in the generated code
     new_src = replace_supported_hyperparameters(new_src, needs_momentum)
 
     return new_src, None

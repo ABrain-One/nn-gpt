@@ -1,0 +1,1245 @@
+=== ERRORS PER DATASET ===
+
+celeba_gender:
+  [128x] gdown.exceptions.FileURLRetrievalError: Failed to retrieve file url:
+  [ 90x] TypeError: 'tuple' object is not callable
+  [ 36x] Exception: The param 'dropout' is not used in the code.
+  [ 36x] RuntimeError: only batches of spatial targets supported (3D tensors) but got targets of size: : [64]
+  [ 24x] TypeError: NGL.__init__() got an unexpected keyword argument 'ignore_index'
+  [ 18x] RuntimeError: imag is not implemented for tensors with non-complex dtypes.
+  [ 18x] RuntimeError: mat1 and mat2 shapes cannot be multiplied (64x131072 and 2048x128)
+  [ 12x] IndexError: too many indices for tensor of dimension 1
+  [ 10x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 23.56 GiB of which
+  [ 10x] TypeError: 'NoneType' object is not subscriptable
+
+cifar_10:
+  [125x] TypeError: 'tuple' object is not callable
+  [ 36x] Exception: The param 'dropout' is not used in the code.
+  [ 36x] RuntimeError: only batches of spatial targets supported (3D tensors) but got targets of size: : [64]
+  [ 24x] TypeError: NGL.__init__() got an unexpected keyword argument 'ignore_index'
+  [ 18x] TypeError: 'NoneType' object is not subscriptable
+  [ 18x] IndexError: tuple index out of range
+  [ 18x] RuntimeError: mat1 and mat2 shapes cannot be multiplied (64x131072 and 2048x128)
+  [ 12x] IndexError: too many indices for tensor of dimension 1
+  [ 10x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 23.56 GiB of which
+  [  9x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+
+cifar_100:
+  [120x] TypeError: 'tuple' object is not callable
+  [ 36x] Exception: The param 'dropout' is not used in the code.
+  [ 36x] RuntimeError: only batches of spatial targets supported (3D tensors) but got targets of size: : [64]
+  [ 23x] TypeError: NGL.__init__() got an unexpected keyword argument 'ignore_index'
+  [ 18x] IndexError: tuple index out of range
+  [ 18x] RuntimeError: mat1 and mat2 shapes cannot be multiplied (64x131072 and 2048x128)
+  [ 14x] sqlite3.OperationalError: database is locked
+  [ 11x] RuntimeError: imag is not implemented for tensors with non-complex dtypes.
+  [ 10x] TypeError: 'NoneType' object is not subscriptable
+  [  9x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+
+imagenette:
+  [119x] TypeError: 'tuple' object is not callable
+  [ 36x] Exception: The param 'dropout' is not used in the code.
+  [ 36x] RuntimeError: only batches of spatial targets supported (3D tensors) but got targets of size: : [64]
+  [ 19x] sqlite3.OperationalError: database is locked
+  [ 18x] RuntimeError: imag is not implemented for tensors with non-complex dtypes.
+  [ 18x] TypeError: NGL.__init__() got an unexpected keyword argument 'ignore_index'
+  [ 18x] RuntimeError: mat1 and mat2 shapes cannot be multiplied (64x131072 and 2048x128)
+  [ 10x] TypeError: 'NoneType' object is not subscriptable
+  [  9x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  8x] IndexError: tuple index out of range
+
+mnist:
+  [125x] TypeError: 'tuple' object is not callable
+  [ 36x] Exception: The param 'dropout' is not used in the code.
+  [ 24x] RuntimeError: Given groups=1, weight of size [64, 3, 3, 3], expected input[64, 1, 256, 256] to have 3 channels, but got 
+  [ 24x] TypeError: NGL.__init__() got an unexpected keyword argument 'ignore_index'
+  [ 19x] sqlite3.OperationalError: database is locked
+  [ 18x] RuntimeError: imag is not implemented for tensors with non-complex dtypes.
+  [ 18x] RuntimeError: mat1 and mat2 shapes cannot be multiplied (64x131072 and 2048x128)
+  [ 12x] IndexError: too many indices for tensor of dimension 1
+  [ 12x] RuntimeError: only batches of spatial targets supported (3D tensors) but got targets of size: : [64]
+  [ 10x] IndexError: tuple index out of range
+
+places365:
+  [121x] TypeError: 'tuple' object is not callable
+  [ 36x] Exception: The param 'dropout' is not used in the code.
+  [ 36x] RuntimeError: only batches of spatial targets supported (3D tensors) but got targets of size: : [64]
+  [ 24x] TypeError: NGL.__init__() got an unexpected keyword argument 'ignore_index'
+  [ 18x] RuntimeError: imag is not implemented for tensors with non-complex dtypes.
+  [ 18x] RuntimeError: mat1 and mat2 shapes cannot be multiplied (64x131072 and 2048x128)
+  [ 16x] sqlite3.OperationalError: database is locked
+  [ 12x] IndexError: too many indices for tensor of dimension 1
+  [ 10x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 23.56 GiB of which
+  [ 10x] TypeError: 'NoneType' object is not subscriptable
+
+svhn:
+  [126x] TypeError: 'tuple' object is not callable
+  [ 36x] Exception: The param 'dropout' is not used in the code.
+  [ 36x] RuntimeError: only batches of spatial targets supported (3D tensors) but got targets of size: : [64]
+  [ 24x] TypeError: NGL.__init__() got an unexpected keyword argument 'ignore_index'
+  [ 18x] RuntimeError: imag is not implemented for tensors with non-complex dtypes.
+  [ 18x] RuntimeError: mat1 and mat2 shapes cannot be multiplied (64x131072 and 2048x128)
+  [ 17x] sqlite3.OperationalError: database is locked
+  [ 12x] IndexError: too many indices for tensor of dimension 1
+  [ 11x] IndexError: tuple index out of range
+  [ 10x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 23.56 GiB of which
+
+=== GLOBAL ERROR RANKING ===
+
+  [826x] TypeError: 'tuple' object is not callable
+  [252x] Exception: The param 'dropout' is not used in the code.
+  [228x] RuntimeError: only batches of spatial targets supported (3D tensors) but got targets of size: : [64]
+  [161x] TypeError: NGL.__init__() got an unexpected keyword argument 'ignore_index'
+  [128x] gdown.exceptions.FileURLRetrievalError: Failed to retrieve file url:
+  [126x] RuntimeError: mat1 and mat2 shapes cannot be multiplied (64x131072 and 2048x128)
+  [108x] RuntimeError: imag is not implemented for tensors with non-complex dtypes.
+  [ 87x] sqlite3.OperationalError: database is locked
+  [ 78x] TypeError: 'NoneType' object is not subscriptable
+  [ 74x] IndexError: tuple index out of range
+  [ 72x] IndexError: too many indices for tensor of dimension 1
+  [ 42x] Exception: Code is missing.
+  [ 24x] RuntimeError: Given groups=1, weight of size [64, 3, 3, 3], expected input[64, 1, 256, 256] to have 3 channels, but got 
+  [ 10x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 23.56 GiB of which
+  [ 10x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 23.56 GiB of which
+  [ 10x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 23.56 GiB of which
+  [ 10x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 23.56 GiB of which
+  [ 10x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 23.56 GiB of which
+  [  9x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  9x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  9x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 23.56 GiB of which
+  [  9x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  9x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 16.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  9x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  9x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  7x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 MiB. GPU 0 has a total capacity of 23.56 GiB of which
+  [  7x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 23.56 GiB of which
+  [  6x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 16.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  5x] Exception: NN already exists (checksum: 0a918acb246113e50fbff6f543513cc6). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 5c9c04ca8cdd76a3074fba3af60faaa3). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 12405c321020f4557473638a1585a6c3). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 7a526ed250abb23ebd7b79a0d71026d0). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 225a3a99e8f6c403b9706830921d03dc). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 564c17afa82d2575553cb3f0b815b457). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: aed37c4e7989de1b01248714f69012a1). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 3bea3fbb1e02da6968815f22dc516d5c). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 3ef090cf597176a647a5380f4004a475). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: d216de4ef353e3fb2774df92c997e22b). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: cdf7659e624dab31da52d07471e98ba3). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 81a46abd8735fd97c658f62a44aca13e). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: ea7ce1b9971a41c73c7903118282bbc8). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 65a8105f0b903812dec5cfe2ec822898). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 58c1d9cb3a79594fc557ea7c155d2dda). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 174bc3ee3dc518782c596bc600f22806). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 8435d6e4ff5eed960b5aec1440dfb428). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: f9fff8e3048c944c554c597ceac97f40). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 7edd1e552fdc9cf3396dc8063b74585c). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 9688cb057146ee95cd83872486e496c9). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: aabe8eba02760ba8b4cdd1add1bbd9e1). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 1adec65aa7cd75a92a39c2195883e7b6). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: d45b54062417a9189470c19ca63c6233). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: abd014c6e1f2d46cc4035d5a7b326f7c). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 28122f1f76aeb227f7e49e9b70cbfa99). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 22861a0d810ed02ae9aa7fb9f8df4cce). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 32b8c74987c7d9f4b63d921c7bba3b45). Skipping API call.
+  [  5x] Exception: NN already exists (checksum: 3d251aadb56a985886c914d0f681d515). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: a2dd95b23965627f0c76c55280e44235). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: 206dc5405fc1f03b1d0159d2bff936a6). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: 49138bdb2dbcff35edab77e2e16ab42a). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: b2570055ca1d743958b63c2a5bc43ae2). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: 41f63c22b73706b5d89d53c12ab916ed). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: 07d9cb5f6f05bf1b8818d03ca5c4f646). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: 954bf51765bffa7a63d9c77d7c94a689). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: 0e010d9c555bceb30a0b758c0a8583ab). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: f74a95a89fd71b4046733a695b297930). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: 51d3752ca3329b03ce20798d0e9e3e65). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: 9f9806f459c706137892ae5f883c25db). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: 1da6b80f60e32c8285368394c9578fe0). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: 1afc3e85e673a3ea0259676b0c657e78). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: cf316fc7a26cfef2212a84550dd8d1e1). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: 6428ff57ace4683113d17d91126098b0). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: 902beb1e34a87ec42ea924cb25d59095). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: df697b28624be8c2201c3db589b33323). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: 81bfe7b917f004d797678eec344ad8ec). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: 817bcf665711b9b2c4b6e19093688c4c). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: 594fcc7abcc85534286e5fdaf9d7f26a). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: 5610c68688cfc9f4bc39d3fb737756e9). Skipping API call.
+  [  4x] Exception: NN already exists (checksum: e1d4e23751c6bada0bda2f1e1931ff26). Skipping API call.
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 64.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MNASNet-loss_CrossEntropyLoss-opt_SGD-fc0000c6
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_CrossEntropyLoss-opt_Adam
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_CrossEntropyLoss-opt_RMSp
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_NLLLoss-opt_RMSprop-b94d1
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_NLLLoss-opt_Adadelta-cbb2
+  [  3x] Exception: NN already exists (checksum: 97509ee37738660f7aa10d3c00e1b43e). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: d176438954131311965ad95f8746805e). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 4ea1d0532e32596ff3f1f336d2518be4). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 2d8cae9760ff8b9ebb9598f98c28789d). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 30323c68178464c8a371fd1925955a58). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 93fa0525a242e9d269e18b860b32a13c). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 1a8ff00dd486e2ad07f8ca619f3c30c9). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 2dbfd4058007f199a6bb78223f4543d4). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: ff48187bfe244a4e21e4514862626443). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 4498ffc2dfdd7485f4ed64c186accd68). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 81bf0ccd65c5bd06b52270238f8b2c56). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: a5231fd1c0d8d761de51d278539bb798). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 1b32d0d3230e6af3b4362a25cdcb9433). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 2cc57668beb97f48b7e315f826361ad4). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 6f4aa19e9ca43a7041a155e32f5aab8f). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 9c7e22d01f8372622fefcc2c17a3232e). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 03b2dfdd9e02af7a583ca11cfb7f035c). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 33273fa693e1d472dc3bbeb46eba0502). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 134517c22a29e1944c8d124cf2d63b9f). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 1bec7c22bc61f2cb1561b12c19de5af5). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 0a2d21279c3ca4c874af31ca9ed6e077). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 10c864e2f3f54e1e7f38aca22688f26f). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: f8c7b577966b3d7eec899c57f7bad475). Skipping API call.
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/AlexNet-loss_CrossEntropyLoss-opt_RMSprop-940b
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/AlexNet-loss_NLLLoss-opt_AdamW-1c5707f5e85909d
+  [  3x] Exception: NN already exists (checksum: ec5e66fba9e07625a3c1d30ed730aafd). Skipping API call.
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_CrossEntropyLoss-opt_RM
+  [  3x] Exception: NN already exists (checksum: ada16bc2a8a75920ee4a3bbd472548c6). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: f8fd949373f424ebaf6490de23b1865b). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: cd6ad9dd1ca6c0a7504b9c7901d86ce3). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: fa6c788000762b567ed096538d3fd28b). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 3e7bd1ac1430212aa62c0cd53e1d1212). Skipping API call.
+  [  3x] Exception: NN already exists (checksum: 584b738d864be9bbb13cde88136db5ed). Skipping API call.
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/Diffuser-loss_CrossEntropyLoss-opt_AdamW-22bab
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 64.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_CrossEntropyLoss-opt_SGD-
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/GoogLeNet-loss_NGL-opt_SGD-e196c6fe56955ef0489
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/GoogLeNet-loss_NGL-opt_Adam-a7c53a645fc23e875f
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/GoogLeNet-loss_NGL-opt_Adadelta-74c13bbd21c334
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/EfficientNet-loss_CrossEntropyLoss-opt_SGD-521
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/EfficientNet-loss_CrossEntropyLoss-opt_Adagrad
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/EfficientNet-loss_NGL-opt_SGD-e423eb0ebcc2f667
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_CrossEntropyLoss-opt_SGD-8e7ddd1b5
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_CrossEntropyLoss-opt_Adam-94a1d37d
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_CrossEntropyLoss-opt_RMSprop-9c65e
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/Diffuser-loss_CrossEntropyLoss-opt_Adagrad-13a
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_NGL-opt_Adam-79bee08ed818f7847b621
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_NGL-opt_Adagrad-f8be0eec34e47cd7f4
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_NGL-opt_Adadelta-76f0a5261fd090d13
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_CrossEntropyLoss-opt_SGD-454f98f7a
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_CrossEntropyLoss-opt_Adagrad-4536c
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_NGL-opt_Adam-779767064b95d5a65cb47
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_NGL-opt_AdamW-c81659ad5e662ef26e37
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_NGL-opt_Adadelta-c70ee973360fc56b6
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV2-loss_CrossEntropyLoss-opt_SGD-f651
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV2-loss_CrossEntropyLoss-opt_Adam-819
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV2-loss_CrossEntropyLoss-opt_AdamW-e8
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV2-loss_CrossEntropyLoss-opt_RMSprop-
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV2-loss_CrossEntropyLoss-opt_Adagrad-
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV2-loss_CrossEntropyLoss-opt_Adadelta
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV2-loss_NLLLoss-opt_SGD-fc56c3f31c1e4
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV2-loss_NLLLoss-opt_Adagrad-6bd7fa5de
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV2-loss_NLLLoss-opt_Adadelta-abd410f0
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXt-loss_CrossEntropyLoss-opt_SGD-a4d8cd9
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_CrossEntropyLoss-opt_SG
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 64.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_CrossEntropyLoss-opt_Adam
+  [  3x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/Diffuser-loss_NGL-opt_SGD-2d4a2df0e5bd964689f6
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 64.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 16.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 64.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  3x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 64.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  2x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whic
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MNASNet-loss_NLLLoss-opt_Adam-914638eb906199cb
+  [  2x] Exception: NN already exists (checksum: 5fb4a733a921f9fb9b8602af6d295580). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 0e4e24e0249e2837e55d1d1f7751f31a). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: e196c6fe56955ef0489e87b683d636d3). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: a7c53a645fc23e875f50db4c6ba7d335). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 738277747f0a8a332f794cc43c2214a9). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: a15e5d0df8e6d3ec31930c584a285a4a). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 74c13bbd21c3347df48f24226e6273af). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 521809a1f14f7e1c22f0393280eacff2). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 5d54425a66efbb71adceca1aa8be371e). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: c876febeceaa22fe230730852ecc9a5f). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: e423eb0ebcc2f66781df712482fce0fa). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 0a84139a4ec6693f52ce92a2dc02439b). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 8e7ddd1b504b502e1ebe3dde56428c70). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 94a1d37dfb0ae9c9f42df75c9ec4c2ec). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 9c65e9b94ef2102b30fe19f18dda1b25). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 13a0a3701740478b3add8f78d66a37b2). Skipping API call.
+  [  2x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 224.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whi
+  [  2x] Exception: NN already exists (checksum: b664fe797075803b26408d6765bc428f). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 821cc571ca18d2f851792dc0d7c7b596). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 79bee08ed818f7847b6212da25cb4f08). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 0ed2843d33e924ae06cb6eb84ce6c11f). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: f8be0eec34e47cd7f41fb190b5950157). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 76f0a5261fd090d130d6057c8af3d592). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 454f98f7a06682417a75c4b14205a492). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 4536ce7c3a625f8f703b13a3d511689c). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 360f9ceb6d25a05bfdf618183ae41c21). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: b680a4ae92a2b009c95ea72a996e5c2c). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 779767064b95d5a65cb47321ebc0d6ee). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: c81659ad5e662ef26e370d96916d2f84). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 0e2b7241e8c1f1def316a44f30d8fdbc). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: c70ee973360fc56b6de6ccb055f492c6). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 0cab6878bfcab1ca7d399e69f448d692). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 1a988bad5cadf6281dab4a628e89733c). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: a0ca0242c708a0effd0d2f77b502a04b). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: f6516342f38dcf156ed7e302b33b78b1). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 819a9a263d819dea25cbaea802390938). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: e84c8c89f9088bae445bb0b47812b8cf). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 84443954060265511a0e5822051b0bfa). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 2d4d2926820a10db835acdbec41a71d0). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: ec5aca732d537793bfe26ad7f449461e). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: fc56c3f31c1e43138cae544d67246e26). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 6bd7fa5deb59758d7df473ca8adc1909). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: abd410f0d14a9036fee175ea70dab889). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 85e8b1af6fa332fc199246a5b32a2040). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: af6efd496b55dfc84b8942b2f7106b65). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 22c2fc8d0cf26cc6ef85efa78967ca6f). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 7c7956f1c0ffa6377b5888dd53a43fb4). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: b3c4e38da8886f4d91585a16606d4888). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: b5b8160ee4a14b48d9e2e2844b357a8b). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: e214d767c63f15bc303b8018ca4ac69c). Skipping API call.
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_CrossEntropyLoss-opt_Ad
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_CrossEntropyLoss-opt_Ad
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VGG-loss_CrossEntropyLoss-opt_AdamW-4ad180b4c0
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VGG-loss_CrossEntropyLoss-opt_RMSprop-4889e468
+  [  2x] Exception: NN already exists (checksum: 1e225a41a431440a802bbad60acd3899). Skipping API call.
+  [  2x] Exception: NN already exists (checksum: 739d6efb0c32755b20b5d795bbdb8a2d). Skipping API call.
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ShuffleNet-loss_CrossEntropyLoss-opt_Adagrad-7
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ShuffleNet-loss_NGL-opt_Adam-f7984d2c8edcef548
+  [  2x] Exception: NN already exists (checksum: 232fc4d26ee6953361b659a1f11f24e3). Skipping API call.
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ShuffleNet-loss_NGL-opt_RMSprop-5e8eafee7d61e1
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_NGL-opt_Adam-91e485c2f05c
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_NGL-opt_AdamW-35f7c7a2a4f
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_NGL-opt_RMSprop-d19237bb8
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_NGL-opt_Adagrad-7fa3ab322
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/GoogLeNet-loss_NLLLoss-opt_Adadelta-97509ee377
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/GoogLeNet-loss_NGL-opt_AdamW-738277747f0a8a332
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/EfficientNet-loss_CrossEntropyLoss-opt_Adam-d1
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/EfficientNet-loss_CrossEntropyLoss-opt_AdamW-4
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/EfficientNet-loss_NLLLoss-opt_Adagrad-30323c68
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/EfficientNet-loss_NLLLoss-opt_Adadelta-93fa052
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/EfficientNet-loss_NGL-opt_Adam-0a84139a4ec6693
+  [  2x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 224.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whi
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_CrossEntropyLoss-opt_Adagrad-2dbfd
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_CrossEntropyLoss-opt_Adadelta-ff48
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_NLLLoss-opt_Adam-b664fe797075803b2
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_NLLLoss-opt_AdamW-821cc571ca18d2f8
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_NGL-opt_SGD-81bf0ccd65c5bd06b52270
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_NGL-opt_AdamW-0ed2843d33e924ae06cb
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_CrossEntropyLoss-opt_RMSprop-6f4aa
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_NLLLoss-opt_SGD-360f9ceb6d25a05bfd
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_NLLLoss-opt_Adam-03b2dfdd9e02af7a5
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_NLLLoss-opt_Adagrad-b680a4ae92a2b0
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV3-loss_CrossEntropyLoss-opt_Adam-332
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV3-loss_CrossEntropyLoss-opt_RMSprop-
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV3-loss_CrossEntropyLoss-opt_Adadelta
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV3-loss_NLLLoss-opt_SGD-0cab6878bfcab
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV3-loss_NGL-opt_Adam-0a2d21279c3ca4c8
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/Diffuser-loss_CrossEntropyLoss-opt_Adadelta-a0
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV3-loss_NGL-opt_Adagrad-10c864e2f3f54
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV2-loss_NLLLoss-opt_AdamW-8b7f4b2f756
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV2-loss_NLLLoss-opt_RMSprop-7076917bb
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV2-loss_NGL-opt_SGD-85e8b1af6fa332fc1
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV2-loss_NGL-opt_AdamW-af6efd496b55dfc
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV2-loss_NGL-opt_Adadelta-22c2fc8d0cf2
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/AlexNet-loss_CrossEntropyLoss-opt_Adam-0647a76
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/AlexNet-loss_CrossEntropyLoss-opt_Adagrad-7c79
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/AlexNet-loss_NLLLoss-opt_SGD-151345c786352aeea
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/AlexNet-loss_NLLLoss-opt_Adam-6fb92a44a7ba6f96
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/AlexNet-loss_NLLLoss-opt_RMSprop-1ac3f5d7157ce
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/AlexNet-loss_NLLLoss-opt_Adagrad-199de7f36ff97
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/AlexNet-loss_NLLLoss-opt_Adadelta-3f8bff2ffe4d
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/AlexNet-loss_NGL-opt_Adam-62d8b040464d77651c95
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/AlexNet-loss_NGL-opt_AdamW-cb8c4ade97e4e5c7241
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/AlexNet-loss_NGL-opt_RMSprop-89cfab226e521e0b0
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/AlexNet-loss_NGL-opt_Adagrad-7ef60e611e9905ff5
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXt-loss_CrossEntropyLoss-opt_Adam-b3c4e3
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ShuffleNet-loss_CrossEntropyLoss-opt_RMSprop-7
+  [  2x] Exception: NN already exists (checksum: 7496b16747455ad1cbba5fcb1ba3291f). Skipping API call.
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ShuffleNet-loss_NLLLoss-opt_SGD-790439028b062d
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ShuffleNet-loss_NGL-opt_AdamW-232fc4d26ee69533
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MNASNet-loss_CrossEntropyLoss-opt_RMSprop-e7de
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_CrossEntropyLoss-opt_Adag
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_NLLLoss-opt_SGD-6811e7f9c
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_NLLLoss-opt_Adam-64d6a0e3
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_NLLLoss-opt_AdamW-302bab9
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_NLLLoss-opt_Adagrad-941b4
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/GoogLeNet-loss_NGL-opt_RMSprop-a15e5d0df8e6d3e
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/EfficientNet-loss_CrossEntropyLoss-opt_RMSprop
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/EfficientNet-loss_CrossEntropyLoss-opt_Adadelt
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/EfficientNet-loss_NLLLoss-opt_Adam-ae764a80c7c
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_CrossEntropyLoss-opt_AdamW-1a8ff00
+  [  2x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 224.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whi
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_NLLLoss-opt_SGD-4498ffc2dfdd7485f4
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_NGL-opt_RMSprop-a5231fd1c0d8d761de
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_CrossEntropyLoss-opt_Adam-1b32d0d3
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_CrossEntropyLoss-opt_Adadelta-9c7e
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_NGL-opt_RMSprop-0e2b7241e8c1f1def3
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RESNETLSTM-loss_CrossEntropyLoss-opt_AdamW-ea1
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RESNETLSTM-loss_CrossEntropyLoss-opt_RMSprop-8
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RESNETLSTM-loss_CrossEntropyLoss-opt_Adadelta-
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RESNETLSTM-loss_NLLLoss-opt_Adam-f0b625cb6d4af
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RESNETLSTM-loss_NLLLoss-opt_AdamW-7f681faefbc2
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RESNETLSTM-loss_NGL-opt_RMSprop-106c909e676611
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RESNETLSTM-loss_NGL-opt_Adagrad-c0081dd1c57d0b
+  [  2x] Exception: NN already exists (checksum: f7984d2c8edcef54816b2621c8e38c1d). Skipping API call.
+  [  2x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 224.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whi
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV2-loss_NLLLoss-opt_Adam-d0005f0429ca
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RESNETLSTM-loss_CrossEntropyLoss-opt_Adagrad-b
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RESNETLSTM-loss_NLLLoss-opt_SGD-3b24b4dc237b4a
+  [  2x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RESNETLSTM-loss_NGL-opt_Adadelta-ba8268da76195
+  [  2x] Exception: NN already exists (checksum: 471f0db1b1675017053a517fbe039ba6). Skipping API call.
+  [  2x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 224.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whi
+  [  2x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 224.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whi
+  [  2x] torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 224.00 MiB. GPU 0 has a total capacity of 23.56 GiB of whi
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN131-loss_NLLLoss-opt_Adadelta-64c0b2cddb27f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.38648432020839596, 414096292645, "Accuracy is too low: 0.38648432020839596. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.38648432020839596, 426023747940, "Accuracy is too low: 0.38648432020839596. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.5059613265203887, 391667382013, "Accuracy is too low: 0.5059613265203887. The
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.38648432020839596, 418650893549, "Accuracy is too low: 0.38648432020839596. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.38648432020839596, 811468481349, "Accuracy is too low: 0.38648432020839596. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.38648432020839596, 390278079053, "Accuracy is too low: 0.38648432020839596. T
+  [  1x] Exception: NN already exists (checksum: 106b81b585d3d7727db1b4c5cd26e807). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 64d6a0e30fd040f7010c14b6f453d265). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 302bab966dc6a3ed9ba5aad3af078cab). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 941b450ab51f3cd354db5a25c463c920). Skipping API call.
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.38648432020839596, 2013336467530, "Accuracy is too low: 0.38648432020839596. 
+  [  1x] Exception: NN already exists (checksum: 35f7c7a2a4f0399b413f15f7dd79ae7d). Skipping API call.
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.38648432020839596, 4103235874908, "Accuracy is too low: 0.38648432020839596. 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.38648432020839596, 1024034831885, "Accuracy is too low: 0.38648432020839596. 
+  [  1x] Exception: NN already exists (checksum: 9c02018232dee95fc82dba1082eba441). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 2a62dc11076f59900bed4458c2c20e22). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 9c524921b0b4b73ee06f3fd2db245e82). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: ae764a80c7ca9b57f50d2a3f6e9e7a5c). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 4fc648a3904e65c7f9d8c9a9e40d4d58). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 8e56c30d4a32db81a4cbdbc954c6f246). Skipping API call.
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.38648432020839596, 1610239680460, "Accuracy is too low: 0.38648432020839596. 
+  [  1x] Exception: NN already exists (checksum: 7cfbbaedc9089f9c357db5aa6f0d88ca). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: cc78ab67d873d1779301c4abba185b16). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 863e5701b20d2cf32d56434aa9403a66). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: da9ed0c7cabb2818b1f6a359af8a4922). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 93781ef56590b6c61305d2289f45f2c2). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 21eb80cabba3077a0eaee5eb5e2c9af0). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 844ca552da8d8fe9f738cdce02df13a9). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: d0005f0429ca87507654c8bab14b161c). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 8b7f4b2f7567dc18df1257eb6937930b). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 7076917bb7732b12177460efba4d0d6c). Skipping API call.
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.38648432020839596, 409599500255, "Accuracy is too low: 0.38648432020839596. T
+  [  1x] Exception: NN already exists (checksum: 0647a7638029ba3b9a8d94fac2f20fb4). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: f35d261df54ecdbd6ec47d337776f3eb). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 151345c786352aeea0384d2b11094b1c). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 6fb92a44a7ba6f962093062fe2fd34fd). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 199de7f36ff97c585c418884f407dfe9). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 3f8bff2ffe4d31ec960ce497ee97e762). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 62d8b040464d77651c955de475133e38). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 89cfab226e521e0b0a5aa5094c9ea7ca). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 7ef60e611e9905ff5249a8e350b22994). Skipping API call.
+  [  1x] ab.nn.util.Exception.LearnTimeException: (51.676974614461265, 30, 7.312779426574707)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (51.71319665908813, 30, 7.3179051876068115)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (51.87577718098958, 30, 7.340911865234375)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (52.48648398717244, 30, 7.427332639694214)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (52.02388674418132, 30, 7.361870765686035)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (51.94693237940471, 30, 7.350980997085571)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (51.42504615783692, 30, 7.277129173278809)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (51.4280013402303, 30, 7.277547359466553)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (51.51631816228231, 30, 7.2900450229644775)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (51.52101713816325, 30, 7.290709972381592)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (51.488697147369386, 30, 7.2861363887786865)
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/Diffuser-loss_CrossEntropyLoss-opt_SGD-f1dc52f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 77311600293, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 77647993818, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] Exception: NN already exists (checksum: 2d4a2df0e5bd964689f6910920741c9b). Skipping API call.
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 79802502291, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_NLLLoss-opt_SGD-786b680
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 148496045844, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 149177972514, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 146533485524, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 147346079535, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 152569821492, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 148460306914, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 77725839755, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 149037229679, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 146370789811, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 147813959197, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 77329943500, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 146047142405, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VGG-loss_CrossEntropyLoss-opt_Adagrad-556a23eb
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 144540811873, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 148849652426, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VGG-loss_NLLLoss-opt_AdamW-96d38888ffa7aae9879
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VGG-loss_NLLLoss-opt_RMSprop-8f3a5e1352c4a91e4
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VGG-loss_NLLLoss-opt_Adagrad-315dd8be2a7d9e4bf
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VGG-loss_NLLLoss-opt_Adadelta-45b0fa2ea9fc6fa5
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 147373738381, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 148472657879, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 144937287380, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 144885979121, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ShuffleNet-loss_CrossEntropyLoss-opt_AdamW-471
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 78887438913, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ShuffleNet-loss_NLLLoss-opt_Adadelta-a696d6ac6
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 78393553518, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1003, 77686043074, "Accuracy is too low: 0.1003. The minimum accepted accurac
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MNASNet-loss_CrossEntropyLoss-opt_Adadelta-bf4
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MNASNet-loss_NLLLoss-opt_AdamW-7aa7d7472fcdd04
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MNASNet-loss_NLLLoss-opt_RMSprop-e8d01797cb6ee
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MNASNet-loss_NLLLoss-opt_Adagrad-e7913abf98e98
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MNASNet-loss_NLLLoss-opt_Adadelta-42fbf7c14196
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MNASNet-loss_NGL-opt_SGD-bacd47fcefe31a363f954
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MNASNet-loss_NGL-opt_Adam-f8fd06904b2f45439576
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MNASNet-loss_NGL-opt_AdamW-475441b0f54d7b721a1
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 77603852254, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 77117337247, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 77161545092, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_CrossEntropyLoss-opt_Adam-1d6b
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_CrossEntropyLoss-opt_AdamW-5d4
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_CrossEntropyLoss-opt_Adagrad-f
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_CrossEntropyLoss-opt_Adadelta-
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_NLLLoss-opt_SGD-4afbd73e37281d
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_NLLLoss-opt_AdamW-e86818afc115
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_NLLLoss-opt_Adadelta-d4231a1c8
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_NGL-opt_Adam-cb765955a271b764e
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_NGL-opt_AdamW-85fc68ae9c518882
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_NGL-opt_RMSprop-48940d6e995980
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_NGL-opt_Adagrad-f7d8c9fdba8377
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 315920338657, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 316080134480, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 314832011818, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0978, 315592990328, "Accuracy is too low: 0.0978. The minimum accepted accura
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 302951527696, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 314988982021, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 315174605023, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 314444548730, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 315296981481, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 78205692272, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.106, 77984613787, "Accuracy is too low: 0.106. The minimum accepted accuracy 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1086, 78595839894, "Accuracy is too low: 0.1086. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 79696695404, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1079, 156175483277, "Accuracy is too low: 0.1079. The minimum accepted accura
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 79838562076, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 183709841761, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1066, 91851443338, "Accuracy is too low: 0.1066. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 92205421711, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/EfficientNet-loss_NGL-opt_AdamW-a7a4d7cd7b8ff4
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 91815315079, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0964, 77303964828, "Accuracy is too low: 0.0964. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1032, 79397433310, "Accuracy is too low: 0.1032. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1005, 155056188866, "Accuracy is too low: 0.1005. The minimum accepted accura
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0999, 78144732797, "Accuracy is too low: 0.0999. The minimum accepted accurac
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV3-loss_NLLLoss-opt_Adam-93781ef56590
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV3-loss_NLLLoss-opt_AdamW-1a988bad5ca
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1178, 79924548709, "Accuracy is too low: 0.1178. The minimum accepted accurac
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV3-loss_NGL-opt_RMSprop-844ca552da8d8
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1056, 77916588222, "Accuracy is too low: 0.1056. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 81259683910, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/AlexNet-loss_CrossEntropyLoss-opt_AdamW-f35d26
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXt-loss_CrossEntropyLoss-opt_AdamW-b5b81
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1089, 915145301944, "Accuracy is too low: 0.1089. The minimum accepted accura
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 76956427576, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 902917770394, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.115, 918342726115, "Accuracy is too low: 0.115. The minimum accepted accuracy
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 919013149282, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 914361817841, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 906034664887, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 908781350378, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 909363850594, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 917332044583, "Accuracy is too low: 0.1. The minimum accepted accuracy for
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 76944800810, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXt-loss_NGL-opt_Adagrad-8d2464226478d580
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 76821923813, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1, 76911086878, "Accuracy is too low: 0.1. The minimum accepted accuracy for 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0105, 77921459477, "Accuracy is too low: 0.0105. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.011, 78620905267, "Accuracy is too low: 0.011. The minimum accepted accuracy 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 153088426392, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 155489266494, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 156188099463, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 154109033686, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 154501180167, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.012, 159493889790, "Accuracy is too low: 0.012. The minimum accepted accuracy
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 154535777365, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 77512661435, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 156496543176, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 155293299417, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 154983272413, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 78235493577, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 148299638775, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 149723292429, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 146149483604, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0063, 147325257032, "Accuracy is too low: 0.0063. The minimum accepted accura
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 147645403610, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 151999988628, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 78605909236, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 152972149659, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 149705147330, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 149989266817, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 157386145003, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 149622614430, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 150826357036, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 147349664660, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 147252907720, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ShuffleNet-loss_CrossEntropyLoss-opt_Adam-f8fd
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ShuffleNet-loss_CrossEntropyLoss-opt_Adadelta-
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ShuffleNet-loss_NLLLoss-opt_Adam-6a2d8b11181eb
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 78100149941, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0112, 77537025705, "Accuracy is too low: 0.0112. The minimum accepted accurac
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ShuffleNet-loss_NGL-opt_Adadelta-584b738d864be
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 77731627871, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 78106898386, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0101, 77525978851, "Accuracy is too low: 0.0101. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 78486423699, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 78351584014, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 78217963522, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 78592442176, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 78700683074, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 77859519854, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MNASNet-loss_NGL-opt_RMSprop-e918d720f6ec36462
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MNASNet-loss_NGL-opt_Adagrad-786efa89ce3494448
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MNASNet-loss_NGL-opt_Adadelta-2ef0b932eba9873b
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_CrossEntropyLoss-opt_SGD-0bbe0
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_CrossEntropyLoss-opt_RMSprop-f
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_NLLLoss-opt_Adam-967c8a225e4de
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_NLLLoss-opt_RMSprop-700f679863
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_NLLLoss-opt_Adagrad-0ec4144a6b
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_NGL-opt_SGD-7a7163e076aea9d3fa
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_NGL-opt_Adadelta-7e687d2018d57
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 330709385541, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 328499625532, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 329477030368, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 319605176032, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 329098045093, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/GoogLeNet-loss_NLLLoss-opt_SGD-7371706181961fc
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.011, 78710783016, "Accuracy is too low: 0.011. The minimum accepted accuracy 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0101, 78159621969, "Accuracy is too low: 0.0101. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0112, 78422710891, "Accuracy is too low: 0.0112. The minimum accepted accurac
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/GoogLeNet-loss_NLLLoss-opt_Adagrad-0e4e24e0249
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/EfficientNet-loss_NLLLoss-opt_AdamW-4fc648a390
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 92561541204, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 92867579718, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.009, 93400288606, "Accuracy is too low: 0.009. The minimum accepted accuracy 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 93152792072, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/EfficientNet-loss_NGL-opt_Adagrad-a2dd95b23965
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0082, 93617821870, "Accuracy is too low: 0.0082. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0115, 78711635120, "Accuracy is too low: 0.0115. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0101, 79832315910, "Accuracy is too low: 0.0101. The minimum accepted accurac
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_CrossEntropyLoss-opt_
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_CrossEntropyLoss-opt_
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DenseNet-loss_NLLLoss-opt_SGD-ee7534a00b4a2cfc
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_NLLLoss-opt_SGD-4431d
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_NLLLoss-opt_Adam-6663
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_NLLLoss-opt_AdamW-26c
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_NLLLoss-opt_RMSprop-7
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_NLLLoss-opt_Adagrad-1
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_NGL-opt_AdamW-89e2913
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN68-loss_CrossEntropyLoss-opt_Adam-496266010
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN68-loss_CrossEntropyLoss-opt_Adadelta-73d0b
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN68-loss_NLLLoss-opt_Adam-19b9d8ff2e10441a99
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN68-loss_NLLLoss-opt_RMSprop-47b26fe35c30264
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN68-loss_NGL-opt_AdamW-1c5b665654ba7da5efa9f
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN68-loss_NGL-opt_Adadelta-ec6649ac059c33c037
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.012, 78098259467, "Accuracy is too low: 0.012. The minimum accepted accuracy 
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_NLLLoss-opt_RMSprop-863e5701b20d2c
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_NLLLoss-opt_Adadelta-da9ed0c7cabb2
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0106, 77402923930, "Accuracy is too low: 0.0106. The minimum accepted accurac
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV3-loss_NLLLoss-opt_RMSprop-21eb80cab
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0091, 78481951844, "Accuracy is too low: 0.0091. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.009, 77315661103, "Accuracy is too low: 0.009. The minimum accepted accuracy 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 80779262150, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0109, 78019884928, "Accuracy is too low: 0.0109. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 77428215739, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0102, 77810635789, "Accuracy is too low: 0.0102. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 79970938873, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 79823160942, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 80292264446, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 78782731832, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 78990116738, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 77884031360, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 78913410330, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 78495174694, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 77166921630, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 77957086600, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0103, 77971465585, "Accuracy is too low: 0.0103. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 79269997609, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 77416234813, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 945270469631, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 946010329279, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 942411341355, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 78455091490, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 911948777167, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 945564196036, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 946203637040, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 943766533232, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 940864699434, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 936737596924, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 929688338104, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 942810257147, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 79078269191, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 934282765078, "Accuracy is too low: 0.01. The minimum accepted accuracy f
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 78156161536, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.01, 78604748398, "Accuracy is too low: 0.01. The minimum accepted accuracy fo
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RESNETLSTM-loss_NGL-opt_Adam-d350a7f2c47d2d3e6
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10165605095541401, 71363106813, "Accuracy is too low: 0.10165605095541401. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11515923566878981, 71802556716, "Accuracy is too low: 0.11515923566878981. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0929936305732484, 70971782179, "Accuracy is too low: 0.0929936305732484. The 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09095541401273885, 72193114907, "Accuracy is too low: 0.09095541401273885. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10420382165605095, 73043967609, "Accuracy is too low: 0.10420382165605095. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09859872611464968, 82406270133, "Accuracy is too low: 0.09859872611464968. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10063694267515924, 74028566176, "Accuracy is too low: 0.10063694267515924. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10038216560509554, 73043224952, "Accuracy is too low: 0.10038216560509554. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11082802547770701, 73852416826, "Accuracy is too low: 0.11082802547770701. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10420382165605095, 152636001586, "Accuracy is too low: 0.10420382165605095. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09859872611464968, 73044250694, "Accuracy is too low: 0.09859872611464968. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09859872611464968, 73662971743, "Accuracy is too low: 0.09859872611464968. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09936305732484077, 72774795281, "Accuracy is too low: 0.09936305732484077. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10063694267515924, 73293378189, "Accuracy is too low: 0.10063694267515924. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09910828025477707, 72588139795, "Accuracy is too low: 0.09910828025477707. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09095541401273885, 72811119738, "Accuracy is too low: 0.09095541401273885. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09859872611464968, 72663092235, "Accuracy is too low: 0.09859872611464968. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09859872611464968, 71732784922, "Accuracy is too low: 0.09859872611464968. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09936305732484077, 74868971791, "Accuracy is too low: 0.09936305732484077. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10038216560509554, 71539181805, "Accuracy is too low: 0.10038216560509554. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10038216560509554, 73578754216, "Accuracy is too low: 0.10038216560509554. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10165605095541401, 72119893601, "Accuracy is too low: 0.10165605095541401. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10038216560509554, 71897210162, "Accuracy is too low: 0.10038216560509554. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09095541401273885, 87321373211, "Accuracy is too low: 0.09095541401273885. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1067515923566879, 78212155240, "Accuracy is too low: 0.1067515923566879. The 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09095541401273885, 72920626804, "Accuracy is too low: 0.09095541401273885. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09936305732484077, 72213454302, "Accuracy is too low: 0.09936305732484077. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1067515923566879, 72796744793, "Accuracy is too low: 0.1067515923566879. The 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10038216560509554, 75972169278, "Accuracy is too low: 0.10038216560509554. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09834394904458599, 73096870783, "Accuracy is too low: 0.09834394904458599. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10063694267515924, 73714392054, "Accuracy is too low: 0.10063694267515924. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11439490445859872, 75283629418, "Accuracy is too low: 0.11439490445859872. Th
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ShuffleNet-loss_NLLLoss-opt_Adagrad-fa6c788000
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10573248407643313, 74513461942, "Accuracy is too low: 0.10573248407643313. Th
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ShuffleNet-loss_NGL-opt_SGD-3e7bd1ac1430212aa6
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10038216560509554, 75054879357, "Accuracy is too low: 0.10038216560509554. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11668789808917197, 73541409502, "Accuracy is too low: 0.11668789808917197. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11949044585987262, 75310586339, "Accuracy is too low: 0.11949044585987262. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09936305732484077, 76673232826, "Accuracy is too low: 0.09936305732484077. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09859872611464968, 80506513908, "Accuracy is too low: 0.09859872611464968. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09834394904458599, 73948509631, "Accuracy is too low: 0.09834394904458599. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09910828025477707, 74374643995, "Accuracy is too low: 0.09910828025477707. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09834394904458599, 73128146119, "Accuracy is too low: 0.09834394904458599. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10420382165605095, 73086469201, "Accuracy is too low: 0.10420382165605095. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10343949044585987, 72618580201, "Accuracy is too low: 0.10343949044585987. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09936305732484077, 72195700531, "Accuracy is too low: 0.09936305732484077. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10063694267515924, 70373102916, "Accuracy is too low: 0.10063694267515924. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09936305732484077, 81221517120, "Accuracy is too low: 0.09936305732484077. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10165605095541401, 77688813791, "Accuracy is too low: 0.10165605095541401. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09834394904458599, 78044091570, "Accuracy is too low: 0.09834394904458599. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09859872611464968, 76731674538, "Accuracy is too low: 0.09859872611464968. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09095541401273885, 87910990072, "Accuracy is too low: 0.09095541401273885. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09936305732484077, 78424670985, "Accuracy is too low: 0.09936305732484077. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10420382165605095, 77611034935, "Accuracy is too low: 0.10420382165605095. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09095541401273885, 77805246511, "Accuracy is too low: 0.09095541401273885. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10547770700636942, 393426590909, "Accuracy is too low: 0.10547770700636942. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09910828025477707, 79273075164, "Accuracy is too low: 0.09910828025477707. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09910828025477707, 78611981548, "Accuracy is too low: 0.09910828025477707. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10063694267515924, 77953005429, "Accuracy is too low: 0.10063694267515924. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09936305732484077, 80031989563, "Accuracy is too low: 0.09936305732484077. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09095541401273885, 207920944204, "Accuracy is too low: 0.09095541401273885. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10980891719745223, 70556245394, "Accuracy is too low: 0.10980891719745223. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10598726114649681, 70623587850, "Accuracy is too low: 0.10598726114649681. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10063694267515924, 72048014660, "Accuracy is too low: 0.10063694267515924. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11464968152866242, 383740339015, "Accuracy is too low: 0.11464968152866242. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11464968152866242, 74562926315, "Accuracy is too low: 0.11464968152866242. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11770700636942676, 73008100269, "Accuracy is too low: 0.11770700636942676. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11439490445859872, 73674139717, "Accuracy is too low: 0.11439490445859872. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11057324840764331, 73284305480, "Accuracy is too low: 0.11057324840764331. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.08993630573248408, 220669355880, "Accuracy is too low: 0.08993630573248408. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1067515923566879, 76470866092, "Accuracy is too low: 0.1067515923566879. The 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0978343949044586, 227513875936, "Accuracy is too low: 0.0978343949044586. The
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1062420382165605, 74150947055, "Accuracy is too low: 0.1062420382165605. The 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.05834394904458599, 73263956179, "Accuracy is too low: 0.05834394904458599. Th
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/EfficientNet-loss_NGL-opt_Adadelta-206dc5405fc
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10726114649681529, 73969724590, "Accuracy is too low: 0.10726114649681529. Th
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_NLLLoss-opt_RMSprop-7cfbbaedc9089f
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ResNet-loss_NLLLoss-opt_Adagrad-49138bdb2dbcff
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_CrossEntropyLoss-opt_
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_CrossEntropyLoss-opt_
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_CrossEntropyLoss-opt_
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_CrossEntropyLoss-opt_
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_NLLLoss-opt_Adadelta-
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_NGL-opt_SGD-a7777e37c
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_NGL-opt_Adam-bdd1d7f1
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_NGL-opt_RMSprop-cd834
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DenseNet-loss_NLLLoss-opt_Adam-af8e77a12f20b02
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_NGL-opt_Adagrad-041b9
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXtTransformer-loss_NGL-opt_Adadelta-7a3d
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN68-loss_CrossEntropyLoss-opt_SGD-dc9365c06b
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN68-loss_CrossEntropyLoss-opt_AdamW-e0d247ea
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN68-loss_NLLLoss-opt_SGD-fa143ed0f96fdf12e23
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DenseNet-loss_NLLLoss-opt_AdamW-8bcaaaced6f205
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN68-loss_NLLLoss-opt_AdamW-830194f27a9a6cadb
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN68-loss_NGL-opt_Adam-fc823323c93b7abb0a2b3e
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN68-loss_NGL-opt_Adagrad-d968d12d54d39037fab
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DenseNet-loss_NLLLoss-opt_RMSprop-6c4aed592b0c
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_CrossEntropyLoss-opt_AdamW-2cc5766
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10038216560509554, 74244139889, "Accuracy is too low: 0.10038216560509554. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11235668789808917, 146867359367, "Accuracy is too low: 0.11235668789808917. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10140127388535032, 73561974738, "Accuracy is too low: 0.10140127388535032. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09095541401273885, 72910538812, "Accuracy is too low: 0.09095541401273885. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11337579617834395, 82553957791, "Accuracy is too low: 0.11337579617834395. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10063694267515924, 72959005382, "Accuracy is too low: 0.10063694267515924. Th
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_NGL-opt_Adagrad-41f63c22b73706b5d8
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV3-loss_CrossEntropyLoss-opt_SGD-07d9
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV3-loss_CrossEntropyLoss-opt_AdamW-95
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV3-loss_CrossEntropyLoss-opt_Adagrad-
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09885350318471338, 161769802830, "Accuracy is too low: 0.09885350318471338. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11796178343949044, 73832889243, "Accuracy is too low: 0.11796178343949044. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10063694267515924, 147774387004, "Accuracy is too low: 0.10063694267515924. T
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV3-loss_NLLLoss-opt_Adadelta-f74a95a8
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11898089171974523, 73891633138, "Accuracy is too low: 0.11898089171974523. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11949044585987262, 74951080519, "Accuracy is too low: 0.11949044585987262. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.08993630573248408, 217881816719, "Accuracy is too low: 0.08993630573248408. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09095541401273885, 73012080472, "Accuracy is too low: 0.09095541401273885. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11414012738853503, 72358842986, "Accuracy is too low: 0.11414012738853503. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.06802547770700637, 73672841092, "Accuracy is too low: 0.06802547770700637. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.11847133757961784, 72939867001, "Accuracy is too low: 0.11847133757961784. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09936305732484077, 81131720150, "Accuracy is too low: 0.09936305732484077. Th
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/AlexNet-loss_CrossEntropyLoss-opt_SGD-9f9806f4
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10165605095541401, 73679407656, "Accuracy is too low: 0.10165605095541401. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09936305732484077, 75004200292, "Accuracy is too low: 0.09936305732484077. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09095541401273885, 76000724895, "Accuracy is too low: 0.09095541401273885. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10292993630573248, 181691184738, "Accuracy is too low: 0.10292993630573248. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09910828025477707, 190513169678, "Accuracy is too low: 0.09910828025477707. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10420382165605095, 191395663727, "Accuracy is too low: 0.10420382165605095. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09859872611464968, 191584419148, "Accuracy is too low: 0.09859872611464968. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09859872611464968, 190586234630, "Accuracy is too low: 0.09859872611464968. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09095541401273885, 71370440554, "Accuracy is too low: 0.09095541401273885. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09859872611464968, 191914262629, "Accuracy is too low: 0.09859872611464968. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09426751592356689, 403184806923, "Accuracy is too low: 0.09426751592356689. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10420382165605095, 576774067034, "Accuracy is too low: 0.10420382165605095. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09859872611464968, 190855533001, "Accuracy is too low: 0.09859872611464968. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09910828025477707, 188723531511, "Accuracy is too low: 0.09910828025477707. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09910828025477707, 193883678093, "Accuracy is too low: 0.09910828025477707. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09936305732484077, 195209075310, "Accuracy is too low: 0.09936305732484077. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10063694267515924, 188839533513, "Accuracy is too low: 0.10063694267515924. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10038216560509554, 68879893770, "Accuracy is too low: 0.10038216560509554. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09095541401273885, 188885264382, "Accuracy is too low: 0.09095541401273885. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09910828025477707, 69593363069, "Accuracy is too low: 0.09910828025477707. Th
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10063694267515924, 69365484629, "Accuracy is too low: 0.10063694267515924. Th
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RESNETLSTM-loss_NGL-opt_SGD-541599edb08d86717e
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RESNETLSTM-loss_NGL-opt_AdamW-fe5ac2cc7824f6fc
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.098, 77981821983, "Accuracy is too low: 0.098. The minimum accepted accuracy 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1135, 167118946250, "Accuracy is too low: 0.1135. The minimum accepted accura
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_NLLLoss-opt_Adam-193aea
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_NLLLoss-opt_AdamW-a4843
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_NLLLoss-opt_RMSprop-663
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_NLLLoss-opt_Adagrad-e7a
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_NLLLoss-opt_Adadelta-b7
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_NGL-opt_Adam-8113107a14
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1009, 78286472615, "Accuracy is too low: 0.1009. The minimum accepted accurac
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_NGL-opt_AdamW-833cc4b6c
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_NGL-opt_RMSprop-09addc8
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_NGL-opt_Adagrad-9c2d3ca
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.098, 78063074846, "Accuracy is too low: 0.098. The minimum accepted accuracy 
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VGG-loss_CrossEntropyLoss-opt_Adam-79baad01440
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1135, 162260338380, "Accuracy is too low: 0.1135. The minimum accepted accura
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.098, 163157857001, "Accuracy is too low: 0.098. The minimum accepted accuracy
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0982, 168253563336, "Accuracy is too low: 0.0982. The minimum accepted accura
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1135, 169283606389, "Accuracy is too low: 0.1135. The minimum accepted accura
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0982, 165079695124, "Accuracy is too low: 0.0982. The minimum accepted accura
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1032, 165207660772, "Accuracy is too low: 0.1032. The minimum accepted accura
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.098, 174159431829, "Accuracy is too low: 0.098. The minimum accepted accuracy
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VGG-loss_NGL-opt_Adam-f2d6edde675337cccf5eaf3a
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VGG-loss_NGL-opt_AdamW-1d7dff168c6249c4e9da32a
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VGG-loss_NGL-opt_RMSprop-0026771d998cecb92beea
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VGG-loss_NGL-opt_Adagrad-b7481069c745860888cc9
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0983, 81098935001, "Accuracy is too low: 0.0983. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0892, 40247521609, "Accuracy is too low: 0.0892. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1135, 40741332965, "Accuracy is too low: 0.1135. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0974, 59013384772, "Accuracy is too low: 0.0974. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1052, 59213305684, "Accuracy is too low: 0.1052. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.101, 59115868012, "Accuracy is too low: 0.101. The minimum accepted accuracy 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0879, 59440827773, "Accuracy is too low: 0.0879. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0999, 59573624675, "Accuracy is too low: 0.0999. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.098, 59126606742, "Accuracy is too low: 0.098. The minimum accepted accuracy 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1009, 58962190936, "Accuracy is too low: 0.1009. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0958, 59240048637, "Accuracy is too low: 0.0958. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0974, 58720825537, "Accuracy is too low: 0.0974. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0982, 59192040490, "Accuracy is too low: 0.0982. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.101, 59291390262, "Accuracy is too low: 0.101. The minimum accepted accuracy 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0982, 59147666955, "Accuracy is too low: 0.0982. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1028, 58978623884, "Accuracy is too low: 0.1028. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1028, 59281009971, "Accuracy is too low: 0.1028. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.098, 72448774831, "Accuracy is too low: 0.098. The minimum accepted accuracy 
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/GoogLeNet-loss_NLLLoss-opt_Adam-9c02018232dee9
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1135, 73354396901, "Accuracy is too low: 0.1135. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1028, 73389207915, "Accuracy is too low: 0.1028. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1028, 73290199493, "Accuracy is too low: 0.1028. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0969, 290445687905, "Accuracy is too low: 0.0969. The minimum accepted accura
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1032, 95991839569, "Accuracy is too low: 0.1032. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0892, 96515230898, "Accuracy is too low: 0.0892. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.101, 121071339339, "Accuracy is too low: 0.101. The minimum accepted accuracy
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1028, 60007084147, "Accuracy is too low: 0.1028. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1135, 60165316292, "Accuracy is too low: 0.1135. The minimum accepted accurac
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/__init__.py'
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RegNet-loss_NLLLoss-opt_AdamW-cc78ab67d873d177
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1032, 61954180118, "Accuracy is too low: 0.1032. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1135, 187211207146, "Accuracy is too low: 0.1135. The minimum accepted accura
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0958, 62029293862, "Accuracy is too low: 0.0958. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.098, 202168533120, "Accuracy is too low: 0.098. The minimum accepted accuracy
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1194, 40227037382, "Accuracy is too low: 0.1194. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1136, 160869044225, "Accuracy is too low: 0.1136. The minimum accepted accura
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0982, 40061996017, "Accuracy is too low: 0.0982. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1046, 78602465253, "Accuracy is too low: 0.1046. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0958, 39975368283, "Accuracy is too low: 0.0958. The minimum accepted accurac
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV3-loss_NGL-opt_Adadelta-51d3752ca332
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.101, 76168675617, "Accuracy is too low: 0.101. The minimum accepted accuracy 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0982, 76132550672, "Accuracy is too low: 0.0982. The minimum accepted accurac
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/MobileNetV2-loss_NGL-opt_Adam-f8c7b577966b3d7e
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1009, 76263738321, "Accuracy is too low: 0.1009. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1028, 40091659438, "Accuracy is too low: 0.1028. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1135, 39742610208, "Accuracy is too low: 0.1135. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1135, 39959526457, "Accuracy is too low: 0.1135. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.098, 39551983433, "Accuracy is too low: 0.098. The minimum accepted accuracy 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0974, 40443988448, "Accuracy is too low: 0.0974. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0958, 40420502522, "Accuracy is too low: 0.0958. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1032, 39550075342, "Accuracy is too low: 0.1032. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.101, 39998167222, "Accuracy is too low: 0.101. The minimum accepted accuracy 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1032, 40015104215, "Accuracy is too low: 0.1032. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0892, 40201366312, "Accuracy is too low: 0.0892. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0958, 40061737506, "Accuracy is too low: 0.0958. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.101, 40081066561, "Accuracy is too low: 0.101. The minimum accepted accuracy 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.101, 39870963508, "Accuracy is too low: 0.101. The minimum accepted accuracy 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1135, 1099922226690, "Accuracy is too low: 0.1135. The minimum accepted accur
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1135, 78332078200, "Accuracy is too low: 0.1135. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.098, 1080071577905, "Accuracy is too low: 0.098. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1135, 1097769543251, "Accuracy is too low: 0.1135. The minimum accepted accur
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1028, 1098285094156, "Accuracy is too low: 0.1028. The minimum accepted accur
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0974, 1098334940416, "Accuracy is too low: 0.0974. The minimum accepted accur
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1009, 1085956598986, "Accuracy is too low: 0.1009. The minimum accepted accur
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1009, 1085491212702, "Accuracy is too low: 0.1009. The minimum accepted accur
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1135, 1085683368413, "Accuracy is too low: 0.1135. The minimum accepted accur
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1032, 1099029929540, "Accuracy is too low: 0.1032. The minimum accepted accur
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0982, 78036176330, "Accuracy is too low: 0.0982. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0974, 1080396669831, "Accuracy is too low: 0.0974. The minimum accepted accur
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0958, 78009842672, "Accuracy is too low: 0.0958. The minimum accepted accurac
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.0982, 78309264648, "Accuracy is too low: 0.0982. The minimum accepted accurac
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RESNETLSTM-loss_NLLLoss-opt_Adadelta-2ab61b8be
+  [  1x] ab.nn.util.Exception.LearnTimeException: (275.6261636681027, 30, 3.5211291313171387)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (170.1435480647617, 30, 2.173586845397949)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (165.3634441561169, 30, 2.112520933151245)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (160.35081946849823, 30, 2.0484845638275146)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (156.83264328373804, 30, 2.003539800643921)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (167.02955379750992, 30, 2.133805513381958)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (310.2240200969908, 30, 3.9631173610687256)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (310.96614938312104, 30, 3.972598075866699)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (232.06999585363602, 30, 2.964698314666748)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (163.2159629397922, 30, 2.0850868225097656)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (298.6910342507892, 30, 3.8157832622528076)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (185.35815956857468, 30, 2.3679537773132324)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (331.29851355817584, 30, 4.232344388961792)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (282.43238410684796, 30, 3.608078718185425)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (176.6134261422687, 30, 2.256239652633667)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (218.3247686094708, 30, 2.789102792739868)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (159.82607536845737, 30, 2.041780948638916)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (201.90722273455725, 30, 2.5793683528900146)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (165.64693325095706, 30, 2.116142511367798)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (233.29917022917007, 30, 2.980401039123535)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (329.65657234191895, 30, 4.211368560791016)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (179.9181923336453, 30, 2.2984580993652344)
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN131-loss_NGL-opt_SGD-9b1fb731e10d9b3640c885
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN131-loss_NGL-opt_Adam-d54bc41f33796a6f2f686
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN131-loss_NGL-opt_AdamW-00de36fe216dbade35ed
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/DPN131-loss_NGL-opt_RMSprop-82e2a110c4bf8b1399
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/Diffuser-loss_NGL-opt_Adagrad-6428ff57ace46831
+  [  1x] ab.nn.util.Exception.LearnTimeException: (183.20390372806125, 30, 2.340433120727539)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (210.35652282502915, 30, 2.6873083114624023)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (294.0454896820916, 30, 3.756436347961426)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (303.82035790549384, 30, 3.88131046295166)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (247.84583738115097, 30, 3.1662349700927734)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (175.8421641058392, 30, 2.246386766433716)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (164.97762650913663, 30, 2.1075921058654785)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (184.32401225301956, 30, 2.3547425270080566)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (265.3872803449631, 30, 3.390327215194702)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (253.31928581661649, 30, 3.2361583709716797)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (262.0916403002209, 30, 3.3482253551483154)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (282.9608981079526, 30, 3.614830493927002)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (179.85987084441715, 30, 2.297713041305542)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (254.51245950327979, 30, 3.25140118598938)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (246.1268558104833, 30, 3.144274950027466)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (248.3451439804501, 30, 3.1726136207580566)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (149.59771790769364, 30, 1.9111135005950928)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (323.5897564093272, 30, 4.133864879608154)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (175.92420611116623, 30, 2.2474348545074463)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (192.161748541726, 30, 2.4548697471618652)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (157.78881710105472, 30, 2.0157549381256104)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (2344.1767747932013, 30, 29.946899890899658)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (270.3654160367118, 30, 3.453922986984253)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (410.65067581335705, 30, 5.246069669723511)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (178.61757646666632, 30, 2.2818427085876465)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (180.28070004781088, 30, 2.303089141845703)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (239.9140028688643, 30, 3.0649056434631348)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (299.5073298083411, 30, 3.826211452484131)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (166.99984249803757, 30, 2.1334259510040283)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (269.46175955401526, 30, 3.4423787593841553)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (153.624009569486, 30, 1.9625494480133057)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (161.64856125248804, 30, 2.065063238143921)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (157.12520253658295, 30, 2.007277250289917)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (156.73815313975015, 30, 2.0023326873779297)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (151.89297178056503, 30, 1.9404354095458984)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (273.56023922231464, 30, 3.494736909866333)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (165.26975651582083, 30, 2.1113240718841553)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (140.2959909306632, 30, 1.7922837734222412)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (261.82041271527606, 30, 3.3447604179382324)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (269.7391085624695, 30, 3.4459218978881836)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (164.86495872338614, 30, 2.1061527729034424)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (163.25353131029343, 30, 2.085566759109497)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (311.6061180830002, 30, 3.980773687362671)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (153.0010987387763, 30, 1.9545917510986328)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (329.6874967283673, 30, 4.211763620376587)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (180.17699044280582, 30, 2.3017642498016357)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (174.9774570465088, 30, 2.235340118408203)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (160.4617889324824, 30, 2.0499022006988525)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (170.91828139623007, 30, 2.1834840774536133)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (151.65897663434347, 30, 1.937446117401123)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (279.28696155548096, 30, 3.5678958892822266)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (152.40655548042722, 30, 1.9469964504241943)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (160.64158708519406, 30, 2.052199125289917)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (156.55365194214716, 30, 1.9999756813049316)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (158.21742872397104, 30, 2.021230459213257)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (330.842784775628, 30, 4.226522445678711)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (273.66256777445477, 30, 3.496044158935547)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (334.66371014383105, 30, 4.27533483505249)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (231.656818429629, 30, 2.9594199657440186)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (423.87171884377796, 30, 5.414968729019165)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (348.4821891784668, 30, 4.451866149902344)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (339.96639325883655, 30, 4.343076705932617)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (306.20504428280725, 30, 3.9117748737335205)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (227.55469950040182, 30, 2.907015323638916)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (228.06186317072974, 30, 2.913494348526001)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (812.6758926444584, 30, 10.381948947906494)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (421.3633722464244, 30, 5.382924556732178)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (311.6435558133655, 30, 3.9812519550323486)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (277.2020942899916, 30, 3.541261672973633)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (228.85178808371225, 30, 2.9235856533050537)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (261.8205246925354, 30, 3.344761848449707)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (331.21001419756146, 30, 4.231213808059692)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (228.8567337459988, 30, 2.9236488342285156)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (145.5731805562973, 30, 1.8596999645233154)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (152.37012554539575, 30, 1.946531057357788)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (254.99308456314935, 30, 3.2575411796569824)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (204.50270630253686, 30, 2.612525701522827)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (193.77158961031174, 30, 2.475435495376587)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (252.24400552113852, 30, 3.222421646118164)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (155.969839837816, 30, 1.9925174713134766)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (142.85090140501657, 30, 1.824922800064087)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (141.21941139962937, 30, 1.8040804862976074)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (153.80539406670465, 30, 1.9648666381835938)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (287.4953798982832, 30, 3.6727585792541504)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (178.62233550018735, 30, 2.2819035053253174)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (244.85037104288736, 30, 3.1279678344726562)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (156.3819908036126, 30, 1.9977827072143555)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (152.0337271955278, 30, 1.9422335624694824)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (160.25414576795364, 30, 2.0472495555877686)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (147.2018151415719, 30, 1.8805058002471924)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (159.9380153020223, 30, 2.043210983276367)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (279.8082716862361, 30, 3.5745556354522705)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (143.5339626868566, 30, 1.833648920059204)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (153.59392501248254, 30, 1.962165117263794)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (275.5973668495814, 30, 3.520761251449585)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (237.18373600641885, 30, 3.030026435852051)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (153.0839432477951, 30, 1.9556500911712646)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (139.9104718897078, 30, 1.7873587608337402)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (247.89632046222687, 30, 3.166879892349243)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (151.40238074461618, 30, 1.9341681003570557)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (137.7609564198388, 30, 1.7598986625671387)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (249.57416905297174, 30, 3.188314437866211)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (857.6729465060764, 30, 10.956787109375)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (238.6536614894867, 30, 3.048804759979248)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (162.36348006460403, 30, 2.0741963386535645)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (420.1808550622728, 30, 5.3678178787231445)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (207.73618030548096, 30, 2.6538333892822266)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (152.3088553216722, 30, 1.9457483291625977)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (154.8892219596439, 30, 1.978712558746338)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (186.5057771735721, 30, 2.3826146125793457)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (214.3830944299698, 30, 2.7387478351593018)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (175.81415112813315, 30, 2.2460289001464844)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (154.7711979283227, 30, 1.9772047996520996)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (421.5859457121955, 30, 5.385767936706543)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (431.52900377909344, 30, 5.512790679931641)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (161.0438653892941, 30, 2.057338237762451)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (127.99698731634352, 30, 1.6351637840270996)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (246.05718729231094, 30, 3.1433849334716797)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (166.8471988307105, 30, 2.1314759254455566)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (272.70895077122583, 30, 3.4838616847991943)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (250.20874418152704, 30, 3.1964211463928223)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (300.5724574989743, 30, 3.8398184776306152)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (147.79479071829056, 30, 1.8880810737609863)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (143.28847120867835, 30, 1.8305127620697021)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (148.2513033416536, 30, 1.8939130306243896)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (263.46059962113696, 30, 3.3657138347625732)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (269.6506278647317, 30, 3.444791555404663)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (249.64652502536774, 30, 3.1892387866973877)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (500.75289758046466, 30, 6.397127151489258)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (156.9870225985845, 30, 2.005511999130249)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (142.7147183948093, 30, 1.8231830596923828)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (144.33717556794485, 30, 1.8439099788665771)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (145.20807870229086, 30, 1.8550357818603516)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (227.17733613650003, 30, 2.9021944999694824)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (221.32992098066543, 30, 2.827493667602539)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (305.08975077999963, 30, 3.897526979446411)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (148.35346392790476, 30, 1.8952181339263916)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (146.73123070928787, 30, 1.8744940757751465)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (147.35522398683761, 30, 1.8824656009674072)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (130.90104288525052, 30, 1.6722631454467773)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (147.22973480489517, 30, 1.8808624744415283)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (176.86737190352545, 30, 2.259483814239502)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (136.5708061191771, 30, 1.744694471359253)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (138.41477297412024, 30, 1.7682511806488037)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (135.64647116925983, 30, 1.7328860759735107)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (272.50009451972113, 30, 3.4811935424804688)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (247.06067150168948, 30, 3.1562044620513916)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (149.84238821930356, 30, 1.9142391681671143)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (173.6039813094669, 30, 2.2177939414978027)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (144.8896527025435, 30, 1.8509678840637207)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (150.4510966009564, 30, 1.9220154285430908)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (153.36926130453745, 30, 1.9592950344085693)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (242.80245627297296, 30, 3.1018056869506836)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (261.93052368693884, 30, 3.3461670875549316)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (151.62997452418008, 30, 1.9370756149291992)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (233.58962057696448, 30, 2.9841115474700928)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (149.3431749343872, 30, 1.9078617095947266)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (248.96721498171487, 30, 3.18056058883667)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (145.49974213706122, 30, 1.8587617874145508)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (251.9353215429518, 30, 3.218478202819824)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (154.48645842075348, 30, 1.973567247390747)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (163.98881132072873, 30, 2.0949599742889404)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (376.8432481951184, 30, 4.814179182052612)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (134.95170826382108, 30, 1.7240104675292969)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (143.6946313911014, 30, 1.8357014656066895)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (270.35987316237555, 30, 3.4538521766662598)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (153.98295267422995, 30, 1.967134952545166)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (238.7741116947598, 30, 3.0503435134887695)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (144.16641024748483, 30, 1.8417284488677979)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (137.24802592065598, 30, 1.7533459663391113)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (221.6520049042172, 30, 2.831608295440674)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (163.78628178437552, 30, 2.0923726558685303)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (145.2986496422026, 30, 1.8561928272247314)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (258.5696568886439, 30, 3.303231954574585)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (195.17238779862723, 30, 2.493330717086792)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (281.3894652393129, 30, 3.5947554111480713)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (256.4829046726227, 30, 3.276573657989502)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (260.385610765881, 30, 3.3264307975769043)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (250.52605040868124, 30, 3.200474739074707)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (146.06429415278964, 30, 1.865973949432373)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (184.82570770051743, 30, 2.361151695251465)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (285.23929940329657, 30, 3.643937110900879)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (280.43125716845196, 30, 3.5825142860412598)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (144.28678580125174, 30, 1.843266248703003)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (242.52130003770193, 30, 3.0982139110565186)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (246.6759549644258, 30, 3.151289701461792)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (211.7790259387758, 30, 2.7054808139801025)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (320.8076814015706, 30, 4.098323822021484)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (210.3517824543847, 30, 2.6872477531433105)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (310.40796140829724, 30, 3.9654672145843506)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (136.1930881606208, 30, 1.7398691177368164)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (239.15302407741547, 30, 3.0551841259002686)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (151.62291995684305, 30, 1.9369854927062988)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (148.50231903129153, 30, 1.8971197605133057)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (252.92253172397614, 30, 3.2310898303985596)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (351.5707832707299, 30, 4.491322994232178)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (251.2351837290658, 30, 3.209533929824829)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (134.98504016134473, 30, 1.7244362831115723)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (147.74357978502908, 30, 1.8874268531799316)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (133.99889376428393, 30, 1.7118382453918457)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (136.98792141013675, 30, 1.7500231266021729)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (126.3119721810023, 30, 1.6136376857757568)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (590.1278643740549, 30, 7.538893938064575)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (594.9645541244083, 30, 7.600682735443115)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (662.7518543402354, 30, 8.46666669845581)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (588.8663285705778, 30, 7.522777795791626)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (641.9003076023525, 30, 8.200287818908691)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (593.5283524592718, 30, 7.5823352336883545)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (194.14662011464438, 30, 2.480226516723633)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (1787.294977373547, 30, 22.832725048065186)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (589.211069226265, 30, 7.52718186378479)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (595.7455955081516, 30, 7.610660552978516)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (588.0841674142414, 30, 7.5127856731414795)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (720.4628995392058, 30, 9.20392632484436)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (592.5002705785963, 30, 7.569201469421387)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (590.9273820055856, 30, 7.549107789993286)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (592.1844200558132, 30, 7.565166473388672)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (607.8468846082687, 30, 7.765254735946655)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (599.2416561841965, 30, 7.655322790145874)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (135.94998553064136, 30, 1.7367634773254395)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (663.9570469193989, 30, 8.482063055038452)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (592.7823786205715, 30, 7.572805404663086)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (1706.690050866869, 30, 21.802995681762695)
+  [  1x] ab.nn.util.Exception.LearnTimeException: (273.341025074323, 30, 3.491936445236206)
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RESNETLSTM-loss_NLLLoss-opt_RMSprop-bf2942c89c
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/RESNETLSTM-loss_NLLLoss-opt_Adagrad-6b5fe319d0
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_CrossEntropyLoss-opt_Ad
+  [  1x] Exception: NN already exists (checksum: 07061ad03364f706e3694134015a2111). Skipping API call.
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09157959434542103, 133310305425, "Accuracy is too low: 0.09157959434542103. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.06699446834665028, 461131477208, "Accuracy is too low: 0.06699446834665028. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.06376767055931162, 237486675400, "Accuracy is too low: 0.06376767055931162. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.07594499078057775, 130705695954, "Accuracy is too low: 0.07594499078057775. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.06699446834665028, 238779655739, "Accuracy is too low: 0.06699446834665028. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09157959434542103, 236692392593, "Accuracy is too low: 0.09157959434542103. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.06699446834665028, 133736757186, "Accuracy is too low: 0.06699446834665028. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09691917639827904, 690981601411, "Accuracy is too low: 0.09691917639827904. T
+  [  1x] Exception: NN already exists (checksum: 556a23eb672128d7decac70a9d444b52). Skipping API call.
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09691917639827904, 239244311940, "Accuracy is too low: 0.09691917639827904. T
+  [  1x] Exception: NN already exists (checksum: 790439028b062db81a05132bd90a64a6). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 6a2d8b11181ebf962bf6dd945808cd98). Skipping API call.
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1107098955132145, 146704547203, "Accuracy is too low: 0.1107098955132145. The
+  [  1x] Exception: NN already exists (checksum: a696d6ac6610aed35aa41f43b18457a7). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 5e8eafee7d61e1e03e79f90585fccb78). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 22bab3d452adbc1d261c86c375cc3eb2). Skipping API call.
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09157959434542103, 163515551247, "Accuracy is too low: 0.09157959434542103. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.07594499078057775, 267729037234, "Accuracy is too low: 0.07594499078057775. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.07594499078057775, 133154863079, "Accuracy is too low: 0.07594499078057775. T
+  [  1x] Exception: NN already exists (checksum: 914638eb906199cb6176910b8e99f07c). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 7aa7d7472fcdd04ef821b7a07e8ca577). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: e7913abf98e987bb87a9bc3d0fcff16e). Skipping API call.
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.06699446834665028, 131748831384, "Accuracy is too low: 0.06699446834665028. T
+  [  1x] Exception: NN already exists (checksum: bacd47fcefe31a363f95468ae4143384). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: f8fd06904b2f45439576535cdf9b7526). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: 475441b0f54d7b721a106a1267c64d49). Skipping API call.
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.06699446834665028, 130700068011, "Accuracy is too low: 0.06699446834665028. T
+  [  1x] Exception: NN already exists (checksum: 2ef0b932eba9873bdd4cabd5f8e6cff2). Skipping API call.
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.06699446834665028, 473963249293, "Accuracy is too low: 0.06699446834665028. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1107098955132145, 489440043790, "Accuracy is too low: 0.1107098955132145. The
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09157959434542103, 497353086771, "Accuracy is too low: 0.09157959434542103. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.06699446834665028, 261359132103, "Accuracy is too low: 0.06699446834665028. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.10617701290719114, 152265927993, "Accuracy is too low: 0.10617701290719114. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09691917639827904, 458230335888, "Accuracy is too low: 0.09691917639827904. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1107098955132145, 133249472419, "Accuracy is too low: 0.1107098955132145. The
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.07594499078057775, 396696347923, "Accuracy is too low: 0.07594499078057775. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09691917639827904, 130656142757, "Accuracy is too low: 0.09691917639827904. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09157959434542103, 131146961241, "Accuracy is too low: 0.09157959434542103. T
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.1107098955132145, 1394489011706, "Accuracy is too low: 0.1107098955132145. Th
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ConvNeXt-loss_CrossEntropyLoss-opt_RMSprop-5f5
+  [  1x] FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/Diffuser-loss_NLLLoss-opt_SGD-741c535458d19bea
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.06699446834665028, 1360526253770, "Accuracy is too low: 0.06699446834665028. 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.07594499078057775, 1377088642982, "Accuracy is too low: 0.07594499078057775. 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.06127074370006146, 1378019749561, "Accuracy is too low: 0.06127074370006146. 
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.06699446834665028, 1378372398588, "Accuracy is too low: 0.06699446834665028. 
+  [  1x] Exception: NN already exists (checksum: 1e8aacc7a116928188c1d709598144bf). Skipping API call.
+  [  1x] ab.nn.util.Exception.AccuracyException: (0.09691917639827904, 1373787610248, "Accuracy is too low: 0.09691917639827904. 
+  [  1x] Exception: NN already exists (checksum: 25fb147d2bd280996574a2578be56182). Skipping API call.
+  [  1x] Exception: NN already exists (checksum: a0c8e882f9febeb441dbb5dcc93c3c2c). Skipping API call.
+
+=== ACCURACY BY LOSS FUNCTION (successful runs) ===
+
+  CrossEntropyLoss          n=  70  mean=0.6150  std=0.2880  max=0.9911
+  NGL                       n=  63  mean=0.5211  std=0.3131  max=0.9900
+  NLLLoss                   n=  70  mean=0.2754  std=0.1686  max=0.7909
+
+=== ACCURACY BY OPTIMIZER (successful runs) ===
+
+  Adadelta                  n=  35  mean=0.4173  std=0.2398  max=0.9585
+  Adagrad                   n=  33  mean=0.5155  std=0.3295  max=0.9911
+  Adam                      n=  33  mean=0.4366  std=0.3004  max=0.9861
+  AdamW                     n=  37  mean=0.4535  std=0.3139  max=0.9823
+  RMSprop                   n=  30  mean=0.4348  std=0.3165  max=0.9900
+  SGD                       n=  35  mean=0.5518  std=0.2699  max=0.9873

@@ -1,0 +1,122 @@
+=== EVALUATION ERROR SUMMARY: CAUSES AND FIXES ===
+Run: A0  |  594 variants × 7 datasets
+
+
+─────────────────────────────────────────────────────────────────────
+1. TypeError: 'tuple' object is not callable                  [827x]
+─────────────────────────────────────────────────────────────────────
+Affected: DPN107, DPN131, DPN68, UNet2D, BagNet, AirNet, ICNet
+
+Why it arose:
+  generate_variants.py always wrapped the injected loss in a Python
+  tuple when the attribute was named 'criteria':
+      self.criteria = (nn.CrossEntropyLoss().to(self.device),)
+  Models whose learn() called self.criteria(outputs, labels) were
+  then trying to call a tuple as a function.
+
+Fix (generate_variants.py):
+  detect_use_tuple() scans learn() for the self.criteria[0](...) 
+  call pattern. If found, the tuple is preserved (those models 
+  intentionally index with [0]). Otherwise the loss is assigned 
+  directly without wrapping:
+      self.criteria = nn.CrossEntropyLoss().to(self.device)
+
+
+─────────────────────────────────────────────────────────────────────
+2. RuntimeError: only batches of spatial targets supported    [228x]
+─────────────────────────────────────────────────────────────────────
+Affected: FCN8s, FCN16s, LRASPP
+
+Why it arose:
+  These are segmentation models. Their forward() returns a full
+  spatial map (B, C, H, W). Classification datasets provide 1-D
+  labels (B,). CrossEntropyLoss/NLLLoss, when receiving 4-D input,
+  expects 3-D spatial targets (B, H, W) — not (B,) — and fails.
+
+Fix (generate_variants.py):
+  fix_learn_spatial_outputs() injects a guard into the generated
+  learn() right after the forward call:
+      if outputs.dim() == 4:
+          outputs = outputs.mean(dim=(2, 3))
+  Global average pooling collapses (B, C, H, W) → (B, C) so the
+  loss receives correctly shaped classification logits. The guard
+  is a no-op for models that already return 2-D output.
+
+
+─────────────────────────────────────────────────────────────────────
+3. Exception: param 'dropout' is not used in the code        [252x]
+─────────────────────────────────────────────────────────────────────
+Affected: AirNext, DarkNet
+
+Why it arose:
+  Both models declared 'dropout' in supported_hyperparameters() but
+  never referenced prm['dropout'] anywhere in their code. The eval
+  framework validates that every declared hyperparameter is actually
+  used, and raises an exception when one is missing.
+
+Fix (generate_variants.py):
+  replace_supported_hyperparameters() now scans the full generated
+  source for prm['key'] and prm.get('key'...) references. Any param
+  declared in the return set but not found in the code is stripped.
+  AirNext and DarkNet variants now return {'lr', 'momentum'}.
+
+
+─────────────────────────────────────────────────────────────────────
+4. TypeError: NGL.__init__() got unexpected keyword argument  [165x]
+─────────────────────────────────────────────────────────────────────
+Affected: FCN8s, FCN16s, LRASPP, ConvNeXtTransformer
+
+Why it arose:
+  These models used nn.CrossEntropyLoss(ignore_index=-1) or
+  nn.CrossEntropyLoss(ignore_index=0) as their original loss.
+  replace_loss_line() preserved constructor arguments when swapping
+  the loss class, producing NGL(ignore_index=-1). NGL's __init__
+  takes no arguments, so it raised a TypeError immediately.
+
+Fix (generate_variants.py):
+  When the target loss class is NGL, args_str is forced to empty
+  regardless of what the original constructor contained:
+      args_str = ""
+      if new_name != "NGL":
+          # extract args from original...
+  Result: NGL().to(self.device) — no kwargs passed.
+
+
+─────────────────────────────────────────────────────────────────────
+5. RuntimeError: mat1 and mat2 shapes cannot be multiplied   [126x]
+─────────────────────────────────────────────────────────────────────
+Affected: MoEv2 (all variants, all datasets)
+
+Why it arose:
+  ConvFeatureExtractor hardcodes its flattened output dimension for
+  CIFAR-10's 32×32 input: self.output_dim = 128 * 4 * 4 = 2048.
+  All other datasets use larger images (224–256px), producing a
+  flattened tensor of size 131072 after the same 3 pooling steps.
+  Gate and Expert linear layers (built for 2048) then fail.
+
+Fix:
+  NOT FIXED — requires changing base_nn/MoEv2.py which is treated
+  as ground truth. The correct fix is to replace MaxPool2d + manual
+  flatten with AdaptiveAvgPool2d(1) so output_dim is always 128
+  regardless of input resolution.
+  See: reports/run_A0/architecture_bug_MoEv2.txt
+
+
+─────────────────────────────────────────────────────────────────────
+6. sqlite3.OperationalError: database is locked               [16x]
+─────────────────────────────────────────────────────────────────────
+Affected: random models across datasets (cluster runs only)
+
+Why it arose:
+  Multiple Kubernetes pods finished training simultaneously and all
+  called copy_to_lemur() to write results to the shared SQLite
+  LEMUR database. SQLite allows only one writer at a time. Pods
+  that could not acquire the write lock within the timeout failed
+  with this error. Eval results were still saved locally to
+  eval_info_{dataset}.json — no data was lost, only the DB write.
+
+Fix:
+  NOT FIXED in this run. Recommended: add retry-with-backoff around
+  copy_to_lemur() in run_variants_eval.py (5 retries, exponential
+  backoff starting at 1s), or run with --no-save_to_db and batch-
+  import results into LEMUR after all pods complete.
