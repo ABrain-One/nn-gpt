@@ -1,77 +1,37 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
+from typing import cast, Dict, List, Union
+
+
+def make_layers(in_channels, cfg: List[Union[str, int]], batch_norm: bool = False) -> nn.Sequential:
+    layers: List[nn.Module] = []
+    for v in cfg:
+        if v == "M":
+            layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
+        else:
+            v = cast(int, v)
+            conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
+            if batch_norm:
+                layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
+            else:
+                layers += [conv2d, nn.ReLU(inplace=True)]
+            in_channels = v
+    return nn.Sequential(*layers)
+
+
+cfgs: Dict[str, List[Union[str, int]]] = {
+    "A": [64, "M", 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
+    "B": [64, 64, "M", 128, 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
+    "D": [64, 64, "M", 128, 128, "M", 256, 256, 256, "M", 512, 512, 512, "M", 512, 512, 512, "M"],
+    "E": [64, 64, "M", 128, 128, "M", 256, 256, 256, 256, "M", 512, 512, 512, 512, "M", 512, 512, 512, 512, "M"],
+}
 
 
 def supported_hyperparameters():
-    return {'lr'}
-
-
-class ICInitBlock(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(ICInitBlock, self).__init__()
-        mid_channels = out_channels // 2
-
-        self.conv1 = nn.Conv2d(in_channels, mid_channels, kernel_size=3, stride=2, padding=1)
-        self.conv2 = nn.Conv2d(mid_channels, mid_channels, kernel_size=3, stride=2, padding=1)
-        self.conv3 = nn.Conv2d(mid_channels, out_channels, kernel_size=3, stride=2, padding=1)
-
-    def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        return x
-
-
-class PSPBlock(nn.Module):
-    def __init__(self, in_channels, pool_sizes):
-        super(PSPBlock, self).__init__()
-        self.stages = nn.ModuleList([
-            nn.Sequential(
-                nn.AdaptiveAvgPool2d(output_size=size),
-                nn.Conv2d(in_channels, in_channels // len(pool_sizes), kernel_size=1, bias=False)
-            )
-            for size in pool_sizes
-        ])
-        self.bottleneck = nn.Conv2d(in_channels + in_channels // len(pool_sizes) * len(pool_sizes), in_channels, kernel_size=1, bias=False)
-
-    def forward(self, x):
-        size = x.size()[2:]
-        pooled_features = [F.interpolate(stage(x), size=size, mode='bilinear', align_corners=False) for stage in self.stages]
-        return F.relu(self.bottleneck(torch.cat([x] + pooled_features, dim=1)))
-
-
-class ICNetClassification(nn.Module):
-    def __init__(self, num_classes, in_channels):
-        super(ICNetClassification, self).__init__()
-        self.init_block = ICInitBlock(in_channels, 64)
-        self.psp_block = PSPBlock(64, pool_sizes=[1, 2, 3, 6])
-        self.head_block = nn.Conv2d(64, 128, kernel_size=1)
-        self.classifier = nn.Linear(128, num_classes)
-
-    def forward(self, x):
-        x = self.init_block(x)
-        x = self.psp_block(x)
-        x = self.head_block(x)
-        x = F.adaptive_avg_pool2d(x, (1, 1))
-        x = torch.flatten(x, 1)
-        x = self.classifier(x)
-        return x
+    return {'lr', 'dropout'}
 
 
 class Net(nn.Module):
-    def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
-        super(Net, self).__init__()
-        self.device = device
-        channel_number = in_shape[1]
-        class_number = out_shape[0]
-        self.model = ICNetClassification(num_classes=class_number, in_channels=channel_number)
-        self.learning_rate = prm['lr']
-        self.momentum = prm['momentum']
-
-    def forward(self, x):
-        return self.model(x)
 
     def train_setup(self, prm):
         self.to(self.device)
@@ -79,12 +39,49 @@ class Net(nn.Module):
         self.optimizer = torch.optim.AdamW(self.parameters(), lr=prm['lr'])
 
     def learn(self, train_data):
-        self.train()
         for inputs, labels in train_data:
             inputs, labels = inputs.to(self.device), labels.to(self.device)
             self.optimizer.zero_grad()
             outputs = self(inputs)
-            loss = self.criteria(outputs, labels)
+            loss = self.criteria[0](outputs, labels)
             loss.backward()
             nn.utils.clip_grad_norm_(self.parameters(), 3)
             self.optimizer.step()
+
+    def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
+        super().__init__()
+        self.device = device
+        features: nn.Module = make_layers(in_shape[1], cfgs["A"], batch_norm=False)
+        num_classes: int = out_shape[0]
+        init_weights: bool = True
+        dropout: float = prm['dropout']
+        self.features = features
+        self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
+        self.classifier = nn.Sequential(
+            nn.Linear(512 * 7 * 7, 4096),
+            nn.ReLU(True),
+            nn.Dropout(p=dropout),
+            nn.Linear(4096, 4096),
+            nn.ReLU(True),
+            nn.Dropout(p=dropout),
+            nn.Linear(4096, num_classes),
+        )
+        if init_weights:
+            for m in self.modules():
+                if isinstance(m, nn.Conv2d):
+                    nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+                    if m.bias is not None:
+                        nn.init.constant_(m.bias, 0)
+                elif isinstance(m, nn.BatchNorm2d):
+                    nn.init.constant_(m.weight, 1)
+                    nn.init.constant_(m.bias, 0)
+                elif isinstance(m, nn.Linear):
+                    nn.init.normal_(m.weight, 0, 0.01)
+                    nn.init.constant_(m.bias, 0)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.features(x)
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.classifier(x)
+        return x

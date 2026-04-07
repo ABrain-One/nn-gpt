@@ -1,0 +1,5 @@
+{
+  "base_nn": "DPN68",
+  "loss": "CrossEntropyLoss",
+  "optimizer": "AdamW"
+}

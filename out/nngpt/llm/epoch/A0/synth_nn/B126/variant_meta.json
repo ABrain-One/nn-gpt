@@ -1,0 +1,5 @@
+{
+  "base_nn": "VisionTransformer",
+  "loss": "CrossEntropyLoss",
+  "optimizer": "SGD"
+}

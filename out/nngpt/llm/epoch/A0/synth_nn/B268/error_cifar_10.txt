@@ -1,0 +1,42 @@
+[Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_NGL-opt_Adagrad-f7d8c9fdba83770a2a0df232abbafef1.py'
+
+Traceback (most recent call last):
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 260, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 157, in train_n_eval
+    self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
+  File "/a/mm/out/nn/tmp/ComplexNet-loss_NGL-opt_Adagrad-f7d8c9fdba83770a2a0df232abbafef1.py", line 269, in learn
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/out/nn/tmp/ComplexNet-loss_NGL-opt_Adagrad-f7d8c9fdba83770a2a0df232abbafef1.py", line 302, in forward
+  File "/a/mm/out/nn/tmp/ComplexNet-loss_NGL-opt_Adagrad-f7d8c9fdba83770a2a0df232abbafef1.py", line 293, in forward1
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/out/nn/tmp/ComplexNet-loss_NGL-opt_Adagrad-f7d8c9fdba83770a2a0df232abbafef1.py", line 240, in forward
+  File "/a/mm/out/nn/tmp/ComplexNet-loss_NGL-opt_Adagrad-f7d8c9fdba83770a2a0df232abbafef1.py", line 32, in apply_complex
+RuntimeError: imag is not implemented for tensors with non-complex dtypes.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/run_variants_eval.py", line 114, in run
+    eval_results = evaluator.evaluate(code_file)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 87, in evaluate
+    return api.check_nn(code, self.task, self.dataset, self.metric, self.prm, self.save_to_db, self.prefix, self.save_path)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/api.py", line 39, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx, epoch_limit_minutes=epoch_limit_minutes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 277, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/ComplexNet-loss_NGL-opt_Adagrad-f7d8c9fdba83770a2a0df232abbafef1.py'

@@ -1,0 +1,5 @@
+{
+  "base_nn": "ConvNeXtTransformer",
+  "loss": "NLLLoss",
+  "optimizer": "RMSprop"
+}

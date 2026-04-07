@@ -1,476 +1,212 @@
-import math
-from functools import partial
-from typing import Callable, List, Optional
-
 import torch
-import torch.nn.functional as F
-from torch import nn, Tensor
-from torchvision.ops.misc import MLP, Permute
-from torchvision.ops.stochastic_depth import StochasticDepth
-
-
-def _patch_merging_pad(x: torch.Tensor) -> torch.Tensor:
-    H, W, _ = x.shape[-3:]
-    x = F.pad(x, (0, 0, 0, W % 2, 0, H % 2))
-    x0 = x[..., 0::2, 0::2, :]
-    x1 = x[..., 1::2, 0::2, :]
-    x2 = x[..., 0::2, 1::2, :]
-    x3 = x[..., 1::2, 1::2, :]
-    x = torch.cat([x0, x1, x2, x3], -1)
-    return x
-
-
-torch.fx.wrap("_patch_merging_pad")
-
-
-def _get_relative_position_bias(
-        relative_position_bias_table: torch.Tensor, relative_position_index: torch.Tensor, window_size: List[int]
-) -> torch.Tensor:
-    N = window_size[0] * window_size[1]
-    relative_position_bias = relative_position_bias_table[relative_position_index]
-    relative_position_bias = relative_position_bias.view(N, N, -1)
-    relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous().unsqueeze(0)
-    return relative_position_bias
-
-
-torch.fx.wrap("_get_relative_position_bias")
-
-
-class PatchMerging(nn.Module):
-    def __init__(self, dim: int, norm_layer: Callable[..., nn.Module] = nn.LayerNorm):
-        super().__init__()
-        self.dim = dim
-        self.reduction = nn.Linear(4 * dim, 2 * dim, bias=False)
-        self.norm = norm_layer(4 * dim)
-
-    def forward(self, x: Tensor):
-        x = _patch_merging_pad(x)
-        x = self.norm(x)
-        x = self.reduction(x)
-        return x
-
-
-class PatchMergingV2(nn.Module):
-    def __init__(self, dim: int, norm_layer: Callable[..., nn.Module] = nn.LayerNorm):
-        super().__init__()
-        self.dim = dim
-        self.reduction = nn.Linear(4 * dim, 2 * dim, bias=False)
-        self.norm = norm_layer(2 * dim)
-
-    def forward(self, x: Tensor):
-        x = _patch_merging_pad(x)
-        x = self.reduction(x)
-        x = self.norm(x)
-        return x
-
-
-def shifted_window_attention(
-        input: Tensor,
-        qkv_weight: Tensor,
-        proj_weight: Tensor,
-        relative_position_bias: Tensor,
-        window_size: List[int],
-        num_heads: int,
-        shift_size: List[int],
-        attention_dropout: float = 0.0,
-        dropout: float = 0.0,
-        qkv_bias: Optional[Tensor] = None,
-        proj_bias: Optional[Tensor] = None,
-        logit_scale: Optional[torch.Tensor] = None,
-        training: bool = True,
-) -> Tensor:
-    B, H, W, C = input.shape
-    pad_r = (window_size[1] - W % window_size[1]) % window_size[1]
-    pad_b = (window_size[0] - H % window_size[0]) % window_size[0]
-    x = F.pad(input, (0, 0, 0, pad_r, 0, pad_b))
-    _, pad_H, pad_W, _ = x.shape
-
-    shift_size = shift_size.copy()
-    if window_size[0] >= pad_H:
-        shift_size[0] = 0
-    if window_size[1] >= pad_W:
-        shift_size[1] = 0
-    if sum(shift_size) > 0:
-        x = torch.roll(x, shifts=(-shift_size[0], -shift_size[1]), dims=(1, 2))
-    num_windows = (pad_H // window_size[0]) * (pad_W // window_size[1])
-    x = x.view(B, pad_H // window_size[0], window_size[0], pad_W // window_size[1], window_size[1], C)
-    x = x.permute(0, 1, 3, 2, 4, 5).reshape(B * num_windows, window_size[0] * window_size[1], C)
-    if logit_scale is not None and qkv_bias is not None:
-        qkv_bias = qkv_bias.clone()
-        length = qkv_bias.numel() // 3
-        qkv_bias[length: 2 * length].zero_()
-    qkv = F.linear(x, qkv_weight, qkv_bias)
-    qkv = qkv.reshape(x.size(0), x.size(1), 3, num_heads, C // num_heads).permute(2, 0, 3, 1, 4)
-    q, k, v = qkv[0], qkv[1], qkv[2]
-    if logit_scale is not None:
-        attn = F.normalize(q, dim=-1) @ F.normalize(k, dim=-1).transpose(-2, -1)
-        logit_scale = torch.clamp(logit_scale, max=math.log(100.0)).exp()
-        attn = attn * logit_scale
-    else:
-        q = q * (C // num_heads) ** -0.5
-        attn = q.matmul(k.transpose(-2, -1))
-    attn = attn + relative_position_bias
-
-    if sum(shift_size) > 0:
-        attn_mask = x.new_zeros((pad_H, pad_W))
-        h_slices = ((0, -window_size[0]), (-window_size[0], -shift_size[0]), (-shift_size[0], None))
-        w_slices = ((0, -window_size[1]), (-window_size[1], -shift_size[1]), (-shift_size[1], None))
-        count = 0
-        for h in h_slices:
-            for w in w_slices:
-                attn_mask[h[0]: h[1], w[0]: w[1]] = count
-                count += 1
-        attn_mask = attn_mask.view(pad_H // window_size[0], window_size[0], pad_W // window_size[1], window_size[1])
-        attn_mask = attn_mask.permute(0, 2, 1, 3).reshape(num_windows, window_size[0] * window_size[1])
-        attn_mask = attn_mask.unsqueeze(1) - attn_mask.unsqueeze(2)
-        attn_mask = attn_mask.masked_fill(attn_mask != 0, float(-100.0)).masked_fill(attn_mask == 0, float(0.0))
-        attn = attn.view(x.size(0) // num_windows, num_windows, num_heads, x.size(1), x.size(1))
-        attn = attn + attn_mask.unsqueeze(1).unsqueeze(0)
-        attn = attn.view(-1, num_heads, x.size(1), x.size(1))
-
-    attn = F.softmax(attn, dim=-1)
-    attn = F.dropout(attn, p=attention_dropout, training=training)
-
-    x = attn.matmul(v).transpose(1, 2).reshape(x.size(0), x.size(1), C)
-    x = F.linear(x, proj_weight, proj_bias)
-    x = F.dropout(x, p=dropout, training=training)
-
-    x = x.view(B, pad_H // window_size[0], pad_W // window_size[1], window_size[0], window_size[1], C)
-    x = x.permute(0, 1, 3, 2, 4, 5).reshape(B, pad_H, pad_W, C)
-
-    if sum(shift_size) > 0:
-        x = torch.roll(x, shifts=(shift_size[0], shift_size[1]), dims=(1, 2))
-
-    x = x[:, :H, :W, :].contiguous()
-    return x
-
-
-torch.fx.wrap("shifted_window_attention")
-
-
-class ShiftedWindowAttention(nn.Module):
-    def __init__(
-            self,
-            dim: int,
-            window_size: List[int],
-            shift_size: List[int],
-            num_heads: int,
-            qkv_bias: bool = True,
-            proj_bias: bool = True,
-            attention_dropout: float = 0.0,
-            dropout: float = 0.0,
-    ):
-        super().__init__()
-        if len(window_size) != 2 or len(shift_size) != 2:
-            raise ValueError("window_size and shift_size must be of length 2")
-        self.window_size = window_size
-        self.shift_size = shift_size
-        self.num_heads = num_heads
-        self.attention_dropout = attention_dropout
-        self.dropout = dropout
-
-        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
-        self.proj = nn.Linear(dim, dim, bias=proj_bias)
-
-        self.define_relative_position_bias_table()
-        self.define_relative_position_index()
-
-    def define_relative_position_bias_table(self):
-        self.relative_position_bias_table = nn.Parameter(
-            torch.zeros((2 * self.window_size[0] - 1) * (2 * self.window_size[1] - 1), self.num_heads)
-        )
-        nn.init.trunc_normal_(self.relative_position_bias_table, std=0.02)
-
-    def define_relative_position_index(self):
-        coords_h = torch.arange(self.window_size[0])
-        coords_w = torch.arange(self.window_size[1])
-        coords = torch.stack(torch.meshgrid(coords_h, coords_w, indexing="ij"))
-        coords_flatten = torch.flatten(coords, 1)
-        relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]
-        relative_coords = relative_coords.permute(1, 2, 0).contiguous()
-        relative_coords[:, :, 0] += self.window_size[0] - 1
-        relative_coords[:, :, 1] += self.window_size[1] - 1
-        relative_coords[:, :, 0] *= 2 * self.window_size[1] - 1
-        relative_position_index = relative_coords.sum(-1).flatten()
-        self.register_buffer("relative_position_index", relative_position_index)
-
-    def get_relative_position_bias(self) -> torch.Tensor:
-        return _get_relative_position_bias(
-            self.relative_position_bias_table, self.relative_position_index, self.window_size
-        )
-
-    def forward(self, x: Tensor) -> Tensor:
-        relative_position_bias = self.get_relative_position_bias()
-        return shifted_window_attention(
-            x,
-            self.qkv.weight,
-            self.proj.weight,
-            relative_position_bias,
-            self.window_size,
-            self.num_heads,
-            shift_size=self.shift_size,
-            attention_dropout=self.attention_dropout,
-            dropout=self.dropout,
-            qkv_bias=self.qkv.bias,
-            proj_bias=self.proj.bias,
-            training=self.training,
-        )
-
-
-class ShiftedWindowAttentionV2(ShiftedWindowAttention):
-    def __init__(
-            self,
-            dim: int,
-            window_size: List[int],
-            shift_size: List[int],
-            num_heads: int,
-            qkv_bias: bool = True,
-            proj_bias: bool = True,
-            attention_dropout: float = 0.0,
-            dropout: float = 0.0,
-    ):
-        super().__init__(
-            dim,
-            window_size,
-            shift_size,
-            num_heads,
-            qkv_bias=qkv_bias,
-            proj_bias=proj_bias,
-            attention_dropout=attention_dropout,
-            dropout=dropout,
-        )
-
-        self.logit_scale = nn.Parameter(torch.log(10 * torch.ones((num_heads, 1, 1))))
-        self.cpb_mlp = nn.Sequential(
-            nn.Linear(2, 512, bias=True), nn.ReLU(inplace=True), nn.Linear(512, num_heads, bias=False)
-        )
-        if qkv_bias:
-            length = self.qkv.bias.numel() // 3
-            self.qkv.bias[length: 2 * length].data.zero_()
-
-    def define_relative_position_bias_table(self):
-        relative_coords_h = torch.arange(-(self.window_size[0] - 1), self.window_size[0], dtype=torch.float32)
-        relative_coords_w = torch.arange(-(self.window_size[1] - 1), self.window_size[1], dtype=torch.float32)
-        relative_coords_table = torch.stack(torch.meshgrid([relative_coords_h, relative_coords_w], indexing="ij"))
-        relative_coords_table = relative_coords_table.permute(1, 2, 0).contiguous().unsqueeze(0)
-
-        relative_coords_table[:, :, :, 0] /= self.window_size[0] - 1
-        relative_coords_table[:, :, :, 1] /= self.window_size[1] - 1
-
-        relative_coords_table *= 8
-        relative_coords_table = (
-                torch.sign(relative_coords_table) * torch.log2(torch.abs(relative_coords_table) + 1.0) / 3.0
-        )
-        self.register_buffer("relative_coords_table", relative_coords_table)
-
-    def get_relative_position_bias(self) -> torch.Tensor:
-        relative_position_bias = _get_relative_position_bias(
-            self.cpb_mlp(self.relative_coords_table).view(-1, self.num_heads),
-            self.relative_position_index,
-            self.window_size,
-        )
-        relative_position_bias = 16 * torch.sigmoid(relative_position_bias)
-        return relative_position_bias
-
-    def forward(self, x: Tensor):
-        relative_position_bias = self.get_relative_position_bias()
-        return shifted_window_attention(
-            x,
-            self.qkv.weight,
-            self.proj.weight,
-            relative_position_bias,
-            self.window_size,
-            self.num_heads,
-            shift_size=self.shift_size,
-            attention_dropout=self.attention_dropout,
-            dropout=self.dropout,
-            qkv_bias=self.qkv.bias,
-            proj_bias=self.proj.bias,
-            logit_scale=self.logit_scale,
-            training=self.training,
-        )
-
-
-class SwinTransformerBlock(nn.Module):
-    def __init__(
-            self,
-            dim: int,
-            num_heads: int,
-            window_size: List[int],
-            shift_size: List[int],
-            mlp_ratio: float = 4.0,
-            dropout: float = 0.0,
-            attention_dropout: float = 0.0,
-            stochastic_depth_prob: float = 0.0,
-            norm_layer: Callable[..., nn.Module] = nn.LayerNorm,
-            attn_layer: Callable[..., nn.Module] = ShiftedWindowAttention,
-    ):
-        super().__init__()
-
-        self.norm1 = norm_layer(dim)
-        self.attn = attn_layer(
-            dim,
-            window_size,
-            shift_size,
-            num_heads,
-            attention_dropout=attention_dropout,
-            dropout=dropout,
-        )
-        self.stochastic_depth = StochasticDepth(stochastic_depth_prob, "row")
-        self.norm2 = norm_layer(dim)
-        self.mlp = MLP(dim, [int(dim * mlp_ratio), dim], activation_layer=nn.GELU, inplace=None, dropout=dropout)
-
-        for m in self.mlp.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-                if m.bias is not None:
-                    nn.init.normal_(m.bias, std=1e-6)
-
-    def forward(self, x: Tensor):
-        x = x + self.stochastic_depth(self.attn(self.norm1(x)))
-        x = x + self.stochastic_depth(self.mlp(self.norm2(x)))
-        return x
-
-
-class SwinTransformerBlockV2(SwinTransformerBlock):
-    def __init__(
-            self,
-            dim: int,
-            num_heads: int,
-            window_size: List[int],
-            shift_size: List[int],
-            mlp_ratio: float = 4.0,
-            dropout: float = 0.0,
-            attention_dropout: float = 0.0,
-            stochastic_depth_prob: float = 0.0,
-            norm_layer: Callable[..., nn.Module] = nn.LayerNorm,
-            attn_layer: Callable[..., nn.Module] = ShiftedWindowAttentionV2,
-    ):
-        super().__init__(
-            dim,
-            num_heads,
-            window_size,
-            shift_size,
-            mlp_ratio=mlp_ratio,
-            dropout=dropout,
-            attention_dropout=attention_dropout,
-            stochastic_depth_prob=stochastic_depth_prob,
-            norm_layer=norm_layer,
-            attn_layer=attn_layer,
-        )
-
-    def forward(self, x: Tensor):
-        x = x + self.stochastic_depth(self.norm1(self.attn(x)))
-        x = x + self.stochastic_depth(self.norm2(self.mlp(x)))
-        return x
-
+import torch.nn as nn
+import torchvision.models as models
+import math
+from ab.nn.loader.coco_.Caption import GLOBAL_CAPTION_VOCAB
 
 def supported_hyperparameters():
-    return {'lr', 'dropout', 'attention_dropout', 'stochastic_depth_prob'}
+    return {'lr'}
 
+# Positional Encoding for Transformer
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, max_len=5000):
+        super().__init__()
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0)
+        self.register_buffer('pe', pe)
 
+    def forward(self, x):
+        # x: [batch, seq, d_model]
+        x = x + self.pe[:, :x.size(1), :]
+        return x
+
+# CNN Encoder (ResNet50 Backbone)
+class CNNEncoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        resnet = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
+        modules = list(resnet.children())[:-2]
+        self.cnn = nn.Sequential(*modules)
+        self.pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(2048, 768)
+
+    def forward(self, images):
+        features = self.cnn(images)  # [B, 2048, H, W]
+        pooled = self.pool(features).flatten(1)  # [B, 2048]
+        return self.fc(pooled).unsqueeze(1)  # [B, 1, 768]
+
+# Transformer Decoder with batch_first=True
+class TransformerDecoder(nn.Module):
+    def __init__(self, vocab_size, d_model=768, num_layers=6, nhead=8):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, d_model)
+        self.pos_encoding = PositionalEncoding(d_model)
+        decoder_layer = nn.TransformerDecoderLayer(
+            d_model, nhead, dim_feedforward=2048, batch_first=True)
+        self.transformer_decoder = nn.TransformerDecoder(decoder_layer, num_layers)
+        self.fc_out = nn.Linear(d_model, vocab_size)
+
+    def forward(self, tgt, memory):
+        # tgt: [batch, seq] -> embed: [batch, seq, d_model]
+        embedded = self.embedding(tgt)
+        embedded = self.pos_encoding(embedded)
+        seq_len = tgt.size(1)
+        tgt_mask = torch.triu(torch.full((seq_len, seq_len), float('-inf')), diagonal=1).to(tgt.device)
+        # memory: [batch, mem_seq, d_model] (mem_seq=1 from encoder)
+        out = self.transformer_decoder(embedded, memory, tgt_mask=tgt_mask)
+        return self.fc_out(out)  # [batch, seq, vocab_size]
+
+# Main Net: Image Captioning Model
 class Net(nn.Module):
+    """
+    CNN + Transformer-based Image Captioning Network
+    """
+    def __init__(self, in_shape, out_shape, prm, device):
+        super().__init__()
+        self.device = device
+        self.encoder = CNNEncoder()
+        self.decoder = TransformerDecoder(out_shape[0])
+        self.vocab_size = out_shape[0]
+        self.word2idx = GLOBAL_CAPTION_VOCAB.get('word2idx', None)
+        self.idx2word = GLOBAL_CAPTION_VOCAB.get('idx2word', None)
+        self.model_name = "ResNetTransformer"
 
     def train_setup(self, prm):
         self.to(self.device)
-        self.criteria = (nn.NLLLoss().to(self.device),)
+        self.criteria = (nn.NLLLoss(ignore_index=self.word2idx['<PAD>']).to(self.device),)
         self.optimizer = torch.optim.RMSprop(self.parameters(), lr=prm['lr'])
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='max', patience=3, factor=0.5)
+        train_loader = prm.get('train_loader', None)
+        dataset = getattr(train_loader, 'dataset', None) if train_loader is not None else None
+        if dataset is not None and hasattr(dataset, 'word2idx'):
+            self.word2idx = dataset.word2idx
+            self.idx2word = dataset.idx2word
 
     def learn(self, train_data):
-        for inputs, labels in train_data:
-            inputs, labels = inputs.to(self.device), labels.to(self.device)
+        if self.word2idx is None or self.idx2word is None:
+            if hasattr(train_data, 'dataset'):
+                self.word2idx = getattr(train_data.dataset, 'word2idx', None)
+                self.idx2word = getattr(train_data.dataset, 'idx2word', None)
+        for images, captions in train_data:
+            images = images.to(self.device)
+            captions = captions.to(self.device)[:, 0, :]  # [B, T]
+            tgt_input = captions[:, :-1]  # [B, T-1]
+            tgt_output = captions[:, 1:]  # [B, T-1]
             self.optimizer.zero_grad()
-            outputs = self(inputs)
-            loss = self.criteria[0](outputs, labels)
+            memory = self.encoder(images)  # [B, 1, 768]
+            output = self.decoder(tgt_input, memory)  # [B, T-1, vocab_size]
+            loss = self.criteria[0](output.view(-1, output.size(-1)), tgt_output.reshape(-1))
             loss.backward()
+            nn.utils.clip_grad_norm_(self.parameters(), 3)
             self.optimizer.step()
 
-    def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
-        super().__init__()
-        self.device = device
-        patch_size = None
-        embed_dim: int = 96
-        depths = None
-        num_heads = None
-        window_size = None
-        mlp_ratio: float = 4.0
-        dropout: float = prm['dropout']
-        attention_dropout: float = prm.get('attention_dropout', 0.0)
-        stochastic_depth_prob: float = prm.get('stochastic_depth_prob', 0.0)
-        num_classes: int = out_shape[0]
-        norm_layer: Optional[Callable[..., nn.Module]] = None
-        block: Optional[Callable[..., nn.Module]] = None
-        downsample_layer: Callable[..., nn.Module] = PatchMerging
-        if window_size is None:
-            window_size = [7, 7]
-        if num_heads is None:
-            num_heads = [3, 6, 12, 24]
-        if depths is None:
-            depths = [2, 2, 6, 2]
-        if patch_size is None:
-            patch_size = [4, 4]
-        self.num_classes = num_classes
+    def batch_beam_search(self, images, beam_width=4, max_len=20, length_penalty=0.7):
+        """
+        images: [B, C, H, W]
+        Returns:
+            preds: [B, max_seq_len, vocab_size] (one-hot style, for metric)
+        """
+        batch_size = images.size(0)
+        results = []
+        memory = self.encoder(images)  # [B, 1, 768]
+        for i in range(batch_size):
+            mem = memory[i:i+1]  # [1, 1, 768]
+            best_caption = self.beam_search_generate_single(mem, beam_width, max_len, length_penalty)
+            results.append(best_caption)
+        # Pad and convert to one-hot for metric compatibility
+        max_seq_len = max(len(r) for r in results)
+        preds = torch.zeros(batch_size, max_seq_len, self.vocab_size).to(self.device)
+        for i, seq in enumerate(results):
+            for t, idx in enumerate(seq):
+                preds[i, t, idx] = 1.0
+        return preds
 
-        if block is None:
-            block = SwinTransformerBlock
-        if norm_layer is None:
-            norm_layer = partial(nn.LayerNorm, eps=1e-5)
+    def beam_search_generate_single(self, memory, beam_width=4, max_len=20, length_penalty=0.7):
+        """
+        Single image beam search, returns a list of token indices (without <SOS>).
+        memory: [1, 1, 768]
+        """
+        word2idx = self.word2idx
+        idx2word = self.idx2word
+        device = self.device
 
-        layers: List[nn.Module] = []
-        layers.append(
-            nn.Sequential(
-                nn.Conv2d(
-                    in_shape[1], embed_dim, kernel_size=(patch_size[0], patch_size[1]), stride=(patch_size[0], patch_size[1])
-                ),
-                Permute([0, 2, 3, 1]),
-                norm_layer(embed_dim),
-            )
-        )
+        sequences = [(0.0, [word2idx['<SOS>']])]
+        for _ in range(max_len):
+            all_candidates = []
+            for score, seq in sequences:
+                if seq[-1] == word2idx['<EOS>']:
+                    all_candidates.append((score, seq))
+                    continue
+                tgt = torch.tensor(seq, dtype=torch.long).unsqueeze(0).to(device)  # [1, seq_len]
+                out = self.decoder(tgt, memory)  # [1, seq_len, vocab_size]
+                log_probs = out[0, -1].log_softmax(dim=0)  # Last token probs
+                topk = torch.topk(log_probs, beam_width)
+                for i in range(beam_width):
+                    next_word = topk.indices[i].item()
+                    next_score = score + topk.values[i].item()
+                    all_candidates.append((next_score, seq + [next_word]))
+            sequences = sorted(all_candidates, key=lambda tup: tup[0] / (len(tup[1]) ** length_penalty), reverse=True)[:beam_width]
+            if all(seq[-1] == word2idx['<EOS>'] for _, seq in sequences):
+                break
+        best_seq = sequences[0][1]
+        # Remove <SOS>, keep until <EOS> (but not including)
+        if word2idx['<EOS>'] in best_seq:
+            end_idx = best_seq.index(word2idx['<EOS>'])
+            return best_seq[1:end_idx+1]
+        else:
+            return best_seq[1:]
 
-        total_stage_blocks = sum(depths)
-        stage_block_id = 0
-        for i_stage in range(len(depths)):
-            stage: List[nn.Module] = []
-            dim = embed_dim * 2 ** i_stage
-            for i_layer in range(depths[i_stage]):
-                sd_prob = stochastic_depth_prob * float(stage_block_id) / (total_stage_blocks - 1)
-                stage.append(
-                    block(
-                        dim,
-                        num_heads[i_stage],
-                        window_size=window_size,
-                        shift_size=[0 if i_layer % 2 == 0 else w // 2 for w in window_size],
-                        mlp_ratio=mlp_ratio,
-                        dropout=dropout,
-                        attention_dropout=attention_dropout,
-                        stochastic_depth_prob=sd_prob,
-                        norm_layer=norm_layer,
-                    )
-                )
-                stage_block_id += 1
-            layers.append(nn.Sequential(*stage))
-            if i_stage < (len(depths) - 1):
-                layers.append(downsample_layer(dim, norm_layer))
-        self.features = nn.Sequential(*layers)
+    def forward(self, images, captions=None, hidden_state=None):
+        if self.word2idx is None or self.idx2word is None:
+            raise ValueError("word2idx and idx2word must be set before evaluation.")
+        memory = self.encoder(images)  # [B, 1, 768]
+        if captions is not None:
+            tgt_input = captions[:, :-1]  # [B, T-1]
+            return self.decoder(tgt_input, memory)  # [B, T-1, vocab_size]
 
-        num_features = embed_dim * 2 ** (len(depths) - 1)
-        self.norm = norm_layer(num_features)
-        self.permute = Permute([0, 3, 1, 2])
-        self.avgpool = nn.AdaptiveAvgPool2d(1)
-        self.flatten = nn.Flatten(1)
-        self.head = nn.Linear(num_features, num_classes)
+    # Use beam search decoding for evaluation
+        return self.batch_beam_search(images, beam_width=4, max_len=20, length_penalty=0.7)
 
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.trunc_normal_(m.weight, std=0.02)
-                if m.bias is not None:
-                    nn.init.zeros_(m.bias)
+    def beam_search_generate(self, image, word2idx, idx2word, beam_width=4, max_len=20, length_penalty=0.7):
+        self.eval()
+        self.word2idx = word2idx
+        self.idx2word = idx2word
+        device = self.device
+        with torch.no_grad():
+            image = image.unsqueeze(0).to(device)  # [1, C, H, W]
+            memory = self.encoder(image).transpose(0, 1)  # [1, 1, d_model]
+            
+            # (score, sequence)
+            sequences = [(0.0, [word2idx['<SOS>']])]
+            
+            for _ in range(max_len):
+                all_candidates = []
+                for score, seq in sequences:
+                    if seq[-1] == word2idx['<EOS>']:
+                        all_candidates.append((score, seq))
+                        continue
+                    tgt = torch.tensor(seq, dtype=torch.long).unsqueeze(0).to(device)  # [1, seq_len]
+                    out = self.decoder(tgt, memory)  # [1, seq_len, vocab_size]
+                    log_probs = out[0, -1].log_softmax(dim=0)  # Last token probs
+                    topk = torch.topk(log_probs, beam_width)
+                    for i in range(beam_width):
+                        next_word = topk.indices[i].item()
+                        next_score = score + topk.values[i].item()
+                        all_candidates.append((next_score, seq + [next_word]))
+                # Keep top k beams, apply length penalty for diversity
+                sequences = sorted(all_candidates, key=lambda tup: tup[0] / (len(tup[1]) ** length_penalty), reverse=True)[:beam_width]
+                # Optionally, stop early if all end with EOS
+                if all(seq[-1] == word2idx['<EOS>'] for _, seq in sequences):
+                    break
+            
+            # Choose the best sequence (highest score)
+            best_seq = sequences[0][1]
+            # Convert token indices to words, skip <SOS> and <EOS>
+            caption = [idx2word[idx] for idx in best_seq[1:-1] if idx in idx2word]
+            return ' '.join(caption)
 
-    def forward(self, x):
-        x = self.features(x)
-        x = self.norm(x)
-        x = self.permute(x)
-        x = self.avgpool(x)
-        x = self.flatten(x)
-        x = self.head(x)
-        return x
+    

@@ -4,79 +4,92 @@ import torch.optim as optim
 
 
 def supported_hyperparameters():
-    return {'lr', 'momentum'}
+    return {'lr', 'momentum', 'dropout'}
 
 
-class DPNBlock(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(DPNBlock, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
-        self.bn1 = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
-        self.bn2 = nn.BatchNorm2d(out_channels)
+class DarkNetUnit(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int, pointwise: bool, alpha: float):
+        super(DarkNetUnit, self).__init__()
+        self.activation = nn.LeakyReLU(negative_slope=alpha, inplace=True)
+        if pointwise:
+            self.conv = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, bias=False),
+                nn.BatchNorm2d(out_channels),
+                self.activation
+            )
+        else:
+            self.conv = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(out_channels),
+                self.activation
+            )
 
-    def forward(self, x):
-        residual = x
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out = out + residual
-        return self.relu(out)
-
-
-class DPN68(nn.Module):
-    def __init__(self, in_channels, num_classes, num_blocks, growth_rate):
-        super(DPN68, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, growth_rate, kernel_size=3, stride=1, padding=1)
-        self.bn1 = nn.BatchNorm2d(growth_rate)
-        self.relu = nn.ReLU(inplace=True)
-
-        self.blocks = nn.Sequential(
-            *[DPNBlock(growth_rate, growth_rate) for _ in range(num_blocks)]
-        )
-
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(growth_rate, num_classes)
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.blocks(x)
-        x = self.avgpool(x)
-        x = torch.flatten(x, 1)
-        x = self.fc(x)
-        return x
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.conv(x)
 
 
 class Net(nn.Module):
     def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
         super(Net, self).__init__()
         self.device = device
-        model_class = DPN68
-        self.channel_number = in_shape[1]
-        self.image_size = in_shape[2]
-        self.class_number = out_shape[0]
-        self.model = model_class(self.channel_number, self.class_number, num_blocks=3, growth_rate=32)
+        channels: list = None
+        odd_pointwise: bool = True
+        alpha: float = 0.1
+        in_channels = in_shape[1]
+        image_size = in_shape[2]
+        num_classes = out_shape[0]
 
-    def forward(self, x):
-        return self.model(x)
+        if channels is None:
+            channels = [[64, 64, 64], [128, 128, 128], [256, 256, 256], [512, 512, 512]]
 
-    def train_setup(self, prm):
+        self.features = nn.Sequential()
+        for i, channels_per_stage in enumerate(channels):
+            stage = nn.Sequential()
+            for j, out_channels in enumerate(channels_per_stage):
+                pointwise = (len(channels_per_stage) > 1) and not (((j + 1) % 2 == 1) ^ odd_pointwise)
+                stage.add_module(f"unit{j + 1}", DarkNetUnit(in_channels, out_channels, pointwise, alpha))
+                in_channels = out_channels
+            if i != len(channels) - 1:
+                stage.add_module(f"pool{i + 1}", nn.MaxPool2d(kernel_size=2, stride=2))
+            self.features.add_module(f"stage{i + 1}", stage)
+
+        final_feature_map_size = image_size // (2 ** (len(channels) - 1))
+
+        self.output = nn.Sequential(
+            nn.Conv2d(in_channels=in_channels, out_channels=num_classes, kernel_size=1),
+            nn.LeakyReLU(negative_slope=alpha, inplace=True),
+            nn.AdaptiveAvgPool2d(output_size=(1, 1))
+        )
+
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d):
+                nn.init.kaiming_uniform_(module.weight, mode='fan_in', nonlinearity='leaky_relu')
+                if module.bias is not None:
+                    nn.init.constant_(module.bias, 0)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.features(x)
+        x = self.output(x)
+        x = x.view(x.size(0), -1)
+        return x
+
+    def train_setup(self, prm: dict):
         self.to(self.device)
+        learning_rate = float(prm.get("lr", 0.01))
+        momentum = float(prm.get("momentum", 0.9))
         self.criteria = (nn.NLLLoss().to(self.device),)
         self.optimizer = torch.optim.SGD(self.parameters(), lr=prm['lr'], momentum=prm.get('momentum', 0.9))
+        self.to(self.device)
 
-    def learn(self, train_data):
+    def learn(self, train_data: torch.utils.data.DataLoader):
         self.train()
-        for inputs, labels in train_data:
-            inputs, labels = inputs.to(self.device), labels.to(self.device)
+        for inputs, targets in train_data:
+            inputs, targets = inputs.to(next(self.parameters()).device), targets.to(next(self.parameters()).device)
             self.optimizer.zero_grad()
             outputs = self(inputs)
-            loss = self.criteria(outputs, labels)
+            loss = self.criteria(outputs, targets)
             loss.backward()
-            nn.utils.clip_grad_norm_(self.parameters(), 3)
             self.optimizer.step()

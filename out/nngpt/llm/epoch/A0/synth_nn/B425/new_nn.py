@@ -1,288 +1,215 @@
-import math
-from collections import OrderedDict
-from functools import partial
-from typing import Callable, List, NamedTuple, Optional
-
 import torch
 import torch.nn as nn
-from torchvision.ops.misc import Conv2dNormActivation, MLP
-
-
-class ConvStemConfig(NamedTuple):
-    out_channels: int
-    kernel_size: int
-    stride: int
-    norm_layer: Callable[..., nn.Module] = nn.BatchNorm2d
-    activation_layer: Callable[..., nn.Module] = nn.ReLU
-
-
-class MLPBlock(MLP):
-    _version = 2
-
-    def __init__(self, in_dim: int, mlp_dim: int, dropout: float):
-        super().__init__(in_dim, [mlp_dim, in_dim], activation_layer=nn.GELU, inplace=None, dropout=dropout)
-
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-                if m.bias is not None:
-                    nn.init.normal_(m.bias, std=1e-6)
-
-    def _load_from_state_dict(
-            self,
-            state_dict,
-            prefix,
-            local_metadata,
-            strict,
-            missing_keys,
-            unexpected_keys,
-            error_msgs,
-    ):
-        version = local_metadata.get("version", None)
-
-        if version is None or version < 2:
-            for i in range(2):
-                for type in ["weight", "bias"]:
-                    old_key = f"{prefix}linear_{i + 1}.{type}"
-                    new_key = f"{prefix}{3 * i}.{type}"
-                    if old_key in state_dict:
-                        state_dict[new_key] = state_dict.pop(old_key)
-
-        super()._load_from_state_dict(
-            state_dict,
-            prefix,
-            local_metadata,
-            strict,
-            missing_keys,
-            unexpected_keys,
-            error_msgs,
-        )
-
-
-class EncoderBlock(nn.Module):
-    def __init__(
-            self,
-            num_heads: int,
-            hidden_dim: int,
-            mlp_dim: int,
-            dropout: float,
-            attention_dropout: float,
-            norm_layer: Callable[..., torch.nn.Module] = partial(nn.LayerNorm, eps=1e-6),
-    ):
-        super().__init__()
-        self.num_heads = num_heads
-
-        self.ln_1 = norm_layer(hidden_dim)
-        self.self_attention = nn.MultiheadAttention(hidden_dim, num_heads, dropout=attention_dropout, batch_first=True)
-        self.dropout = nn.Dropout(dropout)
-
-        self.ln_2 = norm_layer(hidden_dim)
-        self.mlp = MLPBlock(hidden_dim, mlp_dim, dropout)
-
-    def forward(self, input: torch.Tensor):
-        torch._assert(input.dim() == 3, f"Expected (batch_size, seq_length, hidden_dim) got {input.shape}")
-        x = self.ln_1(input)
-        x, _ = self.self_attention(x, x, x, need_weights=False)
-        x = self.dropout(x)
-        x = x + input
-
-        y = self.ln_2(x)
-        y = self.mlp(y)
-        return x + y
-
-
-class Encoder(nn.Module):
-    def __init__(
-            self,
-            seq_length: int,
-            num_layers: int,
-            num_heads: int,
-            hidden_dim: int,
-            mlp_dim: int,
-            dropout: float,
-            attention_dropout: float,
-            norm_layer: Callable[..., torch.nn.Module] = partial(nn.LayerNorm, eps=1e-6),
-    ):
-        super().__init__()
-        self.pos_embedding = nn.Parameter(torch.empty(1, seq_length, hidden_dim).normal_(std=0.02))
-        self.dropout = nn.Dropout(dropout)
-        layers: OrderedDict[str, nn.Module] = OrderedDict()
-        for i in range(num_layers):
-            layers[f"encoder_layer_{i}"] = EncoderBlock(
-                num_heads,
-                hidden_dim,
-                mlp_dim,
-                dropout,
-                attention_dropout,
-                norm_layer,
-            )
-        self.layers = nn.Sequential(layers)
-        self.ln = norm_layer(hidden_dim)
-
-    def forward(self, input: torch.Tensor):
-        torch._assert(input.dim() == 3, f"Expected (batch_size, seq_length, hidden_dim) got {input.shape}")
-        input = input + self.pos_embedding
-        return self.ln(self.layers(self.dropout(input)))
-
+import torch.nn.functional as F
+from torchvision.models import convnext_tiny, ConvNeXt_Tiny_Weights
 
 def supported_hyperparameters():
-    return {'lr', 'dropout', 'attention_dropout', 'patch_size'}
+    # Only expose what your pipeline can set (all [0, 1])
+    return {'lr', 'dropout', 'tie_weights'}
 
+class MultiScaleConvNeXtEncoder(nn.Module):
+    def __init__(self, in_channels=3, out_dim=512, pretrained=True):
+        super().__init__()
+        weights = ConvNeXt_Tiny_Weights.DEFAULT if pretrained else None
+        backbone = convnext_tiny(weights=weights)
+        self.stem = backbone.features[0]
+        self.stages = nn.ModuleList(backbone.features[1:])
+        self.proj2 = nn.Conv2d(384, out_dim, kernel_size=1)
+        self.proj3 = nn.Conv2d(768, out_dim, kernel_size=1)
+        self.norm = nn.LayerNorm(out_dim)
 
-def get_divisors(n, res=None):
-    res = res or []
-    i = 1
-    while i <= n:
-        if n % i == 0:
-            res.append(i),
-        i = i + 1
-    return res
+    def forward(self, x):
+        x = self.stem(x)
+        feat_2 = None
+        feat_3 = None
+        for idx, stage in enumerate(self.stages):
+            x = stage(x)
+            #print(f"[DEBUG] After stage {idx}: {x.shape}")
+            if x.shape[1] == 384 and feat_2 is None:
+                feat_2 = x
+            if x.shape[1] == 768 and feat_3 is None:
+                feat_3 = x
+        assert feat_2 is not None, f"[ERROR] feat_2 (384 channels) not found! Last feature shape: {x.shape}"
+        assert feat_3 is not None, f"[ERROR] feat_3 (768 channels) not found! Last feature shape: {x.shape}"
+        #print(f"[DEBUG] Selected feat_2 shape: {feat_2.shape}")
+        #print(f"[DEBUG] Selected feat_3 shape: {feat_3.shape}")
+        tokens2 = self.proj2(feat_2).flatten(2).transpose(1, 2)
+        tokens3 = self.proj3(feat_3).flatten(2).transpose(1, 2)
+        #print(f"[DEBUG] tokens2 shape: {tokens2.shape}")
+        #print(f"[DEBUG] tokens3 shape: {tokens3.shape}")
+        all_tokens = torch.cat([tokens2, tokens3], dim=1)
+        #print(f"[DEBUG] Concatenated tokens shape: {all_tokens.shape}")
+        all_tokens = self.norm(all_tokens)
+        #print(f"[DEBUG] Final output after LayerNorm: {all_tokens.shape}")
+        return all_tokens
 
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, max_len=256):
+        super().__init__()
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-torch.log(torch.tensor(10000.0)) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('pe', pe.unsqueeze(0))
+    def forward(self, x):
+        seq_len = x.size(1)
+        return x + self.pe[:, :seq_len, :].to(x.device)
 
-def get_closest_split(n, close_to):
-    all_divisors = get_divisors(n)
-    for ix, val in enumerate(all_divisors):
-        if close_to < val:
-            if ix == 0: return val
-            if (val - close_to) > (close_to - all_divisors[ix - 1]):
-                return all_divisors[ix - 1]
-            return val
+class TransformerDecoderLayer(nn.Module):
+    def __init__(self, d_model, nhead, dim_feedforward, dropout):
+        super().__init__()
+        self.layer = nn.TransformerDecoderLayer(
+            d_model=d_model,
+            nhead=nhead,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            batch_first=True
+        )
+    def forward(self, *args, **kwargs):
+        return self.layer(*args, **kwargs)
 
+class TransformerDecoder(nn.Module):
+    def __init__(self, vocab_size, d_model=512, num_layers=4, nhead=8, dim_feedforward=2048, dropout=0.1, tie_weights=True):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, d_model)
+        self.pos_encoder = PositionalEncoding(d_model)
+        self.layers = nn.ModuleList([
+            TransformerDecoderLayer(d_model, nhead, dim_feedforward, dropout)
+            for _ in range(num_layers)
+        ])
+        self.fc_out = nn.Linear(d_model, vocab_size)
+        if tie_weights:
+            self.fc_out.weight = self.embedding.weight
+        self.d_model = d_model
+
+    def forward(self, captions, encoder_outputs, tgt_mask=None, memory_mask=None):
+        x = self.embedding(captions) * (self.d_model ** 0.5)
+        x = self.pos_encoder(x)
+        for layer in self.layers:
+            x = layer(
+                x,
+                encoder_outputs,
+                tgt_mask=tgt_mask,
+                memory_mask=memory_mask
+            )
+        logits = self.fc_out(x)
+        return logits
 
 class Net(nn.Module):
+    def __init__(self, in_shape, out_shape, prm, device):
+        super().__init__()
+        self.device = device
+        self.in_shape = in_shape
+        self.out_shape = out_shape
+
+        vocab_size = out_shape[0]
+        d_model = 512
+        num_layers = 4
+        nhead = 8
+        dropout = prm.get('dropout', 0.1)
+        tie_weights = bool(int(prm.get('tie_weights', 1)))
+
+        self.encoder = MultiScaleConvNeXtEncoder(
+            in_channels=in_shape[1],
+            out_dim=d_model,
+            pretrained=True
+        )
+        self.decoder = TransformerDecoder(
+            vocab_size=vocab_size,
+            d_model=d_model,
+            num_layers=num_layers,
+            nhead=nhead,
+            dropout=dropout,
+            tie_weights=tie_weights
+        )
 
     def train_setup(self, prm):
         self.to(self.device)
-        self.criteria = (nn.NLLLoss().to(self.device),)
+        self.criteria = (nn.NLLLoss(ignore_index=0).to(self.device),)
+        lr = float(prm.get('lr', 0.001)) * 0.01 + 1e-4
         self.optimizer = torch.optim.Adadelta(self.parameters(), lr=prm['lr'])
 
     def learn(self, train_data):
-        for inputs, labels in train_data:
-            inputs, labels = inputs.to(self.device), labels.to(self.device)
+        self.train()
+        print_every = 500
+        running_loss = 0.0
+        batch_count = 0
+
+        # We'll print a few predictions from the first batch of the epoch:
+        sample_printed = False
+
+        # If class variables exist, use for decoding captions:
+        idx2word = getattr(self, 'idx2word', None)
+
+        for images, captions in train_data:
+            images = images.to(self.device)
+            captions = captions.to(self.device)
+            captions = captions[:, 0, :]
+            input_ids = captions[:, :-1]
+            target = captions[:, 1:]
+            encoder_outputs = self.encoder(images)
+            logits = self.decoder(input_ids, encoder_outputs)
+            logits = logits.reshape(-1, logits.shape[-1])
+            target = target.reshape(-1)
+            loss = self.criteria[0](logits, target)
             self.optimizer.zero_grad()
-            outputs = self(inputs)
-            loss = self.criteria[0](outputs, labels)
             loss.backward()
             nn.utils.clip_grad_norm_(self.parameters(), 3)
             self.optimizer.step()
 
-    def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
-        super().__init__()
-        self.device = device
-        image_size: int = in_shape[2]
-        patch_size: int = get_closest_split(image_size, int(image_size * prm.get('patch_size', 0.125)))
-        num_layers: int = 12
-        num_heads: int = 12
-        hidden_dim: int = 768
-        mlp_dim: int = 3072
-        dropout: float = prm['dropout']
-        attention_dropout: float = prm.get('attention_dropout', 0.0)
-        num_classes: int = out_shape[0]
-        representation_size: Optional[int] = None
-        norm_layer: Callable[..., torch.nn.Module] = partial(nn.LayerNorm, eps=1e-6)
-        conv_stem_configs: Optional[List[ConvStemConfig]] = None
-        torch._assert(image_size % patch_size == 0, f"Input shape {image_size} indivisible by patch size {patch_size}!")
-        self.image_size = image_size
-        self.patch_size = patch_size
-        self.hidden_dim = hidden_dim
-        self.mlp_dim = mlp_dim
-        self.attention_dropout = attention_dropout
-        self.dropout = dropout
-        self.num_classes = num_classes
-        self.representation_size = representation_size
-        self.norm_layer = norm_layer
+            running_loss += loss.item()
+            batch_count += 1
 
-        if conv_stem_configs is not None:
-            seq_proj = nn.Sequential()
-            prev_channels = 3
-            for i, conv_stem_layer_config in enumerate(conv_stem_configs):
-                seq_proj.add_module(
-                    f"conv_bn_relu_{i}",
-                    Conv2dNormActivation(
-                        in_channels=prev_channels,
-                        out_channels=conv_stem_layer_config.out_channels,
-                        kernel_size=conv_stem_layer_config.kernel_size,
-                        stride=conv_stem_layer_config.stride,
-                        norm_layer=conv_stem_layer_config.norm_layer,
-                        activation_layer=conv_stem_layer_config.activation_layer,
-                    ),
-                )
-                prev_channels = conv_stem_layer_config.out_channels
-            seq_proj.add_module(
-                "conv_last", nn.Conv2d(in_channels=prev_channels, out_channels=hidden_dim, kernel_size=1)
-            )
-            self.conv_proj: nn.Module = seq_proj
-        else:
-            self.conv_proj = nn.Conv2d(
-                in_channels=in_shape[1], out_channels=hidden_dim, kernel_size=patch_size, stride=patch_size
-            )
+            if batch_count % print_every == 0:
+                avg_loss = running_loss / print_every
+                print(f"[TRAIN] Batch {batch_count} - Avg Loss (last {print_every}): {avg_loss:.4f}")
+                running_loss = 0.0
 
-        seq_length = (image_size // patch_size) ** 2
+            # Print sample captions for the first batch only
+            if not sample_printed and idx2word is not None:
+                self.eval()
+                with torch.no_grad():
+                    preds = self.forward(images)  # [B, max_len]
+                for i in range(min(3, preds.size(0))):
+                    tokens = preds[i].cpu().tolist()
+                    caption = []
+                    for idx in tokens:
+                        word = idx2word.get(idx, '<UNK>')
+                        if word == '<EOS>':
+                            break
+                        if word not in ['<PAD>', '<SOS>']:
+                            caption.append(word)
+                    print(f"Sample prediction {i+1}: {' '.join(caption)}")
+                self.train()
+                sample_printed = True
 
-        self.class_token = nn.Parameter(torch.zeros(1, 1, hidden_dim))
-        seq_length += 1
+        # Print last partial batch loss
+        if batch_count % print_every != 0 and batch_count > 0:
+            avg_loss = running_loss / (batch_count % print_every)
+            print(f"[TRAIN] Batch {batch_count} - Avg Loss (last {batch_count % print_every}): {avg_loss:.4f}")
 
-        self.encoder = Encoder(
-            seq_length,
-            num_layers,
-            num_heads,
-            hidden_dim,
-            mlp_dim,
-            dropout,
-            attention_dropout,
-            norm_layer,
-        )
-        self.seq_length = seq_length
 
-        heads_layers: OrderedDict[str, nn.Module] = OrderedDict()
-        if representation_size is None:
-            heads_layers["head"] = nn.Linear(hidden_dim, num_classes)
-        else:
-            heads_layers["pre_logits"] = nn.Linear(hidden_dim, representation_size)
-            heads_layers["act"] = nn.Tanh()
-            heads_layers["head"] = nn.Linear(representation_size, num_classes)
-
-        self.heads = nn.Sequential(heads_layers)
-
-        if isinstance(self.conv_proj, nn.Conv2d):
-            fan_in = self.conv_proj.in_channels * self.conv_proj.kernel_size[0] * self.conv_proj.kernel_size[1]
-            nn.init.trunc_normal_(self.conv_proj.weight, std=math.sqrt(1 / fan_in))
-            if self.conv_proj.bias is not None:
-                nn.init.zeros_(self.conv_proj.bias)
-        elif self.conv_proj.conv_last is not None and isinstance(self.conv_proj.conv_last, nn.Conv2d):
-            nn.init.normal_(
-                self.conv_proj.conv_last.weight, mean=0.0, std=math.sqrt(2.0 / self.conv_proj.conv_last.out_channels)
-            )
-            if self.conv_proj.conv_last.bias is not None:
-                nn.init.zeros_(self.conv_proj.conv_last.bias)
-
-        if hasattr(self.heads, "pre_logits") and isinstance(self.heads.pre_logits, nn.Linear):
-            fan_in = self.heads.pre_logits.in_features
-            nn.init.trunc_normal_(self.heads.pre_logits.weight, std=math.sqrt(1 / fan_in))
-            nn.init.zeros_(self.heads.pre_logits.bias)
-
-        if isinstance(self.heads.head, nn.Linear):
-            nn.init.zeros_(self.heads.head.weight)
-            nn.init.zeros_(self.heads.head.bias)
-
-    def _process_input(self, x: torch.Tensor) -> torch.Tensor:
-        n, c, h, w = x.shape
-        p = self.patch_size
-        torch._assert(h == self.image_size, f"Wrong image height! Expected {self.image_size} but got {h}!")
-        torch._assert(w == self.image_size, f"Wrong image width! Expected {self.image_size} but got {w}!")
-        n_h = h // p
-        n_w = w // p
-        x = self.conv_proj(x)
-        x = x.reshape(n, self.hidden_dim, n_h * n_w)
-        x = x.permute(0, 2, 1)
-        return x
-
-    def forward(self, x: torch.Tensor):
-        x = self._process_input(x)
-        n = x.shape[0]
-        batch_class_token = self.class_token.expand(n, -1, -1)
-        x = torch.cat([batch_class_token, x], dim=1)
-        x = self.encoder(x)
-        x = x[:, 0]
-        x = self.heads(x)
-        return x
+    def forward(self, images, captions=None, hidden_state=None, max_len=20):
+        self.eval()
+        with torch.no_grad():
+            encoder_outputs = self.encoder(images)
+            B = images.size(0)
+            device = images.device
+            word2idx = getattr(self, 'word2idx', None)
+            idx2word = getattr(self, 'idx2word', None)
+            if captions is not None:
+                input_ids = captions[:, :-1]
+                logits = self.decoder(input_ids, encoder_outputs)
+                return logits
+            start_token = word2idx['<SOS>'] if word2idx else 1
+            end_token = word2idx['<EOS>'] if word2idx else 2
+            inputs = torch.full((B, 1), start_token, dtype=torch.long, device=device)
+            outputs = []
+            for _ in range(max_len):
+                logits = self.decoder(inputs, encoder_outputs)
+                next_token = logits[:, -1, :].argmax(-1, keepdim=True)
+                outputs.append(next_token)
+                inputs = torch.cat([inputs, next_token], dim=1)
+            outputs = torch.cat(outputs, dim=1)
+            return outputs

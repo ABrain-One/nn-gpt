@@ -1,7 +1,12 @@
+import math
+from functools import partial
+from typing import Callable, List, Optional
+
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models import convnext_tiny, ConvNeXt_Tiny_Weights
+from torch import nn, Tensor
+from torchvision.ops.misc import MLP, Permute
+from torchvision.ops.stochastic_depth import StochasticDepth
 
 import torch
 from torch import nn
@@ -17,213 +22,469 @@ class NGL(nn.Module):
         return loss
 
 
-def supported_hyperparameters():
-    # Only expose what your pipeline can set (all [0, 1])
-    return {'lr', 'dropout', 'tie_weights'}
 
-class MultiScaleConvNeXtEncoder(nn.Module):
-    def __init__(self, in_channels=3, out_dim=512, pretrained=True):
+def _patch_merging_pad(x: torch.Tensor) -> torch.Tensor:
+    H, W, _ = x.shape[-3:]
+    x = F.pad(x, (0, 0, 0, W % 2, 0, H % 2))
+    x0 = x[..., 0::2, 0::2, :]
+    x1 = x[..., 1::2, 0::2, :]
+    x2 = x[..., 0::2, 1::2, :]
+    x3 = x[..., 1::2, 1::2, :]
+    x = torch.cat([x0, x1, x2, x3], -1)
+    return x
+
+
+torch.fx.wrap("_patch_merging_pad")
+
+
+def _get_relative_position_bias(
+        relative_position_bias_table: torch.Tensor, relative_position_index: torch.Tensor, window_size: List[int]
+) -> torch.Tensor:
+    N = window_size[0] * window_size[1]
+    relative_position_bias = relative_position_bias_table[relative_position_index]
+    relative_position_bias = relative_position_bias.view(N, N, -1)
+    relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous().unsqueeze(0)
+    return relative_position_bias
+
+
+torch.fx.wrap("_get_relative_position_bias")
+
+
+class PatchMerging(nn.Module):
+    def __init__(self, dim: int, norm_layer: Callable[..., nn.Module] = nn.LayerNorm):
         super().__init__()
-        weights = ConvNeXt_Tiny_Weights.DEFAULT if pretrained else None
-        backbone = convnext_tiny(weights=weights)
-        self.stem = backbone.features[0]
-        self.stages = nn.ModuleList(backbone.features[1:])
-        self.proj2 = nn.Conv2d(384, out_dim, kernel_size=1)
-        self.proj3 = nn.Conv2d(768, out_dim, kernel_size=1)
-        self.norm = nn.LayerNorm(out_dim)
+        self.dim = dim
+        self.reduction = nn.Linear(4 * dim, 2 * dim, bias=False)
+        self.norm = norm_layer(4 * dim)
 
-    def forward(self, x):
-        x = self.stem(x)
-        feat_2 = None
-        feat_3 = None
-        for idx, stage in enumerate(self.stages):
-            x = stage(x)
-            #print(f"[DEBUG] After stage {idx}: {x.shape}")
-            if x.shape[1] == 384 and feat_2 is None:
-                feat_2 = x
-            if x.shape[1] == 768 and feat_3 is None:
-                feat_3 = x
-        assert feat_2 is not None, f"[ERROR] feat_2 (384 channels) not found! Last feature shape: {x.shape}"
-        assert feat_3 is not None, f"[ERROR] feat_3 (768 channels) not found! Last feature shape: {x.shape}"
-        #print(f"[DEBUG] Selected feat_2 shape: {feat_2.shape}")
-        #print(f"[DEBUG] Selected feat_3 shape: {feat_3.shape}")
-        tokens2 = self.proj2(feat_2).flatten(2).transpose(1, 2)
-        tokens3 = self.proj3(feat_3).flatten(2).transpose(1, 2)
-        #print(f"[DEBUG] tokens2 shape: {tokens2.shape}")
-        #print(f"[DEBUG] tokens3 shape: {tokens3.shape}")
-        all_tokens = torch.cat([tokens2, tokens3], dim=1)
-        #print(f"[DEBUG] Concatenated tokens shape: {all_tokens.shape}")
-        all_tokens = self.norm(all_tokens)
-        #print(f"[DEBUG] Final output after LayerNorm: {all_tokens.shape}")
-        return all_tokens
+    def forward(self, x: Tensor):
+        x = _patch_merging_pad(x)
+        x = self.norm(x)
+        x = self.reduction(x)
+        return x
 
-class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, max_len=256):
+
+class PatchMergingV2(nn.Module):
+    def __init__(self, dim: int, norm_layer: Callable[..., nn.Module] = nn.LayerNorm):
         super().__init__()
-        pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2) * (-torch.log(torch.tensor(10000.0)) / d_model))
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        self.register_buffer('pe', pe.unsqueeze(0))
-    def forward(self, x):
-        seq_len = x.size(1)
-        return x + self.pe[:, :seq_len, :].to(x.device)
+        self.dim = dim
+        self.reduction = nn.Linear(4 * dim, 2 * dim, bias=False)
+        self.norm = norm_layer(2 * dim)
 
-class TransformerDecoderLayer(nn.Module):
-    def __init__(self, d_model, nhead, dim_feedforward, dropout):
+    def forward(self, x: Tensor):
+        x = _patch_merging_pad(x)
+        x = self.reduction(x)
+        x = self.norm(x)
+        return x
+
+
+def shifted_window_attention(
+        input: Tensor,
+        qkv_weight: Tensor,
+        proj_weight: Tensor,
+        relative_position_bias: Tensor,
+        window_size: List[int],
+        num_heads: int,
+        shift_size: List[int],
+        attention_dropout: float = 0.0,
+        dropout: float = 0.0,
+        qkv_bias: Optional[Tensor] = None,
+        proj_bias: Optional[Tensor] = None,
+        logit_scale: Optional[torch.Tensor] = None,
+        training: bool = True,
+) -> Tensor:
+    B, H, W, C = input.shape
+    pad_r = (window_size[1] - W % window_size[1]) % window_size[1]
+    pad_b = (window_size[0] - H % window_size[0]) % window_size[0]
+    x = F.pad(input, (0, 0, 0, pad_r, 0, pad_b))
+    _, pad_H, pad_W, _ = x.shape
+
+    shift_size = shift_size.copy()
+    if window_size[0] >= pad_H:
+        shift_size[0] = 0
+    if window_size[1] >= pad_W:
+        shift_size[1] = 0
+    if sum(shift_size) > 0:
+        x = torch.roll(x, shifts=(-shift_size[0], -shift_size[1]), dims=(1, 2))
+    num_windows = (pad_H // window_size[0]) * (pad_W // window_size[1])
+    x = x.view(B, pad_H // window_size[0], window_size[0], pad_W // window_size[1], window_size[1], C)
+    x = x.permute(0, 1, 3, 2, 4, 5).reshape(B * num_windows, window_size[0] * window_size[1], C)
+    if logit_scale is not None and qkv_bias is not None:
+        qkv_bias = qkv_bias.clone()
+        length = qkv_bias.numel() // 3
+        qkv_bias[length: 2 * length].zero_()
+    qkv = F.linear(x, qkv_weight, qkv_bias)
+    qkv = qkv.reshape(x.size(0), x.size(1), 3, num_heads, C // num_heads).permute(2, 0, 3, 1, 4)
+    q, k, v = qkv[0], qkv[1], qkv[2]
+    if logit_scale is not None:
+        attn = F.normalize(q, dim=-1) @ F.normalize(k, dim=-1).transpose(-2, -1)
+        logit_scale = torch.clamp(logit_scale, max=math.log(100.0)).exp()
+        attn = attn * logit_scale
+    else:
+        q = q * (C // num_heads) ** -0.5
+        attn = q.matmul(k.transpose(-2, -1))
+    attn = attn + relative_position_bias
+
+    if sum(shift_size) > 0:
+        attn_mask = x.new_zeros((pad_H, pad_W))
+        h_slices = ((0, -window_size[0]), (-window_size[0], -shift_size[0]), (-shift_size[0], None))
+        w_slices = ((0, -window_size[1]), (-window_size[1], -shift_size[1]), (-shift_size[1], None))
+        count = 0
+        for h in h_slices:
+            for w in w_slices:
+                attn_mask[h[0]: h[1], w[0]: w[1]] = count
+                count += 1
+        attn_mask = attn_mask.view(pad_H // window_size[0], window_size[0], pad_W // window_size[1], window_size[1])
+        attn_mask = attn_mask.permute(0, 2, 1, 3).reshape(num_windows, window_size[0] * window_size[1])
+        attn_mask = attn_mask.unsqueeze(1) - attn_mask.unsqueeze(2)
+        attn_mask = attn_mask.masked_fill(attn_mask != 0, float(-100.0)).masked_fill(attn_mask == 0, float(0.0))
+        attn = attn.view(x.size(0) // num_windows, num_windows, num_heads, x.size(1), x.size(1))
+        attn = attn + attn_mask.unsqueeze(1).unsqueeze(0)
+        attn = attn.view(-1, num_heads, x.size(1), x.size(1))
+
+    attn = F.softmax(attn, dim=-1)
+    attn = F.dropout(attn, p=attention_dropout, training=training)
+
+    x = attn.matmul(v).transpose(1, 2).reshape(x.size(0), x.size(1), C)
+    x = F.linear(x, proj_weight, proj_bias)
+    x = F.dropout(x, p=dropout, training=training)
+
+    x = x.view(B, pad_H // window_size[0], pad_W // window_size[1], window_size[0], window_size[1], C)
+    x = x.permute(0, 1, 3, 2, 4, 5).reshape(B, pad_H, pad_W, C)
+
+    if sum(shift_size) > 0:
+        x = torch.roll(x, shifts=(shift_size[0], shift_size[1]), dims=(1, 2))
+
+    x = x[:, :H, :W, :].contiguous()
+    return x
+
+
+torch.fx.wrap("shifted_window_attention")
+
+
+class ShiftedWindowAttention(nn.Module):
+    def __init__(
+            self,
+            dim: int,
+            window_size: List[int],
+            shift_size: List[int],
+            num_heads: int,
+            qkv_bias: bool = True,
+            proj_bias: bool = True,
+            attention_dropout: float = 0.0,
+            dropout: float = 0.0,
+    ):
         super().__init__()
-        self.layer = nn.TransformerDecoderLayer(
-            d_model=d_model,
-            nhead=nhead,
-            dim_feedforward=dim_feedforward,
-            dropout=dropout,
-            batch_first=True
+        if len(window_size) != 2 or len(shift_size) != 2:
+            raise ValueError("window_size and shift_size must be of length 2")
+        self.window_size = window_size
+        self.shift_size = shift_size
+        self.num_heads = num_heads
+        self.attention_dropout = attention_dropout
+        self.dropout = dropout
+
+        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
+        self.proj = nn.Linear(dim, dim, bias=proj_bias)
+
+        self.define_relative_position_bias_table()
+        self.define_relative_position_index()
+
+    def define_relative_position_bias_table(self):
+        self.relative_position_bias_table = nn.Parameter(
+            torch.zeros((2 * self.window_size[0] - 1) * (2 * self.window_size[1] - 1), self.num_heads)
         )
-    def forward(self, *args, **kwargs):
-        return self.layer(*args, **kwargs)
+        nn.init.trunc_normal_(self.relative_position_bias_table, std=0.02)
 
-class TransformerDecoder(nn.Module):
-    def __init__(self, vocab_size, d_model=512, num_layers=4, nhead=8, dim_feedforward=2048, dropout=0.1, tie_weights=True):
+    def define_relative_position_index(self):
+        coords_h = torch.arange(self.window_size[0])
+        coords_w = torch.arange(self.window_size[1])
+        coords = torch.stack(torch.meshgrid(coords_h, coords_w, indexing="ij"))
+        coords_flatten = torch.flatten(coords, 1)
+        relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]
+        relative_coords = relative_coords.permute(1, 2, 0).contiguous()
+        relative_coords[:, :, 0] += self.window_size[0] - 1
+        relative_coords[:, :, 1] += self.window_size[1] - 1
+        relative_coords[:, :, 0] *= 2 * self.window_size[1] - 1
+        relative_position_index = relative_coords.sum(-1).flatten()
+        self.register_buffer("relative_position_index", relative_position_index)
+
+    def get_relative_position_bias(self) -> torch.Tensor:
+        return _get_relative_position_bias(
+            self.relative_position_bias_table, self.relative_position_index, self.window_size
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        relative_position_bias = self.get_relative_position_bias()
+        return shifted_window_attention(
+            x,
+            self.qkv.weight,
+            self.proj.weight,
+            relative_position_bias,
+            self.window_size,
+            self.num_heads,
+            shift_size=self.shift_size,
+            attention_dropout=self.attention_dropout,
+            dropout=self.dropout,
+            qkv_bias=self.qkv.bias,
+            proj_bias=self.proj.bias,
+            training=self.training,
+        )
+
+
+class ShiftedWindowAttentionV2(ShiftedWindowAttention):
+    def __init__(
+            self,
+            dim: int,
+            window_size: List[int],
+            shift_size: List[int],
+            num_heads: int,
+            qkv_bias: bool = True,
+            proj_bias: bool = True,
+            attention_dropout: float = 0.0,
+            dropout: float = 0.0,
+    ):
+        super().__init__(
+            dim,
+            window_size,
+            shift_size,
+            num_heads,
+            qkv_bias=qkv_bias,
+            proj_bias=proj_bias,
+            attention_dropout=attention_dropout,
+            dropout=dropout,
+        )
+
+        self.logit_scale = nn.Parameter(torch.log(10 * torch.ones((num_heads, 1, 1))))
+        self.cpb_mlp = nn.Sequential(
+            nn.Linear(2, 512, bias=True), nn.ReLU(inplace=True), nn.Linear(512, num_heads, bias=False)
+        )
+        if qkv_bias:
+            length = self.qkv.bias.numel() // 3
+            self.qkv.bias[length: 2 * length].data.zero_()
+
+    def define_relative_position_bias_table(self):
+        relative_coords_h = torch.arange(-(self.window_size[0] - 1), self.window_size[0], dtype=torch.float32)
+        relative_coords_w = torch.arange(-(self.window_size[1] - 1), self.window_size[1], dtype=torch.float32)
+        relative_coords_table = torch.stack(torch.meshgrid([relative_coords_h, relative_coords_w], indexing="ij"))
+        relative_coords_table = relative_coords_table.permute(1, 2, 0).contiguous().unsqueeze(0)
+
+        relative_coords_table[:, :, :, 0] /= self.window_size[0] - 1
+        relative_coords_table[:, :, :, 1] /= self.window_size[1] - 1
+
+        relative_coords_table *= 8
+        relative_coords_table = (
+                torch.sign(relative_coords_table) * torch.log2(torch.abs(relative_coords_table) + 1.0) / 3.0
+        )
+        self.register_buffer("relative_coords_table", relative_coords_table)
+
+    def get_relative_position_bias(self) -> torch.Tensor:
+        relative_position_bias = _get_relative_position_bias(
+            self.cpb_mlp(self.relative_coords_table).view(-1, self.num_heads),
+            self.relative_position_index,
+            self.window_size,
+        )
+        relative_position_bias = 16 * torch.sigmoid(relative_position_bias)
+        return relative_position_bias
+
+    def forward(self, x: Tensor):
+        relative_position_bias = self.get_relative_position_bias()
+        return shifted_window_attention(
+            x,
+            self.qkv.weight,
+            self.proj.weight,
+            relative_position_bias,
+            self.window_size,
+            self.num_heads,
+            shift_size=self.shift_size,
+            attention_dropout=self.attention_dropout,
+            dropout=self.dropout,
+            qkv_bias=self.qkv.bias,
+            proj_bias=self.proj.bias,
+            logit_scale=self.logit_scale,
+            training=self.training,
+        )
+
+
+class SwinTransformerBlock(nn.Module):
+    def __init__(
+            self,
+            dim: int,
+            num_heads: int,
+            window_size: List[int],
+            shift_size: List[int],
+            mlp_ratio: float = 4.0,
+            dropout: float = 0.0,
+            attention_dropout: float = 0.0,
+            stochastic_depth_prob: float = 0.0,
+            norm_layer: Callable[..., nn.Module] = nn.LayerNorm,
+            attn_layer: Callable[..., nn.Module] = ShiftedWindowAttention,
+    ):
         super().__init__()
-        self.embedding = nn.Embedding(vocab_size, d_model)
-        self.pos_encoder = PositionalEncoding(d_model)
-        self.layers = nn.ModuleList([
-            TransformerDecoderLayer(d_model, nhead, dim_feedforward, dropout)
-            for _ in range(num_layers)
-        ])
-        self.fc_out = nn.Linear(d_model, vocab_size)
-        if tie_weights:
-            self.fc_out.weight = self.embedding.weight
-        self.d_model = d_model
 
-    def forward(self, captions, encoder_outputs, tgt_mask=None, memory_mask=None):
-        x = self.embedding(captions) * (self.d_model ** 0.5)
-        x = self.pos_encoder(x)
-        for layer in self.layers:
-            x = layer(
-                x,
-                encoder_outputs,
-                tgt_mask=tgt_mask,
-                memory_mask=memory_mask
-            )
-        logits = self.fc_out(x)
-        return logits
+        self.norm1 = norm_layer(dim)
+        self.attn = attn_layer(
+            dim,
+            window_size,
+            shift_size,
+            num_heads,
+            attention_dropout=attention_dropout,
+            dropout=dropout,
+        )
+        self.stochastic_depth = StochasticDepth(stochastic_depth_prob, "row")
+        self.norm2 = norm_layer(dim)
+        self.mlp = MLP(dim, [int(dim * mlp_ratio), dim], activation_layer=nn.GELU, inplace=None, dropout=dropout)
+
+        for m in self.mlp.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.normal_(m.bias, std=1e-6)
+
+    def forward(self, x: Tensor):
+        x = x + self.stochastic_depth(self.attn(self.norm1(x)))
+        x = x + self.stochastic_depth(self.mlp(self.norm2(x)))
+        return x
+
+
+class SwinTransformerBlockV2(SwinTransformerBlock):
+    def __init__(
+            self,
+            dim: int,
+            num_heads: int,
+            window_size: List[int],
+            shift_size: List[int],
+            mlp_ratio: float = 4.0,
+            dropout: float = 0.0,
+            attention_dropout: float = 0.0,
+            stochastic_depth_prob: float = 0.0,
+            norm_layer: Callable[..., nn.Module] = nn.LayerNorm,
+            attn_layer: Callable[..., nn.Module] = ShiftedWindowAttentionV2,
+    ):
+        super().__init__(
+            dim,
+            num_heads,
+            window_size,
+            shift_size,
+            mlp_ratio=mlp_ratio,
+            dropout=dropout,
+            attention_dropout=attention_dropout,
+            stochastic_depth_prob=stochastic_depth_prob,
+            norm_layer=norm_layer,
+            attn_layer=attn_layer,
+        )
+
+    def forward(self, x: Tensor):
+        x = x + self.stochastic_depth(self.norm1(self.attn(x)))
+        x = x + self.stochastic_depth(self.norm2(self.mlp(x)))
+        return x
+
+
+def supported_hyperparameters():
+    return {'lr', 'dropout', 'attention_dropout', 'stochastic_depth_prob'}
+
 
 class Net(nn.Module):
-    def __init__(self, in_shape, out_shape, prm, device):
-        super().__init__()
-        self.device = device
-        self.in_shape = in_shape
-        self.out_shape = out_shape
-
-        vocab_size = out_shape[0]
-        d_model = 512
-        num_layers = 4
-        nhead = 8
-        dropout = prm.get('dropout', 0.1)
-        tie_weights = bool(int(prm.get('tie_weights', 1)))
-
-        self.encoder = MultiScaleConvNeXtEncoder(
-            in_channels=in_shape[1],
-            out_dim=d_model,
-            pretrained=True
-        )
-        self.decoder = TransformerDecoder(
-            vocab_size=vocab_size,
-            d_model=d_model,
-            num_layers=num_layers,
-            nhead=nhead,
-            dropout=dropout,
-            tie_weights=tie_weights
-        )
 
     def train_setup(self, prm):
         self.to(self.device)
-        self.criteria = (NGL(ignore_index=0).to(self.device),)
-        lr = float(prm.get('lr', 0.001)) * 0.01 + 1e-4
+        self.criteria = (NGL().to(self.device),)
         self.optimizer = torch.optim.RMSprop(self.parameters(), lr=prm['lr'])
 
     def learn(self, train_data):
-        self.train()
-        print_every = 500
-        running_loss = 0.0
-        batch_count = 0
-
-        # We'll print a few predictions from the first batch of the epoch:
-        sample_printed = False
-
-        # If class variables exist, use for decoding captions:
-        idx2word = getattr(self, 'idx2word', None)
-
-        for images, captions in train_data:
-            images = images.to(self.device)
-            captions = captions.to(self.device)
-            captions = captions[:, 0, :]
-            input_ids = captions[:, :-1]
-            target = captions[:, 1:]
-            encoder_outputs = self.encoder(images)
-            logits = self.decoder(input_ids, encoder_outputs)
-            logits = logits.reshape(-1, logits.shape[-1])
-            target = target.reshape(-1)
-            loss = self.criteria[0](logits, target)
+        for inputs, labels in train_data:
+            inputs, labels = inputs.to(self.device), labels.to(self.device)
             self.optimizer.zero_grad()
+            outputs = self(inputs)
+            loss = self.criteria[0](outputs, labels)
             loss.backward()
-            nn.utils.clip_grad_norm_(self.parameters(), 3)
             self.optimizer.step()
 
-            running_loss += loss.item()
-            batch_count += 1
+    def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
+        super().__init__()
+        self.device = device
+        patch_size = None
+        embed_dim: int = 96
+        depths = None
+        num_heads = None
+        window_size = None
+        mlp_ratio: float = 4.0
+        dropout: float = prm['dropout']
+        attention_dropout: float = prm.get('attention_dropout', 0.0)
+        stochastic_depth_prob: float = prm.get('stochastic_depth_prob', 0.0)
+        num_classes: int = out_shape[0]
+        norm_layer: Optional[Callable[..., nn.Module]] = None
+        block: Optional[Callable[..., nn.Module]] = None
+        downsample_layer: Callable[..., nn.Module] = PatchMerging
+        if window_size is None:
+            window_size = [7, 7]
+        if num_heads is None:
+            num_heads = [3, 6, 12, 24]
+        if depths is None:
+            depths = [2, 2, 6, 2]
+        if patch_size is None:
+            patch_size = [4, 4]
+        self.num_classes = num_classes
 
-            if batch_count % print_every == 0:
-                avg_loss = running_loss / print_every
-                print(f"[TRAIN] Batch {batch_count} - Avg Loss (last {print_every}): {avg_loss:.4f}")
-                running_loss = 0.0
+        if block is None:
+            block = SwinTransformerBlock
+        if norm_layer is None:
+            norm_layer = partial(nn.LayerNorm, eps=1e-5)
 
-            # Print sample captions for the first batch only
-            if not sample_printed and idx2word is not None:
-                self.eval()
-                with torch.no_grad():
-                    preds = self.forward(images)  # [B, max_len]
-                for i in range(min(3, preds.size(0))):
-                    tokens = preds[i].cpu().tolist()
-                    caption = []
-                    for idx in tokens:
-                        word = idx2word.get(idx, '<UNK>')
-                        if word == '<EOS>':
-                            break
-                        if word not in ['<PAD>', '<SOS>']:
-                            caption.append(word)
-                    print(f"Sample prediction {i+1}: {' '.join(caption)}")
-                self.train()
-                sample_printed = True
+        layers: List[nn.Module] = []
+        layers.append(
+            nn.Sequential(
+                nn.Conv2d(
+                    in_shape[1], embed_dim, kernel_size=(patch_size[0], patch_size[1]), stride=(patch_size[0], patch_size[1])
+                ),
+                Permute([0, 2, 3, 1]),
+                norm_layer(embed_dim),
+            )
+        )
 
-        # Print last partial batch loss
-        if batch_count % print_every != 0 and batch_count > 0:
-            avg_loss = running_loss / (batch_count % print_every)
-            print(f"[TRAIN] Batch {batch_count} - Avg Loss (last {batch_count % print_every}): {avg_loss:.4f}")
+        total_stage_blocks = sum(depths)
+        stage_block_id = 0
+        for i_stage in range(len(depths)):
+            stage: List[nn.Module] = []
+            dim = embed_dim * 2 ** i_stage
+            for i_layer in range(depths[i_stage]):
+                sd_prob = stochastic_depth_prob * float(stage_block_id) / (total_stage_blocks - 1)
+                stage.append(
+                    block(
+                        dim,
+                        num_heads[i_stage],
+                        window_size=window_size,
+                        shift_size=[0 if i_layer % 2 == 0 else w // 2 for w in window_size],
+                        mlp_ratio=mlp_ratio,
+                        dropout=dropout,
+                        attention_dropout=attention_dropout,
+                        stochastic_depth_prob=sd_prob,
+                        norm_layer=norm_layer,
+                    )
+                )
+                stage_block_id += 1
+            layers.append(nn.Sequential(*stage))
+            if i_stage < (len(depths) - 1):
+                layers.append(downsample_layer(dim, norm_layer))
+        self.features = nn.Sequential(*layers)
 
+        num_features = embed_dim * 2 ** (len(depths) - 1)
+        self.norm = norm_layer(num_features)
+        self.permute = Permute([0, 3, 1, 2])
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.flatten = nn.Flatten(1)
+        self.head = nn.Linear(num_features, num_classes)
 
-    def forward(self, images, captions=None, hidden_state=None, max_len=20):
-        self.eval()
-        with torch.no_grad():
-            encoder_outputs = self.encoder(images)
-            B = images.size(0)
-            device = images.device
-            word2idx = getattr(self, 'word2idx', None)
-            idx2word = getattr(self, 'idx2word', None)
-            if captions is not None:
-                input_ids = captions[:, :-1]
-                logits = self.decoder(input_ids, encoder_outputs)
-                return logits
-            start_token = word2idx['<SOS>'] if word2idx else 1
-            end_token = word2idx['<EOS>'] if word2idx else 2
-            inputs = torch.full((B, 1), start_token, dtype=torch.long, device=device)
-            outputs = []
-            for _ in range(max_len):
-                logits = self.decoder(inputs, encoder_outputs)
-                next_token = logits[:, -1, :].argmax(-1, keepdim=True)
-                outputs.append(next_token)
-                inputs = torch.cat([inputs, next_token], dim=1)
-            outputs = torch.cat(outputs, dim=1)
-            return outputs
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.trunc_normal_(m.weight, std=0.02)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.norm(x)
+        x = self.permute(x)
+        x = self.avgpool(x)
+        x = self.flatten(x)
+        x = self.head(x)
+        return x

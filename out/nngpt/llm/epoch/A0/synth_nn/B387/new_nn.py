@@ -1,176 +1,137 @@
-from typing import Any, Callable, Optional
-
 import torch
 import torch.nn as nn
-from torch import Tensor
-from torchvision.models._api import WeightsEnum
-from torchvision.models._utils import _ovewrite_named_param
-
-
-def channel_shuffle(x: Tensor, groups: int) -> Tensor:
-    batchsize, num_channels, height, width = x.size()
-    channels_per_group = num_channels // groups
-    x = x.view(batchsize, groups, channels_per_group, height, width)
-    x = torch.transpose(x, 1, 2).contiguous()
-    x = x.view(batchsize, num_channels, height, width)
-    return x
-
-
-class InvertedResidual(nn.Module):
-    def __init__(self, inp: int, oup: int, stride: int) -> None:
-        super().__init__()
-
-        if not (1 <= stride <= 3):
-            raise ValueError("illegal stride value")
-        self.stride = stride
-
-        branch_features = oup // 2
-        if (self.stride == 1) and (inp != branch_features << 1):
-            raise ValueError(
-                f"Invalid combination of stride {stride}, inp {inp} and oup {oup} values. If stride == 1 then inp should be equal to oup // 2 << 1."
-            )
-
-        if self.stride > 1:
-            self.branch1 = nn.Sequential(
-                self.depthwise_conv(inp, inp, kernel_size=3, stride=self.stride, padding=1),
-                nn.BatchNorm2d(inp),
-                nn.Conv2d(inp, branch_features, kernel_size=1, stride=1, padding=0, bias=False),
-                nn.BatchNorm2d(branch_features),
-                nn.ReLU(inplace=True),
-            )
-        else:
-            self.branch1 = nn.Sequential()
-
-        self.branch2 = nn.Sequential(
-            nn.Conv2d(
-                inp if (self.stride > 1) else branch_features,
-                branch_features,
-                kernel_size=1,
-                stride=1,
-                padding=0,
-                bias=False,
-            ),
-            nn.BatchNorm2d(branch_features),
-            nn.ReLU(inplace=True),
-            self.depthwise_conv(branch_features, branch_features, kernel_size=3, stride=self.stride, padding=1),
-            nn.BatchNorm2d(branch_features),
-            nn.Conv2d(branch_features, branch_features, kernel_size=1, stride=1, padding=0, bias=False),
-            nn.BatchNorm2d(branch_features),
-            nn.ReLU(inplace=True),
-        )
-
-    @staticmethod
-    def depthwise_conv(
-            i: int, o: int, kernel_size: int, stride: int = 1, padding: int = 0, bias: bool = False
-    ) -> nn.Conv2d:
-        return nn.Conv2d(i, o, kernel_size, stride, padding, bias=bias, groups=i)
-
-    def forward(self, x: Tensor) -> Tensor:
-        if self.stride == 1:
-            x1, x2 = x.chunk(2, dim=1)
-            out = torch.cat((x1, self.branch2(x2)), dim=1)
-        else:
-            out = torch.cat((self.branch1(x), self.branch2(x)), dim=1)
-
-        out = channel_shuffle(out, 2)
-
-        return out
+import torch.optim as optim
 
 
 def supported_hyperparameters():
-    return {'lr'}
+    return {'lr', 'dropout'}
+
+
+class UNet2DModel(nn.Module):
+    def __init__(
+            self,
+            sample_size=32,
+            in_channels=3,
+            out_channels=128,
+            layers_per_block=2,
+            block_out_channels=(32, 64, 128),
+            down_block_types=("DownBlock2D", "AttnDownBlock2D", "DownBlock2D"),
+            up_block_types=("UpBlock2D", "AttnUpBlock2D", "UpBlock2D"),
+    ):
+        super(UNet2DModel, self).__init__()
+        self.sample_size = sample_size
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.layers_per_block = layers_per_block
+
+        self.down_blocks = nn.ModuleList()
+        in_ch = in_channels
+        for out_ch, block_type in zip(block_out_channels, down_block_types):
+            self.down_blocks.append(self._make_block(in_ch, out_ch, block_type))
+            in_ch = out_ch
+
+        self.up_blocks = nn.ModuleList()
+        for out_ch, block_type in zip(block_out_channels[::-1], up_block_types):
+            self.up_blocks.append(self._make_block(in_ch, out_ch, block_type))
+            in_ch = out_ch
+
+        self.final_conv = nn.Conv2d(in_ch, out_channels, kernel_size=1)
+
+    def _make_block(self, in_channels, out_channels, block_type):
+        if block_type.startswith("Down"):
+            return nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
+                nn.ReLU(),
+            )
+        elif block_type.startswith("Up"):
+            return nn.Sequential(
+                nn.ConvTranspose2d(
+                    in_channels, out_channels, kernel_size=2, stride=2
+                ),
+                nn.ReLU(),
+                nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
+                nn.ReLU(),
+            )
+        else:
+            return nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
+                nn.ReLU(),
+            )
+
+    def forward(self, x, timesteps):
+        down_features = []
+        for block in self.down_blocks:
+            x = block(x)
+            down_features.append(x)
+
+        for block in self.up_blocks:
+            x = block(x)
+
+        x = self.final_conv(x)
+        return nn.Identity()(x)
 
 
 class Net(nn.Module):
+    def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
+        super(Net, self).__init__()
+        self.device = device
+
+        channel_number = in_shape[1]
+        image_size = in_shape[2]
+        class_number = out_shape[0]
+
+        self.unet = UNet2DModel(
+            sample_size=image_size,
+            in_channels=channel_number,
+            out_channels=128,
+            layers_per_block=2,
+            block_out_channels=(32, 64, 128),
+            down_block_types=("DownBlock2D", "AttnDownBlock2D", "DownBlock2D"),
+            up_block_types=("UpBlock2D", "AttnUpBlock2D", "UpBlock2D"), )
+        self.classifier = nn.Sequential(nn.Dropout(prm['dropout']), nn.Linear(128, class_number))
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+    def forward(self, x):
+        batch_size = x.shape[0]
+        timesteps = torch.full((batch_size,), 50, dtype=torch.long, device=x.device)
+        unet_output = self.unet(x, timesteps)
+        unet_output = unet_output.to(torch.float32)
+        pooled_features = unet_output.mean(dim=(2, 3))
+        logits = self.classifier(pooled_features)
+        return logits
 
     def train_setup(self, prm):
         self.to(self.device)
         self.criteria = (nn.NLLLoss().to(self.device),)
+
+        lr = prm['lr']
+        momentum = prm['momentum']
+
         self.optimizer = torch.optim.RMSprop(self.parameters(), lr=prm['lr'])
 
     def learn(self, train_data):
+        self.train()
         for inputs, labels in train_data:
             inputs, labels = inputs.to(self.device), labels.to(self.device)
             self.optimizer.zero_grad()
             outputs = self(inputs)
-            loss = self.criteria[0](outputs, labels)
+            loss = self.criteria(outputs, labels)
             loss.backward()
             nn.utils.clip_grad_norm_(self.parameters(), 3)
             self.optimizer.step()
-
-    def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
-        super().__init__()
-        self.device = device
-        stages_repeats = None
-        stages_out_channels = None
-        num_classes: int = out_shape[0]
-        inverted_residual: Callable[..., nn.Module] = InvertedResidual
-        if stages_out_channels is None:
-            stages_out_channels = [24, 116, 232, 464, 1024]
-        if stages_repeats is None:
-            stages_repeats = [4, 8, 4]
-        if len(stages_repeats) != 3:
-            raise ValueError("expected stages_repeats as list of 3 positive ints")
-        if len(stages_out_channels) != 5:
-            raise ValueError("expected stages_out_channels as list of 5 positive ints")
-        self._stage_out_channels = stages_out_channels
-
-        input_channels = in_shape[1]
-        output_channels = self._stage_out_channels[0]
-        self.conv1 = nn.Sequential(
-            nn.Conv2d(input_channels, output_channels, 3, 2, 1, bias=False),
-            nn.BatchNorm2d(output_channels),
-            nn.ReLU(inplace=True),
-        )
-        input_channels = output_channels
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.stage2: nn.Sequential
-        self.stage3: nn.Sequential
-        self.stage4: nn.Sequential
-        stage_names = [f"stage{i}" for i in [2, 3, 4]]
-        for name, repeats, output_channels in zip(stage_names, stages_repeats, self._stage_out_channels[1:]):
-            seq = [inverted_residual(input_channels, output_channels, 2)]
-            for i in range(repeats - 1):
-                seq.append(inverted_residual(output_channels, output_channels, 1))
-            setattr(self, name, nn.Sequential(*seq))
-            input_channels = output_channels
-
-        output_channels = self._stage_out_channels[-1]
-        self.conv5 = nn.Sequential(
-            nn.Conv2d(input_channels, output_channels, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(output_channels),
-            nn.ReLU(inplace=True),
-        )
-
-        self.fc = nn.Linear(output_channels, num_classes)
-
-    def _forward_impl(self, x: Tensor) -> Tensor:
-        x = self.conv1(x)
-        x = self.maxpool(x)
-        x = self.stage2(x)
-        x = self.stage3(x)
-        x = self.stage4(x)
-        x = self.conv5(x)
-        x = x.mean([2, 3])
-        x = self.fc(x)
-        return x
-
-    def forward(self, x: Tensor) -> Tensor:
-        return self._forward_impl(x)
-
-
-def _shufflenetv2(
-        weights: Optional[WeightsEnum],
-        progress: bool,
-        *args: Any,
-        **kwargs: Any,
-) -> Net:
-    if weights is not None:
-        _ovewrite_named_param(kwargs, "num_classes", len(weights.meta["categories"]))
-
-    model = Net(*args, **kwargs)
-
-    if weights is not None:
-        model.load_state_dict(weights.get_state_dict(progress=progress, check_hash=True))
-
-    return model

@@ -1,9 +1,11 @@
-from typing import Callable, List, Optional
+from functools import partial
+from typing import Callable, List, Optional, Sequence
 
 import torch
 from torch import nn, Tensor
-from torchvision.models._utils import _make_divisible
-from torchvision.ops.misc import Conv2dNormActivation
+from torch.nn import functional as F
+from torchvision.ops.misc import Conv2dNormActivation, Permute
+from torchvision.ops.stochastic_depth import StochasticDepth
 
 import torch
 from torch import nn
@@ -20,53 +22,67 @@ class NGL(nn.Module):
 
 
 
-class InvertedResidual(nn.Module):
+class LayerNorm2d(nn.LayerNorm):
+    def forward(self, x: Tensor) -> Tensor:
+        x = x.permute(0, 2, 3, 1)
+        x = F.layer_norm(x, self.normalized_shape, self.weight, self.bias, self.eps)
+        x = x.permute(0, 3, 1, 2)
+        return x
+
+
+class CNBlock(nn.Module):
     def __init__(
-            self, inp: int, oup: int, stride: int, expand_ratio: int, norm_layer: Optional[Callable[..., nn.Module]] = None
+            self,
+            dim,
+            layer_scale: float,
+            stochastic_depth_prob: float,
+            norm_layer: Optional[Callable[..., nn.Module]] = None,
     ) -> None:
         super().__init__()
-        self.stride = stride
-        if stride not in [1, 2]:
-            raise ValueError(f"stride should be 1 or 2 instead of {stride}")
-
         if norm_layer is None:
-            norm_layer = nn.BatchNorm2d
+            norm_layer = partial(nn.LayerNorm, eps=1e-6)
 
-        hidden_dim = int(round(inp * expand_ratio))
-        self.use_res_connect = self.stride == 1 and inp == oup
-
-        layers: List[nn.Module] = []
-        if expand_ratio != 1:
-            layers.append(
-                Conv2dNormActivation(inp, hidden_dim, kernel_size=1, norm_layer=norm_layer, activation_layer=nn.ReLU6)
-            )
-        layers.extend(
-            [
-                Conv2dNormActivation(
-                    hidden_dim,
-                    hidden_dim,
-                    stride=stride,
-                    groups=hidden_dim,
-                    norm_layer=norm_layer,
-                    activation_layer=nn.ReLU6,
-                ),
-                nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
-                norm_layer(oup),
-            ]
+        self.block = nn.Sequential(
+            nn.Conv2d(dim, dim, kernel_size=7, padding=3, groups=dim, bias=True),
+            Permute([0, 2, 3, 1]),
+            norm_layer(dim),
+            nn.Linear(in_features=dim, out_features=4 * dim, bias=True),
+            nn.GELU(),
+            nn.Linear(in_features=4 * dim, out_features=dim, bias=True),
+            Permute([0, 3, 1, 2]),
         )
-        self.conv = nn.Sequential(*layers)
-        self.out_channels = oup
-        self._is_cn = stride > 1
+        self.layer_scale = nn.Parameter(torch.ones(dim, 1, 1) * layer_scale)
+        self.stochastic_depth = StochasticDepth(stochastic_depth_prob, "row")
 
-    def forward(self, x: Tensor) -> Tensor:
-        if self.use_res_connect:
-            return x + self.conv(x)
-        else:
-            return self.conv(x)
+    def forward(self, input: Tensor) -> Tensor:
+        result = self.layer_scale * self.block(input)
+        result = self.stochastic_depth(result)
+        result += input
+        return result
+
+
+class CNBlockConfig:
+    def __init__(
+            self,
+            input_channels: int,
+            out_channels: Optional[int],
+            num_layers: int,
+    ) -> None:
+        self.input_channels = input_channels
+        self.out_channels = out_channels
+        self.num_layers = num_layers
+
+    def __repr__(self) -> str:
+        s = self.__class__.__name__ + "("
+        s += "input_channels={input_channels}"
+        s += ", out_channels={out_channels}"
+        s += ", num_layers={num_layers}"
+        s += ")"
+        return s.format(**self.__dict__)
 
 
 def supported_hyperparameters():
-    return {'lr', 'dropout'}
+    return {'lr', 'stochastic_depth_prob', 'norm_eps', 'norm_std'}
 
 
 class Net(nn.Module):
@@ -83,83 +99,85 @@ class Net(nn.Module):
             outputs = self(inputs)
             loss = self.criteria[0](outputs, labels)
             loss.backward()
-            nn.utils.clip_grad_norm_(self.parameters(), 3)
             self.optimizer.step()
 
     def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:
         super().__init__()
         self.device = device
         num_classes: int = out_shape[0]
-        width_mult: float = 1.0
-        inverted_residual_setting: Optional[List[List[int]]] = None
-        round_nearest: int = 8
+        stochastic_depth_prob: float = prm.get('stochastic_depth_prob', 0.0)
+        layer_scale: float = 1e-6
+        block_setting = None
         block: Optional[Callable[..., nn.Module]] = None
         norm_layer: Optional[Callable[..., nn.Module]] = None
-        dropout: float = prm['dropout']
-        if block is None:
-            block = InvertedResidual
-
-        if norm_layer is None:
-            norm_layer = nn.BatchNorm2d
-
-        input_channel = 32
-        last_channel = 1280
-
-        if inverted_residual_setting is None:
-            inverted_residual_setting = [
-                [1, 16, 1, 1],
-                [6, 24, 2, 2],
-                [6, 32, 3, 2],
-                [6, 64, 4, 2],
-                [6, 96, 3, 1],
-                [6, 160, 3, 2],
-                [6, 320, 1, 1],
+        if block_setting is None:
+            block_setting = [
+                CNBlockConfig(96, 192, 3),
+                CNBlockConfig(192, 384, 3),
+                CNBlockConfig(384, 768, 27),
+                CNBlockConfig(768, None, 3),
             ]
+        if not block_setting:
+            raise ValueError("The block_setting should not be empty")
+        elif not (isinstance(block_setting, Sequence) and all([isinstance(s, CNBlockConfig) for s in block_setting])):
+            raise TypeError("The block_setting should be List[CNBlockConfig]")
 
-        if len(inverted_residual_setting) == 0 or len(inverted_residual_setting[0]) != 4:
-            raise ValueError(
-                f"inverted_residual_setting should be non-empty or a 4-element list, got {inverted_residual_setting}"
-            )
-
-        input_channel = _make_divisible(input_channel * width_mult, round_nearest)
-        self.last_channel = _make_divisible(last_channel * max(1.0, width_mult), round_nearest)
-        features: List[nn.Module] = [
-            Conv2dNormActivation(in_shape[1], input_channel, stride=2, norm_layer=norm_layer, activation_layer=nn.ReLU6)
-        ]
-        for t, c, n, s in inverted_residual_setting:
-            output_channel = _make_divisible(c * width_mult, round_nearest)
-            for i in range(n):
-                stride = s if i == 0 else 1
-                features.append(block(input_channel, output_channel, stride, expand_ratio=t, norm_layer=norm_layer))
-                input_channel = output_channel
-        features.append(
+        if block is None:
+            block = CNBlock
+        if norm_layer is None:
+            norm_layer = partial(LayerNorm2d, eps=prm.get('norm_eps', 1e-5))
+        layers: List[nn.Module] = []
+        firstconv_output_channels = block_setting[0].input_channels
+        layers.append(
             Conv2dNormActivation(
-                input_channel, self.last_channel, kernel_size=1, norm_layer=norm_layer, activation_layer=nn.ReLU6
+                in_shape[1],
+                firstconv_output_channels,
+                kernel_size=4,
+                stride=4,
+                padding=0,
+                norm_layer=norm_layer,
+                activation_layer=None,
+                bias=True,
             )
         )
-        self.features = nn.Sequential(*features)
 
+        total_stage_blocks = sum(cnf.num_layers for cnf in block_setting)
+        stage_block_id = 0
+        for cnf in block_setting:
+            stage: List[nn.Module] = []
+            for _ in range(cnf.num_layers):
+                sd_prob = stochastic_depth_prob * stage_block_id / (total_stage_blocks - 1.0)
+                stage.append(block(cnf.input_channels, layer_scale, sd_prob))
+                stage_block_id += 1
+            layers.append(nn.Sequential(*stage))
+            if cnf.out_channels is not None:
+                layers.append(
+                    nn.Sequential(
+                        norm_layer(cnf.input_channels),
+                        nn.Conv2d(cnf.input_channels, cnf.out_channels, kernel_size=2, stride=2),
+                    )
+                )
+
+        self.features = nn.Sequential(*layers)
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+
+        lastblock = block_setting[-1]
+        lastconv_output_channels = (
+            lastblock.out_channels if lastblock.out_channels is not None else lastblock.input_channels
+        )
         self.classifier = nn.Sequential(
-            nn.Dropout(p=dropout),
-            nn.Linear(self.last_channel, num_classes),
+            norm_layer(lastconv_output_channels), nn.Flatten(1), nn.Linear(lastconv_output_channels, num_classes)
         )
 
         for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode="fan_out")
+            if isinstance(m, (nn.Conv2d, nn.Linear)):
+                nn.init.trunc_normal_(m.weight, std=prm.get('norm_std', 0.02))
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
-            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
-                nn.init.ones_(m.weight)
-                nn.init.zeros_(m.bias)
-            elif isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, 0, 0.01)
-                nn.init.zeros_(m.bias)
 
     def _forward_impl(self, x: Tensor) -> Tensor:
         x = self.features(x)
-        x = nn.functional.adaptive_avg_pool2d(x, (1, 1))
-        x = torch.flatten(x, 1)
+        x = self.avgpool(x)
         x = self.classifier(x)
         return x
 

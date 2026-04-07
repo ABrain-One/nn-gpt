@@ -1,0 +1,5 @@
+{
+  "base_nn": "ResNet",
+  "loss": "NLLLoss",
+  "optimizer": "Adadelta"
+}

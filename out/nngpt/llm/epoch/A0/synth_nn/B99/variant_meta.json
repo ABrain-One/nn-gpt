@@ -1,0 +1,5 @@
+{
+  "base_nn": "ResNetTransformer",
+  "loss": "NLLLoss",
+  "optimizer": "RMSprop"
+}
