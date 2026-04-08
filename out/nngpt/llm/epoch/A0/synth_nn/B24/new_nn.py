@@ -104,7 +104,7 @@ class Net(nn.Module):
 
     def train_setup(self, prm):
         self.to(self.device)
-        self.criteria = (nn.NLLLoss().to(self.device),)
+        self.criteria = nn.NLLLoss().to(self.device)
         self.optimizer = torch.optim.SGD(self.parameters(), lr=prm['lr'], momentum=prm.get('momentum', 0.9))
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=5, gamma=0.5)
 
@@ -114,6 +114,8 @@ class Net(nn.Module):
             inputs, labels = inputs.to(self.device), labels.to(self.device)
             self.optimizer.zero_grad()
             outputs = self(inputs)
+            if outputs.dim() == 4:
+                outputs = outputs.mean(dim=(2, 3))
             loss = self.criteria(outputs, labels)
             loss.backward()
             nn.utils.clip_grad_norm_(self.parameters(), 3)
@@ -122,4 +124,4 @@ class Net(nn.Module):
 
 
 def supported_hyperparameters():
-    return {'lr', 'momentum', 'dropout'}
+    return {'lr', 'momentum'}

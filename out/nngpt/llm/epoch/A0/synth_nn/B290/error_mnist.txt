@@ -1,7 +1,7 @@
 Given groups=1, weight of size [64, 3, 3, 3], expected input[64, 1, 256, 256] to have 3 channels, but got 1 channels instead
 
 Traceback (most recent call last):
-  File "/a/mm/run_variants_eval.py", line 114, in run
+  File "/a/mm/run_variants_eval.py", line 137, in run
     eval_results = evaluator.evaluate(code_file)
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/mm/ab/gpt/util/Eval.py", line 87, in evaluate
@@ -15,14 +15,14 @@ Traceback (most recent call last):
                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 157, in train_n_eval
     self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
-  File "/a/mm/out/nn/tmp/FCN8s-loss_CrossEntropyLoss-opt_AdamW-b0525f8b95f700654bb6ba894e96e919.py", line 100, in learn
+  File "/a/mm/out/nn/tmp/FCN8s-loss_CrossEntropyLoss-opt_AdamW-725e1d2151728f6e303633566a54d7c3.py", line 100, in learn
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
     return self._call_impl(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
     return forward_call(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/mm/out/nn/tmp/FCN8s-loss_CrossEntropyLoss-opt_AdamW-b0525f8b95f700654bb6ba894e96e919.py", line 133, in forward
+  File "/a/mm/out/nn/tmp/FCN8s-loss_CrossEntropyLoss-opt_AdamW-725e1d2151728f6e303633566a54d7c3.py", line 135, in forward
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
     return self._call_impl(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,9 +1,0 @@
-NN already exists (checksum: 0a2d21279c3ca4c874af31ca9ed6e077). Skipping API call.
-
-Traceback (most recent call last):
-  File "/a/mm/run_variants_eval.py", line 114, in run
-    eval_results = evaluator.evaluate(code_file)
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/mm/ab/gpt/util/Eval.py", line 89, in evaluate
-    raise Exception(f'NN already exists (checksum: {new_checksum}). Skipping API call.')
-Exception: NN already exists (checksum: 0a2d21279c3ca4c874af31ca9ed6e077). Skipping API call.

@@ -1,19 +1,17 @@
-[Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_CrossEntropyLoss-opt_Adam-ec5e66fba9e07625a3c1d30ed730aafd.py'
+[Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_CrossEntropyLoss-opt_Adam-5e1474a2e3ec879934baeac8b76f6b9d.py'
 
 Traceback (most recent call last):
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 264, in train_new
-    model_name = DB_Write.save_nn(nn_code, task, dataset, metric, epoch, prm, force_name=model_name)
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/db/Write.py", line 127, in save_nn
-    close_conn(conn)
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/db/Init.py", line 15, in close_conn
-    conn.commit()
-sqlite3.OperationalError: database is locked
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 260, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 165, in train_n_eval
+    raise AccuracyException(accuracy, duration,
+ab.nn.util.Exception.AccuracyException: (0.1107098955132145, 966775362604, "Accuracy is too low: 0.1107098955132145. The minimum accepted accuracy for the 'svhn' dataset is 0.1.")
 
 During handling of the above exception, another exception occurred:
 
 Traceback (most recent call last):
-  File "/a/mm/run_variants_eval.py", line 114, in run
+  File "/a/mm/run_variants_eval.py", line 137, in run
     eval_results = evaluator.evaluate(code_file)
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/mm/ab/gpt/util/Eval.py", line 87, in evaluate
@@ -24,4 +22,4 @@ Traceback (most recent call last):
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 277, in train_new
     remove(temp_file_path)
-FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_CrossEntropyLoss-opt_Adam-ec5e66fba9e07625a3c1d30ed730aafd.py'
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/VisionTransformer-loss_CrossEntropyLoss-opt_Adam-5e1474a2e3ec879934baeac8b76f6b9d.py'

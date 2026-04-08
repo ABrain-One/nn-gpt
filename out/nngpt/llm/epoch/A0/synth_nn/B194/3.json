@@ -1,12 +1,12 @@
 [
     {
-        "accuracy": 0.9804,
+        "accuracy": 0.9774,
         "attention_dropout": 0.0,
         "batch": 64,
         "detections_per_img": 0.5,
         "dropout": 0.2,
         "dropout_aux": 0.0,
-        "duration": 121500603332,
+        "duration": 121951793103,
         "epoch": 5,
         "iou_thresh": 0.5,
         "lr": 0.01,
@@ -26,13 +26,13 @@
         "uid": "44cc52e0d9ae2f3d4b9aa48ef40ccfbb"
     },
     {
-        "accuracy": 0.32713375796178346,
+        "accuracy": 0.1925,
         "attention_dropout": 0.0,
         "batch": 64,
         "detections_per_img": 0.5,
         "dropout": 0.2,
         "dropout_aux": 0.0,
-        "duration": 222133488083,
+        "duration": 238002348737,
         "epoch": 5,
         "iou_thresh": 0.5,
         "lr": 0.01,

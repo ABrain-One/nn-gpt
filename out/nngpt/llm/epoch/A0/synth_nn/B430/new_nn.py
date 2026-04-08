@@ -140,7 +140,7 @@ class Net(nn.Module):
 
     def train_setup(self, prm):
         self.to(self.device)
-        self.criteria = (NGL(ignore_index=0).to(self.device),)
+        self.criteria = (NGL().to(self.device),)
         lr = float(prm.get('lr', 0.001)) * 0.01 + 1e-4
         self.optimizer = torch.optim.Adagrad(self.parameters(), lr=prm['lr'])
 

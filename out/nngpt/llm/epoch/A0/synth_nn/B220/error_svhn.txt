@@ -1,7 +1,7 @@
-CUDA out of memory. Tried to allocate 64.00 MiB. GPU 0 has a total capacity of 23.56 GiB of which 49.00 MiB is free. Process 446057 has 23.50 GiB memory in use. Of the allocated memory 22.89 GiB is allocated by PyTorch, and 303.61 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+CUDA out of memory. Tried to allocate 64.00 MiB. GPU 0 has a total capacity of 23.56 GiB of which 49.00 MiB is free. Process 4105407 has 23.50 GiB memory in use. Of the allocated memory 22.89 GiB is allocated by PyTorch, and 303.61 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
 
 Traceback (most recent call last):
-  File "/a/mm/run_variants_eval.py", line 114, in run
+  File "/a/mm/run_variants_eval.py", line 137, in run
     eval_results = evaluator.evaluate(code_file)
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/mm/ab/gpt/util/Eval.py", line 87, in evaluate
@@ -15,28 +15,28 @@ Traceback (most recent call last):
                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 157, in train_n_eval
     self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
-  File "/a/mm/out/nn/tmp/MaxVit-loss_CrossEntropyLoss-opt_Adagrad-c6c62152035b99ada5ca8230ef312451.py", line 419, in learn
+  File "/a/mm/out/nn/tmp/MaxVit-loss_CrossEntropyLoss-opt_Adagrad-53def0925104bdfd0c8d3ddc7c3d8a9e.py", line 419, in learn
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
     return self._call_impl(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
     return forward_call(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/mm/out/nn/tmp/MaxVit-loss_CrossEntropyLoss-opt_Adagrad-c6c62152035b99ada5ca8230ef312451.py", line 524, in forward
+  File "/a/mm/out/nn/tmp/MaxVit-loss_CrossEntropyLoss-opt_Adagrad-53def0925104bdfd0c8d3ddc7c3d8a9e.py", line 526, in forward
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
     return self._call_impl(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
     return forward_call(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/mm/out/nn/tmp/MaxVit-loss_CrossEntropyLoss-opt_Adagrad-c6c62152035b99ada5ca8230ef312451.py", line 389, in forward
+  File "/a/mm/out/nn/tmp/MaxVit-loss_CrossEntropyLoss-opt_Adagrad-53def0925104bdfd0c8d3ddc7c3d8a9e.py", line 389, in forward
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
     return self._call_impl(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
     return forward_call(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/mm/out/nn/tmp/MaxVit-loss_CrossEntropyLoss-opt_Adagrad-c6c62152035b99ada5ca8230ef312451.py", line 337, in forward
+  File "/a/mm/out/nn/tmp/MaxVit-loss_CrossEntropyLoss-opt_Adagrad-53def0925104bdfd0c8d3ddc7c3d8a9e.py", line 337, in forward
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
     return self._call_impl(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -52,7 +52,7 @@ Traceback (most recent call last):
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
     return forward_call(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/mm/out/nn/tmp/MaxVit-loss_CrossEntropyLoss-opt_Adagrad-c6c62152035b99ada5ca8230ef312451.py", line 269, in forward
+  File "/a/mm/out/nn/tmp/MaxVit-loss_CrossEntropyLoss-opt_Adagrad-53def0925104bdfd0c8d3ddc7c3d8a9e.py", line 269, in forward
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
     return self._call_impl(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -71,4 +71,4 @@ Traceback (most recent call last):
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/activation.py", line 734, in forward
     return F.gelu(input, approximate=self.approximate)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 64.00 MiB. GPU 0 has a total capacity of 23.56 GiB of which 49.00 MiB is free. Process 446057 has 23.50 GiB memory in use. Of the allocated memory 22.89 GiB is allocated by PyTorch, and 303.61 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 64.00 MiB. GPU 0 has a total capacity of 23.56 GiB of which 49.00 MiB is free. Process 4105407 has 23.50 GiB memory in use. Of the allocated memory 22.89 GiB is allocated by PyTorch, and 303.61 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)

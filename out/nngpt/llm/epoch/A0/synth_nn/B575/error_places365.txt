@@ -1,7 +1,7 @@
-'tuple' object is not callable
+(158.29706321822272, 30, 2.022247791290283)
 
 Traceback (most recent call last):
-  File "/a/mm/run_variants_eval.py", line 114, in run
+  File "/a/mm/run_variants_eval.py", line 137, in run
     eval_results = evaluator.evaluate(code_file)
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/mm/ab/gpt/util/Eval.py", line 87, in evaluate
@@ -15,5 +15,7 @@ Traceback (most recent call last):
                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 157, in train_n_eval
     self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
-  File "/a/mm/out/nn/tmp/BagNet-loss_NGL-opt_Adadelta-944f2700c5618d9c26c56a5229221096.py", line 139, in learn
-TypeError: 'tuple' object is not callable
+  File "/a/mm/out/nn/tmp/BagNet-loss_NGL-opt_Adadelta-0d7d4599d0f83bb8df354b238e35b6d8.py", line 135, in learn
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Classes.py", line 24, in __next__
+    raise LearnTimeException(estimated_time, self.epoch_limit_minutes, duration)
+ab.nn.util.Exception.LearnTimeException: (158.29706321822272, 30, 2.022247791290283)

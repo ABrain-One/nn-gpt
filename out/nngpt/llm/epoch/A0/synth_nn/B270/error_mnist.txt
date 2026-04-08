@@ -1,7 +1,7 @@
-[Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_CrossEntropyLoss-opt_SGD-5fb4a733a921f9fb9b8602af6d295580.py'
+[Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_CrossEntropyLoss-opt_SGD-d33dc08719d1e6c8f2ab1e7a65ed58e5.py'
 
 Traceback (most recent call last):
-  File "/a/mm/run_variants_eval.py", line 114, in run
+  File "/a/mm/run_variants_eval.py", line 137, in run
     eval_results = evaluator.evaluate(code_file)
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/mm/ab/gpt/util/Eval.py", line 87, in evaluate
@@ -12,4 +12,4 @@ Traceback (most recent call last):
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 277, in train_new
     remove(temp_file_path)
-FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_CrossEntropyLoss-opt_SGD-5fb4a733a921f9fb9b8602af6d295580.py'
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/SwinTransformer-loss_CrossEntropyLoss-opt_SGD-d33dc08719d1e6c8f2ab1e7a65ed58e5.py'

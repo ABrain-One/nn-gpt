@@ -1,12 +1,12 @@
 [
     {
-        "accuracy": 0.9573,
+        "accuracy": 0.9612,
         "attention_dropout": 0.0,
         "batch": 64,
         "detections_per_img": 0.5,
         "dropout": 0.2,
         "dropout_aux": 0.0,
-        "duration": 1478760062004,
+        "duration": 1496457638713,
         "epoch": 5,
         "iou_thresh": 0.5,
         "lr": 0.01,
@@ -26,13 +26,13 @@
         "uid": "44cc52e0d9ae2f3d4b9aa48ef40ccfbb"
     },
     {
-        "accuracy": 0.5765,
+        "accuracy": 0.5658,
         "attention_dropout": 0.0,
         "batch": 64,
         "detections_per_img": 0.5,
         "dropout": 0.2,
         "dropout_aux": 0.0,
-        "duration": 1260909832692,
+        "duration": 1278974872166,
         "epoch": 5,
         "iou_thresh": 0.5,
         "lr": 0.01,
@@ -52,13 +52,13 @@
         "uid": "44cc52e0d9ae2f3d4b9aa48ef40ccfbb"
     },
     {
-        "accuracy": 0.522547770700637,
+        "accuracy": 0.49477707006369426,
         "attention_dropout": 0.0,
         "batch": 64,
         "detections_per_img": 0.5,
         "dropout": 0.2,
         "dropout_aux": 0.0,
-        "duration": 312847912119,
+        "duration": 335026735812,
         "epoch": 5,
         "iou_thresh": 0.5,
         "lr": 0.01,
@@ -78,13 +78,13 @@
         "uid": "44cc52e0d9ae2f3d4b9aa48ef40ccfbb"
     },
     {
-        "accuracy": 0.2982,
+        "accuracy": 0.2892,
         "attention_dropout": 0.0,
         "batch": 64,
         "detections_per_img": 0.5,
         "dropout": 0.2,
         "dropout_aux": 0.0,
-        "duration": 1316352233838,
+        "duration": 1267403414994,
         "epoch": 5,
         "iou_thresh": 0.5,
         "lr": 0.01,

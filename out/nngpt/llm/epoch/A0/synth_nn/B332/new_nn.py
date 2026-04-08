@@ -182,7 +182,7 @@ class Net(nn.Module):
 
     def train_setup(self, prm):
         self.to(self.device)
-        self.criteria = (nn.NLLLoss().to(self.device),)
+        self.criteria = nn.NLLLoss().to(self.device)
         self.optimizer = torch.optim.AdamW(self.parameters(), lr=prm['lr'])
 
     def learn(self, train_data):
@@ -195,6 +195,8 @@ class Net(nn.Module):
             
             # Forward pass
             outputs = self(inputs)
+            if outputs.dim() == 4:
+                outputs = outputs.mean(dim=(2, 3))
             
             # Main classification loss
             main_loss = self.criteria(outputs, labels)

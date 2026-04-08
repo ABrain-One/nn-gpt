@@ -1,7 +1,7 @@
-'tuple' object is not callable
+(0.1, 79509516115, "Accuracy is too low: 0.1. The minimum accepted accuracy for the 'cifar-10' dataset is 0.1.")
 
 Traceback (most recent call last):
-  File "/a/mm/run_variants_eval.py", line 114, in run
+  File "/a/mm/run_variants_eval.py", line 137, in run
     eval_results = evaluator.evaluate(code_file)
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/mm/ab/gpt/util/Eval.py", line 87, in evaluate
@@ -13,7 +13,6 @@ Traceback (most recent call last):
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 260, in train_new
     accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes)
                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 157, in train_n_eval
-    self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
-  File "/a/mm/out/nn/tmp/ICNet-loss_CrossEntropyLoss-opt_Adadelta-840b5b8a971c82200b89fe246f5e3530.py", line 87, in learn
-TypeError: 'tuple' object is not callable
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 165, in train_n_eval
+    raise AccuracyException(accuracy, duration,
+ab.nn.util.Exception.AccuracyException: (0.1, 79509516115, "Accuracy is too low: 0.1. The minimum accepted accuracy for the 'cifar-10' dataset is 0.1.")

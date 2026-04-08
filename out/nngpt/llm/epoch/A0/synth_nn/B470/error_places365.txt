@@ -1,7 +1,7 @@
-only batches of spatial targets supported (3D tensors) but got targets of size: : [64]
+(162.46588326825037, 30, 2.0755045413970947)
 
 Traceback (most recent call last):
-  File "/a/mm/run_variants_eval.py", line 114, in run
+  File "/a/mm/run_variants_eval.py", line 137, in run
     eval_results = evaluator.evaluate(code_file)
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/mm/ab/gpt/util/Eval.py", line 87, in evaluate
@@ -15,17 +15,7 @@ Traceback (most recent call last):
                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 157, in train_n_eval
     self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
-  File "/a/mm/out/nn/tmp/LRASPP-loss_CrossEntropyLoss-opt_AdamW-f3a2d9813b6ea449b1115c0fe8b8e41b.py", line 272, in learn
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
-    return self._call_impl(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
-    return forward_call(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/loss.py", line 1297, in forward
-    return F.cross_entropy(
-           ^^^^^^^^^^^^^^^^
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/functional.py", line 3494, in cross_entropy
-    return torch._C._nn.cross_entropy_loss(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-RuntimeError: only batches of spatial targets supported (3D tensors) but got targets of size: : [64]
+  File "/a/mm/out/nn/tmp/LRASPP-loss_CrossEntropyLoss-opt_AdamW-3b628eb57acc03b8490a13a4ad944cd6.py", line 268, in learn
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Classes.py", line 24, in __next__
+    raise LearnTimeException(estimated_time, self.epoch_limit_minutes, duration)
+ab.nn.util.Exception.LearnTimeException: (162.46588326825037, 30, 2.0755045413970947)

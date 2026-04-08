@@ -1,7 +1,7 @@
-(641.9003076023525, 30, 8.200287818908691)
+(584.0434866746267, 30, 7.461165904998779)
 
 Traceback (most recent call last):
-  File "/a/mm/run_variants_eval.py", line 114, in run
+  File "/a/mm/run_variants_eval.py", line 137, in run
     eval_results = evaluator.evaluate(code_file)
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/mm/ab/gpt/util/Eval.py", line 87, in evaluate
@@ -15,7 +15,7 @@ Traceback (most recent call last):
                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 157, in train_n_eval
     self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
-  File "/a/mm/out/nn/tmp/ConvNeXt-loss_CrossEntropyLoss-opt_Adagrad-9688cb057146ee95cd83872486e496c9.py", line 82, in learn
+  File "/a/mm/out/nn/tmp/ConvNeXt-loss_CrossEntropyLoss-opt_Adagrad-9d17b71e3f874fb4beae8d5de3db72cb.py", line 82, in learn
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Classes.py", line 24, in __next__
     raise LearnTimeException(estimated_time, self.epoch_limit_minutes, duration)
-ab.nn.util.Exception.LearnTimeException: (641.9003076023525, 30, 8.200287818908691)
+ab.nn.util.Exception.LearnTimeException: (584.0434866746267, 30, 7.461165904998779)

@@ -1,7 +1,7 @@
-NGL.__init__() got an unexpected keyword argument 'ignore_index'
+The size of tensor a (256) must match the size of tensor b (64) at non-singleton dimension 2
 
 Traceback (most recent call last):
-  File "/a/mm/run_variants_eval.py", line 114, in run
+  File "/a/mm/run_variants_eval.py", line 137, in run
     eval_results = evaluator.evaluate(code_file)
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/mm/ab/gpt/util/Eval.py", line 87, in evaluate
@@ -13,7 +13,12 @@ Traceback (most recent call last):
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 260, in train_new
     accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes)
                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 151, in train_n_eval
-    self.model.train_setup(self.prm)
-  File "/a/mm/out/nn/tmp/FCN8s-loss_NGL-opt_SGD-6f74cee72286893ad87f9af971a49de7.py", line 104, in train_setup
-TypeError: NGL.__init__() got an unexpected keyword argument 'ignore_index'
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 159, in train_n_eval
+    accuracy = self.eval(self.test_loader)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 204, in eval
+    self.metric_function(outputs, labels)
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/metric/acc.py", line 18, in __call__
+    correct = (predicted == targets).sum().item()
+               ^^^^^^^^^^^^^^^^^^^^
+RuntimeError: The size of tensor a (256) must match the size of tensor b (64) at non-singleton dimension 2

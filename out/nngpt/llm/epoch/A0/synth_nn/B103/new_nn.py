@@ -91,7 +91,7 @@ class Net(nn.Module):
 
     def train_setup(self, prm):
         self.to(self.device)
-        self.criteria = (NGL(ignore_index=self.word2idx['<PAD>']).to(self.device),)
+        self.criteria = (NGL().to(self.device),)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=prm['lr'])
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='max', patience=3, factor=0.5)
         train_loader = prm.get('train_loader', None)

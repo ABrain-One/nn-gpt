@@ -1,7 +1,7 @@
 mat1 and mat2 shapes cannot be multiplied (64x131072 and 2048x128)
 
 Traceback (most recent call last):
-  File "/a/mm/run_variants_eval.py", line 114, in run
+  File "/a/mm/run_variants_eval.py", line 137, in run
     eval_results = evaluator.evaluate(code_file)
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/mm/ab/gpt/util/Eval.py", line 87, in evaluate
@@ -15,21 +15,21 @@ Traceback (most recent call last):
                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 157, in train_n_eval
     self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
-  File "/a/mm/out/nn/tmp/MoEv2-loss_NGL-opt_Adadelta-006101ddeefe5920435e7b5d8656e6f3.py", line 211, in learn
+  File "/a/mm/out/nn/tmp/MoEv2-loss_NGL-opt_Adadelta-bf652c210e4a400be8ec79e4ddf7afda.py", line 211, in learn
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
     return self._call_impl(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
     return forward_call(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/mm/out/nn/tmp/MoEv2-loss_NGL-opt_Adadelta-006101ddeefe5920435e7b5d8656e6f3.py", line 180, in forward
+  File "/a/mm/out/nn/tmp/MoEv2-loss_NGL-opt_Adadelta-bf652c210e4a400be8ec79e4ddf7afda.py", line 180, in forward
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
     return self._call_impl(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
     return forward_call(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/mm/out/nn/tmp/MoEv2-loss_NGL-opt_Adadelta-006101ddeefe5920435e7b5d8656e6f3.py", line 59, in forward
+  File "/a/mm/out/nn/tmp/MoEv2-loss_NGL-opt_Adadelta-bf652c210e4a400be8ec79e4ddf7afda.py", line 59, in forward
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
     return self._call_impl(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

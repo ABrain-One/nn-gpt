@@ -1,7 +1,7 @@
-NGL.__init__() got an unexpected keyword argument 'ignore_index'
+(168.30900596247778, 30, 2.1501505374908447)
 
 Traceback (most recent call last):
-  File "/a/mm/run_variants_eval.py", line 114, in run
+  File "/a/mm/run_variants_eval.py", line 137, in run
     eval_results = evaluator.evaluate(code_file)
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/mm/ab/gpt/util/Eval.py", line 87, in evaluate
@@ -13,7 +13,9 @@ Traceback (most recent call last):
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 260, in train_new
     accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes)
                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 151, in train_n_eval
-    self.model.train_setup(self.prm)
-  File "/a/mm/out/nn/tmp/LRASPP-loss_NGL-opt_Adadelta-b083de7bf31829ea1d14ccdbd878ddf3.py", line 275, in train_setup
-TypeError: NGL.__init__() got an unexpected keyword argument 'ignore_index'
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 157, in train_n_eval
+    self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
+  File "/a/mm/out/nn/tmp/LRASPP-loss_NGL-opt_Adadelta-a999b2f4afdf6e40446a3d7934d172b6.py", line 282, in learn
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Classes.py", line 24, in __next__
+    raise LearnTimeException(estimated_time, self.epoch_limit_minutes, duration)
+ab.nn.util.Exception.LearnTimeException: (168.30900596247778, 30, 2.1501505374908447)

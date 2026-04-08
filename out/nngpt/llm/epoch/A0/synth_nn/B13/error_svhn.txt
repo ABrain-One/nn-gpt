@@ -1,7 +1,7 @@
-(0.09157959434542103, 133310305425, "Accuracy is too low: 0.09157959434542103. The minimum accepted accuracy for the 'svhn' dataset is 0.1.")
+(0.07755838967424708, 129925892741, "Accuracy is too low: 0.07755838967424708. The minimum accepted accuracy for the 'svhn' dataset is 0.1.")
 
 Traceback (most recent call last):
-  File "/a/mm/run_variants_eval.py", line 114, in run
+  File "/a/mm/run_variants_eval.py", line 137, in run
     eval_results = evaluator.evaluate(code_file)
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/mm/ab/gpt/util/Eval.py", line 87, in evaluate
@@ -15,4 +15,4 @@ Traceback (most recent call last):
                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 165, in train_n_eval
     raise AccuracyException(accuracy, duration,
-ab.nn.util.Exception.AccuracyException: (0.09157959434542103, 133310305425, "Accuracy is too low: 0.09157959434542103. The minimum accepted accuracy for the 'svhn' dataset is 0.1.")
+ab.nn.util.Exception.AccuracyException: (0.07755838967424708, 129925892741, "Accuracy is too low: 0.07755838967424708. The minimum accepted accuracy for the 'svhn' dataset is 0.1.")

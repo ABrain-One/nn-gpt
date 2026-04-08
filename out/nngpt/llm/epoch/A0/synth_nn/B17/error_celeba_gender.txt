@@ -1,66 +1,9 @@
-Failed to retrieve file url:
-
-	Too many users have viewed or downloaded this file recently. Please
-	try accessing the file again later. If the file you are trying to
-	access is particularly large or is shared with many people, it may
-	take up to 24 hours to be able to view or download the file. If you
-	still can't access a file after 24 hours, contact your domain
-	administrator.
-
-You may still be able to access the file from the browser:
-
-	https://drive.google.com/uc?id=1_ee_0u7vcNLOfNLegJRHmolfH5ICW-XS
-
-but Gdown can't. Please check connections and permissions.
+NN already exists (checksum: d04977497b126d7063f2d8e28daf0acc). Skipping API call.
 
 Traceback (most recent call last):
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/gdown/download.py", line 267, in download
-    url = get_url_from_gdrive_confirmation(res.text)
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/gdown/download.py", line 53, in get_url_from_gdrive_confirmation
-    raise FileURLRetrievalError(error)
-gdown.exceptions.FileURLRetrievalError: Too many users have viewed or downloaded this file recently. Please try accessing the file again later. If the file you are trying to access is particularly large or is shared with many people, it may take up to 24 hours to be able to view or download the file. If you still can't access a file after 24 hours, contact your domain administrator.
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/a/mm/run_variants_eval.py", line 114, in run
+  File "/a/mm/run_variants_eval.py", line 137, in run
     eval_results = evaluator.evaluate(code_file)
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/mm/ab/gpt/util/Eval.py", line 87, in evaluate
-    return api.check_nn(code, self.task, self.dataset, self.metric, self.prm, self.save_to_db, self.prefix, self.save_path)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/api.py", line 39, in check_nn
-    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx, epoch_limit_minutes=epoch_limit_minutes)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 241, in train_new
-    out_shape, minimum_accuracy, train_set, test_set = load_dataset(task, dataset, prm['transform'])
-                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Loader.py", line 18, in load_dataset
-    return loader(get_obj(transform_name, 'transform'), task)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/loader/celeba-gender.py", line 22, in loader
-    train_set = torchvision.datasets.CelebA(root=data_dir, split='train', transform=transform,
-                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torchvision-0.22.1-py3.12-linux-x86_64.egg/torchvision/datasets/celeba.py", line 85, in __init__
-    self.download()
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torchvision-0.22.1-py3.12-linux-x86_64.egg/torchvision/datasets/celeba.py", line 160, in download
-    download_file_from_google_drive(file_id, os.path.join(self.root, self.base_folder), filename, md5)
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torchvision-0.22.1-py3.12-linux-x86_64.egg/torchvision/datasets/utils.py", line 206, in download_file_from_google_drive
-    gdown.download(id=file_id, output=fpath, quiet=False, user_agent=USER_AGENT)
-  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/gdown/download.py", line 278, in download
-    raise FileURLRetrievalError(message)
-gdown.exceptions.FileURLRetrievalError: Failed to retrieve file url:
-
-	Too many users have viewed or downloaded this file recently. Please
-	try accessing the file again later. If the file you are trying to
-	access is particularly large or is shared with many people, it may
-	take up to 24 hours to be able to view or download the file. If you
-	still can't access a file after 24 hours, contact your domain
-	administrator.
-
-You may still be able to access the file from the browser:
-
-	https://drive.google.com/uc?id=1_ee_0u7vcNLOfNLegJRHmolfH5ICW-XS
-
-but Gdown can't. Please check connections and permissions.
+  File "/a/mm/ab/gpt/util/Eval.py", line 89, in evaluate
+    raise Exception(f'NN already exists (checksum: {new_checksum}). Skipping API call.')
+Exception: NN already exists (checksum: d04977497b126d7063f2d8e28daf0acc). Skipping API call.

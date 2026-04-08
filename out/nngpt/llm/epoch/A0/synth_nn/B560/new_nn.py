@@ -110,7 +110,7 @@ class Net(nn.Module):
 
     def train_setup(self, prm):
         self.to(self.device)
-        self.criteria = (nn.CrossEntropyLoss().to(self.device),)
+        self.criteria = nn.CrossEntropyLoss().to(self.device)
         self.optimizer = torch.optim.AdamW(self.parameters(), lr=prm['lr'])
 
         if self.dropout > 0:
@@ -122,6 +122,8 @@ class Net(nn.Module):
             inputs, labels = inputs.to(self.device), labels.to(self.device)
             self.optimizer.zero_grad()
             outputs = self(inputs)
+            if outputs.dim() == 4:
+                outputs = outputs.mean(dim=(2, 3))
             loss = self.criteria(outputs, labels)
             loss.backward()
             nn.utils.clip_grad_norm_(self.parameters(), 3)

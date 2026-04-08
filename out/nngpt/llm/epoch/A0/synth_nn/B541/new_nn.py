@@ -4,7 +4,7 @@ import torch.optim as optim
 
 
 def supported_hyperparameters():
-    return {'lr', 'dropout'}
+    return {'lr'}
 
 
 class DarkNetUnit(nn.Module):
@@ -80,7 +80,7 @@ class Net(nn.Module):
         self.to(self.device)
         learning_rate = float(prm.get("lr", 0.01))
         momentum = float(prm.get("momentum", 0.9))
-        self.criteria = (nn.CrossEntropyLoss().to(self.device),)
+        self.criteria = nn.CrossEntropyLoss().to(self.device)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=prm['lr'])
         self.to(self.device)
 
@@ -90,6 +90,8 @@ class Net(nn.Module):
             inputs, targets = inputs.to(next(self.parameters()).device), targets.to(next(self.parameters()).device)
             self.optimizer.zero_grad()
             outputs = self(inputs)
+            if outputs.dim() == 4:
+                outputs = outputs.mean(dim=(2, 3))
             loss = self.criteria(outputs, targets)
             loss.backward()
             self.optimizer.step()

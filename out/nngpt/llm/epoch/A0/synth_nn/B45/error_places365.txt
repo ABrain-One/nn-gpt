@@ -1,7 +1,7 @@
-CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 23.56 GiB of which 91.00 MiB is free. Process 3941704 has 23.46 GiB memory in use. Of the allocated memory 23.01 GiB is allocated by PyTorch, and 129.43 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 23.56 GiB of which 91.00 MiB is free. Process 994339 has 23.46 GiB memory in use. Of the allocated memory 23.01 GiB is allocated by PyTorch, and 129.43 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
 
 Traceback (most recent call last):
-  File "/a/mm/run_variants_eval.py", line 114, in run
+  File "/a/mm/run_variants_eval.py", line 137, in run
     eval_results = evaluator.evaluate(code_file)
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/mm/ab/gpt/util/Eval.py", line 87, in evaluate
@@ -15,14 +15,14 @@ Traceback (most recent call last):
                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 157, in train_n_eval
     self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
-  File "/a/mm/out/nn/tmp/DenseNet-loss_NLLLoss-opt_RMSprop-6c4aed592b0cacbef25ada58c3573c15.py", line 131, in learn
+  File "/a/mm/out/nn/tmp/DenseNet-loss_NLLLoss-opt_RMSprop-7e9348b86312a4b321d3bd832232b3bf.py", line 131, in learn
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
     return self._call_impl(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
     return forward_call(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/mm/out/nn/tmp/DenseNet-loss_NLLLoss-opt_RMSprop-6c4aed592b0cacbef25ada58c3573c15.py", line 187, in forward
+  File "/a/mm/out/nn/tmp/DenseNet-loss_NLLLoss-opt_RMSprop-7e9348b86312a4b321d3bd832232b3bf.py", line 189, in forward
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
     return self._call_impl(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -38,15 +38,15 @@ Traceback (most recent call last):
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
     return forward_call(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/mm/out/nn/tmp/DenseNet-loss_NLLLoss-opt_RMSprop-6c4aed592b0cacbef25ada58c3573c15.py", line 102, in forward
+  File "/a/mm/out/nn/tmp/DenseNet-loss_NLLLoss-opt_RMSprop-7e9348b86312a4b321d3bd832232b3bf.py", line 102, in forward
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
     return self._call_impl(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1762, in _call_impl
     return forward_call(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/a/mm/out/nn/tmp/DenseNet-loss_NLLLoss-opt_RMSprop-6c4aed592b0cacbef25ada58c3573c15.py", line 68, in forward
-  File "/a/mm/out/nn/tmp/DenseNet-loss_NLLLoss-opt_RMSprop-6c4aed592b0cacbef25ada58c3573c15.py", line 32, in bn_function
+  File "/a/mm/out/nn/tmp/DenseNet-loss_NLLLoss-opt_RMSprop-7e9348b86312a4b321d3bd832232b3bf.py", line 68, in forward
+  File "/a/mm/out/nn/tmp/DenseNet-loss_NLLLoss-opt_RMSprop-7e9348b86312a4b321d3bd832232b3bf.py", line 32, in bn_function
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
     return self._call_impl(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -59,4 +59,4 @@ Traceback (most recent call last):
   File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/nn/modules/conv.py", line 549, in _conv_forward
     return F.conv2d(
            ^^^^^^^^^
-torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 23.56 GiB of which 91.00 MiB is free. Process 3941704 has 23.46 GiB memory in use. Of the allocated memory 23.01 GiB is allocated by PyTorch, and 129.43 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB. GPU 0 has a total capacity of 23.56 GiB of which 91.00 MiB is free. Process 994339 has 23.46 GiB memory in use. Of the allocated memory 23.01 GiB is allocated by PyTorch, and 129.43 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
