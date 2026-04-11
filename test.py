@@ -211,7 +211,7 @@ class Test(unittest.TestCase):
         )
 
         def run():
-            lemur.data(
+            lemur.data.__wrapped__(
                 sql=conf,
                 include_nn_stats=False,
                 task=TASK,
@@ -234,7 +234,7 @@ class Test(unittest.TestCase):
         )
 
         def run():
-            df = lemur.data(
+            df = lemur.data.__wrapped__(
                 sql=conf,
                 include_nn_stats=False,
                 task=TASK,
