@@ -1,0 +1,31 @@
+[Errno 2] No such file or directory: '/a/mm/out/nn/tmp/LRASPP-loss_NGL-opt_Adagrad-091e09e168e36f4d7904a042c970d3e8.py'
+
+Traceback (most recent call last):
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 260, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 159, in train_n_eval
+    accuracy = self.eval(self.test_loader)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 204, in eval
+    self.metric_function(outputs, labels)
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/metric/acc.py", line 18, in __call__
+    correct = (predicted == targets).sum().item()
+               ^^^^^^^^^^^^^^^^^^^^
+RuntimeError: The size of tensor a (256) must match the size of tensor b (64) at non-singleton dimension 2
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/run_variants_eval.py", line 137, in run
+    eval_results = evaluator.evaluate(code_file)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 87, in evaluate
+    return api.check_nn(code, self.task, self.dataset, self.metric, self.prm, self.save_to_db, self.prefix, self.save_path)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/api.py", line 39, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx, epoch_limit_minutes=epoch_limit_minutes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 277, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out/nn/tmp/LRASPP-loss_NGL-opt_Adagrad-091e09e168e36f4d7904a042c970d3e8.py'
