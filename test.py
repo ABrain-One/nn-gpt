@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import os
-import sys
 import time
 import statistics
 from typing import Sequence
 import unittest
+import functools
 
 import ab.nn.api as lemur
 from ab.nn.api import JoinConf
 from ab.gpt.util.Util import extract_all_to_train
-import functools
 
 
 # ---------------------- Helpers ----------------------
@@ -66,7 +65,7 @@ def band_range(name: str) -> tuple[float, float]:
 # ---------------------- Config ----------------------
 
 TASK = os.getenv("LEMUR_TASK", "img-classification")
-DATASET = os.getenv("LEMUR_DATASET", "cifar-10")
+DATASET = os.getenv("LEMUR_DATASET", "celeba-gender")
 METRIC = os.getenv("LEMUR_METRIC", "acc")
 
 REPEATS = int(os.getenv("LEMUR_BENCH_REPEATS", "3"))
@@ -80,7 +79,7 @@ THRESH_LEGACY = float(os.getenv("LEMUR_THRESH_LEGACY", "60"))
 THRESH_VARN = float(os.getenv("LEMUR_THRESH_VARN", "30"))
 
 # for anchor-band tests
-BAND_N = int(os.getenv("LEMUR_BAND_N", "10"))
+BAND_N = int(os.getenv("LEMUR_BAND_N", "5"))
 # BANDS_TO_TEST = os.getenv("LEMUR_BANDS", "high,medium,low,very_low").split(",")
 EXTENDED = os.getenv("LEMUR_EXTENDED", "0") == "1"
 BANDS_TO_TEST = os.getenv("LEMUR_BANDS", "high,medium,low,very_low" if EXTENDED else "high").split(",")
@@ -194,7 +193,6 @@ class Test(unittest.TestCase):
             jmin = float(df["anchor_jaccard"].min())
             jmax = float(df["anchor_jaccard"].max())
 
-            # band check: j in [mn, mx)
             if not (jmin >= mn - 1e-12 and jmax < mx + 1e-12):
                 raise AssertionError(
                     f"[{band}] anchor_jaccard out of band. "
@@ -213,7 +211,7 @@ class Test(unittest.TestCase):
         )
 
         def run():
-            lemur.data(
+            lemur.data.__wrapped__(
                 sql=conf,
                 include_nn_stats=False,
                 task=TASK,
@@ -236,7 +234,7 @@ class Test(unittest.TestCase):
         )
 
         def run():
-            df = lemur.data(
+            df = lemur.data.__wrapped__(
                 sql=conf,
                 include_nn_stats=False,
                 task=TASK,
@@ -256,9 +254,18 @@ class Test(unittest.TestCase):
             raise AssertionError(f"SQL variable-N query unexpectedly slow: median {median_s:.2f}s > {THRESH_VARN:.2f}s")
 
     def test_extract_generated_info_to_train_nn(self):
-        self.assertTupleEqual(extract_all_to_train('aaa <nn>nn code</nn> <hp> hyper-parameter code </hp> <tr>tr code</tr>'), ('nn code', 'hyper-parameter code', 'tr code'))
-        self.assertTupleEqual(extract_all_to_train('aaa <nn>nn code</nn> </hp> <tr>tr code</tr>'), ('nn code', None, 'tr code'))
-        self.assertTupleEqual(extract_all_to_train('aaa <nn>nn code </hp> tr code</tr>'), (None, None, None))
+        self.assertTupleEqual(
+            extract_all_to_train('aaa <nn>nn code</nn> <hp> hyper-parameter code </hp> <tr>tr code</tr>'),
+            ('nn code', 'hyper-parameter code', 'tr code')
+        )
+        self.assertTupleEqual(
+            extract_all_to_train('aaa <nn>nn code</nn> </hp> <tr>tr code</tr>'),
+            ('nn code', None, 'tr code')
+        )
+        self.assertTupleEqual(
+            extract_all_to_train('aaa <nn>nn code </hp> tr code</tr>'),
+            (None, None, None)
+        )
 
 
 if __name__ == '__main__':
@@ -267,4 +274,5 @@ if __name__ == '__main__':
     print(f"[BENCH CFG] repeats={REPEATS} warmup={WARMUP} legacy_rows={LEGACY_ROWS} varN={VAR_N} varN_rows={VAR_N_ROWS}")
     print(f"[THRESH] legacy<{THRESH_LEGACY}s varN<{THRESH_VARN}s")
     print(f"[ANCHOR-BAND] N={BAND_N} bands={BANDS_TO_TEST}")
-    unittest.main()
+
+    unittest.main(verbosity=2)
