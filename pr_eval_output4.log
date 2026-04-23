@@ -1,0 +1,150 @@
+nohup: ignoring input
+LEMUR root /home/hafsamateen/Project_ResNet/nn-gpt
+
+--- Scanning NNAlter Epoch Directory: /home/hafsamateen/Project_ResNet/nn-gpt/out/nngpt/llm/epoch/A0 ---
+--- Synthesized Models Directory: /home/hafsamateen/Project_ResNet/nn-gpt/out/nngpt/llm/epoch/A0/synth_pr_only ---
+
+--- Evaluating Model: llm/epoch/A0/synth_pr_only/PR_0004 ---
+Training model PR_0004 with LLM recommended prm {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'gamma': 0.5, 'weight_decay': 0.0001}
+  No dataframe.df found. Using command-line/default evaluation parameters.
+  Final parameters for Eval: {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'gamma': 0.5, 'weight_decay': 0.0001, 'epoch': 5}
+  Task: img-classification, Dataset: cifar-10, Metric: acc, Prefix: PR
+  Error evaluating model PR_0004: NN already exists (checksum: 94485497b53ab21edbc8a5b604220772). Skipping API call.
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 165, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 61, in evaluate
+    raise Exception(f'NN already exists (checksum: {new_checksum}). Skipping API call.')
+Exception: NN already exists (checksum: 94485497b53ab21edbc8a5b604220772). Skipping API call.
+
+
+--- Evaluating Model: llm/epoch/A0/synth_pr_only/PR_0009 ---
+Training model PR_0009 with LLM recommended prm {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'T_0': 5, 'eta_min': 1e-06, 'weight_decay': 0.0001}
+  No dataframe.df found. Using command-line/default evaluation parameters.
+  Final parameters for Eval: {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'T_0': 5, 'eta_min': 1e-06, 'weight_decay': 0.0001, 'epoch': 5}
+  Task: img-classification, Dataset: cifar-10, Metric: acc, Prefix: PR
+  Error evaluating model PR_0009: NN already exists (checksum: 3f504c442a3b49606bafcbdf26495cf1). Skipping API call.
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 165, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 61, in evaluate
+    raise Exception(f'NN already exists (checksum: {new_checksum}). Skipping API call.')
+Exception: NN already exists (checksum: 3f504c442a3b49606bafcbdf26495cf1). Skipping API call.
+
+
+--- Evaluating Model: llm/epoch/A0/synth_pr_only/PR_0002 ---
+Training model PR_0002 with LLM recommended prm {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'step_size': 10, 'gamma': 0.5, 'weight_decay': 0.0001}
+  No dataframe.df found. Using command-line/default evaluation parameters.
+  Final parameters for Eval: {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'step_size': 10, 'gamma': 0.5, 'weight_decay': 0.0001, 'epoch': 5}
+  Task: img-classification, Dataset: cifar-10, Metric: acc, Prefix: PR
+  Error evaluating model PR_0002: NN already exists (checksum: ff55ac9ac223a055800a680cafa53bed). Skipping API call.
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 165, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 61, in evaluate
+    raise Exception(f'NN already exists (checksum: {new_checksum}). Skipping API call.')
+Exception: NN already exists (checksum: ff55ac9ac223a055800a680cafa53bed). Skipping API call.
+
+
+--- Evaluating Model: llm/epoch/A0/synth_pr_only/PR_0007 ---
+Training model PR_0007 with LLM recommended prm {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'gamma': 0.5, 'weight_decay': 0.0001}
+  No dataframe.df found. Using command-line/default evaluation parameters.
+  Final parameters for Eval: {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'gamma': 0.5, 'weight_decay': 0.0001, 'epoch': 5}
+  Task: img-classification, Dataset: cifar-10, Metric: acc, Prefix: PR
+  Error evaluating model PR_0007: NN already exists (checksum: df2817f3c59927c959fcc65054681c61). Skipping API call.
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 165, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 61, in evaluate
+    raise Exception(f'NN already exists (checksum: {new_checksum}). Skipping API call.')
+Exception: NN already exists (checksum: df2817f3c59927c959fcc65054681c61). Skipping API call.
+
+
+--- Evaluating Model: llm/epoch/A0/synth_pr_only/PR_0010 ---
+Training model PR_0010 with LLM recommended prm {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'start_factor': 0.1, 'total_iters': 5, 'weight_decay': 0.0001}
+  No dataframe.df found. Using command-line/default evaluation parameters.
+  Final parameters for Eval: {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'start_factor': 0.1, 'total_iters': 5, 'weight_decay': 0.0001, 'epoch': 5}
+  Task: img-classification, Dataset: cifar-10, Metric: acc, Prefix: PR
+  Error evaluating model PR_0010: NN already exists (checksum: a7714b2ed64ff3b8b96f4af7ac15a764). Skipping API call.
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 165, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 61, in evaluate
+    raise Exception(f'NN already exists (checksum: {new_checksum}). Skipping API call.')
+Exception: NN already exists (checksum: a7714b2ed64ff3b8b96f4af7ac15a764). Skipping API call.
+
+
+--- Evaluating Model: llm/epoch/A0/synth_pr_only/PR_0001 ---
+Training model PR_0001 with LLM recommended prm {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'step_size': 10, 'gamma': 0.5, 'weight_decay': 0.0001}
+  No dataframe.df found. Using command-line/default evaluation parameters.
+  Final parameters for Eval: {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'step_size': 10, 'gamma': 0.5, 'weight_decay': 0.0001, 'epoch': 5}
+  Task: img-classification, Dataset: cifar-10, Metric: acc, Prefix: PR
+  Error evaluating model PR_0001: NN already exists (checksum: c0b0de481957db50c936d37b7d55391a). Skipping API call.
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 165, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 61, in evaluate
+    raise Exception(f'NN already exists (checksum: {new_checksum}). Skipping API call.')
+Exception: NN already exists (checksum: c0b0de481957db50c936d37b7d55391a). Skipping API call.
+
+
+--- Evaluating Model: llm/epoch/A0/synth_pr_only/PR_0008 ---
+Training model PR_0008 with LLM recommended prm {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'max_lr': 0.1, 'weight_decay': 0.0001}
+  No dataframe.df found. Using command-line/default evaluation parameters.
+  Final parameters for Eval: {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'max_lr': 0.1, 'weight_decay': 0.0001, 'epoch': 5}
+  Task: img-classification, Dataset: cifar-10, Metric: acc, Prefix: PR
+error when reading file: marshal data too short
+  Error evaluating model PR_0008: Code is missing.
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 165, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 38, in evaluate
+    raise Exception(f'Code is missing.')
+Exception: Code is missing.
+
+
+--- Evaluating Model: llm/epoch/A0/synth_pr_only/PR_0005 ---
+Training model PR_0005 with LLM recommended prm {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'T_max': 10, 'eta_min': 1e-06, 'weight_decay': 0.0001}
+  No dataframe.df found. Using command-line/default evaluation parameters.
+  Final parameters for Eval: {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'T_max': 10, 'eta_min': 1e-06, 'weight_decay': 0.0001, 'epoch': 5}
+  Task: img-classification, Dataset: cifar-10, Metric: acc, Prefix: PR
+  Error evaluating model PR_0005: NN already exists (checksum: 347235cb7834f7480d013b477641a3ef). Skipping API call.
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 165, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 61, in evaluate
+    raise Exception(f'NN already exists (checksum: {new_checksum}). Skipping API call.')
+Exception: NN already exists (checksum: 347235cb7834f7480d013b477641a3ef). Skipping API call.
+
+
+--- Evaluating Model: llm/epoch/A0/synth_pr_only/PR_0003 ---
+Training model PR_0003 with LLM recommended prm {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'gamma': 0.5, 'weight_decay': 0.0001}
+  No dataframe.df found. Using command-line/default evaluation parameters.
+  Final parameters for Eval: {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'gamma': 0.5, 'weight_decay': 0.0001, 'epoch': 5}
+  Task: img-classification, Dataset: cifar-10, Metric: acc, Prefix: PR
+  Error evaluating model PR_0003: NN already exists (checksum: 1785f74195b7d74391196f34ac8c8436). Skipping API call.
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 165, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 61, in evaluate
+    raise Exception(f'NN already exists (checksum: {new_checksum}). Skipping API call.')
+Exception: NN already exists (checksum: 1785f74195b7d74391196f34ac8c8436). Skipping API call.
+
+
+--- Evaluating Model: llm/epoch/A0/synth_pr_only/PR_0006 ---
+Training model PR_0006 with LLM recommended prm {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'T_max': 10, 'eta_min': 1e-06, 'weight_decay': 0.0001}
+  No dataframe.df found. Using command-line/default evaluation parameters.
+  Final parameters for Eval: {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256_flip', 'T_max': 10, 'eta_min': 1e-06, 'weight_decay': 0.0001, 'epoch': 5}
+  Task: img-classification, Dataset: cifar-10, Metric: acc, Prefix: PR
+  Error evaluating model PR_0006: NN already exists (checksum: f5a0986cead1eecf5462faea43d20e73). Skipping API call.
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 165, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 61, in evaluate
+    raise Exception(f'NN already exists (checksum: {new_checksum}). Skipping API call.')
+Exception: NN already exists (checksum: f5a0986cead1eecf5462faea43d20e73). Skipping API call.
+
+
+--- Cycle 0 (Epoch 0) results saved to: /home/hafsamateen/Project_ResNet/nn-gpt/out/nngpt/cycle_results.json ---
+  Found 8 successful evaluations from eval_info.json files
+  Found 2 failed models
