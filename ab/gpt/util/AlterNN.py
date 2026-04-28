@@ -52,12 +52,13 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
         inference_gpt_oss_max_input_length = 10**18
     batch_size = max(1, int(kwargs.get("batch_size", 1)))
 
+    nn_prefixes = kwargs.get('nn_prefixes')
     # Load test prompts
     with open(conf_test_dir / test_conf) as f:
         prompt_dict = json.load(f)
     assert isinstance(prompt_dict, dict)
 
-    model_loader = LLM(llm_name, gguf_file=gguf_file)
+    model_loader = LLM(llm_name, gguf_file=gguf_file, load_in_4bit=kwargs.get('load_in_4bit', False))
     model = model_loader.get_model()
     tokenizer = model_loader.get_tokenizer()
     print(f"Load Model Complete, Start Loop... (Will fetch {n} supporting models per prompt)")
@@ -72,8 +73,12 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
             prompt = ""
             for pr in prompt_dict[key]['prompt']:
                 prompt += pr + "\n"
-            # Get nn-dataset codes
-            data = nn_dataset.data(only_best_accuracy=True, task=prompt_dict[key]['task']).groupby(by="nn").sample(n=1)
+            # Get nn-dataset codes with SQL-level prefix filtering
+            current_prefixes = nn_prefixes or prompt_dict[key].get('nn_prefixes')
+            if isinstance(current_prefixes, list):
+                current_prefixes = tuple(current_prefixes)
+            data = nn_dataset.data(only_best_accuracy=True, task=prompt_dict[key]['task'], nn_prefixes=current_prefixes)
+            data = data.groupby(by="nn").sample(n=1)
             # Get addon nn-dataset codes
             addon_data = nn_dataset.data(only_best_accuracy=True, task=prompt_dict[key]['addon_task'])
             for _, row in data.iterrows():
@@ -221,7 +226,7 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
                 print("[INFO]Response Invalid!")
                 continue
 
-def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top_k=50):
+def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top_k=50, **kwargs):
     """
     Generate improved neural network models using delta-based approach.
     Similar to alter() but:
@@ -237,8 +242,11 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
         n: Number of supporting models
         temperature: Generation temperature
         top_k: Top-k sampling parameter
+        nn_filter: Optional neural network name to filter for
     """
+    nn_prefixes = kwargs.get('nn_prefixes')
     # Load test prompts
+
     with open(conf_test_dir / test_conf) as f:
         prompt_dict = json.load(f)
     assert isinstance(prompt_dict, dict)
@@ -256,7 +264,7 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
         print("[WARNING] Config file does not have delta mode enabled. Falling back to regular alter().")
         return alter(epochs, test_conf, llm_name, gguf_file, n, temperature, top_k)
 
-    model_loader = LLM(llm_name, gguf_file=gguf_file)
+    model_loader = LLM(llm_name, gguf_file=gguf_file, load_in_4bit=kwargs.get('load_in_4bit', False))
     model = model_loader.get_model()
     tokenizer = model_loader.get_tokenizer()
     print(f"Load Model Complete, Start Loop... (Delta mode enabled)")
@@ -271,8 +279,12 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
             prompt = ""
             for pr in prompt_dict[key]['prompt']:
                 prompt += pr + "\n"
-            # Get nn-dataset codes
-            data = nn_dataset.data(only_best_accuracy=True, task=prompt_dict[key]['task']).groupby(by="nn").sample(n=1)
+            # Get nn-dataset codes with SQL-level prefix filtering
+            current_prefixes = nn_prefixes or prompt_dict[key].get('nn_prefixes')
+            if isinstance(current_prefixes, list):
+                current_prefixes = tuple(current_prefixes)
+            data = nn_dataset.data(only_best_accuracy=True, task=prompt_dict[key]['task'], nn_prefixes=current_prefixes)
+            data = data.groupby(by="nn").sample(n=1)
             # Get addon nn-dataset codes (if addon_task is specified)
             addon_data = None
             if prompt_dict[key].get('addon_task'):
@@ -333,16 +345,18 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
                 return_tensors="pt"
             ).to(model.device)
 
-            outputs = model.generate(
-                inputs,
-                max_new_tokens=64 * 1024,
-                do_sample=True,
-                temperature=temperature,
-                top_k=top_k,
-                top_p=0.95,
-                num_return_sequences=1,
-                eos_token_id=tokenizer.eos_token_id
-            )
+            with torch.no_grad():
+                model.eval()
+                outputs = model.generate(
+                    inputs,
+                    max_new_tokens=64 * 1024,
+                    do_sample=True,
+                    temperature=temperature,
+                    top_k=top_k,
+                    top_p=0.95,
+                    num_return_sequences=1,
+                    eos_token_id=tokenizer.eos_token_id
+                )
             out = tokenizer.decode(outputs[0][len(inputs[0]):], skip_special_tokens=True)
             print("Response Available!")
 
