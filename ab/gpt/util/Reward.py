@@ -3,20 +3,24 @@ from dataclasses import dataclass, asdict, replace
 import atexit
 import ast
 import csv
-import time
 import gc
-import multiprocessing as mp
-from concurrent.futures import ThreadPoolExecutor
 import importlib
+import json
+import multiprocessing as mp
 import os
+from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
+import time
+from concurrent.futures import ThreadPoolExecutor
 
 import torch
+import ab.gpt.rl_pipeline.reward_payload as RewardPayload
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, TensorDataset, Subset
+from torch.utils.data import DataLoader, Subset
 
 
 _NN_DATASET_IMPORT_READY = False
@@ -93,6 +97,47 @@ def _safe_float_env(name: str, default: float) -> float:
 def _env_is_set(name: str) -> bool:
     raw = os.environ.get(name)
     return raw is not None and raw != ""
+
+
+def _optional_positive_int_env(name: str) -> Optional[int]:
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return None
+    try:
+        parsed = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
+FORMAL_MULTI_HORIZON_REWARD_TARGET_METRIC = "formal_multi_horizon_acc"
+DEFAULT_FORMAL_REWARD_EPOCHS: tuple[int, ...] = (1, 5, 10)
+FORMAL_REWARD_SCORE_HORIZONS: tuple[int, ...] = (1, 5, 10)
+
+
+def _parse_formal_reward_epochs(raw: Optional[str]) -> list[int]:
+    parsed_epochs: list[int] = []
+    seen: set[int] = set()
+    for token in str(raw or "").split(","):
+        token = token.strip()
+        if not token:
+            continue
+        try:
+            epoch = int(token)
+        except (TypeError, ValueError):
+            continue
+        if epoch <= 0 or epoch in seen:
+            continue
+        parsed_epochs.append(epoch)
+        seen.add(epoch)
+    if not parsed_epochs:
+        return list(DEFAULT_FORMAL_REWARD_EPOCHS)
+    parsed_epochs.sort()
+    return parsed_epochs
+
+
+def _resolve_formal_reward_epochs() -> list[int]:
+    return _parse_formal_reward_epochs(os.environ.get("NNGPT_RL_FORMAL_REWARD_EPOCHS"))
 
 
 def _visible_cuda_device_tokens() -> Optional[list[str]]:
@@ -337,7 +382,34 @@ def get_reward_worker_plan() -> Dict[str, Any]:
             "is_train_gpu": bool(train_gpu is not None and int(train_gpu) == int(device_index)),
         }
 
-    def _expand_reward_gpu_assignments(per_gpu_worker_counts: list[int]) -> tuple[list[int], list[str]]:
+    def _ordered_reward_gpu_indices(
+        reward_gpu_indices: list[int],
+        gpu_memory_snapshots: list[Dict[str, Any]],
+    ) -> list[int]:
+        snapshot_by_index = {
+            int(snapshot.get("device_index")): snapshot
+            for snapshot in gpu_memory_snapshots
+            if snapshot.get("device_index") is not None
+        }
+
+        def _sort_key(device_index: int) -> tuple[float, float, int, int]:
+            snapshot = snapshot_by_index.get(int(device_index), {})
+            free_gib = snapshot.get("free_gib")
+            used_gib = snapshot.get("used_gib")
+            is_train = int(device_index) == int(train_gpu) if train_gpu is not None else False
+            return (
+                1 if is_train else 0,
+                -float(free_gib) if free_gib is not None else float("inf"),
+                float(used_gib) if used_gib is not None else float("inf"),
+                int(device_index),
+            )
+
+        return sorted((int(device_index) for device_index in reward_gpu_indices), key=_sort_key)
+
+    def _expand_reward_gpu_assignments(
+        per_gpu_worker_counts: list[int],
+        gpu_priority_indices: Optional[list[int]] = None,
+    ) -> tuple[list[int], list[str]]:
         reward_gpu_indices: list[int] = []
         reward_gpu_tokens: list[str] = []
         active_device_indices = [
@@ -345,7 +417,20 @@ def get_reward_worker_plan() -> Dict[str, Any]:
             for device_index, worker_count in enumerate(per_gpu_worker_counts)
             if int(worker_count) > 0
         ]
-        if train_gpu is not None:
+        if gpu_priority_indices:
+            prioritized_device_indices = [
+                int(device_index)
+                for device_index in gpu_priority_indices
+                if 0 <= int(device_index) < len(per_gpu_worker_counts)
+                and int(per_gpu_worker_counts[int(device_index)]) > 0
+            ]
+            remaining_device_indices = [
+                device_index
+                for device_index in active_device_indices
+                if device_index not in set(prioritized_device_indices)
+            ]
+            active_device_indices = prioritized_device_indices + remaining_device_indices
+        elif train_gpu is not None:
             train_device_index = int(train_gpu)
             active_device_indices = [
                 device_index
@@ -405,12 +490,16 @@ def get_reward_worker_plan() -> Dict[str, Any]:
         mode: str,
         per_gpu_worker_counts: list[int],
         dynamic_scaling: bool,
+        gpu_priority_indices: Optional[list[int]] = None,
         gpu_memory_snapshots: Optional[list[Dict[str, Any]]] = None,
         worker_budget_gib: Optional[float] = None,
         reserved_headroom_gib: Optional[float] = None,
         reason: str = "",
     ) -> Dict[str, Any]:
-        reward_gpu_indices, reward_gpu_tokens = _expand_reward_gpu_assignments(per_gpu_worker_counts)
+        reward_gpu_indices, reward_gpu_tokens = _expand_reward_gpu_assignments(
+            per_gpu_worker_counts,
+            gpu_priority_indices=gpu_priority_indices,
+        )
         if not reward_gpu_indices:
             return _cpu_reward_worker_plan(
                 mode=f"{mode}_cpu_fallback",
@@ -474,10 +563,8 @@ def get_reward_worker_plan() -> Dict[str, Any]:
         if free_gib is None:
             return max(0, min(1, max_workers_per_gpu))
         available_gib = max(0.0, float(free_gib) - float(reserved_headroom_gib))
-        worker_budget_gib = max(0.5, float(worker_budget_gib))
+        worker_budget_gib = max(1.0, float(worker_budget_gib))
         worker_count = int(available_gib // worker_budget_gib)
-        if worker_count <= 0 and float(free_gib) >= float(reserved_headroom_gib) + (worker_budget_gib * 0.75):
-            worker_count = 1
         if worker_count > 0:
             worker_count = max(worker_count, int(min_workers_per_gpu))
         return max(0, min(int(max_workers_per_gpu), int(worker_count)))
@@ -515,6 +602,7 @@ def get_reward_worker_plan() -> Dict[str, Any]:
                 reason="configured_reward_gpu_unavailable",
                 gpu_memory_snapshots=gpu_memory_snapshots,
             )
+        gpu_priority_indices = _ordered_reward_gpu_indices(reward_gpu_indices, gpu_memory_snapshots)
         per_gpu_worker_counts = [0] * visible_gpu_count
         for reward_gpu_index in reward_gpu_indices:
             per_gpu_worker_counts[int(reward_gpu_index)] = workers_per_gpu
@@ -527,6 +615,7 @@ def get_reward_worker_plan() -> Dict[str, Any]:
             mode=mode,
             per_gpu_worker_counts=per_gpu_worker_counts,
             dynamic_scaling=False,
+            gpu_priority_indices=gpu_priority_indices,
             gpu_memory_snapshots=gpu_memory_snapshots,
             reason="fixed_workers_override",
         )
@@ -544,6 +633,7 @@ def get_reward_worker_plan() -> Dict[str, Any]:
                 reason="configured_reward_gpu_unavailable",
                 gpu_memory_snapshots=gpu_memory_snapshots,
             )
+        gpu_priority_indices = _ordered_reward_gpu_indices(reward_gpu_indices, gpu_memory_snapshots)
         per_gpu_worker_counts = [0] * visible_gpu_count
         for reward_gpu_index in reward_gpu_indices:
             per_gpu_worker_counts[int(reward_gpu_index)] = 1
@@ -556,24 +646,17 @@ def get_reward_worker_plan() -> Dict[str, Any]:
             mode=mode,
             per_gpu_worker_counts=per_gpu_worker_counts,
             dynamic_scaling=False,
+            gpu_priority_indices=gpu_priority_indices,
             gpu_memory_snapshots=gpu_memory_snapshots,
             reason="dynamic_scaling_disabled",
         )
 
-    reserved_headroom_default = 6.0 if runtime["distributed"] else 4.0
-    worker_budget_default = 18.0 if runtime["distributed"] else 8.0
+    reserved_headroom_default = 0.0
+    worker_budget_default = 15.0
     reserved_headroom_gib = max(0.0, _safe_float_env("NNGPT_REWARD_RESERVED_HEADROOM_GIB", reserved_headroom_default))
     worker_budget_gib = max(1.0, _safe_float_env("NNGPT_REWARD_WORKER_BUDGET_GIB", worker_budget_default))
     default_min_workers = 1 if visible_gpu_count == 1 and not runtime["distributed"] else 0
     min_workers_per_gpu = max(0, _safe_int_env("NNGPT_REWARD_MIN_WORKERS_PER_GPU", default_min_workers))
-    max_workers_per_gpu = max(
-        min_workers_per_gpu,
-        _safe_int_env("NNGPT_REWARD_MAX_WORKERS_PER_GPU", 1),
-    )
-    if distributed_single_process_per_gpu:
-        max_workers_per_gpu = 1
-        min_workers_per_gpu = min(min_workers_per_gpu, max_workers_per_gpu)
-
     reward_gpu_indices = list(configured_reward_gpu_indices)
     gpu_memory_snapshots = [
         _cuda_device_memory_snapshot_gib(index)
@@ -587,6 +670,17 @@ def get_reward_worker_plan() -> Dict[str, Any]:
             worker_budget_gib=worker_budget_gib,
             reserved_headroom_gib=reserved_headroom_gib,
         )
+    gpu_priority_indices = _ordered_reward_gpu_indices(reward_gpu_indices, gpu_memory_snapshots)
+    max_workers_per_gpu = max(
+        min_workers_per_gpu,
+        _safe_int_env(
+            "NNGPT_REWARD_MAX_WORKERS_PER_GPU",
+            1024,
+        ),
+    )
+    if distributed_single_process_per_gpu:
+        max_workers_per_gpu = 1
+        min_workers_per_gpu = min(min_workers_per_gpu, max_workers_per_gpu)
     per_gpu_worker_counts = [0] * visible_gpu_count
     local_worker_counts = [
         _dynamic_reward_workers_for_gpu(
@@ -618,6 +712,7 @@ def get_reward_worker_plan() -> Dict[str, Any]:
         mode=mode,
         per_gpu_worker_counts=per_gpu_worker_counts,
         dynamic_scaling=True,
+        gpu_priority_indices=gpu_priority_indices,
         gpu_memory_snapshots=gpu_memory_snapshots,
         worker_budget_gib=worker_budget_gib,
         reserved_headroom_gib=reserved_headroom_gib,
@@ -1316,60 +1411,28 @@ def _ast_call_target_name(node: ast.Call) -> Optional[str]:
     return None
 
 
-def _cpu_prevalidate_reward_code(
-    code: str,
+def _ast_is_self_method_call(node: ast.Call, method_name: str) -> bool:
+    func = getattr(node, "func", None)
+    if not isinstance(func, ast.Attribute):
+        return False
+    if str(getattr(func, "attr", "")) != str(method_name):
+        return False
+    owner = getattr(func, "value", None)
+    return isinstance(owner, ast.Name) and str(getattr(owner, "id", "")) == "self"
+
+
+def _cpu_prevalidation_failure_result(
     *,
+    reward: float,
+    error_message: str,
+    error_type: Optional[str],
+    error_context: Dict[str, Any],
     seed_accuracy_baseline: Optional[float],
     effective_cfg: "EvalConfig",
-    backbone_model_names: Optional[list[str]] = None,
-) -> Optional[Dict[str, Any]]:
-    text = str(code or "")
-    code_trace = _formal_eval_code_trace(text)
-    error_message: Optional[str] = None
-    error_type = None
-
-    try:
-        tree = ast.parse(text or "")
-    except SyntaxError as exc:
-        error_type = "SyntaxError"
-        error_message = f"SyntaxError: {exc}"
-    else:
-        infer_dimensions_calls = 0
-        infer_dimensions_dynamically_calls = 0
-        bad_dynamic_arg_count = None
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Call):
-                continue
-            target_name = _ast_call_target_name(node)
-            if target_name == "infer_dimensions":
-                infer_dimensions_calls += 1
-            elif target_name == "infer_dimensions_dynamically":
-                infer_dimensions_dynamically_calls += 1
-                explicit_arg_count = len(getattr(node, "args", [])) + len(getattr(node, "keywords", []))
-                if explicit_arg_count != 1 and bad_dynamic_arg_count is None:
-                    bad_dynamic_arg_count = explicit_arg_count
-
-        if infer_dimensions_calls > 0:
-            error_type = "AttributeError"
-            error_message = "AttributeError: 'Net' object has no attribute 'infer_dimensions'"
-        elif bad_dynamic_arg_count is not None:
-            error_type = "TypeError"
-            error_message = (
-                "TypeError: Net.infer_dimensions_dynamically() takes 2 positional arguments "
-                f"but {bad_dynamic_arg_count + 1} were given"
-            )
-        elif infer_dimensions_dynamically_calls <= 0:
-            error_type = "RuntimeError"
-            error_message = "RuntimeError: Net.__init__ must call self.infer_dimensions_dynamically(out_shape[0])"
-        elif not bool(code_trace.get("assigns_input_spec")):
-            error_type = "AttributeError"
-            error_message = "AttributeError: 'Net' object has no attribute '_input_spec'"
-
-    if error_message is None:
-        return None
-
+    backbone_model_names: Optional[list[str]],
+) -> Dict[str, Any]:
     result = _empty_eval_result(
-        reward=-1.0,
+        reward=reward,
         error=error_message,
         seed_accuracy_baseline=seed_accuracy_baseline,
         eval_limit_seconds=_effective_eval_limit_seconds(effective_cfg),
@@ -1379,11 +1442,8 @@ def _cpu_prevalidate_reward_code(
         result,
         error_type=error_type,
         error_stage="cpu_prevalidate",
-        error_context={"code_trace": code_trace},
-        error_hint=_infer_error_hint(
-            error_message=error_message,
-            context={"code_trace": code_trace},
-        ),
+        error_context=error_context,
+        error_hint=_infer_error_hint(error_message=error_message, context=error_context),
     )
     result["frozen_eval"] = _nested_eval_payload(
         result,
@@ -1399,6 +1459,167 @@ def _cpu_prevalidate_reward_code(
     return result
 
 
+def _cpu_smoke_prevalidate_reward_code(
+    code: str,
+    *,
+    seed_accuracy_baseline: Optional[float],
+    effective_cfg: "EvalConfig",
+    backbone_model_names: Optional[list[str]],
+    prm: Optional[Dict[str, Any]],
+    code_trace: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    if not bool(getattr(effective_cfg, "formal_nn_eval", False)):
+        return None
+    if not _safe_bool_env("NNGPT_RL_CPU_SMOKE_PREVALIDATE", True):
+        return None
+
+    input_shape = tuple(getattr(effective_cfg, "input_shape", (1, 3, 32, 32)))
+    if len(input_shape) != 4:
+        return None
+    cpu_input_shape = (1, int(input_shape[1]), int(input_shape[2]), int(input_shape[3]))
+    safe_prm = {
+        "lr": 1e-2,
+        "momentum": 0.9,
+        "batch": max(1, min(2, int(getattr(effective_cfg, "default_batch_size", 2) or 2))),
+        "epoch": 1,
+        "transform": None,
+        **dict(prm or {}),
+    }
+    safe_prm["batch"] = max(1, min(2, int(safe_prm.get("batch", 2) or 2)))
+    safe_prm["epoch"] = 1
+
+    model = None
+    smoke_context = {
+        "code_trace": code_trace,
+        "cpu_smoke": True,
+        "cpu_smoke_input_shape": cpu_input_shape,
+    }
+    original_cuda_is_available = getattr(torch.cuda, "is_available", None)
+    original_cuda_device_count = getattr(torch.cuda, "device_count", None)
+    try:
+        if callable(original_cuda_is_available):
+            torch.cuda.is_available = lambda: False  # type: ignore[method-assign]
+        if callable(original_cuda_device_count):
+            torch.cuda.device_count = lambda: 0  # type: ignore[method-assign]
+        builder = build_fn_from_code(
+            code,
+            cpu_input_shape,
+            (int(getattr(effective_cfg, "n_classes", 10)),),
+            safe_prm,
+            "cpu",
+        )
+        model = builder()
+        if not isinstance(model, nn.Module):
+            raise RuntimeError("Net did not instantiate as torch.nn.Module")
+        model.to("cpu")
+        train_setup = getattr(model, "train_setup", None)
+        if callable(train_setup):
+            train_setup(safe_prm)
+        forward_input = torch.randn(*cpu_input_shape, device="cpu")
+        with torch.no_grad():
+            output = model(forward_input)
+        smoke_context["cpu_smoke_output_shape"] = tuple(output.shape) if hasattr(output, "shape") else None
+    except Exception as exc:
+        error_type = type(exc).__name__
+        error_message = f"{error_type}: {exc}"
+        return _cpu_prevalidation_failure_result(
+            reward=-3.0,
+            error_message=error_message,
+            error_type=error_type,
+            error_context=smoke_context,
+            seed_accuracy_baseline=seed_accuracy_baseline,
+            effective_cfg=effective_cfg,
+            backbone_model_names=backbone_model_names,
+        )
+    finally:
+        if callable(original_cuda_is_available):
+            torch.cuda.is_available = original_cuda_is_available  # type: ignore[method-assign]
+        if callable(original_cuda_device_count):
+            torch.cuda.device_count = original_cuda_device_count  # type: ignore[method-assign]
+        if model is not None:
+            try:
+                model.to("cpu")
+            except Exception:
+                pass
+            del model
+        gc.collect()
+    return None
+
+
+def _cpu_prevalidate_reward_code(
+    code: str,
+    *,
+    seed_accuracy_baseline: Optional[float],
+    effective_cfg: "EvalConfig",
+    backbone_model_names: Optional[list[str]] = None,
+    prm: Optional[Dict[str, Any]] = None,
+) -> Optional[Dict[str, Any]]:
+    text = str(code or "")
+    code_trace = _formal_eval_code_trace(text)
+    error_message: Optional[str] = None
+    error_type = None
+
+    try:
+        tree = ast.parse(text or "")
+    except SyntaxError as exc:
+        error_type = "SyntaxError"
+        error_message = f"SyntaxError: {exc}"
+    else:
+        infer_dimensions_calls = 0
+        infer_dimensions_dynamically_calls = 0
+        bad_dynamic_arg_count = None
+        valid_self_dynamic_calls = 0
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            target_name = _ast_call_target_name(node)
+            if target_name == "infer_dimensions":
+                infer_dimensions_calls += 1
+            elif target_name == "infer_dimensions_dynamically":
+                infer_dimensions_dynamically_calls += 1
+                explicit_arg_count = len(getattr(node, "args", [])) + len(getattr(node, "keywords", []))
+                if explicit_arg_count != 1 and bad_dynamic_arg_count is None:
+                    bad_dynamic_arg_count = explicit_arg_count
+                elif _ast_is_self_method_call(node, "infer_dimensions_dynamically"):
+                    valid_self_dynamic_calls += 1
+
+        if infer_dimensions_calls > 0:
+            error_type = "AttributeError"
+            error_message = "AttributeError: 'Net' object has no attribute 'infer_dimensions'"
+        elif bad_dynamic_arg_count is not None:
+            error_type = "TypeError"
+            error_message = (
+                "TypeError: Net.infer_dimensions_dynamically() takes 2 positional arguments "
+                f"but {bad_dynamic_arg_count + 1} were given"
+            )
+        elif infer_dimensions_dynamically_calls <= 0 or valid_self_dynamic_calls <= 0:
+            error_type = "RuntimeError"
+            error_message = "RuntimeError: Net.__init__ must call self.infer_dimensions_dynamically(...)"
+        elif not bool(code_trace.get("assigns_input_spec")):
+            error_type = "AttributeError"
+            error_message = "AttributeError: 'Net' object has no attribute '_input_spec'"
+
+    if error_message is not None:
+        return _cpu_prevalidation_failure_result(
+            reward=-1.0,
+            error_message=error_message,
+            error_type=error_type,
+            error_context={"code_trace": code_trace},
+            seed_accuracy_baseline=seed_accuracy_baseline,
+            effective_cfg=effective_cfg,
+            backbone_model_names=backbone_model_names,
+        )
+
+    return _cpu_smoke_prevalidate_reward_code(
+        text,
+        seed_accuracy_baseline=seed_accuracy_baseline,
+        effective_cfg=effective_cfg,
+        backbone_model_names=backbone_model_names,
+        prm=prm,
+        code_trace=code_trace,
+    )
+
+
 def _infer_error_hint(
     *,
     error_message: Optional[str],
@@ -1411,6 +1632,8 @@ def _infer_error_hint(
         if code_trace.get("references_input_spec") and not code_trace.get("assigns_input_spec"):
             return "generated Net references self._input_spec but never assigns it in __init__"
         return "generated Net is missing self._input_spec before downstream shape inference"
+    if "must call self.infer_dimensions_dynamically" in normalized:
+        return "generated Net never calls self.infer_dimensions_dynamically(...) from __init__ before classifier probing"
     if "unknown model" in normalized:
         return "one of the selected backbone names is not available in the TorchVision wrapper"
     if "accuracyexception" in normalized:
@@ -1447,51 +1670,12 @@ def _base_eval_result(
     eval_limit_seconds: Optional[int] = None,
     backbone_model_names: Optional[list[str]] = None,
 ) -> Dict[str, Any]:
-    return {
-        "val_metric": None,
-        "test_acc": None,
-        "built_ok": False,
-        "forward_ok": False,
-        "forward_shape_ok": False,
-        "trained_step_ok": False,
-        "backward_ok": False,
-        "loss_start": None,
-        "loss_end": None,
-        "loss_drop": None,
-        "loss_drop_ok": False,
-        "train_acc": None,
-        "seed_accuracy_baseline": seed_accuracy_baseline,
-        "seed_train_acc_gap": None,
-        "seed_train_acc_improved": False,
-        "accuracy_baseline": seed_accuracy_baseline,
-        "train_acc_gain": None,
-        "train_acc_improved": False,
-        "group_baseline_train_acc": None,
-        "group_train_acc_gain": None,
-        "group_train_acc_improved": False,
-        "reward_batch_index": None,
-        "reward_group_id": None,
-        "group_warmup": False,
-        "latency_ms": None,
-        "params_m": None,
-        "timed_out": False,
-        "estimated_total_seconds": None,
-        "eval_limit_seconds": eval_limit_seconds,
-        "warmup_dense_reward": None,
-        "backbone_model_names": list(backbone_model_names or []),
-        "frozen_train_acc": None,
-        "frozen_test_acc": None,
-        "unfrozen_train_acc": None,
-        "unfrozen_test_acc": None,
-        "frozen_eval": None,
-        "unfrozen_eval": None,
-        "reward_target_metric": "frozen_test_acc",
-        "reward_target_value": None,
-        "error_type": None,
-        "error_stage": None,
-        "error_context": None,
-        "error_hint": None,
-    }
+    return RewardPayload.base_eval_result(
+        seed_accuracy_baseline=seed_accuracy_baseline,
+        eval_limit_seconds=eval_limit_seconds,
+        backbone_model_names=backbone_model_names,
+        formal_reward_epochs=DEFAULT_FORMAL_REWARD_EPOCHS,
+    )
 
 
 def _nested_eval_payload(
@@ -1500,40 +1684,11 @@ def _nested_eval_payload(
     eval_mode: str,
     backbone_frozen: bool,
 ) -> Optional[Dict[str, Any]]:
-    if result is None:
-        return None
-    return {
-        "eval_mode": eval_mode,
-        "backbone_frozen": backbone_frozen,
-        "reward": result.get("reward"),
-        "components": dict(result.get("components") or {}),
-        "built_ok": result.get("built_ok"),
-        "forward_ok": result.get("forward_ok"),
-        "forward_shape_ok": result.get("forward_shape_ok"),
-        "trained_step_ok": result.get("trained_step_ok"),
-        "backward_ok": result.get("backward_ok"),
-        "loss_start": result.get("loss_start"),
-        "loss_end": result.get("loss_end"),
-        "loss_drop": result.get("loss_drop"),
-        "loss_drop_ok": result.get("loss_drop_ok"),
-        "train_acc": result.get("train_acc"),
-        "test_acc": result.get("test_acc", result.get("val_metric")),
-        "val_metric": result.get("val_metric"),
-        "latency_ms": result.get("latency_ms"),
-        "params_m": result.get("params_m"),
-        "timed_out": result.get("timed_out", False),
-        "estimated_total_seconds": result.get("estimated_total_seconds"),
-        "eval_limit_seconds": result.get("eval_limit_seconds"),
-        "backbone_model_names": list(result.get("backbone_model_names") or []),
-        "seed_accuracy_baseline": result.get("seed_accuracy_baseline"),
-        "seed_train_acc_gap": result.get("seed_train_acc_gap"),
-        "seed_train_acc_improved": result.get("seed_train_acc_improved"),
-        "error": result.get("error"),
-        "error_type": result.get("error_type"),
-        "error_stage": result.get("error_stage"),
-        "error_context": dict(result.get("error_context") or {}) if result.get("error_context") is not None else None,
-        "error_hint": result.get("error_hint"),
-    }
+    return RewardPayload.nested_eval_payload(
+        result,
+        eval_mode=eval_mode,
+        backbone_frozen=backbone_frozen,
+    )
 
 
 def _merge_dual_eval_results(
@@ -1542,39 +1697,13 @@ def _merge_dual_eval_results(
     unfrozen_result: Optional[Dict[str, Any]],
     cfg: "EvalConfig",
 ) -> Dict[str, Any]:
-    merged = dict(frozen_result)
-    frozen_train_acc = frozen_result.get("train_acc")
-    frozen_test_acc = frozen_result.get("test_acc", frozen_result.get("val_metric"))
-    reward_target_metric = str(getattr(cfg, "reward_target_metric", "frozen_test_acc") or "frozen_test_acc")
-    if reward_target_metric not in {"frozen_test_acc", "frozen_train_acc"}:
-        reward_target_metric = "frozen_test_acc"
-
-    if reward_target_metric == "frozen_test_acc":
-        reward_target_value = frozen_test_acc
-    else:
-        reward_target_value = frozen_train_acc
-
-    merged.update(
-        {
-            "test_acc": frozen_test_acc,
-            "train_acc": frozen_train_acc,
-            "val_metric": frozen_test_acc,
-            "frozen_train_acc": frozen_train_acc,
-            "frozen_test_acc": frozen_test_acc,
-            "unfrozen_train_acc": None,
-            "unfrozen_test_acc": None,
-            "frozen_eval": _nested_eval_payload(
-                frozen_result,
-                eval_mode="frozen",
-                backbone_frozen=True,
-            ),
-            "unfrozen_eval": None,
-            "reward_target_metric": reward_target_metric,
-            "reward_target_value": reward_target_value,
-        }
+    return RewardPayload.merge_dual_eval_results(
+        frozen_result=frozen_result,
+        unfrozen_result=unfrozen_result,
+        reward_target_metric=str(getattr(cfg, "reward_target_metric", "frozen_test_acc") or "frozen_test_acc"),
+        formal_multi_horizon_reward_target_metric=FORMAL_MULTI_HORIZON_REWARD_TARGET_METRIC,
+        coerce_optional_metric_float=_coerce_optional_metric_float,
     )
-    return merged
-
 
 def _request_timeout_seconds(cfg: "EvalConfig") -> float:
     base_timeout = float(_effective_eval_limit_seconds(cfg))
@@ -1620,11 +1749,22 @@ def _adapt_formal_eval_inputs_for_worker(
     cfg: "EvalConfig",
     prm: Dict[str, Any],
 ) -> tuple["EvalConfig", Dict[str, Any]]:
-    # Keep the configured formal-eval batch unchanged. The previous heuristic
-    # probed live worker memory and preemptively shrank batch / disabled
-    # unfrozen eval, which was both noisy and misleading in single-process
-    # reward setups. We still retain the actual CUDA OOM retry path below.
-    return cfg, dict(prm)
+    next_cfg = cfg
+    next_prm = dict(prm)
+
+    batch_override = _optional_positive_int_env("NNGPT_RL_FORMAL_BATCH_SIZE")
+    if batch_override is not None:
+        next_cfg, next_prm = _replace_eval_batch_size(
+            next_cfg,
+            next_prm,
+            batch_size=batch_override,
+        )
+
+    num_workers_override = _optional_positive_int_env("NNGPT_RL_FORMAL_NUM_WORKERS")
+    if num_workers_override is not None:
+        next_prm["num_workers"] = int(num_workers_override)
+
+    return next_cfg, next_prm
 
 
 def _run_formal_eval_with_backoff(
@@ -1641,20 +1781,41 @@ def _run_formal_eval_with_backoff(
         1,
         int(active_prm.get("batch", getattr(active_cfg, "default_batch_size", 32)) or 32),
     )
-    attempt_cfg, attempt_prm = _replace_eval_batch_size(
-        active_cfg,
-        active_prm,
-        batch_size=attempt_batch_size,
+    min_batch_size = max(
+        1,
+        int(_optional_positive_int_env("NNGPT_RL_FORMAL_MIN_BATCH_SIZE") or 4),
     )
-    result = _formal_eval_with_nn_dataset(
-        code,
-        prm=attempt_prm,
-        cfg=attempt_cfg,
-        freeze_backbones=freeze_backbones,
-        seed_accuracy_baseline=seed_accuracy_baseline,
-        backbone_model_names=backbone_model_names,
-    )
-    return result, attempt_cfg, attempt_prm
+
+    while True:
+        attempt_cfg, attempt_prm = _replace_eval_batch_size(
+            active_cfg,
+            active_prm,
+            batch_size=attempt_batch_size,
+        )
+        result = _formal_eval_with_nn_dataset(
+            code,
+            prm=attempt_prm,
+            cfg=attempt_cfg,
+            freeze_backbones=freeze_backbones,
+            seed_accuracy_baseline=seed_accuracy_baseline,
+            backbone_model_names=backbone_model_names,
+        )
+        if not _is_cuda_oom_error_message(result.get("error")):
+            return result, attempt_cfg, attempt_prm
+
+        next_batch_size = _halve_batch_size(
+            attempt_batch_size,
+            min_batch_size=min_batch_size,
+        )
+        if next_batch_size is None:
+            return result, attempt_cfg, attempt_prm
+
+        print(
+            "[Formal Eval Retry] CUDA OOM during formal eval, "
+            f"retrying with batch {attempt_batch_size} -> {next_batch_size}",
+            flush=True,
+        )
+        attempt_batch_size = next_batch_size
 
 
 def _preview_eval_request(
@@ -1681,6 +1842,7 @@ def _preview_eval_request(
         seed_accuracy_baseline=seed_accuracy_baseline,
         effective_cfg=effective_cfg,
         backbone_model_names=backbone_model_names,
+        prm=prm,
     )
     return {
         "requested_device": requested_device,
@@ -1780,16 +1942,6 @@ def _count_params_m(model: nn.Module) -> float:
     return sum(p.numel() for p in model.parameters()) / 1e6
 
 
-def _freeze_dual_backbones(model: nn.Module) -> None:
-    for backbone_name in ("backbone_a", "backbone_b"):
-        backbone = getattr(model, backbone_name, None)
-        if backbone is None:
-            continue
-        for param in backbone.parameters():
-            param.requires_grad = False
-        backbone.eval()
-
-
 def _set_dual_backbones_trainable(model: nn.Module, *, freeze_backbones: bool) -> None:
     for backbone_name in ("backbone_a", "backbone_b"):
         backbone = getattr(model, backbone_name, None)
@@ -1847,23 +1999,6 @@ def _quick_forward(
         }
 
 
-def _toy_loader(
-    n: int = 128,
-    input_shape: Tuple[int, int, int, int] = (2, 3, 32, 32),
-    n_classes: int = 10,
-    device: str = "cpu",
-    batch_size: int = 16
-) -> DataLoader:
-    """
-    Fallback DataLoader with random data for quick sanity train/val.
-    """
-    N = max(n, batch_size)
-    x = torch.randn((N,) + input_shape[1:], device=device)
-    y = torch.randint(0, n_classes, (N,), device=device)
-    ds = TensorDataset(x, y)
-    return DataLoader(ds, batch_size=batch_size, shuffle=True)
-
-
 def _train_steps(
     model: nn.Module,
     train_loader: DataLoader,
@@ -1884,6 +2019,8 @@ def _train_steps(
     loss_start = None
     loss_end = None
     steps_completed = 0
+    epoch_loss_series: list[float] = []
+    epochs_completed = 0
     try:
         trainable_params = _trainable_parameters(model)
         if not trainable_params:
@@ -1895,6 +2032,12 @@ def _train_steps(
                 "loss_drop": None,
                 "loss_drop_ok": False,
                 "steps_completed": 0,
+                "best_epoch_loss": None,
+                "avg_epoch_loss": None,
+                "epochs_completed": 0,
+                "epoch_loss_series": [],
+                "training_context_metric_name": "best_epoch_loss",
+                "training_context_metric_value": None,
                 "error": "RuntimeError: no trainable parameters remain after freezing backbones",
             }
         opt = torch.optim.SGD(trainable_params, lr=1e-3, momentum=0.9)
@@ -1903,6 +2046,8 @@ def _train_steps(
         effective_max_steps = None if max_steps is None or int(max_steps) <= 0 else int(max_steps)
         stop_early = False
         for _epoch_index in range(effective_epochs):
+            epoch_loss_sum = 0.0
+            epoch_step_count = 0
             for x, y in train_loader:
                 if time_budget is not None:
                     try:
@@ -1917,6 +2062,18 @@ def _train_steps(
                                 "loss_drop": None if loss_start is None or loss_end is None else float(loss_start - loss_end),
                                 "loss_drop_ok": False,
                                 "steps_completed": steps_completed,
+                                "best_epoch_loss": min(epoch_loss_series) if epoch_loss_series else None,
+                                "avg_epoch_loss": (
+                                    float(sum(epoch_loss_series) / len(epoch_loss_series))
+                                    if epoch_loss_series
+                                    else None
+                                ),
+                                "epochs_completed": epochs_completed,
+                                "epoch_loss_series": list(epoch_loss_series),
+                                "training_context_metric_name": "best_epoch_loss",
+                                "training_context_metric_value": (
+                                    min(epoch_loss_series) if epoch_loss_series else None
+                                ),
                             }
                         )
                         raise
@@ -1933,6 +2090,16 @@ def _train_steps(
                         "loss_drop": None,
                         "loss_drop_ok": False,
                         "steps_completed": steps_completed,
+                        "best_epoch_loss": min(epoch_loss_series) if epoch_loss_series else None,
+                        "avg_epoch_loss": (
+                            float(sum(epoch_loss_series) / len(epoch_loss_series))
+                            if epoch_loss_series
+                            else None
+                        ),
+                        "epochs_completed": epochs_completed,
+                        "epoch_loss_series": list(epoch_loss_series),
+                        "training_context_metric_name": "best_epoch_loss",
+                        "training_context_metric_value": min(epoch_loss_series) if epoch_loss_series else None,
                         "error": f"RuntimeError: logits must be (N, C), got {tuple(logits.shape) if hasattr(logits, 'shape') else type(logits)}",
                     }
                 if logits.shape[0] != y.shape[0] or logits.shape[1] != n_classes:
@@ -1944,6 +2111,16 @@ def _train_steps(
                         "loss_drop": None,
                         "loss_drop_ok": False,
                         "steps_completed": steps_completed,
+                        "best_epoch_loss": min(epoch_loss_series) if epoch_loss_series else None,
+                        "avg_epoch_loss": (
+                            float(sum(epoch_loss_series) / len(epoch_loss_series))
+                            if epoch_loss_series
+                            else None
+                        ),
+                        "epochs_completed": epochs_completed,
+                        "epoch_loss_series": list(epoch_loss_series),
+                        "training_context_metric_name": "best_epoch_loss",
+                        "training_context_metric_value": min(epoch_loss_series) if epoch_loss_series else None,
                         "error": f"RuntimeError: logits shape {tuple(logits.shape)} incompatible with labels {tuple(y.shape)} / classes {n_classes}",
                     }
                 loss = criterion(logits, y)
@@ -1956,11 +2133,23 @@ def _train_steps(
                         "loss_drop": None,
                         "loss_drop_ok": False,
                         "steps_completed": steps_completed,
+                        "best_epoch_loss": min(epoch_loss_series) if epoch_loss_series else None,
+                        "avg_epoch_loss": (
+                            float(sum(epoch_loss_series) / len(epoch_loss_series))
+                            if epoch_loss_series
+                            else None
+                        ),
+                        "epochs_completed": epochs_completed,
+                        "epoch_loss_series": list(epoch_loss_series),
+                        "training_context_metric_name": "best_epoch_loss",
+                        "training_context_metric_value": min(epoch_loss_series) if epoch_loss_series else None,
                         "error": "RuntimeError: loss is NaN or Inf",
                     }
                 loss_value = float(loss.detach().item())
                 if loss_start is None:
                     loss_start = loss_value
+                epoch_loss_sum += loss_value
+                epoch_step_count += 1
                 loss.backward()
                 opt.step()
                 loss_end = loss_value
@@ -1978,12 +2167,27 @@ def _train_steps(
                                 "loss_drop": None if loss_start is None or loss_end is None else float(loss_start - loss_end),
                                 "loss_drop_ok": False,
                                 "steps_completed": steps_completed,
+                                "best_epoch_loss": min(epoch_loss_series) if epoch_loss_series else None,
+                                "avg_epoch_loss": (
+                                    float(sum(epoch_loss_series) / len(epoch_loss_series))
+                                    if epoch_loss_series
+                                    else None
+                                ),
+                                "epochs_completed": epochs_completed,
+                                "epoch_loss_series": list(epoch_loss_series),
+                                "training_context_metric_name": "best_epoch_loss",
+                                "training_context_metric_value": (
+                                    min(epoch_loss_series) if epoch_loss_series else None
+                                ),
                             }
                         )
                         raise
                 if effective_max_steps is not None and steps_completed >= effective_max_steps:
                     stop_early = True
                     break
+            if epoch_step_count > 0:
+                epoch_loss_series.append(float(epoch_loss_sum / float(epoch_step_count)))
+                epochs_completed += 1
             if stop_early:
                 break
         if steps_completed == 0 or loss_start is None or loss_end is None:
@@ -1995,11 +2199,27 @@ def _train_steps(
                 "loss_drop": None,
                 "loss_drop_ok": False,
                 "steps_completed": steps_completed,
+                "best_epoch_loss": min(epoch_loss_series) if epoch_loss_series else None,
+                "avg_epoch_loss": (
+                    float(sum(epoch_loss_series) / len(epoch_loss_series))
+                    if epoch_loss_series
+                    else None
+                ),
+                "epochs_completed": epochs_completed,
+                "epoch_loss_series": list(epoch_loss_series),
+                "training_context_metric_name": "best_epoch_loss",
+                "training_context_metric_value": min(epoch_loss_series) if epoch_loss_series else None,
                 "error": "RuntimeError: no training steps completed",
             }
         loss_drop = float(loss_start - loss_end)
         rel_drop_ok = loss_start > 0.0 and (loss_end <= loss_start * 0.98)
         loss_drop_ok = bool(loss_end < (loss_start - 1e-3) or rel_drop_ok)
+        best_epoch_loss = min(epoch_loss_series) if epoch_loss_series else loss_end
+        avg_epoch_loss = (
+            float(sum(epoch_loss_series) / len(epoch_loss_series))
+            if epoch_loss_series
+            else loss_end
+        )
         return {
             "backward_ok": True,
             "trained_step_ok": True,
@@ -2008,6 +2228,12 @@ def _train_steps(
             "loss_drop": loss_drop,
             "loss_drop_ok": loss_drop_ok,
             "steps_completed": steps_completed,
+            "best_epoch_loss": best_epoch_loss,
+            "avg_epoch_loss": avg_epoch_loss,
+            "epochs_completed": epochs_completed,
+            "epoch_loss_series": list(epoch_loss_series),
+            "training_context_metric_name": "best_epoch_loss",
+            "training_context_metric_value": best_epoch_loss,
         }
     except EvalTimeException:
         raise
@@ -2020,6 +2246,16 @@ def _train_steps(
             "loss_drop": None if loss_start is None or loss_end is None else float(loss_start - loss_end),
             "loss_drop_ok": False,
             "steps_completed": steps_completed,
+            "best_epoch_loss": min(epoch_loss_series) if epoch_loss_series else None,
+            "avg_epoch_loss": (
+                float(sum(epoch_loss_series) / len(epoch_loss_series))
+                if epoch_loss_series
+                else None
+            ),
+            "epochs_completed": epochs_completed,
+            "epoch_loss_series": list(epoch_loss_series),
+            "training_context_metric_name": "best_epoch_loss",
+            "training_context_metric_value": min(epoch_loss_series) if epoch_loss_series else None,
             "error": f"{type(exc).__name__}: {exc}",
         }
 
@@ -2214,6 +2450,7 @@ def _build_effective_eval_cfg(
         critic_fn=None,
         weights=None,
     )
+    base_reward_target_metric = str(getattr(base_cfg, "reward_target_metric", "frozen_test_acc") or "frozen_test_acc")
     return replace(
         base_cfg,
         device=device,
@@ -2230,11 +2467,14 @@ def _build_effective_eval_cfg(
         ),
         run_unfrozen_backbone_eval=False,
         reward_target_metric=(
-            str(getattr(base_cfg, "reward_target_metric", "frozen_test_acc") or "frozen_test_acc")
+            base_reward_target_metric
             if bool(getattr(base_cfg, "static_only", False))
+            else FORMAL_MULTI_HORIZON_REWARD_TARGET_METRIC
+            if bool(getattr(base_cfg, "formal_nn_eval", False))
+            and base_reward_target_metric == FORMAL_MULTI_HORIZON_REWARD_TARGET_METRIC
             else (
                 "frozen_train_acc"
-                if str(getattr(base_cfg, "reward_target_metric", "frozen_test_acc") or "frozen_test_acc") == "frozen_train_acc"
+                if base_reward_target_metric == "frozen_train_acc"
                 else "frozen_test_acc"
             )
         ),
@@ -2378,24 +2618,440 @@ def _restore_nn_dataset_dataroll_patch(patch_token: Optional[Tuple[type, Any, An
     data_roll_cls.__next__ = original_next
 
 
-def _formal_first_batch_loss(trainer: Any, prm: Dict[str, Any]) -> Optional[float]:
+def _patch_nn_dataset_loader_utils_for_reward() -> Optional[Dict[str, Any]]:
     try:
-        trainer.model.train_setup(prm)
-        trainer.model.eval()
-        batch = next(iter(trainer.train_loader))
-        inputs, labels = batch
-        inputs = inputs.to(trainer.device)
-        labels = labels.to(trainer.device)
-        outputs = trainer.model(inputs)
-        criterion = getattr(trainer.model, "criterion", None)
-        if criterion is None:
-            criterion = nn.CrossEntropyLoss().to(trainer.device)
-        loss = criterion(outputs, labels)
-        if not torch.isfinite(loss):
-            return None
-        return float(loss.detach().item())
+        import ab.nn.util.Train as nn_train  # type: ignore
+        import ab.nn.util.Util as nn_util  # type: ignore
     except Exception:
         return None
+
+    original_train_loader = getattr(nn_train, "train_loader_f", None)
+    original_test_loader = getattr(nn_train, "test_loader_f", None)
+    original_util_train_loader = getattr(nn_util, "train_loader_f", None)
+    original_util_test_loader = getattr(nn_util, "test_loader_f", None)
+    if (
+        original_train_loader is None
+        or original_test_loader is None
+        or original_util_train_loader is None
+        or original_util_test_loader is None
+    ):
+        return None
+
+    pin_memory = bool(torch.cuda.is_available()) and _safe_bool_env(
+        "NNGPT_RL_FORMAL_PIN_MEMORY",
+        True,
+    )
+    persistent_workers = _safe_bool_env(
+        "NNGPT_RL_FORMAL_PERSISTENT_WORKERS",
+        True,
+    )
+    prefetch_factor = _optional_positive_int_env("NNGPT_RL_FORMAL_PREFETCH_FACTOR")
+
+    def _resolved_num_workers(dataset: Any, default_num_workers: int) -> int:
+        value = getattr(dataset, "num_workers", default_num_workers)
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            parsed = int(default_num_workers or 0)
+        return max(0, parsed)
+
+    def _build_loader(dataset: Any, batch: int, num_workers: int, *, shuffle: bool) -> DataLoader:
+        resolved_num_workers = _resolved_num_workers(dataset, num_workers)
+        loader_kwargs: Dict[str, Any] = {
+            "batch_size": batch,
+            "shuffle": shuffle,
+            "num_workers": resolved_num_workers,
+            "collate_fn": getattr(dataset, "collate_fn", None),
+        }
+        if pin_memory:
+            loader_kwargs["pin_memory"] = True
+        if resolved_num_workers > 0:
+            if persistent_workers:
+                loader_kwargs["persistent_workers"] = True
+            if prefetch_factor is not None:
+                loader_kwargs["prefetch_factor"] = max(1, int(prefetch_factor))
+        return DataLoader(dataset, **loader_kwargs)
+
+    def _train_loader(dataset: Any, batch: int, num_workers: int) -> DataLoader:
+        return _build_loader(dataset, batch, num_workers, shuffle=True)
+
+    def _test_loader(dataset: Any, batch: int, num_workers: int) -> DataLoader:
+        return _build_loader(dataset, batch, num_workers, shuffle=False)
+
+    nn_train.train_loader_f = _train_loader
+    nn_train.test_loader_f = _test_loader
+    nn_util.train_loader_f = _train_loader
+    nn_util.test_loader_f = _test_loader
+    return {
+        "nn_train": nn_train,
+        "nn_util": nn_util,
+        "train_loader_f": original_train_loader,
+        "test_loader_f": original_test_loader,
+        "util_train_loader_f": original_util_train_loader,
+        "util_test_loader_f": original_util_test_loader,
+    }
+
+
+def _restore_nn_dataset_loader_utils_patch(patch_token: Optional[Dict[str, Any]]) -> None:
+    if not isinstance(patch_token, dict):
+        return
+    nn_train = patch_token.get("nn_train")
+    nn_util = patch_token.get("nn_util")
+    if nn_train is not None:
+        nn_train.train_loader_f = patch_token.get("train_loader_f")
+        nn_train.test_loader_f = patch_token.get("test_loader_f")
+    if nn_util is not None:
+        nn_util.train_loader_f = patch_token.get("util_train_loader_f")
+        nn_util.test_loader_f = patch_token.get("util_test_loader_f")
+
+
+def _configure_formal_eval_cuda_backend(device: str) -> Optional[Dict[str, Any]]:
+    if (not torch.cuda.is_available()) or (not str(device).startswith("cuda")):
+        return None
+
+    previous_state = {
+        "cudnn_benchmark": bool(torch.backends.cudnn.benchmark),
+    }
+    if _safe_bool_env("NNGPT_RL_FORMAL_CUDNN_BENCHMARK", True):
+        torch.backends.cudnn.benchmark = True
+    return previous_state
+
+
+def _restore_formal_eval_cuda_backend(state: Optional[Dict[str, Any]]) -> None:
+    if not isinstance(state, dict):
+        return
+    try:
+        torch.backends.cudnn.benchmark = bool(state.get("cudnn_benchmark", False))
+    except Exception:
+        pass
+
+
+def _coerce_optional_metric_float(value: Any) -> Optional[float]:
+    try:
+        if value is None:
+            return None
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if parsed != parsed or parsed in {float("inf"), float("-inf")}:
+        return None
+    return parsed
+
+
+def _formal_epoch_stat_sort_key(path: Path) -> tuple[int, Any]:
+    try:
+        return 0, int(path.stem)
+    except (TypeError, ValueError):
+        return 1, path.name
+
+
+def _extract_formal_epoch_stat_record(payload: Any) -> Optional[Dict[str, Any]]:
+    if isinstance(payload, dict):
+        return payload
+    if isinstance(payload, list):
+        for item in payload:
+            if isinstance(item, dict):
+                return item
+    return None
+
+
+def _formal_empty_horizon_summary(*, epochs_completed_for_horizon: int = 0) -> Dict[str, Any]:
+    return {
+        "test_acc": None,
+        "train_acc": None,
+        "best_epoch_loss": None,
+        "avg_epoch_loss": None,
+        "loss_drop": None,
+        "epochs_completed_for_horizon": int(max(0, epochs_completed_for_horizon)),
+        "reached_horizon": False,
+    }
+
+
+def _formal_horizon_summary(epoch_rows: list[Dict[str, Any]], horizon: int) -> Dict[str, Any]:
+    relevant_rows = [
+        dict(item)
+        for item in epoch_rows
+        if int(item.get("epoch", 0) or 0) <= int(horizon)
+    ]
+    epochs_completed_for_horizon = max(
+        [int(item.get("epoch", 0) or 0) for item in relevant_rows],
+        default=0,
+    )
+    if horizon <= 0 or epochs_completed_for_horizon < int(horizon):
+        return _formal_empty_horizon_summary(
+            epochs_completed_for_horizon=epochs_completed_for_horizon,
+        )
+    summary = _formal_history_core_from_epoch_rows(relevant_rows)
+    return {
+        "test_acc": summary.get("test_acc"),
+        "train_acc": summary.get("train_acc"),
+        "best_epoch_loss": summary.get("best_epoch_loss"),
+        "avg_epoch_loss": summary.get("avg_epoch_loss"),
+        "loss_drop": summary.get("loss_drop"),
+        "epochs_completed_for_horizon": int(horizon),
+        "reached_horizon": True,
+    }
+
+
+def _formal_horizon_payloads(
+    epoch_rows: list[Dict[str, Any]],
+    *,
+    configured_horizons: Optional[list[int]] = None,
+) -> Dict[str, Dict[str, Any]]:
+    payloads: Dict[str, Dict[str, Any]] = {}
+    requested_horizons = list(configured_horizons or [])
+    ordered_horizons = sorted(
+        {
+            int(horizon)
+            for horizon in [*FORMAL_REWARD_SCORE_HORIZONS, *requested_horizons]
+            if int(horizon) > 0
+        }
+    )
+    for horizon in ordered_horizons:
+        payloads[str(horizon)] = _formal_horizon_summary(epoch_rows, horizon)
+    return payloads
+
+
+def _formal_horizon_metric_map(
+    payloads: Dict[str, Dict[str, Any]],
+    field_name: str,
+) -> Dict[str, Optional[float]]:
+    return {
+        str(horizon): _coerce_optional_metric_float((payloads.get(str(horizon)) or {}).get(field_name))
+        for horizon in FORMAL_REWARD_SCORE_HORIZONS
+    }
+
+
+def _clip(value: float, lower: float, upper: float) -> float:
+    return float(max(lower, min(upper, value)))
+
+
+def _formal_horizon_score_map(payloads: Dict[str, Dict[str, Any]]) -> Dict[str, float]:
+    def _completed(horizon: int) -> bool:
+        return bool((payloads.get(str(horizon)) or {}).get("reached_horizon"))
+
+    def _metric(horizon: int, field_name: str) -> Optional[float]:
+        if not _completed(horizon):
+            return None
+        return _coerce_optional_metric_float((payloads.get(str(horizon)) or {}).get(field_name))
+
+    acc1 = _metric(1, "test_acc")
+    acc5 = _metric(5, "test_acc")
+    acc10 = _metric(10, "test_acc")
+    train10 = _metric(10, "train_acc")
+
+    score1 = _clip(float(acc1 or 0.0), 0.0, 1.0) if acc1 is not None else 0.0
+    score5 = (
+        _clip(float(acc5) + 0.25 * max(0.0, float(acc5) - float(acc1 or 0.0)), 0.0, 1.0)
+        if acc5 is not None
+        else 0.0
+    )
+    overfit10 = (
+        max(0.0, float(train10) - float(acc10) - 0.08)
+        if train10 is not None and acc10 is not None
+        else 0.0
+    )
+    score10 = (
+        _clip(float(acc10) + 0.20 * max(0.0, float(acc10) - float(acc5 or 0.0)) - 0.50 * overfit10, 0.0, 1.0)
+        if acc10 is not None
+        else 0.0
+    )
+    return {
+        "1": float(score1),
+        "5": float(score5),
+        "10": float(score10),
+    }
+
+
+def _formal_multi_horizon_target_value(payloads: Dict[str, Dict[str, Any]]) -> float:
+    scores = _formal_horizon_score_map(payloads)
+    return float(
+        0.20 * float(scores.get("1", 0.0) or 0.0)
+        + 0.35 * float(scores.get("5", 0.0) or 0.0)
+        + 0.45 * float(scores.get("10", 0.0) or 0.0)
+    )
+
+
+def _formal_history_core_from_epoch_rows(epoch_rows: list[Dict[str, Any]]) -> Dict[str, Any]:
+    if not epoch_rows:
+        return {
+            "loss_start": None,
+            "loss_end": None,
+            "loss_drop": None,
+            "loss_drop_ok": False,
+            "best_epoch_loss": None,
+            "avg_epoch_loss": None,
+            "epochs_completed": 0,
+            "epoch_loss_series": [],
+            "training_context_metric_name": "best_epoch_loss",
+            "training_context_metric_value": None,
+            "train_acc": None,
+            "test_acc": None,
+        }
+
+    test_loss_series = [float(item["test_loss"]) for item in epoch_rows if item.get("test_loss") is not None]
+    train_loss_series = [float(item["train_loss"]) for item in epoch_rows if item.get("train_loss") is not None]
+    if len(test_loss_series) == len(epoch_rows) and test_loss_series:
+        loss_series = list(test_loss_series)
+    elif train_loss_series:
+        loss_series = list(train_loss_series)
+    else:
+        loss_series = list(test_loss_series)
+
+    epochs_completed = max(int(item.get("epoch", 0) or 0) for item in epoch_rows)
+    if epochs_completed <= 0:
+        epochs_completed = len(loss_series)
+
+    best_epoch_loss = min(loss_series) if loss_series else None
+    avg_epoch_loss = (
+        float(sum(loss_series) / len(loss_series))
+        if loss_series
+        else None
+    )
+    loss_start = loss_series[0] if loss_series else None
+    loss_end = loss_series[-1] if loss_series else None
+    loss_drop = (
+        float(loss_start - loss_end)
+        if loss_start is not None and loss_end is not None
+        else None
+    )
+    loss_drop_ok = False
+    if loss_start is not None and loss_end is not None:
+        rel_drop_ok = loss_start > 0.0 and (loss_end <= loss_start * 0.98)
+        loss_drop_ok = bool(loss_end < (loss_start - 1e-3) or rel_drop_ok)
+
+    train_acc = next(
+        (item["train_accuracy"] for item in reversed(epoch_rows) if item.get("train_accuracy") is not None),
+        None,
+    )
+    test_acc = next(
+        (item["test_accuracy"] for item in reversed(epoch_rows) if item.get("test_accuracy") is not None),
+        None,
+    )
+    return {
+        "loss_start": loss_start,
+        "loss_end": loss_end,
+        "loss_drop": loss_drop,
+        "loss_drop_ok": loss_drop_ok,
+        "best_epoch_loss": best_epoch_loss,
+        "avg_epoch_loss": avg_epoch_loss,
+        "epochs_completed": int(epochs_completed or 0),
+        "epoch_loss_series": list(loss_series),
+        "training_context_metric_name": "best_epoch_loss",
+        "training_context_metric_value": best_epoch_loss,
+        "train_acc": train_acc,
+        "test_acc": test_acc,
+    }
+
+
+def _formal_history_from_epoch_rows(epoch_rows: list[Dict[str, Any]]) -> Dict[str, Any]:
+    summary = _formal_history_core_from_epoch_rows(epoch_rows)
+    formal_reward_epochs = _resolve_formal_reward_epochs()
+    formal_horizons = _formal_horizon_payloads(
+        epoch_rows,
+        configured_horizons=formal_reward_epochs,
+    )
+    summary.update(
+        {
+            "formal_horizons": formal_horizons,
+            "formal_horizon_test_acc": _formal_horizon_metric_map(formal_horizons, "test_acc"),
+            "formal_horizon_train_acc": _formal_horizon_metric_map(formal_horizons, "train_acc"),
+            "formal_horizon_scores": _formal_horizon_score_map(formal_horizons),
+            "formal_reward_target_value": _formal_multi_horizon_target_value(formal_horizons),
+        }
+    )
+    return summary
+
+
+def _append_formal_epoch_row(epoch_rows: list[Dict[str, Any]], record: Dict[str, Any], epoch_hint: Any) -> None:
+    if not isinstance(record, dict):
+        return
+    try:
+        epoch_index = int(record.get("epoch") or epoch_hint)
+    except (TypeError, ValueError):
+        epoch_index = len(epoch_rows) + 1
+    epoch_rows.append(
+        {
+            "epoch": epoch_index,
+            "train_loss": _coerce_optional_metric_float(record.get("train_loss")),
+            "test_loss": _coerce_optional_metric_float(record.get("test_loss")),
+            "train_accuracy": _coerce_optional_metric_float(record.get("train_accuracy")),
+            "test_accuracy": _coerce_optional_metric_float(
+                record.get("accuracy", record.get("test_accuracy"))
+            ),
+        }
+    )
+
+
+def _load_formal_training_history(
+    stats_dir: Path,
+    *,
+    summary_path: Optional[Path] = None,
+    min_summary_mtime: Optional[float] = None,
+) -> Dict[str, Any]:
+    epoch_rows: list[Dict[str, Any]] = []
+    for stat_path in sorted(stats_dir.glob("*.json"), key=_formal_epoch_stat_sort_key):
+        try:
+            payload = json.loads(stat_path.read_text())
+        except Exception:
+            continue
+        record = _extract_formal_epoch_stat_record(payload)
+        if not isinstance(record, dict):
+            continue
+        _append_formal_epoch_row(epoch_rows, record, stat_path.stem)
+
+    if epoch_rows:
+        return _formal_history_from_epoch_rows(epoch_rows)
+
+    if summary_path is not None:
+        try:
+            resolved_summary_path = Path(summary_path).expanduser()
+            if not resolved_summary_path.is_absolute():
+                resolved_summary_path = resolved_summary_path.resolve()
+            if not resolved_summary_path.exists():
+                raise FileNotFoundError(resolved_summary_path)
+            if (
+                min_summary_mtime is not None
+                and resolved_summary_path.stat().st_mtime < float(min_summary_mtime)
+            ):
+                raise FileNotFoundError(f"stale summary: {resolved_summary_path}")
+            summary_payload = json.loads(resolved_summary_path.read_text())
+
+            epoch_details = summary_payload.get("epoch_details") or summary_payload.get("epoch_history") or []
+            for item in epoch_details:
+                _append_formal_epoch_row(epoch_rows, item, len(epoch_rows) + 1)
+            if not epoch_rows:
+                learning_curves = summary_payload.get("learning_curves") or {}
+                curve_epochs = learning_curves.get("epochs") or []
+                train_loss_curve = learning_curves.get("train_loss") or []
+                test_loss_curve = learning_curves.get("test_loss") or []
+                train_acc_curve = learning_curves.get("train_accuracy") or []
+                test_acc_curve = learning_curves.get("test_accuracy") or []
+                curve_len = max(
+                    len(curve_epochs),
+                    len(train_loss_curve),
+                    len(test_loss_curve),
+                    len(train_acc_curve),
+                    len(test_acc_curve),
+                )
+                for index in range(curve_len):
+                    _append_formal_epoch_row(
+                        epoch_rows,
+                        {
+                            "epoch": curve_epochs[index] if index < len(curve_epochs) else index + 1,
+                            "train_loss": train_loss_curve[index] if index < len(train_loss_curve) else None,
+                            "test_loss": test_loss_curve[index] if index < len(test_loss_curve) else None,
+                            "train_accuracy": train_acc_curve[index] if index < len(train_acc_curve) else None,
+                            "test_accuracy": test_acc_curve[index] if index < len(test_acc_curve) else None,
+                        },
+                        index + 1,
+                    )
+            if epoch_rows:
+                return _formal_history_from_epoch_rows(epoch_rows)
+        except Exception:
+            pass
+
+    return _formal_history_from_epoch_rows([])
 
 
 def _formal_eval_with_nn_dataset(
@@ -2409,6 +3065,8 @@ def _formal_eval_with_nn_dataset(
 ) -> Dict[str, Any]:
     effective_eval_limit_seconds = _effective_eval_limit_seconds(cfg)
     epoch_limit_minutes = _resolve_formal_epoch_limit_minutes(cfg)
+    formal_reward_epochs = _resolve_formal_reward_epochs()
+    formal_reward_max_epoch = max(formal_reward_epochs) if formal_reward_epochs else int(max(DEFAULT_FORMAL_REWARD_EPOCHS))
     formal_trace_context: Dict[str, Any] = {
         "freeze_backbones": bool(freeze_backbones),
         "formal_task": str(getattr(cfg, "formal_task", "img-classification")),
@@ -2417,9 +3075,12 @@ def _formal_eval_with_nn_dataset(
         "backbone_model_names": list(backbone_model_names),
         "code_trace": _formal_eval_code_trace(code),
         "epoch_limit_minutes": epoch_limit_minutes,
+        "formal_reward_epochs": list(formal_reward_epochs),
+        "formal_reward_max_epoch": int(formal_reward_max_epoch),
     }
     safe_prm = dict(prm)
     safe_prm["freeze_backbones"] = bool(freeze_backbones)
+    safe_prm["epoch"] = int(formal_reward_max_epoch)
     formal_trace_context.update(
         {
             "transform": str(safe_prm.get("transform")),
@@ -2477,6 +3138,8 @@ def _formal_eval_with_nn_dataset(
                 "estimated_total_seconds": estimated_total_seconds,
                 "timed_out": timed_out,
                 "error": error_message,
+                "formal_reward_epochs": list(formal_reward_epochs),
+                "formal_reward_max_epoch": int(formal_reward_max_epoch),
             },
         }
         return _apply_error_trace(
@@ -2574,12 +3237,16 @@ def _formal_eval_with_nn_dataset(
 
     started_at = time.time()
     data_roll_patch = None
+    loader_patch = None
+    cuda_backend_state = None
     try:
         unique_code = (
             f"# reward formal eval nonce pid={os.getpid()} ns={time.time_ns()} "
             f"freeze={int(bool(freeze_backbones))}\n{code}"
         )
         data_roll_patch = _patch_nn_dataset_dataroll_for_reward()
+        loader_patch = _patch_nn_dataset_loader_utils_for_reward()
+        cuda_backend_state = _configure_formal_eval_cuda_backend(str(cfg.device))
         formal_trace_context["reward_dataroll_warmup_batches"] = _safe_int_env(
             "NNGPT_REWARD_FORMAL_WARMUP_BATCHES",
             8,
@@ -2588,18 +3255,40 @@ def _formal_eval_with_nn_dataset(
             "NNGPT_REWARD_FORMAL_MIN_MEASURED_BATCHES",
             8,
         )
-        _model_name, test_acc, _accuracy_to_time, _code_score = nn_api.check_nn(
-            unique_code,
-            str(getattr(cfg, "formal_task", "img-classification")),
-            str(getattr(cfg, "formal_dataset", "cifar-10")),
-            str(getattr(cfg, "formal_metric", "acc")),
-            safe_prm,
-            False,
-            None,
-            None,
-            False,
-            epoch_limit_minutes,
+        formal_trace_context["reward_loader_pin_memory"] = bool(torch.cuda.is_available()) and _safe_bool_env(
+            "NNGPT_RL_FORMAL_PIN_MEMORY",
+            True,
         )
+        formal_trace_context["reward_loader_persistent_workers"] = _safe_bool_env(
+            "NNGPT_RL_FORMAL_PERSISTENT_WORKERS",
+            True,
+        )
+        formal_trace_context["reward_loader_prefetch_factor"] = _optional_positive_int_env(
+            "NNGPT_RL_FORMAL_PREFETCH_FACTOR"
+        )
+        formal_trace_context["reward_cuda_cudnn_benchmark"] = _safe_bool_env(
+            "NNGPT_RL_FORMAL_CUDNN_BENCHMARK",
+            True,
+        )
+        with tempfile.TemporaryDirectory(prefix="nngpt_reward_formal_") as temp_stats_dir:
+            summary_path = (Path.cwd() / "out" / "training_summary.json").resolve()
+            _model_name, test_acc, _accuracy_to_time, _code_score = nn_api.check_nn(
+                unique_code,
+                str(getattr(cfg, "formal_task", "img-classification")),
+                str(getattr(cfg, "formal_dataset", "cifar-10")),
+                str(getattr(cfg, "formal_metric", "acc")),
+                safe_prm,
+                False,
+                None,
+                temp_stats_dir,
+                False,
+                epoch_limit_minutes,
+            )
+            formal_history = _load_formal_training_history(
+                Path(temp_stats_dir),
+                summary_path=summary_path,
+                min_summary_mtime=started_at - 1.0,
+            )
         formal_duration_seconds = max(0.0, time.time() - started_at)
         formal_trace_context["formal_eval_duration_seconds"] = formal_duration_seconds
         components = compute_cv_reward_simple(
@@ -2616,6 +3305,12 @@ def _formal_eval_with_nn_dataset(
             kl_div=cfg.kl_div,
             weights=cfg.weights,
         )
+        train_acc = formal_history.get("train_acc")
+        seed_train_acc_gap = None
+        seed_train_acc_improved = False
+        if train_acc is not None and seed_accuracy_baseline is not None:
+            seed_train_acc_gap = float(train_acc - seed_accuracy_baseline)
+            seed_train_acc_improved = bool(seed_train_acc_gap > 0.0)
         return {
             "reward": components["reward"],
             "components": components,
@@ -2632,14 +3327,34 @@ def _formal_eval_with_nn_dataset(
                 "forward_shape_ok": True,
                 "trained_step_ok": True,
                 "backward_ok": True,
-                "loss_start": None,
-                "loss_end": None,
-                "loss_drop": None,
-                "loss_drop_ok": True,
-                "train_acc": None,
+                "loss_start": formal_history.get("loss_start"),
+                "loss_end": formal_history.get("loss_end"),
+                "loss_drop": formal_history.get("loss_drop"),
+                "loss_drop_ok": bool(formal_history.get("loss_drop_ok", True)),
+                "best_epoch_loss": formal_history.get("best_epoch_loss"),
+                "avg_epoch_loss": formal_history.get("avg_epoch_loss"),
+                "epochs_completed": int(formal_history.get("epochs_completed", 0) or 0),
+                "epoch_loss_series": list(formal_history.get("epoch_loss_series") or []),
+                "training_context_metric_name": str(
+                    formal_history.get("training_context_metric_name") or "best_epoch_loss"
+                ),
+                "training_context_metric_value": formal_history.get("training_context_metric_value"),
+                "train_acc": train_acc,
+                "seed_train_acc_gap": seed_train_acc_gap,
+                "seed_train_acc_improved": seed_train_acc_improved,
+                "train_acc_gain": seed_train_acc_gap,
+                "train_acc_improved": seed_train_acc_improved,
                 "latency_ms": latency_ms,
                 "params_m": params_m,
                 "estimated_total_seconds": formal_duration_seconds,
+                "formal_reward_epochs": list(formal_reward_epochs),
+                "formal_reward_max_epoch": int(formal_reward_max_epoch),
+                "formal_horizon_test_acc": dict(formal_history.get("formal_horizon_test_acc") or {}),
+                "formal_horizon_train_acc": dict(formal_history.get("formal_horizon_train_acc") or {}),
+                "formal_horizon_scores": dict(formal_history.get("formal_horizon_scores") or {}),
+                "formal_reward_target_value": _coerce_optional_metric_float(
+                    formal_history.get("formal_reward_target_value")
+                ),
             },
         }
     except Exception as exc:
@@ -2674,6 +3389,8 @@ def _formal_eval_with_nn_dataset(
             timed_out=type(exc).__name__ == "LearnTimeException",
         )
     finally:
+        _restore_formal_eval_cuda_backend(cuda_backend_state)
+        _restore_nn_dataset_loader_utils_patch(loader_patch)
         _restore_nn_dataset_dataroll_patch(data_roll_patch)
         _clear_reward_cuda_state()
 
@@ -2686,31 +3403,14 @@ def _empty_eval_result(
     eval_limit_seconds: Optional[int] = None,
     backbone_model_names: Optional[list[str]] = None,
 ) -> Dict[str, Any]:
-    components = {
-        "reward": reward,
-        "r_build": 0.0,
-        "r_forward_shape": 0.0,
-        "r_backward": 0.0,
-        "r_loss_drop": 0.0,
-        "r_forward": 0.0,
-        "r_trainstep": 0.0,
-        "r_metric": 0.0,
-        "r_eff": 0.0,
-        "r_critic": 0.0,
-        "r_kl": 0.0,
-    }
-    result = {
-        "reward": reward,
-        "components": components,
-        **_base_eval_result(
-            seed_accuracy_baseline=seed_accuracy_baseline,
-            eval_limit_seconds=eval_limit_seconds,
-            backbone_model_names=backbone_model_names,
-        ),
-    }
-    if error:
-        result["error"] = error
-    return result
+    return RewardPayload.empty_eval_result(
+        reward=reward,
+        error=error,
+        seed_accuracy_baseline=seed_accuracy_baseline,
+        eval_limit_seconds=eval_limit_seconds,
+        backbone_model_names=backbone_model_names,
+        formal_reward_epochs=DEFAULT_FORMAL_REWARD_EPOCHS,
+    )
 
 
 def _timeout_eval_result(
@@ -2729,6 +3429,12 @@ def _timeout_eval_result(
     loss_end: Optional[float] = None,
     loss_drop: Optional[float] = None,
     loss_drop_ok: bool = False,
+    best_epoch_loss: Optional[float] = None,
+    avg_epoch_loss: Optional[float] = None,
+    epochs_completed: int = 0,
+    epoch_loss_series: Optional[list[float]] = None,
+    training_context_metric_name: Optional[str] = "best_epoch_loss",
+    training_context_metric_value: Optional[float] = None,
     latency_ms: Optional[float] = None,
     params_m: Optional[float] = None,
     kl_div: Optional[float] = None,
@@ -2748,32 +3454,32 @@ def _timeout_eval_result(
         kl_div=kl_div,
         weights=weights,
     )
-    return {
-        "reward": components["reward"],
-        "components": components,
-        **{
-            **_base_eval_result(
-                seed_accuracy_baseline=seed_accuracy_baseline,
-                eval_limit_seconds=eval_limit_seconds,
-                backbone_model_names=backbone_model_names,
-            ),
-            "built_ok": built_ok,
-            "forward_ok": forward_ok,
-            "forward_shape_ok": forward_shape_ok,
-            "trained_step_ok": trained_step_ok,
-            "backward_ok": backward_ok,
-            "loss_start": loss_start,
-            "loss_end": loss_end,
-            "loss_drop": loss_drop,
-            "loss_drop_ok": loss_drop_ok,
-            "latency_ms": latency_ms,
-            "params_m": params_m,
-            "timed_out": True,
-            "estimated_total_seconds": estimated_total_seconds,
-            "error": error,
-        },
-    }
-
+    return RewardPayload.timeout_eval_result(
+        components=components,
+        error=error,
+        estimated_total_seconds=estimated_total_seconds,
+        eval_limit_seconds=eval_limit_seconds,
+        seed_accuracy_baseline=seed_accuracy_baseline,
+        backbone_model_names=backbone_model_names,
+        built_ok=built_ok,
+        forward_ok=forward_ok,
+        forward_shape_ok=forward_shape_ok,
+        trained_step_ok=trained_step_ok,
+        backward_ok=backward_ok,
+        loss_start=loss_start,
+        loss_end=loss_end,
+        loss_drop=loss_drop,
+        loss_drop_ok=loss_drop_ok,
+        best_epoch_loss=best_epoch_loss,
+        avg_epoch_loss=avg_epoch_loss,
+        epochs_completed=epochs_completed,
+        epoch_loss_series=epoch_loss_series,
+        training_context_metric_name=training_context_metric_name,
+        training_context_metric_value=training_context_metric_value,
+        latency_ms=latency_ms,
+        params_m=params_m,
+        formal_reward_epochs=DEFAULT_FORMAL_REWARD_EPOCHS,
+    )
 
 def evaluate_and_reward(
     *,
@@ -2834,6 +3540,12 @@ def evaluate_and_reward(
     loss_end = None
     loss_drop = None
     loss_drop_ok = False
+    best_epoch_loss = None
+    avg_epoch_loss = None
+    epochs_completed = 0
+    epoch_loss_series: list[float] = []
+    training_context_metric_name: Optional[str] = "best_epoch_loss"
+    training_context_metric_value = None
     train_acc = None
     seed_train_acc_gap = None
     seed_train_acc_improved = False
@@ -2942,6 +3654,12 @@ def evaluate_and_reward(
             loss_end = train_result["loss_end"]
             loss_drop = train_result["loss_drop"]
             loss_drop_ok = bool(train_result["loss_drop_ok"])
+            best_epoch_loss = train_result.get("best_epoch_loss")
+            avg_epoch_loss = train_result.get("avg_epoch_loss")
+            epochs_completed = int(train_result.get("epochs_completed", 0) or 0)
+            epoch_loss_series = list(train_result.get("epoch_loss_series") or [])
+            training_context_metric_name = train_result.get("training_context_metric_name", "best_epoch_loss")
+            training_context_metric_value = train_result.get("training_context_metric_value")
 
             # 4) Quick validation (accuracy)
             train_metric_batches = max(1, len(used_train_loader))
@@ -2971,6 +3689,18 @@ def evaluate_and_reward(
             loss_drop = partial.get("loss_drop", loss_drop)
             backward_ok = bool(partial.get("backward_ok", False))
             trained_step_ok = bool(partial.get("trained_step_ok", False))
+            best_epoch_loss = partial.get("best_epoch_loss", best_epoch_loss)
+            avg_epoch_loss = partial.get("avg_epoch_loss", avg_epoch_loss)
+            epochs_completed = int(partial.get("epochs_completed", epochs_completed) or 0)
+            epoch_loss_series = list(partial.get("epoch_loss_series") or epoch_loss_series)
+            training_context_metric_name = partial.get(
+                "training_context_metric_name",
+                training_context_metric_name,
+            )
+            training_context_metric_value = partial.get(
+                "training_context_metric_value",
+                training_context_metric_value,
+            )
             return _timeout_eval_result(
                 error=f"{type(exc).__name__}: {exc}",
                 estimated_total_seconds=exc.estimated_total_seconds,
@@ -2986,6 +3716,12 @@ def evaluate_and_reward(
                 loss_end=loss_end,
                 loss_drop=loss_drop,
                 loss_drop_ok=False,
+                best_epoch_loss=best_epoch_loss,
+                avg_epoch_loss=avg_epoch_loss,
+                epochs_completed=epochs_completed,
+                epoch_loss_series=epoch_loss_series,
+                training_context_metric_name=training_context_metric_name,
+                training_context_metric_value=training_context_metric_value,
                 latency_ms=latency_ms,
                 params_m=params_m,
                 kl_div=cfg.kl_div,
@@ -3049,6 +3785,12 @@ def evaluate_and_reward(
                 "loss_end": loss_end,
                 "loss_drop": loss_drop,
                 "loss_drop_ok": loss_drop_ok,
+                "best_epoch_loss": best_epoch_loss,
+                "avg_epoch_loss": avg_epoch_loss,
+                "epochs_completed": epochs_completed,
+                "epoch_loss_series": list(epoch_loss_series),
+                "training_context_metric_name": training_context_metric_name,
+                "training_context_metric_value": training_context_metric_value,
                 "train_acc": train_acc,
                 "seed_train_acc_gap": seed_train_acc_gap,
                 "seed_train_acc_improved": seed_train_acc_improved,
@@ -3066,6 +3808,18 @@ def evaluate_and_reward(
         loss_drop = partial.get("loss_drop", loss_drop)
         backward_ok = bool(partial.get("backward_ok", backward_ok))
         trained_step_ok = bool(partial.get("trained_step_ok", trained_step_ok))
+        best_epoch_loss = partial.get("best_epoch_loss", best_epoch_loss)
+        avg_epoch_loss = partial.get("avg_epoch_loss", avg_epoch_loss)
+        epochs_completed = int(partial.get("epochs_completed", epochs_completed) or 0)
+        epoch_loss_series = list(partial.get("epoch_loss_series") or epoch_loss_series)
+        training_context_metric_name = partial.get(
+            "training_context_metric_name",
+            training_context_metric_name,
+        )
+        training_context_metric_value = partial.get(
+            "training_context_metric_value",
+            training_context_metric_value,
+        )
         return _timeout_eval_result(
             error=f"{type(exc).__name__}: {exc}",
             estimated_total_seconds=exc.estimated_total_seconds,
@@ -3081,6 +3835,12 @@ def evaluate_and_reward(
             loss_end=loss_end,
             loss_drop=loss_drop,
             loss_drop_ok=False,
+            best_epoch_loss=best_epoch_loss,
+            avg_epoch_loss=avg_epoch_loss,
+            epochs_completed=epochs_completed,
+            epoch_loss_series=epoch_loss_series,
+            training_context_metric_name=training_context_metric_name,
+            training_context_metric_value=training_context_metric_value,
             latency_ms=latency_ms,
             params_m=params_m,
             kl_div=cfg.kl_div,
@@ -3911,18 +4671,20 @@ def _persistent_eval_worker_loop(conn, *, worker_device: str, assigned_gpu: Opti
                     val_loader=val_loader,
                 )
             except Exception as exc:
-                _log_reward_worker_memory(
-                    "error",
-                    request=request,
-                    assigned_gpu=assigned_gpu,
-                    worker_device=worker_device,
-                    reward_batch_index=reward_batch_index,
-                    completion_index=completion_index,
-                    error=f"{type(exc).__name__}: {exc}",
-                )
+                error_text = f"{type(exc).__name__}: {exc}"
+                if _is_cuda_oom_error_message(error_text) or _is_fatal_cuda_worker_error(error_text):
+                    _log_reward_worker_memory(
+                        "error",
+                        request=request,
+                        assigned_gpu=assigned_gpu,
+                        worker_device=worker_device,
+                        reward_batch_index=reward_batch_index,
+                        completion_index=completion_index,
+                        error=error_text,
+                    )
                 result = _empty_eval_result(
                     reward=-1.0,
-                    error=f"{type(exc).__name__}: {exc}",
+                    error=error_text,
                     seed_accuracy_baseline=request.get("seed_accuracy_baseline"),
                     eval_limit_seconds=cfg.eval_limit_seconds,
                     backbone_model_names=_extract_backbone_model_names_from_code(request.get("code", "")),

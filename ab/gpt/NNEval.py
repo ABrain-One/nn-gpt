@@ -157,9 +157,34 @@ def _load_existing_success_result(model_dir_path: Path) -> Optional[Dict[str, An
     }
 
 
+def _validate_full_stat_artifact(model_dir_path: Path, *, save_to_db: bool) -> None:
+    stat_path = model_dir_path / "1.json"
+    if not stat_path.exists():
+        if save_to_db:
+            raise FileNotFoundError(
+                f"Expected full nn-dataset stat artifact at {stat_path}; "
+                "NNEval must not replace it with a slim summary."
+            )
+        return
+
+    try:
+        payload = json.loads(stat_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ValueError(f"Invalid stat artifact JSON at {stat_path}: {exc}") from exc
+
+    rows = payload if isinstance(payload, list) else [payload]
+    required = {"uid", "transform", "duration", "accuracy"}
+    if not any(isinstance(row, dict) and required.issubset(row) for row in rows):
+        raise ValueError(
+            f"Stat artifact at {stat_path} is not a full nn-dataset trial JSON; "
+            f"missing required fields {sorted(required)}."
+        )
+
+
 def _write_success_outputs(spec: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any]:
     model_dir_path = Path(spec["model_dir"])
     accuracy = float(result["accuracy"])
+    _validate_full_stat_artifact(model_dir_path, save_to_db=bool(spec.get("save_to_db")))
     eval_info_data = {
         "eval_args": result.get("eval_args", {}),
         "eval_results": {
@@ -178,7 +203,7 @@ def _write_success_outputs(spec: Dict[str, Any], result: Dict[str, Any]) -> Dict
             "transform": spec["prm"].get("transform"),
         },
     }
-    (model_dir_path / "1.json").write_text(
+    (model_dir_path / "eval_summary.json").write_text(
         json.dumps([{"epoch": int(spec["prm"].get("epoch", 1)), "accuracy": accuracy}], indent=2),
         encoding="utf-8",
     )

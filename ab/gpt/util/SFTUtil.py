@@ -1,4 +1,5 @@
 import ast
+import re
 import textwrap
 
 available_backbones = ['convnext_tiny', 'densenet121', 'densenet161', 'densenet169', 'densenet201', 'efficientnet_b0', 'efficientnet_b1', 'efficientnet_b2', 'efficientnet_b3', 'efficientnet_b4', 'efficientnet_v2_s', 'googlenet', 'inception_v3', 'mnasnet0_5', 'mnasnet0_75', 'mnasnet1_0', 'mnasnet1_3', 'mobilenet_v2', 'mobilenet_v3_large', 'mobilenet_v3_small', 'regnet_x_400mf', 'regnet_x_800mf', 'regnet_x_1_6gf', 'regnet_x_3_2gf', 'regnet_y_400mf', 'regnet_y_800mf', 'resnet18', 'resnet34', 'resnet50', 'resnext50_32x4d', 'shufflenet_v2_x0_5', 'shufflenet_v2_x1_0', 'shufflenet_v2_x1_5', 'shufflenet_v2_x2_0', 'squeezenet1_0', 'squeezenet1_1', 'swin_t', 'swin_v2_t']
@@ -9,7 +10,11 @@ available_patterns = [
     'Backbone_B_to_Fractal', 
     'Dual_Backbone_Fuse_Then_Fractal',
     'Fractal_Then_Dual_Backbone',
-    'Split_Stem_Parallel_Fuse'
+    'Split_Stem_Parallel_Fuse',
+    'Fractal_to_DualBackbone',
+    'B_to_Fractal_plus_A',
+    'A_to_Fractal_plus_B',
+    'A_to_Fractal_to_B'
 ]
 
 legacy_patterns = tuple(available_patterns)
@@ -20,32 +25,73 @@ open_discovery_goal_profiles = (
         "tags": ("stem", "project", "multi_stage"),
         "brief": "Build a real learned stem before branching. Each major branch should pass through an explicit project or bridge module before a later-stage fusion. Avoid a single terminal concat of raw branch outputs.",
         "module_hints": ("self.stem", "self.project_a", "self.project_b", "self.bridge", "self.fuse"),
+        "realization": "Start from a visible `self.stem`, then keep explicit `self.project_*` or `self.bridge` modules on the branches before a later fuse. The fuse should happen after at least two visible stages, not as a single raw concat at classifier input.",
     },
     {
         "name": "DeepFractalProject",
         "tags": ("fractal_deep", "project", "multi_stage"),
         "brief": "Create one deeper path with at least two fractal-like stages or a fractal stage plus a projector before fusion. The deep path should be structurally different from a one-shot fractal branch.",
         "module_hints": ("self.project", "self.bridge", "self.fractal_stage1", "self.fractal_stage2", "self.fuse"),
+        "realization": "Make one branch visibly deeper with `self.fractal_stage1` plus `self.fractal_stage2`, or a fractal stage followed by `self.project` or `self.bridge`, before the final fuse. Keep the projector or bridge in the actual forward graph.",
     },
     {
         "name": "SplitStemWideFuse",
         "tags": ("stem", "wide_fuse", "multi_stage"),
         "brief": "Use a shared stem to feed asymmetric branches, then perform a staged wide fusion. One branch may stay lightweight while another becomes deeper, but they should not meet only once at the classifier input.",
         "module_hints": ("self.stem", "self.branch_a", "self.branch_b", "self.project", "self.fuse"),
+        "realization": "Use `self.stem` first, then split into asymmetric branches, then perform a visible staged or wide fuse. Do not wait until the classifier input to combine the branches only once.",
     },
     {
         "name": "ProjectReuseMixer",
         "tags": ("project", "branch_reuse", "multi_stage"),
         "brief": "Let one branch condition or align another through a project, bridge, adapter, or mixer block before the final classifier. Use at least two graph merges or one explicit reuse stage plus a final fuse.",
         "module_hints": ("self.project", "self.bridge", "self.adapter", "self.mixer", "self.fuse"),
+        "realization": "Keep an explicit `self.project` or `self.bridge` path that conditions or reuses another branch through `self.adapter` or `self.mixer`, then finish with a later fuse. The reuse stage must be visible in `forward`.",
     },
     {
         "name": "StemProjectWide",
         "tags": ("stem", "project", "wide_fuse"),
         "brief": "Expose a visible stem and explicit projection modules, then use a wider fusion with three or more incoming branch features. The projected branches should remain visible in the computation graph.",
         "module_hints": ("self.stem", "self.project_a", "self.project_b", "self.project_c", "self.fuse"),
+        "realization": "Build a visible `self.stem`, keep explicit projection modules, and make the final fuse visibly wide with three or more incoming projected features.",
     },
 )
+
+goal_profile_target_patterns = {
+    "StemProjectCascade": "Stem_Project_Cascade",
+    "DeepFractalProject": "Deep_Fractal_Project",
+    "SplitStemWideFuse": "Split_Stem_Wide_Fuse",
+    "ProjectReuseMixer": "Project_Reuse_Mixer",
+    "StemProjectWide": "Stem_Project_Wide_Fuse",
+}
+
+
+def goal_profile_target_pattern(profile_or_name) -> str:
+    if isinstance(profile_or_name, dict):
+        profile_name = str(profile_or_name.get("name") or "").strip()
+    else:
+        profile_name = str(profile_or_name or "").strip()
+    if not profile_name:
+        return "Dual_Backbone_Custom"
+    return goal_profile_target_patterns.get(profile_name, profile_name)
+
+
+def goal_tag_parser_cues(tags) -> str:
+    cues = []
+    for tag in tuple(tags or ()):
+        if tag == "stem":
+            cues.append("- `stem`: apply a visible stem module before any branch split; do not let both backbones read the raw input directly.")
+        elif tag == "project":
+            cues.append("- `project`: include an explicit project or bridge module call in `forward`, not just the final classifier.")
+        elif tag == "multi_stage":
+            cues.append("- `multi_stage`: show at least two visible stages before the final classifier or final fuse.")
+        elif tag == "wide_fuse":
+            cues.append("- `wide_fuse`: make one fuse consume three or more incoming feature tensors.")
+        elif tag == "fractal_deep":
+            cues.append("- `fractal_deep`: use at least two visible fractal-stage calls in one branch, or one fractal call plus enough extra depth to avoid a shallow one-shot branch.")
+        elif tag == "branch_reuse":
+            cues.append("- `branch_reuse`: let one branch explicitly feed or condition another through a reuse, adapter, mixer, or extra merge stage.")
+    return "\n".join(cues) if cues else "- No extra parser-visible cues."
 
 skeleton_code = """import torch
 import torch.nn as nn
@@ -199,6 +245,9 @@ class Net(nn.Module):
             self.backbone_a.train()
             self.backbone_b.train()
         scaler = self._scaler
+        total_loss = 0.0
+        total_correct = 0
+        total_examples = 0
         train_iter = iter(train_data)
         try:
             for batch_idx, (inputs, labels) in enumerate(train_iter):
@@ -209,6 +258,10 @@ class Net(nn.Module):
                     outputs = self(inputs)
                     loss = self.criterion(outputs, labels)
                 if not torch.isfinite(loss): continue
+                batch_size = int(labels.size(0))
+                total_loss += float(loss.detach().item()) * batch_size
+                total_correct += int((outputs.detach().argmax(dim=1) == labels).sum().item())
+                total_examples += batch_size
                 if self.use_amp:
                     scaler.scale(loss).backward()
                     scaler.unscale_(self.optimizer)
@@ -223,6 +276,11 @@ class Net(nn.Module):
             if hasattr(train_iter, 'shutdown'): train_iter.shutdown()
             del train_iter
             gc.collect()
+        if total_examples == 0:
+            return 0.0, None
+        train_accuracy = total_correct / total_examples
+        train_loss = total_loss / total_examples
+        return train_accuracy, train_loss
 """
 
 prompt_template="""
@@ -254,8 +312,8 @@ Complete the three missing components. **DO NOT** write generic code. You must i
    - **Initialization**: 
      - Initialize `self.backbone_a` and `self.backbone_b` using `TorchVision(model='...', in_channels=...)`.
      - Initialize `self.features` (1-2 `FractalUnit` layers).
-     - Set `self._input_spec = tuple(in_shape[1:])`.
-     - Call `self.infer_dimensions_dynamically(out_shape[0])`.
+     - Store the image input spec on `self._input_spec` so the provided dynamic sizing helper can probe the classifier dimension.
+     - Finish `__init__` by using the existing `infer_dimensions_dynamically` helper once with the class count from `out_shape`.
    - **Example Implementation Fragment**:
      ```python
      self.pattern = '{target_pattern}'
@@ -290,191 +348,33 @@ Output ONLY the implementation within the XML tags. Each tag MUST contain the co
 
 open_discovery_skeleton_code = skeleton_code
 
-open_discovery_prompt_template = """
-### Role & Context
-You are a Senior AI Architect optimizing an image-classification model under a strict XML ABI. Your job is to produce a trainable dual-backbone architecture that improves frozen-proxy training accuracy.
+compact_backbone_rl_prompt_template = """
+### Role & Goal
+You are a Senior AI Architect. Produce one trainable dual-backbone image-classification architecture that improves accuracy.
 
-### Performance Goal
-Produce one trainable architecture that improves short-budget training accuracy when both backbones are frozen. Use `{accuracy}` only as a seed reference for the starting model quality, not as the reward baseline.
-
-### Optimization Track
-- Track Name: {goal_name}
+### Task Context
+- Optimization Track: {goal_name}
 - Optimization Target Tags: {target_tags}
 - Design Brief: {design_brief}
+- Seed Accuracy: `{accuracy}` (context only)
 
 [CODE SKELETON START]
 {skeleton_code}
 [CODE SKELETON END]
 
-### Hard Requirements
-1. Keep the output format EXACTLY the same:
-   - Output ONLY `<block>`, `<init>`, `<forward>`
-   - Each tag must contain the full function/method definition
-   - No markdown, no explanation, no extra text
-
-2. Optimize for accuracy first
-   - The reward is driven by frozen-proxy train accuracy improvement, not novelty
-   - Treat `{accuracy}` only as seed context, not as the target reward baseline
-   - Architecture changes must serve train accuracy, not visual novelty
-   - Avoid unnecessary branches, dead modules, and decorative topology changes
-
-3. Keep a descriptive `self.pattern`
-   - Set `self.pattern` to a concise descriptive name
-   - `self.pattern` is for logging only; it does not need to advertise novelty
-   - DO NOT leave `self.pattern` missing
-
-4. Use the dual-backbone search space
-   - Use EXACTLY two backbones named `self.backbone_a` and `self.backbone_b`
-   - Initialize both with `TorchVision(model=..., in_channels=...)`
-   - Use both backbones in `forward`
-   - Choose both backbone model names from this exact list: [{available_backbones}]
-   - Do not invent aliases, renamed variants, or unsupported backbone names
-   - Do not omit either backbone, and do not add a third backbone
-   - Both backbones are frozen during RL proxy training and final training
-
-5. Build an accuracy-oriented computation graph
-   - Do not rely on backbone finetuning; improve accuracy through stem/project/bridge/fractal/fuse/classifier design
-   - Avoid the plain one-shot `torch.cat([backbone_a(x), backbone_b(x)])` classifier-only fusion
-   - Prefer stems, projectors, bridges, reuse paths, staged fusion, or asymmetric branches when they help optimization
-   - Use direct computation graph construction; no `if self.pattern == ...` in `forward`
-   - Satisfy the Optimization Target Tags above with actual code structure, not just naming
-
-6. Use the provided code ABI
-   - Implement `drop_conv3x3_block`
-   - Implement `Net.__init__`
-   - Implement `Net.forward`
-   - In `__init__`, set `self.device = device`, `self.use_amp = torch.cuda.is_available()`, and `self._input_spec = tuple(in_shape[1:])`
-   - After that, call `self.infer_dimensions_dynamically(out_shape[0])`
-   - Do not use `_input_dim` or `_output_dim`
-   - Do not call `infer_dimensions(...)`
-   - Do not reference undefined names such as `dropout_prob`, `in_channels`, or `features`
-
-7. Component guidance
-   - Reuse only backbone names from [{available_backbones}]
-   - You may define optional modules such as `self.stem`, `self.bridge`, `self.project`, `self.mixer`, `self.fuse`
-   - You may use `TorchVision(...)`, `FractalUnit(...)`, `nn.Sequential(...)`, and standard `nn.*` layers inside `__init__`
-   - Use all major modules you define in `forward`
-   - To expose structure clearly, prefer semantic attribute names such as: {module_hints}
-   - Do not hide all learned routing logic inside a single generic name like `self.features`
-   - `is_probing` is optional. Your `forward` may use it, or may ignore it completely, as long as the graph still runs when `self.classifier` is temporarily `nn.Identity()`
-
-8. Shape safety and trainability
-   - Ensure `forward` returns classifier logits
-   - Use `adaptive_pool_flatten(...)` before concatenating or classifying branch outputs when needed
-   - Avoid placeholder code, dead modules, duplicate assignments, and hardcoded broken dimensions
-   - The reward worker runs with a CPU time budget. Overly heavy backbones or very slow graphs can be marked as timed out
-
-### Preferred Optimization Directions
-- stem -> split -> asymmetric backbones -> bridge -> fuse
-- backbone -> fractal -> project -> dual fusion
-- split stem with one deep branch and one lightweight branch
-- staged fusion where one branch conditions another before classification
-- multi-hop feature routing that is still shape-safe
-- explicit `stem`, `project`, `bridge`, `adapter`, `mixer`, or `fuse` modules that are visibly used in `forward`
+### Basic Requirements
+1. Output ONLY `<block>`, `<init>`, `<forward>`. No markdown, no explanation, no extra text.
+2. Implement only `drop_conv3x3_block`, `Net.__init__`, and `Net.forward`.
+3. Use EXACTLY two backbones named `self.backbone_a` and `self.backbone_b` from [{available_backbones}].
+4. In `__init__`, set `self.pattern`, `self.device`, `self.use_amp`, and `self._input_spec = tuple(in_shape[1:])`, then call the existing `self.infer_dimensions_dynamically(...)` helper once with the class count after the modules used by `forward` are defined.
+5. Treat the fixed infrastructure as read-only. Do not rewrite helper APIs or add replacement dimension-inference helpers.
+6. Keep `forward` as a direct computation graph. Do not use `if self.pattern`, extra `import` lines, extra classes, or dynamic wrapper logic.
+7. Use `adaptive_pool_flatten(...)` before concatenating or classifying branch outputs, and return classifier logits.
+8. Do not reference undefined names such as `dropout_prob`, `in_channels`, or `features`.
+9. Prioritize a runnable, trainable graph over novelty. Simple structure is acceptable if it trains cleanly. If you define `self.classifier`, still keep `self._input_spec` and the required dynamic sizing helper call.
 
 ### Output Requirement (STRICT)
-Output ONLY the implementation within the XML tags. Each tag MUST contain the complete function/method definition (signature and body).
-
-<block>
-# Full drop_conv3x3_block implementation
-</block>
-<init>
-# Full __init__ implementation
-</init>
-<forward>
-# Full forward implementation
-</forward>
-"""
-
-open_discovery_rl_prompt_template = """
-### Role & Context
-You are a Senior AI Architect optimizing a dual-backbone image-classification model under a strict XML ABI. Your job is to produce a trainable architecture that improves frozen-proxy training accuracy.
-
-### Performance Goal
-Produce one trainable architecture that improves short-budget training accuracy when both backbones are frozen. Use `{accuracy}` only as a seed reference for the starting model quality, not as the reward baseline.
-
-### Optimization Track
-- Track Name: {goal_name}
-- Optimization Target Tags: {target_tags}
-- Design Brief: {design_brief}
-
-[CODE SKELETON START]
-{skeleton_code}
-[CODE SKELETON END]
-
-### Hard Requirements
-1. Keep the output format EXACTLY the same:
-   - Output ONLY `<block>`, `<init>`, `<forward>`
-   - Each tag must contain the full function/method definition
-   - No markdown, no explanation, no extra text
-   - The first non-whitespace token must be `<block>`
-   - The last non-whitespace token must be `</forward>`
-
-2. Optimize for accuracy first
-   - The reward is driven by frozen-proxy train accuracy improvement, not novelty for its own sake
-   - Treat `{accuracy}` only as seed context, not as the target reward baseline
-   - Architecture changes must serve train accuracy, not novelty for its own sake
-   - Avoid decorative complexity, unused modules, or graph edits that do not improve learning signal
-   - Trainable but non-improving samples receive only weak reward
-   - Beating the previous strong group matters more than merely staying valid
-   - Refreshing the current best group gets the strongest reward
-   - Dominant-family repeats that do not beat the current target are penalized
-   - Plain classifier-only parallel fuse is penalized unless it clearly beats the previous-group target
-
-3. Keep a descriptive `self.pattern`
-   - Set `self.pattern` to a concise descriptive name
-   - `self.pattern` is a logging label, not a novelty target
-   - DO NOT leave `self.pattern` missing
-
-4. Dual-backbone rules are mandatory
-   - Use EXACTLY two backbones named `self.backbone_a` and `self.backbone_b`
-   - Initialize both with `TorchVision(model=..., in_channels=...)`
-   - Choose both backbone model names from this exact list: [{available_backbones}]
-   - The two backbone names may be the same or different, but both must come from that list
-   - Do not invent aliases, renamed variants, or unsupported backbone names
-   - Both backbones must appear in `__init__` and `forward`
-   - Do not omit either backbone, and do not add a third backbone
-   - Both backbones are frozen during RL proxy training and final training
-
-5. Preserve the required ABI
-   - Implement `drop_conv3x3_block`
-   - Implement `Net.__init__`
-   - Implement `Net.forward`
-   - In `__init__`, set `self.device = device`, `self.use_amp = torch.cuda.is_available()`, and `self._input_spec = tuple(in_shape[1:])`
-   - After that exact initialization sequence, call `self.infer_dimensions_dynamically(out_shape[0])`
-   - Do not use `_input_dim` or `_output_dim`
-   - Do not call `infer_dimensions(...)`
-   - Do not reference undefined names such as `dropout_prob`, `in_channels`, or `features`
-
-6. Build an accuracy-oriented graph
-   - Avoid the plain one-shot parallel fuse topology because it is usually too weak
-   - Do not simply pool the two backbones once and concatenate them only at the classifier input
-   - Do not rely on backbone finetuning; focus improvements on stem/project/bridge/fractal/fuse/classifier structure
-   - Use the Optimization Target Tags above with actual code structure, not just naming
-   - Prefer visible modules such as: {module_hints}
-   - Do not define new classes or helper methods beyond the 3 required definitions
-   - If reusing a strong motif, mutate locally with a better stem, projector, bridge, or fuse stage instead of resubmitting the same shallow graph
-   - Make a local improvement that can plausibly beat the previous-group target, not just another valid variant of the same graph
-   - Do not submit a classifier-only parallel fuse unless it clearly beats the current target
-   - Make the target tags visible in real code structure, not only in `self.pattern`
-
-7. Forward-path restrictions
-   - Keep `forward` as straight-line assignments plus a final return
-   - Do not use `if self.pattern` in `forward`
-   - Do not emit `import ...` lines or `class ...` definitions
-   - Never define `DropConv3x3Block` or any wrapper class
-   - NEVER apply `self.classifier` manually before the final return line
-
-8. Shape safety and trainability
-   - `forward` must return classifier logits
-   - Use `adaptive_pool_flatten(...)` before concatenating or classifying branch outputs
-   - Prefer `TorchVision`, plain CNN blocks, or `FractalBlock`
-   - Avoid placeholder code, dead modules, duplicate assignments, and broken dimensions
-   - `is_probing` is optional. Your `forward` may use it or ignore it, but it must still run when `self.classifier` is temporarily replaced by `nn.Identity()`
-   - The reward worker has a CPU time budget. Very heavy or slow architectures can return a timeout penalty instead of finishing evaluation
-
-### Output Requirement (STRICT)
-Output ONLY the implementation within the XML tags. Each tag MUST contain the complete function/method definition.
+Read the optimization feedback below, then write the final XML answer. The final answer must begin with `<block>` and end with `</forward>`.
 
 <block>
 {block_signature}
@@ -489,6 +389,77 @@ Output ONLY the implementation within the XML tags. Each tag MUST contain the co
     ...
 </forward>
 """
+
+open_discovery_prompt_template = compact_backbone_rl_prompt_template
+open_discovery_rl_prompt_template = compact_backbone_rl_prompt_template
+
+
+def extract_target_pattern_from_code(code_str):
+    try:
+        tree = ast.parse(code_str)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Assign):
+                continue
+            for target in node.targets:
+                if (
+                    isinstance(target, ast.Attribute)
+                    and target.attr == 'pattern'
+                    and isinstance(target.value, ast.Name)
+                    and target.value.id == 'self'
+                ):
+                    value = node.value
+                    if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                        return value.value
+    except Exception:
+        pass
+    match = re.search(r"self\.pattern\s*=\s*['\"]([^'\"]+)['\"]", code_str or "")
+    return match.group(1) if match else None
+
+
+def _extract_xml_tag(text, tag):
+    if not isinstance(text, str):
+        return None
+    pattern = re.compile(rf"<{tag}>\s*(.*?)\s*</{tag}>", re.IGNORECASE | re.DOTALL)
+    match = pattern.search(text)
+    return match.group(1).strip() if match else None
+
+
+def _strip_code_fence(code):
+    if not isinstance(code, str):
+        return None
+    cleaned = code.strip()
+    cleaned = re.sub(r"^```(?:python)?\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*```$", "", cleaned)
+    return textwrap.dedent(cleaned).strip()
+
+
+def assemble_backbone_xml_completion(completion):
+    block_code = _strip_code_fence(_extract_xml_tag(completion, 'block'))
+    init_code = _strip_code_fence(_extract_xml_tag(completion, 'init'))
+    forward_code = _strip_code_fence(_extract_xml_tag(completion, 'forward'))
+    if not (block_code and init_code and forward_code):
+        return None
+
+    code = skeleton_code
+    replacements = (
+        (
+            "def drop_conv3x3_block(in_channels, out_channels, stride=1, padding=1, bias=False, dropout_prob=0.0):",
+            block_code,
+        ),
+        (
+            "    def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:",
+            textwrap.indent(init_code, "    "),
+        ),
+        (
+            "    def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:",
+            textwrap.indent(forward_code, "    "),
+        ),
+    )
+    for signature, replacement in replacements:
+        if signature not in code:
+            raise ValueError(f"Backbone skeleton signature not found: {signature}")
+        code = code.replace(signature, replacement, 1)
+    return code
 
 def parse_nn_code(code_str):
     try:

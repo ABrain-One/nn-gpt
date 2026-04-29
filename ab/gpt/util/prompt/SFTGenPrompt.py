@@ -7,6 +7,18 @@ from ab.gpt.util.prompt.Prompt import Prompt
 import ab.nn.api as lemur
 import ab.gpt.util.SFTUtil as SFTUtil
 
+def _normalize_nn_prefixes(nn_prefixes):
+    if nn_prefixes is None:
+        return ("rl-bb-test1",)
+    if isinstance(nn_prefixes, str):
+        prefixes = tuple(item.strip() for item in nn_prefixes.split(",") if item.strip())
+    else:
+        prefixes = tuple(str(item).strip() for item in nn_prefixes if str(item).strip())
+    if not prefixes:
+        raise ValueError("At least one SFT NN prefix is required")
+    return prefixes
+
+
 class SFTGenPrompt(Prompt):
     """
     Prompt processor for SFT mode.
@@ -14,9 +26,10 @@ class SFTGenPrompt(Prompt):
     Uses SFTUtil for specialized parsing and formatting.
     """
 
-    def __init__(self, max_len: int, tokenizer: PreTrainedTokenizerBase):
+    def __init__(self, max_len: int, tokenizer: PreTrainedTokenizerBase, nn_prefixes=None):
         # prompts_path is not needed for SFTGenPrompt as it uses SFTUtil templates
         super().__init__(max_len, tokenizer)
+        self.nn_prefixes = _normalize_nn_prefixes(nn_prefixes)
 
     @override
     def get_raw_dataset(self, only_best_accuracy, n_training_prompts=None) -> DataFrame:
@@ -24,13 +37,12 @@ class SFTGenPrompt(Prompt):
         Extracts data from Lemur and formats it using SFTUtil.
         Returns DataFrame with 'text' column.
         """
-        print(f"extracting data from Lemur for SFT...")
-        # Hardcoding params based on SFT.py logic
+        print(f"extracting data from Lemur for SFT with nn_prefixes={self.nn_prefixes}...")
         df = lemur.data(
             task='img-classification',
             # dataset='cifar-10',
             # metric='acc',
-            nn_prefixes=("rl-bb-test1",)
+            nn_prefixes=self.nn_prefixes,
         )
         print(f"extracted {len(df)} samples.")
         
@@ -43,12 +55,14 @@ class SFTGenPrompt(Prompt):
             accuracy = row['accuracy']
             
             block_code, init_code, forward_code = SFTUtil.parse_nn_code(full_code)
+            target_pattern = SFTUtil.extract_target_pattern_from_code(full_code)
             
-            if block_code and init_code and forward_code:
+            if block_code and init_code and forward_code and target_pattern:
                 assistant_response = f"<block>\n{block_code}\n</block>\n<init>\n{init_code}\n</init>\n<forward>\n{forward_code}\n</forward>"
                 messages = [
                     {"role": "user", "content": SFTUtil.prompt_template.format(
                         accuracy=accuracy, 
+                        target_pattern=target_pattern,
                         skeleton_code=SFTUtil.skeleton_code, 
                         available_patterns=", ".join(SFTUtil.available_patterns), 
                         available_backbones=", ".join(SFTUtil.available_backbones)
@@ -63,7 +77,7 @@ class SFTGenPrompt(Prompt):
                 )
                 formatted_data.append({"text": text})
             else:
-                 print(f"Skipping row {row.name} due to parsing failure")
+                 print(f"Skipping row {row.name} due to parsing failure or missing target_pattern")
 
         return DataFrame(formatted_data)
 

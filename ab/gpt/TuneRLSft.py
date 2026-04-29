@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import random
@@ -36,7 +37,7 @@ SFT_DEEPSPEED_DEFAULT_CONFIG = str(conf_dir / "DeepSpeedSftGrpo.json")
 SFT_MODE_DEFAULT = "auto"
 
 # CIFAR-10 reward evaluation via nn-dataset / NNEval-aligned formal acc.
-SFT_EVAL_IMAGE_SIZE = 256
+SFT_EVAL_IMAGE_SIZE = 128
 SFT_EVAL_BATCH_SIZE = 64
 SFT_EVAL_TRAIN_SUBSET = 256
 SFT_EVAL_VAL_SUBSET = 128
@@ -65,15 +66,137 @@ SFT_VAL_METRIC_BASELINE = 0.10
 # os.environ["TRANSFORMERS_CACHE"] = SFT_TRANSFORMERS_CACHE
 
 import ab.gpt.TuneRL as TuneRL
-import ab.gpt.TuneRLRaw as TuneRLRaw
+from ab.gpt.rl_pipeline.completion import (
+    BLOCK_SIGNATURE,
+    FORWARD_SIGNATURE,
+    INIT_SIGNATURE,
+    clear_extraction_meta_cache,
+    extract_completion_blocks_tolerant,
+    extract_completion_meta,
+)
+import ab.gpt.rl_pipeline.trainer_runtime as TrainerRuntime
 import ab.gpt.util.Reward as RewardUtil
 import ab.gpt.util.SFTUtil as SFTUtil
 import ab.gpt.util.training_runtime as TrainingRuntime
+
+SFT_EVAL_TRANSFORM = TuneRL.FORMAL_REWARD_TRANSFORM
 
 
 _TRAIN_GPU_TOKENS_ENV = "NNGPT_TRAIN_GPU_TOKENS"
 _AUX_GPU_TOKENS_ENV = "NNGPT_AUX_GPU_TOKENS"
 _REWARD_GPU_TOKENS_ENV = "NNGPT_REWARD_GPU_TOKENS"
+
+def raw_reward_fn(
+    completion: str,
+    *,
+    seed_accuracy_baseline: float,
+    precomputed_eval_result: Dict[str, Any] | None = None,
+    graph_info=None,
+    batch_graph_hashes: List[str] = None,
+    batch_family_hashes: List[str] = None,
+    batch_descriptor_keys: List[str] = None,
+    batch_backbone_signatures: List[str] = None,
+    batch_cnn_signatures: List[str] = None,
+    prompt_goal_tags: List[str] = None,
+    archive_snapshot_family_counts: Dict[str, int] = None,
+    archive_snapshot_descriptor_counts: Dict[str, int] = None,
+    archive_snapshot_backbone_signature_counts: Dict[str, int] = None,
+    archive_snapshot_cnn_signature_counts: Dict[str, int] = None,
+    archive_snapshot_backbone_cnn_pair_counts: Dict[str, int] = None,
+    group_baseline_train_acc: float | None = None,
+    group_baseline_reward_target_acc: float | None = None,
+    reward_batch_index: int | None = None,
+    reward_group_id: int | None = None,
+    group_warmup: bool = False,
+    completion_index: int | None = None,
+    batch_last_item: bool = False,
+):
+    res = TuneRL.base_discovery_reward_fn(
+        completion,
+        seed_accuracy_baseline=seed_accuracy_baseline,
+        precomputed_eval_result=precomputed_eval_result,
+        graph_info=graph_info,
+        batch_graph_hashes=batch_graph_hashes,
+        batch_family_hashes=batch_family_hashes,
+        batch_descriptor_keys=batch_descriptor_keys,
+        batch_backbone_signatures=batch_backbone_signatures,
+        batch_cnn_signatures=batch_cnn_signatures,
+        prompt_goal_tags=prompt_goal_tags,
+        archive_snapshot_family_counts=archive_snapshot_family_counts,
+        archive_snapshot_descriptor_counts=archive_snapshot_descriptor_counts,
+        archive_snapshot_backbone_signature_counts=archive_snapshot_backbone_signature_counts,
+        archive_snapshot_cnn_signature_counts=archive_snapshot_cnn_signature_counts,
+        archive_snapshot_backbone_cnn_pair_counts=archive_snapshot_backbone_cnn_pair_counts,
+        group_baseline_train_acc=group_baseline_train_acc,
+        group_baseline_reward_target_acc=group_baseline_reward_target_acc,
+        reward_batch_index=reward_batch_index,
+        reward_group_id=reward_group_id,
+        group_warmup=group_warmup,
+        completion_index=completion_index,
+        batch_last_item=batch_last_item,
+    )
+    meta = extract_completion_meta(completion)
+    raw_delta = 0.0
+
+    raw_delta -= 0.35 * min(int(meta.get("class_count", 0)), 2)
+    raw_delta -= 0.12 * min(int(meta.get("import_count", 0)), 2)
+    raw_delta -= 0.35 * min(int(meta.get("bad_signature_count", 0)), 2)
+
+    xml_tag_count = int(meta.get("xml_tag_count", 0))
+    if xml_tag_count < 3:
+        raw_delta -= 0.45 * (3 - xml_tag_count)
+    if not meta.get("xml_tag_exact"):
+        raw_delta -= 1.20
+    if not meta.get("exact_block_signature"):
+        raw_delta -= 0.50
+    if not meta.get("exact_init_signature"):
+        raw_delta -= 0.60
+    if not meta.get("exact_forward_signature"):
+        raw_delta -= 0.60
+
+    if meta.get("dual_backbone_ok"):
+        raw_delta += 0.45
+    else:
+        if not meta.get("dual_backbone_init_ok"):
+            raw_delta -= 1.75
+        if not meta.get("dual_backbone_forward_ok"):
+            raw_delta -= 1.75
+
+    res["reward"] = TuneRL._apply_trainability_clamp(
+        res,
+        float(res.get("reward", -2.0)) + raw_delta,
+        graph_info,
+    )
+
+    core_format_violation = bool(
+        not meta.get("xml_tag_exact")
+        or not meta.get("exact_block_signature")
+        or not meta.get("exact_init_signature")
+        or not meta.get("exact_forward_signature")
+    )
+    class_count = int(meta.get("class_count", 0))
+    import_count = int(meta.get("import_count", 0))
+    minor_hygiene_violation = class_count > 0 or import_count > 0
+    severe_hygiene_violation = class_count > 2 or import_count > 2
+
+    if core_format_violation:
+        res["reward"] = min(float(res["reward"]), -3.0)
+    elif severe_hygiene_violation:
+        res["reward"] = min(float(res["reward"]), -2.0)
+    elif minor_hygiene_violation:
+        res["reward"] = min(float(res["reward"]), -1.5)
+
+    if not meta.get("dual_backbone_ok"):
+        res["reward"] = min(float(res["reward"]), -3.5)
+    elif group_warmup and TuneRL._is_trainable_candidate(res, graph_info):
+        res["reward"] = float(res.get("warmup_dense_reward") or 0.0)
+
+    res["raw_extraction"] = {
+        **meta,
+        "raw_delta": raw_delta,
+    }
+    res.setdefault("backbone_model_names", list(meta.get("backbone_model_names", [])))
+    return res
 
 
 def _sft_runtime_state_hooks() -> TrainingRuntime.RuntimeStateHooks:
@@ -161,6 +284,33 @@ def _env_int(name: str, default: int) -> int:
     return int(raw)
 
 
+def _env_optional_int(name: str) -> int | None:
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return None
+    return int(raw)
+
+
+def _env_optional_json(name: str) -> Any | None:
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return None
+    return json.loads(raw)
+
+
+def _set_optional_grpo_config(
+    config_kwargs: Dict[str, Any],
+    signature_parameters: Dict[str, inspect.Parameter],
+    name: str,
+    value: Any,
+) -> None:
+    if value is None:
+        return
+    if name not in signature_parameters:
+        raise RuntimeError(f"Installed GRPOConfig does not support `{name}`")
+    config_kwargs[name] = value
+
+
 def resolve_sft_init_adapter() -> str:
     return _env_str("NNGPT_SFT_INIT_ADAPTER", SFT_INIT_ADAPTER)
 
@@ -194,7 +344,7 @@ def resolve_sft_num_epochs() -> int:
 
 
 def resolve_sft_save_steps() -> int:
-    return max(1, _env_int("NNGPT_SFT_SAVE_STEPS", 50))
+    return max(1, _env_int("NNGPT_SFT_SAVE_STEPS", 5))
 
 
 def resolve_sft_save_total_limit() -> int:
@@ -339,8 +489,12 @@ def _maybe_relaunch_sft_with_visible_gpu_workers() -> None:
     if visible_cuda_devices <= 1:
         return
 
+    master_port = _resolve_sft_master_port()
     os.environ["NNGPT_SFT_AUTO_TORCHRUN_DONE"] = "1"
-    print("[SFT RL] Relaunching with single training worker: nproc_per_node=1")
+    print(
+        "[SFT RL] Relaunching with single training worker: "
+        f"nproc_per_node=1 master_addr={os.environ['MASTER_ADDR']} master_port={master_port}"
+    )
     os.execvpe(
         sys.executable,
         [
@@ -348,6 +502,8 @@ def _maybe_relaunch_sft_with_visible_gpu_workers() -> None:
             "-m",
             "torch.distributed.run",
             "--nproc_per_node=1",
+            f"--master_addr={os.environ['MASTER_ADDR']}",
+            f"--master_port={master_port}",
             "-m",
             "ab.gpt.TuneRLSft",
         ],
@@ -419,6 +575,9 @@ def resolve_sft_runtime_settings(runtime: Dict[str, Any]) -> Dict[str, int]:
         "effective_global_num_generations": generation_plan["effective_global_num_generations"],
         "global_num_generations_adapted": generation_plan["global_num_generations_adapted"],
         "valid_generation_values": generation_plan["valid_generation_values"],
+        "generation_batch_size": _env_optional_int("NNGPT_SFT_GENERATION_BATCH_SIZE"),
+        "steps_per_generation": _env_optional_int("NNGPT_SFT_STEPS_PER_GENERATION"),
+        "max_steps": _env_optional_int("NNGPT_SFT_MAX_STEPS"),
     }
 
 
@@ -462,6 +621,22 @@ def _bootstrap_run_token(runtime: Dict[str, Any] | None = None) -> str:
         if value:
             return str(value)
     return f"rank0_world{int(runtime.get('world_size', 1))}"
+
+
+def _resolve_sft_master_port() -> str:
+    master_port = str(os.getenv("MASTER_PORT", "")).strip()
+    if master_port:
+        os.environ.setdefault("MASTER_ADDR", "127.0.0.1")
+        return master_port
+
+    slurm_job_id = str(os.getenv("SLURM_JOB_ID", "")).strip()
+    if slurm_job_id.isdigit():
+        master_port = str(20000 + (int(slurm_job_id) % 20000))
+    else:
+        master_port = str(20000 + (os.getpid() % 20000))
+    os.environ["MASTER_PORT"] = master_port
+    os.environ.setdefault("MASTER_ADDR", "127.0.0.1")
+    return master_port
 
 
 def _bootstrap_sentinel_path(log_dir: str, runtime: Dict[str, Any] | None = None) -> Path:
@@ -636,7 +811,13 @@ def evaluate_code_and_reward_cifar(
         eval_device = "cuda" if torch.cuda.is_available() else "cpu"
         if prm is None:
             prm = {"lr": 1e-2, "momentum": 0.9, "dropout": 0.3}
-        defaults = {"lr": 1e-2, "momentum": 0.9, "batch": SFT_EVAL_BATCH_SIZE, "epoch": 1}
+        defaults = {
+            "lr": 1e-2,
+            "momentum": 0.9,
+            "batch": SFT_EVAL_BATCH_SIZE,
+            "epoch": 1,
+            "transform": SFT_EVAL_TRANSFORM,
+        }
         prm = {**defaults, **prm}
         cfg = build_sft_reward_eval_cfg(
             stage_name=stage_name,
@@ -681,7 +862,13 @@ def build_sft_reward_eval_cfg(
     eval_device = str(device or ("cuda" if torch.cuda.is_available() else "cpu"))
     if prm is None:
         prm = {"lr": 1e-2, "momentum": 0.9, "dropout": 0.3}
-    defaults = {"lr": 1e-2, "momentum": 0.9, "batch": SFT_EVAL_BATCH_SIZE, "epoch": 1}
+    defaults = {
+        "lr": 1e-2,
+        "momentum": 0.9,
+        "batch": SFT_EVAL_BATCH_SIZE,
+        "epoch": 1,
+        "transform": SFT_EVAL_TRANSFORM,
+    }
     prm = {**defaults, **prm}
     effective_stage_name = str(stage_name or TuneRL.current_stage_name)
 
@@ -766,8 +953,15 @@ def sft_reward_fn(
     graph_info=None,
     batch_graph_hashes: List[str] = None,
     batch_family_hashes: List[str] = None,
+    batch_descriptor_keys: List[str] = None,
+    batch_backbone_signatures: List[str] = None,
+    batch_cnn_signatures: List[str] = None,
     prompt_goal_tags: List[str] = None,
     archive_snapshot_family_counts: Dict[str, int] = None,
+    archive_snapshot_descriptor_counts: Dict[str, int] = None,
+    archive_snapshot_backbone_signature_counts: Dict[str, int] = None,
+    archive_snapshot_cnn_signature_counts: Dict[str, int] = None,
+    archive_snapshot_backbone_cnn_pair_counts: Dict[str, int] = None,
     group_baseline_train_acc: float | None = None,
     group_baseline_reward_target_acc: float | None = None,
     reward_batch_index: int | None = None,
@@ -776,15 +970,22 @@ def sft_reward_fn(
     completion_index: int | None = None,
     batch_last_item: bool = False,
 ):
-    res = TuneRLRaw.raw_reward_fn(
+    res = raw_reward_fn(
         completion,
         seed_accuracy_baseline=seed_accuracy_baseline,
         precomputed_eval_result=precomputed_eval_result,
         graph_info=graph_info,
         batch_graph_hashes=batch_graph_hashes,
         batch_family_hashes=batch_family_hashes,
+        batch_descriptor_keys=batch_descriptor_keys,
+        batch_backbone_signatures=batch_backbone_signatures,
+        batch_cnn_signatures=batch_cnn_signatures,
         prompt_goal_tags=prompt_goal_tags,
         archive_snapshot_family_counts=archive_snapshot_family_counts,
+        archive_snapshot_descriptor_counts=archive_snapshot_descriptor_counts,
+        archive_snapshot_backbone_signature_counts=archive_snapshot_backbone_signature_counts,
+        archive_snapshot_cnn_signature_counts=archive_snapshot_cnn_signature_counts,
+        archive_snapshot_backbone_cnn_pair_counts=archive_snapshot_backbone_cnn_pair_counts,
         group_baseline_train_acc=group_baseline_train_acc,
         group_baseline_reward_target_acc=group_baseline_reward_target_acc,
         reward_batch_index=reward_batch_index,
@@ -839,6 +1040,7 @@ class DynamicSFTPromptDataset(TorchDataset):
 
     def _render_prompt(self, row: Dict[str, Any]) -> str:
         profile = SFTUtil.open_discovery_goal_profiles[int(row["goal_profile_id"])]
+        target_pattern = SFTUtil.goal_profile_target_pattern(profile)
         module_hints = (
             "self.backbone_a",
             "self.backbone_b",
@@ -851,7 +1053,10 @@ class DynamicSFTPromptDataset(TorchDataset):
             legacy_patterns=", ".join(SFTUtil.legacy_patterns),
             goal_name=profile["name"],
             target_tags=", ".join(profile["tags"]),
+            target_pattern=target_pattern,
             design_brief=profile["brief"],
+            tag_realization=profile.get("realization", profile["brief"]),
+            goal_tag_parser_cues=SFTUtil.goal_tag_parser_cues(profile["tags"]),
             module_hints=", ".join(module_hints),
             block_signature=self.block_signature,
             init_signature=self.init_signature,
@@ -886,8 +1091,6 @@ class DynamicSFTPromptDataset(TorchDataset):
 
 def load_rl_dataset_sft(tokenizer) -> TuneRL.Dataset:
     """Load SFT-aligned RL prompts while rendering feedback lazily at access time."""
-    from ab.gpt.TuneRLRaw import BLOCK_SIGNATURE, FORWARD_SIGNATURE, INIT_SIGNATURE
-
     runtime_settings = resolve_sft_runtime_settings(RewardUtil.get_distributed_runtime_info())
     data = TuneRL.api.data(task="img-classification", nn_prefixes=("rl-bb-test1",))
     if data.empty:
@@ -955,12 +1158,70 @@ def _build_sft_grpo_config(
         "gradient_checkpointing": True,
         "num_generations": runtime_settings["global_num_generations"],
     }
+    if "gradient_checkpointing_kwargs" in signature_parameters:
+        config_kwargs["gradient_checkpointing_kwargs"] = {"use_reentrant": False}
     if "save_strategy" in signature_parameters:
         config_kwargs["save_strategy"] = "steps"
     if "save_steps" in signature_parameters:
         config_kwargs["save_steps"] = resolve_sft_save_steps()
     if "save_total_limit" in signature_parameters:
         config_kwargs["save_total_limit"] = resolve_sft_save_total_limit()
+    _set_optional_grpo_config(
+        config_kwargs,
+        signature_parameters,
+        "generation_batch_size",
+        runtime_settings.get("generation_batch_size"),
+    )
+    _set_optional_grpo_config(
+        config_kwargs,
+        signature_parameters,
+        "steps_per_generation",
+        runtime_settings.get("steps_per_generation"),
+    )
+    _set_optional_grpo_config(
+        config_kwargs,
+        signature_parameters,
+        "max_steps",
+        runtime_settings.get("max_steps"),
+    )
+    use_vllm = _env_flag("NNGPT_SFT_USE_VLLM", False)
+    if use_vllm:
+        _set_optional_grpo_config(
+            config_kwargs,
+            signature_parameters,
+            "use_vllm",
+            True,
+        )
+        _set_optional_grpo_config(
+            config_kwargs,
+            signature_parameters,
+            "vllm_mode",
+            _env_str("NNGPT_SFT_VLLM_MODE", "colocate"),
+        )
+        _set_optional_grpo_config(
+            config_kwargs,
+            signature_parameters,
+            "vllm_gpu_memory_utilization",
+            TuneRL.env_float("NNGPT_SFT_VLLM_GPU_MEMORY_UTILIZATION", 0.25),
+        )
+        _set_optional_grpo_config(
+            config_kwargs,
+            signature_parameters,
+            "vllm_tensor_parallel_size",
+            _env_int("NNGPT_SFT_VLLM_TENSOR_PARALLEL_SIZE", 1),
+        )
+        _set_optional_grpo_config(
+            config_kwargs,
+            signature_parameters,
+            "vllm_enable_sleep_mode",
+            _env_flag("NNGPT_SFT_VLLM_ENABLE_SLEEP_MODE", True),
+        )
+    _set_optional_grpo_config(
+        config_kwargs,
+        signature_parameters,
+        "generation_kwargs",
+        _env_optional_json("NNGPT_SFT_GENERATION_KWARGS_JSON"),
+    )
     explicit_kl_coef = TuneRL.env_float("NNGPT_RL_KL_COEF", SFT_KL_COEF)
     if "beta" in signature_parameters:
         config_kwargs["beta"] = explicit_kl_coef
@@ -979,7 +1240,6 @@ def _build_sft_grpo_config(
 
 def run_sft_training():
     import torch
-    from transformers import BitsAndBytesConfig
 
     if not torch.cuda.is_available():
         raise RuntimeError("SFT RL requires CUDA for GRPO training, but no CUDA device is available")
@@ -1025,12 +1285,21 @@ def run_sft_training():
     stage_checkpoint_dir = resume_spec["stage_checkpoint_dir"]
     stage_adapter_dir = resume_spec["stage_adapter_dir"]
     resume_state_dir = trainer_checkpoint if trainer_checkpoint is not None else stage_checkpoint_dir
-    # Restore reward-side bookkeeping the same way for trainer and stage checkpoints.
-    restored_reward_state_path = TrainingRuntime.restore_or_reset_runtime_state(
+    resume_stage_override = os.getenv("NNGPT_RL_RESUME_STAGE", "").strip()
+    # Restore pipeline runtime bookkeeping the same way for trainer and stage checkpoints.
+    restored_runtime_state_path = TrainingRuntime.restore_or_reset_runtime_state(
         resume_state_dir,
         _sft_runtime_state_hooks(),
         legacy_state_filenames=("reward_state.json",),
     )
+    if resume_state_dir is not None and resume_stage_override:
+        current_state_stage = str(TuneRL.current_stage_name)
+        if current_state_stage != resume_stage_override:
+            print(
+                "[SFT RL] Resume stage override "
+                f"checkpoint_stage={current_state_stage} requested_stage={resume_stage_override}"
+            )
+            TuneRL.current_stage_name = resume_stage_override
     precision = TuneRL.best_mixed_precision()
     grpo_config = _build_sft_grpo_config(
         precision=precision,
@@ -1044,8 +1313,8 @@ def run_sft_training():
             "[SFT RL] Warning: installed GRPOConfig does not support save_strategy/save_steps; "
             "trainer checkpoints will not be produced."
         )
-    if restored_reward_state_path is not None:
-        print(f"[SFT RL] Restored reward state from {restored_reward_state_path}")
+    if restored_runtime_state_path is not None:
+        print(f"[SFT RL] Restored runtime state from {restored_runtime_state_path}")
 
     print(f"Using RL base model: {TuneRL.base_model}")
     print(
@@ -1063,6 +1332,7 @@ def run_sft_training():
     print(f"[SFT RL] Fixed training device: {train_device}")
     print(f"[SFT RL] Visible CUDA devices: {visible_cuda_devices}")
     print(f"[SFT RL] Mixed precision: {precision['label']} (torch_dtype={precision['torch_dtype']})")
+    print(f"[SFT RL] Current stage: {TuneRL.current_stage_name}")
     print(
         "[SFT RL] Runtime limits: "
         f"dataset_limit={runtime_settings['dataset_limit']} "
@@ -1072,6 +1342,14 @@ def run_sft_training():
         f"requested_global_num_generations={runtime_settings['requested_global_num_generations']} "
         f"global_num_generations={runtime_settings['global_num_generations']} "
         f"effective_global_num_generations={runtime_settings['effective_global_num_generations']}"
+    )
+    print(
+        "[SFT RL] Generation tuning: "
+        f"max_steps={runtime_settings.get('max_steps')} "
+        f"generation_batch_size={runtime_settings.get('generation_batch_size')} "
+        f"steps_per_generation={runtime_settings.get('steps_per_generation')} "
+        f"use_vllm={_env_flag('NNGPT_SFT_USE_VLLM', False)} "
+        f"vllm_mode={_env_str('NNGPT_SFT_VLLM_MODE', 'colocate') if _env_flag('NNGPT_SFT_USE_VLLM', False) else None}"
     )
     if runtime_settings["global_num_generations_adapted"]:
         print(
@@ -1107,69 +1385,52 @@ def run_sft_training():
     tokenizer_source = getattr(TuneRL, "tokenizer_source", TuneRL.base_model)
     if tokenizer_source != TuneRL.base_model:
         print(f"Using RL tokenizer: {tokenizer_source}")
-    tokenizer = TuneRL.AutoTokenizer.from_pretrained(tokenizer_source, trust_remote_code=True)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-    TuneRL.log_memory_snapshot("sft/tokenizer_loaded")
+    tokenizer = TrainerRuntime.load_tokenizer(tokenizer_source)
 
     rl_dataset = TuneRL.load_rl_dataset(tokenizer)
     if len(rl_dataset) > runtime_settings["dataset_limit"]:
         rl_dataset = rl_dataset.select(range(runtime_settings["dataset_limit"]))
 
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_compute_dtype=precision["torch_dtype"],
-        bnb_4bit_use_double_quant=True,
-        bnb_4bit_quant_type="nf4",
-    )
-
-    model_load_kwargs: Dict[str, Any] = {
-        "trust_remote_code": True,
-        "quantization_config": bnb_config,
-        "torch_dtype": precision["torch_dtype"],
-    }
-    if not use_deepspeed:
-        model_load_kwargs["device_map"] = {"": train_device}
-    model = TuneRL.AutoModelForCausalLM.from_pretrained(
-        TuneRL.base_model,
-        **model_load_kwargs,
+    model = TrainerRuntime.load_quantized_causal_lm(
+        model_source=TuneRL.base_model,
+        precision=precision,
+        train_device=train_device,
+        use_deepspeed=use_deepspeed,
     )
     _ = hf_deepspeed_config
-    TuneRL.log_memory_snapshot("sft/base_model_loaded")
 
-    if load_initial_adapter:
-        if not init_adapter_path:
-            raise ValueError("SFT_INIT_ADAPTER is empty, but SFT_LOAD_INITIAL_ADAPTER is True.")
-        if not os.path.exists(init_adapter_path):
-            raise FileNotFoundError(f"Initial adapter not found: {init_adapter_path}")
-        print(f"Loading initial SFT adapter from {init_adapter_path}...")
-        model = TuneRL.PeftModel.from_pretrained(model, init_adapter_path)
-        model = model.merge_and_unload()
+    model = TrainerRuntime.maybe_merge_initial_adapter(
+        model,
+        enabled=load_initial_adapter,
+        adapter_path=init_adapter_path,
+        label="SFT",
+        empty_adapter_message="SFT_INIT_ADAPTER is empty, but SFT_LOAD_INITIAL_ADAPTER is True.",
+        missing_adapter_message=f"Initial adapter not found: {init_adapter_path}",
+        load_message=f"Loading initial SFT adapter from {init_adapter_path}...",
+    )
 
     model = TuneRL.prepare_model_for_kbit_training(model)
     TuneRL.align_generation_head_dtype(model, precision["torch_dtype"])
 
-    peft_config = TuneRL.LoraConfig(
+    peft_config = TrainerRuntime.build_lora_config(
         r=SFT_LORA_R,
-        lora_alpha=SFT_LORA_ALPHA,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-        lora_dropout=SFT_LORA_DROPOUT,
-        bias="none",
-        task_type="CAUSAL_LM",
+        alpha=SFT_LORA_ALPHA,
+        dropout=SFT_LORA_DROPOUT,
     )
-    if stage_adapter_dir is not None:
-        if not stage_adapter_dir.exists():
-            raise FileNotFoundError(f"Missing adapter directory under SFT stage checkpoint: {stage_adapter_dir}")
-        print(f"[SFT RL] Loading stage checkpoint adapter from {stage_adapter_dir}...")
-        model = TuneRL.PeftModel.from_pretrained(model, str(stage_adapter_dir), is_trainable=True)
-    else:
-        model = TuneRL.get_peft_model(model, peft_config)
+    model = TrainerRuntime.attach_or_resume_lora(
+        model,
+        peft_config=peft_config,
+        stage_adapter_dir=stage_adapter_dir,
+        log_prefix="[SFT RL]",
+        missing_adapter_message=f"Missing adapter directory under SFT stage checkpoint: {stage_adapter_dir}",
+    )
     TuneRL.align_generation_head_dtype(model, precision["torch_dtype"])
 
-    model.gradient_checkpointing_enable()
-    model.enable_input_require_grads()
+    TrainerRuntime.enable_non_reentrant_gradient_checkpointing(
+        model,
+        log_prefix="[SFT RL]",
+    )
     model.print_trainable_parameters()
-    TuneRL.log_memory_snapshot("sft/lora_wrapped")
     TuneRL.active_rl_model = model
     TuneRL.active_rl_tokenizer = tokenizer
 
@@ -1179,6 +1440,11 @@ def run_sft_training():
         reward_funcs=TuneRL.compute_reward,
         args=grpo_config,
     )
+    trainer_gc_patch_stats = TrainerRuntime.enforce_non_reentrant_gradient_checkpointing(trainer.model)
+    print(
+        "[SFT RL] Trainer gradient checkpointing enforcement: "
+        f"roots={trainer_gc_patch_stats['roots']} modules={trainer_gc_patch_stats['modules']} use_reentrant=False"
+    )
     if trainer_checkpoint_supported:
         # Keep legacy reward_state.json in trainer checkpoints so old resumes still work.
         runtime_callback = TrainingRuntime.build_trainer_checkpoint_callback(
@@ -1187,27 +1453,22 @@ def run_sft_training():
         )
         if runtime_callback is not None:
             trainer.add_callback(runtime_callback)
-    TuneRL.log_memory_snapshot("sft/grpo_trainer_initialized")
     warmup_diagnostics = RewardUtil.prewarm_eval_workers(timeout_seconds=60.0, require_gpu=True)
     _validate_gpu_reward_worker_bindings(warmup_diagnostics)
-    TuneRL.log_memory_snapshot("sft/reward_workers_prewarmed")
+    TuneRL.register_stage_checkpoint_signal_handlers()
 
     print("Starting GRPO training for Backbone Search...")
-    memory_monitor = TuneRL.start_cuda_memory_monitor("sft/trainer")
     try:
-        TuneRL.log_memory_snapshot("sft/before_trainer_train")
-        if trainer_checkpoint is not None:
-            print(f"[SFT RL] Resuming trainer state from {trainer_checkpoint}...")
-            trainer.train(resume_from_checkpoint=str(trainer_checkpoint))
-        else:
-            trainer.train()
+        TrainerRuntime.train_grpo(
+            trainer=trainer,
+            trainer_checkpoint=trainer_checkpoint,
+            log_prefix="[SFT RL]",
+        )
     except Exception as exc:
         if TuneRL.is_cuda_oom_error(exc):
             TuneRL.log_cuda_oom_diagnostics("sft/trainer.train", exc)
         raise
     finally:
-        if memory_monitor is not None:
-            memory_monitor.close()
         RewardUtil.shutdown_eval_worker()
 
     if save_rl_model:
@@ -1236,7 +1497,8 @@ def patch_sft_runtime() -> tuple[str, str, str]:
     TuneRL.LOAD_EXISTING_MODEL = load_initial_adapter
     TuneRL.SAVED_MODEL_PATH = init_adapter_path if load_initial_adapter else ""
     TuneRL.PROMPT_TEMPLATE = SFT_DISCOVERY_PROMPT_TEMPLATE
-    TuneRL.extract_completion_blocks = TuneRLRaw.extract_completion_blocks_tolerant
+    TuneRL.extract_completion_blocks = extract_completion_blocks_tolerant
+    TuneRL.clear_extraction_meta_cache = clear_extraction_meta_cache
     TuneRL.evaluate_code_and_reward = evaluate_code_and_reward_cifar
     setattr(TuneRL.evaluate_code_and_reward, "_nngpt_eval_cfg_builder", build_sft_reward_eval_cfg)
     TuneRL.reward_fn = sft_reward_fn
@@ -1244,13 +1506,12 @@ def patch_sft_runtime() -> tuple[str, str, str]:
     TuneRL.run_log_dir = resolve_sft_log_dir
     TuneRL.run_model_out = resolve_sft_model_out
     TuneRL.run_epoch_dir = sft_run_epoch_dir
-    TuneRLRaw.RAW_ASSISTANT_PREFIX = ""
     return model_source, tokenizer_source, source_mode
 
 
 def bootstrap_sft_runtime() -> None:
     """Initialize logging and reset extraction cache."""
-    TuneRLRaw.clear_extraction_meta_cache()
+    clear_extraction_meta_cache()
     RewardUtil.shutdown_eval_worker()
     runtime = RewardUtil.get_distributed_runtime_info()
     is_main = _runtime_is_main_process(runtime)
@@ -1288,7 +1549,7 @@ def bootstrap_sft_runtime() -> None:
             shutil.rmtree(TuneRL.run_epoch_dir(), ignore_errors=True)
             print(f"Cleaning existing trainer outputs in {trainer_out_dir}...")
             shutil.rmtree(trainer_out_dir, ignore_errors=True)
-        TuneRL.code_logger = TuneRLRaw.RawCodeLogger(log_dir)
+        TuneRL.code_logger = TuneRL.SimpleCodeLogger(log_dir)
         sentinel_path.write_text(str(os.getpid()), encoding="utf-8")
         return
 
@@ -1337,12 +1598,13 @@ def main() -> None:
     print(f"[SFT RL] Log dir: {resolve_sft_log_dir()}")
     print(f"[SFT RL] Trainer out: {resolve_sft_trainer_out()}")
     print(f"[SFT RL] Model out: {resolve_sft_model_out()}")
+    print(f"[SFT RL] Stage1 only: {TuneRL.env_flag('NNGPT_RL_STAGE1_ONLY', False)}")
     print(f"[SFT RL] Num epochs: {resolve_sft_num_epochs()}")
     print(f"[SFT RL] Temperature: {SFT_TEMPERATURE}")
     print(f"[SFT RL] KL coef: {TuneRL.env_float('NNGPT_RL_KL_COEF', SFT_KL_COEF):.6f}")
     print(
         f"[SFT RL] Eval plan: stage1=static_only(no-check_nn), stage2/3=nn-dataset-formal(cifar-10), "
-        f"resize={SFT_EVAL_IMAGE_SIZE}, batch={SFT_EVAL_BATCH_SIZE}, "
+        f"transform={SFT_EVAL_TRANSFORM}, resize={SFT_EVAL_IMAGE_SIZE}, batch={SFT_EVAL_BATCH_SIZE}, "
         f"train_set=full, test_set=full, train_epochs={SFT_EVAL_TRAIN_EPOCHS}, "
         f"freeze_only_backbone_eval=True, formal_epoch_limit_minutes={SFT_EVAL_FORMAL_EPOCH_LIMIT_MINUTES}, "
         f"worker_eval_limit_seconds={SFT_EVAL_LIMIT_SECONDS}, "

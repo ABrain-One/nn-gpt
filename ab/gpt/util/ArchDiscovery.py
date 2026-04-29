@@ -76,6 +76,8 @@ class GraphInfo:
     family_id: str
     family_expr: str
     family_hash: str
+    cnn_expr: str
+    cnn_signature: str
     descriptor_key: str
     depth: int
     merges: int
@@ -494,6 +496,44 @@ def _build_family_expr(graph_expr: str) -> str:
     return family_expr
 
 
+def _render_canonical_cnn_tree(node) -> str:
+    if isinstance(node, str):
+        canon_label = _canonical_family_label(node)
+        if canon_label == "Classifier":
+            return ""
+        if canon_label == "Pool":
+            return "Pool"
+        if canon_label == "Var":
+            return "Input"
+        return canon_label
+
+    label, children = node
+    canon_label = _canonical_family_label(label)
+    canon_children = [_render_canonical_cnn_tree(child) for child in children]
+    canon_children = [child for child in canon_children if child]
+
+    if canon_label in {"Classifier", "Pool"}:
+        if len(canon_children) == 1:
+            return canon_children[0]
+        if canon_children:
+            return f"Ctx({', '.join(canon_children)})"
+        return ""
+    if canon_label in {"Cat", "Add", "Stack"}:
+        canon_children = sorted(canon_children)
+    if not canon_children:
+        return canon_label
+    return f"{canon_label}({', '.join(canon_children)})"
+
+
+def _build_cnn_expr(graph_expr: str) -> str:
+    try:
+        cnn_expr = _render_canonical_cnn_tree(_parse_family_tree(graph_expr))
+    except Exception:
+        cnn_expr = graph_expr
+    cnn_expr = re.sub(r"\s+", " ", str(cnn_expr or "")).strip()
+    return cnn_expr or "IncompleteCNN"
+
+
 def _build_family_id(
     info: ExprInfo,
     *,
@@ -612,6 +652,8 @@ def extract_graph_info(
         is_plain_parallel_triple=plain_parallel,
     )
     family_hash = hashlib.sha1(f"{family_id}|{family_expr}".encode("utf-8")).hexdigest()
+    cnn_expr = _build_cnn_expr(graph_expr)
+    cnn_signature = hashlib.sha1(cnn_expr.encode("utf-8")).hexdigest()
     suggested_name = suggest_pattern_name(graph_hash, info)
     has_custom_name = bool(raw_pattern) and not is_legacy and normalized_pattern != "OpenMotif"
 
@@ -624,6 +666,8 @@ def extract_graph_info(
         family_id=family_id,
         family_expr=family_expr,
         family_hash=family_hash,
+        cnn_expr=cnn_expr,
+        cnn_signature=cnn_signature,
         descriptor_key=_build_descriptor_key(info),
         depth=info.depth,
         merges=info.merges,
