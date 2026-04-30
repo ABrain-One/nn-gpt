@@ -32,7 +32,7 @@
       "3. Generative Logic: The 'forward' method must implement a dual-mode protocol: return a scalar Loss tensor when 'captions' are provided (Training/Validation), and return generated token sequences when 'captions' is None (Inference).",
       "4. Delta Specification: Use a unified diff format. Line numbers must correspond exactly to the provided <nn> block.",
       "Output Protocol:",
-      "- Provide optimized hyperparameters in <hp>{\"batch\": 16, \"lr\": 1e-4}</hp> tags.",
+      "- Provide optimized hyperparameters in <hp>{{\"batch\": 16, \"lr\": 1e-4}}</hp> tags.",
       "- Provide the code delta in <delta> tags."
     ]
   }
