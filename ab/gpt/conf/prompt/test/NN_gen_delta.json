@@ -7,51 +7,17 @@
     "task": "img-classification",
     "addon_task": null,
     "input_list": [
-      {
-        "para": "nn_code",
-        "value": "nn_code"
-      },
-      {
-        "para": "accuracy",
-        "value": "accuracy"
-      },
-      {
-        "para": "epoch",
-        "value": "epoch"
-      },
-      {
-        "para": "dataset",
-        "value": "dataset"
-      },
-      {
-        "para": "task",
-        "value": "task"
-      },
-      {
-        "para": "metric",
-        "value": "metric"
-      },
-      {
-        "para": "transform_code",
-        "value": "transform_code"
-      },
-      {
-        "para": "prm",
-        "value": "prm"
-      }
+      {"para": "nn_code", "value": "nn_code"},
+      {"para": "accuracy", "value": "accuracy"},
+      {"para": "epoch", "value": "epoch"},
+      {"para": "dataset", "value": "dataset"},
+      {"para": "task", "value": "task"},
+      {"para": "metric", "value": "metric"},
+      {"para": "transform_code", "value": "transform_code"},
+      {"para": "prm", "value": "prm"}
     ],
-    "no_repeat": [
-      "nn"
-    ],
-    "keep_same": [
-      "epoch",
-      "metric",
-      "dataset",
-      "task"
-    ],
-    "nn_prefixes": [
-      "ast-dimension-"
-    ],
+    "no_repeat": [],
+    "keep_same": [],
     "prompt": [
       "Task: Generate a unified diff (delta) to improve the baseline model.",
       "",
@@ -98,9 +64,6 @@
       "</delta>",
       "",
       "=== CRITICAL RULES ===",
-      "- Output ONLY the 3 XML tags (<hp>, <tr>, <delta>). NO explanations, NO text after </delta>",
-      "- Keep delta compact: maximum 30 lines total",
-      "- Use reasonable hyperparameters: batch 16-128, lr 0.001-0.01, momentum 0.8-0.95",
       "- Read baseline FIRST, then generate delta that matches ITS structure",
       "- If baseline has 'self.features', use 'self.features' (NOT 'self.conv1')",
       "- If baseline has 'AirUnit', use 'AirUnit' (NOT generic names)",

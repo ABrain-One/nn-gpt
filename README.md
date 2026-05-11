@@ -36,19 +36,13 @@ Agent mode uses LangGraph `MemorySaver` checkpointing. If the pipeline crashes m
 
 ### Usage
 
-Enable agent mode by adding `--use_agents` to the standard run command:
+The agent mode is enabled by default.
+
+To use the accuracy predictor agent:
 
 ```bash
-python -m ab.gpt.TuneNNGen_7B_code_olympic_channel_alter --use_agents
+python -m ab.gpt.TuneNNGen --use_predictor
 ```
-
-To also enable the accuracy predictor agent:
-
-```bash
-python -m ab.gpt.TuneNNGen_7B_code_olympic_channel_alter --use_agents --use_predictor
-```
-
-Without `--use_agents`, the pipeline runs in the original classic mode — behaviour is identical to the unmodified pipeline.
 
 ### Agent Files
 
@@ -126,7 +120,13 @@ python -m ab.stat.export
 
 - **`ab.gpt.TuneNNGen*.py`** – Performs fine-tuning and evaluation of an LLM. For evaluation purposes, the LLM generates neural network models, which are then trained to assess improvements in the LLM’s performance on this task. The -s flag allows skipping model generation for the specified number of epochs.
 
-<a href='https://huggingface.co/ABrain'><strong>Pretrained LLM weights</strong></a>
+- **`ab.gpt.TuneNNGen_delta.py`** – Delta-based fine-tuning entry point. Instead of generating full neural network code, the LLM generates unified diffs (deltas) to modify existing baseline architectures. Uses paper-aligned hyperparameters (lr=1e-5, temperature=0.35, top-k=50, LoRA with lm_head). Calls `TuneNNGen.main()` with delta-specific defaults.
+  ```bash
+  python -m ab.gpt.TuneNNGen_delta
+  python -m ab.gpt.TuneNNGen_delta --llm_conf qwen2.5_coder_7b_instruct.json
+  ```
+
+<a href='https://huggingface.co/ABrain'><strong>Fine-tuned LLMs</strong></a>
 
 ### 🐳 Docker
 All versions of this project are compatible with <a href='https://hub.docker.com/r/abrainone/ai-linux' target='_blank'>AI Linux</a> and can be seamlessly executed within the AI Linux Docker container.
@@ -145,34 +145,39 @@ If recently added dependencies are missing in the <a href='https://hub.docker.co
 
 ## Citation
 
-The original version of this project was created at the Computer Vision Laboratory of the University of Würzburg by the authors mentioned below. If you find this project to be useful for your research, please consider citing our articles for <a target='_blank' href='https://arxiv.org/pdf/2511.20333'>NNGPT</a>, <a target='_blank' href='https://arxiv.org/pdf/2601.02997'>architecture design</a> and <a target='_blank' href='https://openaccess.thecvf.com/content/ICCV2025W/AIM/papers/Kochnev_Optuna_vs_Code_Llama_Are_LLMs_a_New_Paradigm_for_ICCVW_2025_paper.pdf'>hyperparameter tuning</a> with LLMs:
+The original version of this project was created at the Computer Vision Laboratory of the University of Würzburg by the authors mentioned below. If you find this project to be useful for your research, please consider citing our articles for <a target='_blank' href='https://arxiv.org/pdf/2511.20333'>NNGPT</a>, <a target='_blank' href='https://arxiv.org/pdf/2601.02997'>architecture design</a>, <a target='_blank' href='https://openaccess.thecvf.com/content/ICCV2025W/AIM/papers/Kochnev_Optuna_vs_Code_Llama_Are_LLMs_a_New_Paradigm_for_ICCVW_2025_paper.pdf'>hyperparameter tuning</a> and <a target='_blank' href='https://arxiv.org/abs/2605.04903'>delta-based NAS</a> with LLMs:
 ```bibtex
 
-@article{ABrain.NNGPT,
-	title        = {NNGPT: Rethinking AutoML with Large Language Models},
-	author       = {Kochnev, Roman and Khalid, Waleed and Uzun, Tolgay Atinc and Zhang, Xi and Dhameliya, Yashkumar Sanjaybhai and Qin, Furui and Vysyaraju, Chandini and Duvvuri, Raghuvir and Goyal, Avi and Ignatov, Dmitry and Timofte, Radu},
-	journal = {arXiv preprint},
-  	volume  = {arXiv:2511.2033},
-  	url = {https://arxiv.org/pdf/2511.2033},
-	year = {2025}
+@InProceedings{ABrain.NNGPT,
+	title = {{NNGPT}: Rethinking {AutoML} with Large Language Models},
+	author = {Kochnev, Roman and Khalid, Waleed and Uzun, Tolgay Atinc and Zhang, Xi and Dhameliya, Yashkumar Sanjaybhai and Qin, Furui and Vysyaraju, Chandini and Duvvuri, Raghuvir and Goyal, Avi and Ignatov, Dmitry and Timofte, Radu},
+	booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)},	
+	year={2026},
+    note={to appear}
 }
 
-@article{ABrain.Architect,
-	title={From Memorization to Creativity: LLM as a Designer of Novel Neural-Architectures},
+@InProceedings{ABrain.Architect,
+	title={From Memorization to Creativity: {LLM} as a Designer of Novel Neural Architectures},
 	author={Khalid, Waleed and Ignatov, Dmitry and Timofte, Radu},
-	journal={arXiv preprint},
-	volume  = {arXiv:2601.02997},
-	url = {https://arxiv.org/pdf/2601.02997}, 
-	year={2026}
+	booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)},	
+	year={2026},
+    note={to appear}
 }
 
 @InProceedings{ABrain.HPGPT,
-	title={{Optuna vs Code Llama: Are LLMs a New Paradigm for Hyperparameter Tuning?}},
+	title={Optuna vs Code Llama: Are {LLMs} a New Paradigm for Hyperparameter Tuning?},
 	author={Kochnev, Roman and Goodarzi, Arash Torabi and Bentyn, Zofia Antonina and Ignatov, Dmitry and Timofte, Radu},
 	booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision Workshops (ICCVW)},
 	url={https://openaccess.thecvf.com/content/ICCV2025W/AIM/papers/Kochnev_Optuna_vs_Code_Llama_Are_LLMs_a_New_Paradigm_for_ICCVW_2025_paper.pdf},
 	pages = {5664--5674},
 	year={2025}
+}
+
+@Article{ABrain.DeltaNAS,
+	title={Delta-Based Neural Architecture Search: {LLM} Fine-Tuning via Code Diffs},
+	author={Adhikari, Santosh Premi and Timofte, Radu and Ignatov, Dmitry},
+	journal={arXiv preprint arXiv:2605.04903},
+	year={2026}
 }
 
 ```
