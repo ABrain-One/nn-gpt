@@ -1,0 +1,9 @@
+{
+    "base_model_name": "open-r1/OlympicCoder-7B",
+    "num_epochs": 2,
+    "num_test_epochs": 2,
+    "use_deepspeed": false,
+    "token_from_file": false,
+    "only_best_accuracy": false,
+    "context_length": 256
+}

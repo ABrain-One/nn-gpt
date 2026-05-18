@@ -1168,9 +1168,8 @@ class IterativeFinetuner:
                 "accuracies": [],
             }
 
-        # Run evaluation using Eval API wrapper (bypasses NNEval argument bug)
-        # NOTE: NNEval.py has an argument misalignment bug that prevents custom_synth_dir
-        # from being passed correctly. We use a wrapper script that directly calls Eval API.
+        # Run evaluation through the NNEval wrapper so worker-pool scheduling and
+        # checkpoint-aware skipping stay aligned with the main pipelines.
         cmd = [
             "python", "-m", "ab.gpt.iterative_pipeline.evaluate_cycle_models",
             "--cycle", str(cycle),

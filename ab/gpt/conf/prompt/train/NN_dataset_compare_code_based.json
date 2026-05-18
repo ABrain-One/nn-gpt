@@ -1,0 +1,37 @@
+{
+  "dataset_comparison": {
+    "comment": [],
+    "task": "img-classification",
+    "addon_task": "img-classification",
+    "num_joint_nns": 2,
+    "keep_same": ["epoch", "metric", "task", "nn"],
+    "no_repeat": ["dataset"],
+    "improve": false,
+    "nn_prefixes": [],
+    "output_type": "classification",
+    "nn_code_max_chars": 2000,
+    "max_new_tokens": 20,
+    "input_list": [
+      { "para": "nn_code",               "value": "nn_code" },
+      { "para": "epoch",                 "value": "epoch" },
+      { "para": "dataset_1",             "value": "dataset" },
+      { "para": "dataset_2",             "value": "dataset_2" }
+
+    ],
+
+    "prompt": [
+      "You are an expert in deep learning architecture analysis.",
+      "A neural network was trained on two image classification datasets for {epoch} epochs.",
+      "Analyze the architecture code below and predict on which dataset it achieves higher relative accuracy.",
+      "",
+      "Neural network code:",
+      "{nn_code}",
+      "",
+      "Which dataset does this network perform better on?",
+      "Answer with ONLY the dataset name, nothing else. One of: {dataset_1}, {dataset_2}"
+    ],
+    "output": [
+      "{better_dataset}"
+    ]
+  }
+}

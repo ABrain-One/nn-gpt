@@ -8,7 +8,7 @@ def supported_hyperparameters():
 
 # --- Helper Classes ---
 class FractalDropPath(nn.Module):
-    def __init__(self, drop_prob: float = 0.0):
+    def __init__(self, drop_prob: float = 0.1):
         super().__init__()
         self.drop_prob = drop_prob
 
@@ -49,40 +49,54 @@ class Net(nn.Module):
         super(Net, self).__init__()
         self.device = device
 
-        # FIX: Force 3 input channels for CIFAR-10 / Color data
-        # The eval harness might pass in_shape[0]=1 incorrectly
-        c_in = 3 
-
-        # Handle Output Shape safely
+        c_in = 3  # Force 3 input channels for CIFAR-10 / color data
         n_classes = out_shape[0] if out_shape else 10
 
         self.entry = nn.Sequential(
-            nn.Conv2d(c_in, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
+            nn.Conv2d(c_in, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
             nn.ReLU(inplace=True)
         )
-        self.block1 = FractalBlock(2, 64, 0.0)
-        self.pool1 = nn.MaxPool2d(2)
 
-        self.trans = nn.Sequential(
-            nn.Conv2d(64, 64*2, kernel_size=1),
-            nn.BatchNorm2d(64*2),
-            nn.ReLU(inplace=True)
+        # Dynamically build 3 fractal block(s) with channel doubling
+        blocks = []
+        pools = []
+        trans_layers = []
+        cur_chan = 64
+        for i in range(3):
+            blocks.append(FractalBlock(3, cur_chan, 0.0))
+            pools.append(nn.MaxPool2d(2))
+            if i < 3 - 1:
+                next_chan = cur_chan * 2
+                trans_layers.append(nn.Sequential(
+                    nn.Conv2d(cur_chan, next_chan, kernel_size=1),
+                    nn.BatchNorm2d(next_chan),
+                    nn.ReLU(inplace=True)
+                ))
+                cur_chan = next_chan
+            else:
+                trans_layers.append(None)
+
+        self.blocks = nn.ModuleList(blocks)
+        self.pools = nn.ModuleList(pools)
+        self.trans_layers = nn.ModuleList(
+            [t for t in trans_layers if t is not None]
         )
-        self.block2 = FractalBlock(2, 64*2, 0.0)
-        self.pool2 = nn.MaxPool2d(2)
+        self.final_channels = cur_chan
 
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(64*2, n_classes)
+        self.fc = nn.Linear(self.final_channels, n_classes)
         self.to(device)
 
     def forward(self, x):
         x = self.entry(x)
-        x = self.block1(x)
-        x = self.pool1(x)
-        x = self.trans(x)
-        x = self.block2(x)
-        x = self.pool2(x)
+        t_idx = 0
+        for i, (block, pool) in enumerate(zip(self.blocks, self.pools)):
+            x = block(x)
+            x = pool(x)
+            if i < len(self.trans_layers):
+                x = self.trans_layers[t_idx](x)
+                t_idx += 1
         x = self.global_pool(x)
         x = x.flatten(1)
         x = self.fc(x)
@@ -95,12 +109,14 @@ class Net(nn.Module):
             lr=prm['lr'],       
             momentum=prm['momentum']
         )
+        self.max_batches = prm.get('max_batches', None)  # None = full dataset
         return self.optimizer
 
     def learn(self, train_data):
         self.train()
         for i, (inputs, labels) in enumerate(train_data):
-            if i >= 50: break # Limit to ~3% of data (50/1563 batches) for speed
+            # if self.max_batches and i >= self.max_batches: break  # Controlled via prm['max_batches']
+            if self.max_batches is not None and i >= self.max_batches: break
             inputs, labels = inputs.to(self.device), labels.to(self.device)
             self.optimizer.zero_grad()
             outputs = self(inputs)

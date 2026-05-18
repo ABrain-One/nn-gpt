@@ -1,0 +1,10 @@
+{
+    "base_model_name": "mistralai/Mistral-7B-Instruct-v0.3",
+    "num_epochs": 22,
+    "num_test_epochs": 2,
+    "use_deepspeed": false,
+    "token_from_file": false,
+    "only_best_accuracy": false,
+    "context_length": 4096
+  }
+  

@@ -1,0 +1,77 @@
+{
+    "code_generation_with_efficiency_train": {
+        "type": "pruning_optimization",
+        "is_generation": true,
+        "task": "img-classification",
+        "input_list": [
+            {
+                "para": "nn_code",
+                "value": "nn_code"
+            },
+            {
+                "para": "accuracy",
+                "value": "accuracy"
+            },
+            {
+                "para": "duration",
+                "value": "duration"
+            },
+            {
+                "para": "pruning_ratio",
+                "value": "pruning_ratio"
+            },
+            {
+                "para": "params_before",
+                "value": "params_before"
+            },
+            {
+                "para": "params_after",
+                "value": "params_after"
+            },
+            {
+                "para": "transform_code",
+                "value": "transform_code"
+            }
+        ],
+        "no_repeat": [
+            "nn"
+        ],
+        "keep_same": [
+            "dataset",
+            "task"
+        ],
+        "num_joint_nns": 1,
+        "improve": true,
+        "prompt": [
+            "You are a neural network pruning expert.",
+            "",
+            "Here is a pruned model that achieved {accuracy} accuracy:",
+            "<nn>{nn_code}</nn>",
+            "",
+            "Pruning details:",
+            "- Pruning ratio: {pruning_ratio}",
+            "- Parameters before: {params_before}",
+            "- Parameters after: {params_after}",
+            "- Inference time: {duration} nanoseconds",
+            "",
+            "Calculated metrics:",
+            "- Current efficiency: {{accuracy / duration}} ns⁻¹",
+            "- Current compression: {{params_before / params_after}}x",
+            "",
+            "Your task: Generate an IMPROVED pruned model that achieves:",
+            "1. Higher accuracy than {accuracy}",
+            "2. Better efficiency than {{accuracy / duration}}",
+            "3. Higher compression ratio than {{params_before / params_after}}",
+            "",
+            "Respond with:",
+            "1. <hp> hyperparameters </hp>",
+            "2. <transform> transformer code </transform>",
+            "3. <nn> pruned model code </nn>"
+        ],
+        "output": [
+            "<hp>{prm}</hp>",
+            "<transform>{transform_code}</transform>",
+            "<nn>{nn_code}</nn>"
+        ]
+    }
+}

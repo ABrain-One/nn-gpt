@@ -5,12 +5,12 @@ import textwrap
 
 # --- 1. SEARCH SPACE ---
 SEARCH_SPACE = {
-    'n_columns': [1, 2, 3],        
+    'n_columns': [2,3],               # OOM fix: n_columns=3 alone uses ~16GB VRAM (3^depth recursive)
     'base_channels': [16, 32, 64], 
     'dropout_prob': [0.0, 0.1, 0.2, 0.3],
-    'lr': [0.01, 0.005, 0.001],
-    'momentum': [0.85, 0.9, 0.95],
-    'n_blocks': [1, 2, 3, 4],
+    'lr': [0.01, 0.005,0.003,0.002, 0.001],
+    'momentum': [0.75,0.8, 0.85, 0.9, 0.92, 0.95],
+    'n_blocks': [2, 3],                # OOM fix: avoids very deep sequential networks
 }
 
 def create_random_chromosome():
@@ -137,12 +137,14 @@ def generate_model_code_string(chromosome: dict) -> str:
                     lr=prm['lr'],       
                     momentum=prm['momentum']
                 )
+                self.max_batches = prm.get('max_batches', None)  # None = full dataset
                 return self.optimizer
 
             def learn(self, train_data):
                 self.train()
                 for i, (inputs, labels) in enumerate(train_data):
-                    if i >= 50: break # Limit to ~3% of data (50/1563 batches) for speed
+                    # if self.max_batches and i >= self.max_batches: break  # Controlled via prm['max_batches']
+                    if self.max_batches is not None and i >= self.max_batches: break
                     inputs, labels = inputs.to(self.device), labels.to(self.device)
                     self.optimizer.zero_grad()
                     outputs = self(inputs)

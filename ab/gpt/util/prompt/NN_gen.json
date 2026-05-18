@@ -1,0 +1,41 @@
+{
+    "prun_prompt": {
+        "input_list": [
+            {
+                "para": "model_name",
+                "value": "model_name"
+            },
+            {
+                "para": "accuracy",
+                "value": "accuracy"
+            },
+            {
+                "para": "duration",
+                "value": "duration"
+            },
+            {
+                "para": "pruning_ratio",
+                "value": "pruning_ratio"
+            },
+            {
+                "para": "params_before",
+                "value": "params_before"
+            },
+            {
+                "para": "params_after",
+                "value": "params_after"
+            }
+        ],
+        "prompt": [
+            "Model: {model_name}",
+            "Accuracy: {accuracy}",
+            "Duration: {duration}",
+            "Performance Score (accuracy/duration): {score}",
+            "Compression Ratio: {compression_ratio}",
+            "Improve this model to maximize score while reducing size"
+        ],
+        "output": [
+            "<nn>Improved pruned model</nn>"
+        ]
+    }
+}

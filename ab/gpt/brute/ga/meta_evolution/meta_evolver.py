@@ -24,7 +24,7 @@ ADAPTER_SAVE_PATH = os.path.join(BASE_DIR, "fine_tuned_adapter")
 BENCH_GENS = int(os.environ.get("GENERATIONS", 3))
 BENCH_POP = int(os.environ.get("POPULATION_SIZE", 10)) 
 
-# --- MICRO-MUTATION PROMPT ---
+# --- MICRO-MUTATION PROMPTS ---
 PROMPTS = {
     "mutate_gene": """
 Improve this mutation helper function for a genetic algorithm.
@@ -34,6 +34,28 @@ Existing Code:
 {code}
 
 Output ONLY the python code starting with 'def mutate_gene(self, current_value, possible_values):'
+""",
+    "combine_genes": """
+Improve this crossover helper function for a genetic algorithm.
+Goal: Decide which parent's gene value to use when creating a child chromosome.
+You may use blending, uniform crossover, or any creative strategy.
+Parameters: gene_name (str), parent1_value, parent2_value, crossover_point (int), gene_index (int), total_genes (int).
+
+Existing Code:
+{code}
+
+Output ONLY the python code starting with 'def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):'
+""",
+    "select_competitor": """
+Improve this selection helper function for a genetic algorithm.
+Goal: Pick the best individual from a list of tournament competitors.
+Each competitor is a dict with 'chromosome' and 'fitness' keys.
+You may add fitness-proportional selection, diversity bonuses, or other strategies.
+
+Existing Code:
+{code}
+
+Output ONLY the python code starting with 'def select_competitor(self, competitors):'
 """
 }
 
@@ -215,6 +237,59 @@ class MetaEvolver:
         # RL Loop
         reward = calculate_meta_reward(new_score, self.baseline_score, valid_syntax)
         
+        fine_tune_expected = (reward > 0 and valid_syntax)
+        fine_tune_started = False
+        fine_tune_completed = False
+        fine_tune_failed = False
+        fine_tune_exception = None
+        adapter_save_started = False
+        adapter_save_completed = False
+        adapter_save_failed = False
+        adapter_save_exception = None
+        adapter_path = ADAPTER_SAVE_PATH
+        train_examples_count = 1 if fine_tune_expected else 0
+        train_epochs = 1 if fine_tune_expected else 0
+        fine_tune_start_time = None
+        fine_tune_end_time = None
+        adapter_save_start_time = None
+        adapter_save_end_time = None
+        
+        if fine_tune_expected:
+            print("--> SUCCESS. Updating Baseline & Fine-tuning.")
+            self.baseline_score = new_score
+            
+            print("[LoRA] Fine-tune start")
+            fine_tune_started = True
+            fine_tune_start_time = datetime.now().isoformat()
+            try:
+                self.llm.train_on_buffer([{'prompt': prompt, 'completion': new_code}], epochs=train_epochs)
+                fine_tune_completed = True
+                print("[LoRA] Fine-tune complete")
+            except Exception as e:
+                fine_tune_failed = True
+                fine_tune_exception = str(e)
+                print(f"[LoRA] Fine-tune failed: {e}")
+            finally:
+                fine_tune_end_time = datetime.now().isoformat()
+                
+            if fine_tune_completed:
+                print("[LoRA] Adapter save start")
+                adapter_save_started = True
+                adapter_save_start_time = datetime.now().isoformat()
+                try:
+                    self.llm.save_adapters(ADAPTER_SAVE_PATH)
+                    adapter_save_completed = True
+                    print("[LoRA] Adapter save complete")
+                except Exception as e:
+                    adapter_save_failed = True
+                    adapter_save_exception = str(e)
+                    print(f"[LoRA] Adapter save failed: {e}")
+                finally:
+                    adapter_save_end_time = datetime.now().isoformat()
+        elif valid_syntax:
+            print("--> Reverting File.")
+            shutil.copy(bkp, TARGET_FILE)
+            
         # Log entry
         log_entry = {
             "timestamp": datetime.now().isoformat(),
@@ -224,28 +299,36 @@ class MetaEvolver:
             "cleaned_code": new_code,
             "valid_syntax": valid_syntax,
             "score": new_score,
-            "reward": reward
+            "reward": reward,
+            "fine_tune_expected": fine_tune_expected,
+            "fine_tune_started": fine_tune_started,
+            "fine_tune_completed": fine_tune_completed,
+            "fine_tune_failed": fine_tune_failed,
+            "fine_tune_exception": fine_tune_exception,
+            "adapter_save_started": adapter_save_started,
+            "adapter_save_completed": adapter_save_completed,
+            "adapter_save_failed": adapter_save_failed,
+            "adapter_save_exception": adapter_save_exception,
+            "adapter_path": adapter_path,
+            "train_examples_count": train_examples_count,
+            "train_epochs": train_epochs,
+            "fine_tune_start_time": fine_tune_start_time,
+            "fine_tune_end_time": fine_tune_end_time,
+            "adapter_save_start_time": adapter_save_start_time,
+            "adapter_save_end_time": adapter_save_end_time
         }
         with open(LOG_FILE, 'a') as f:
             f.write(json.dumps(log_entry) + "\n")
-        
-        if reward > 0:
-            print("--> SUCCESS. Updating Baseline & Fine-tuning.")
-            self.baseline_score = new_score
-            self.llm.train_on_buffer([{'prompt': prompt, 'completion': new_code}], epochs=1)
-            self.llm.save_adapters(ADAPTER_SAVE_PATH)
-        elif valid_syntax:
-            print("--> Reverting File.")
-            shutil.copy(bkp, TARGET_FILE)
 
 if __name__ == "__main__":
     MODEL_PATH = "deepseek-ai/deepseek-coder-6.7b-instruct" 
     evolver = MetaEvolver(MODEL_PATH)
     
-    # LOOP: FOCUS ONLY ON MUTATION FOR NOW
-    # LOOP: AUTOMATED VIA ENV
+    # LOOP: CYCLE THROUGH ALL EVOLVABLE COMPONENTS
     META_ITERATIONS = int(os.environ.get("META_ATTEMPTS"))
+    COMPONENTS = ["mutate_gene", "combine_genes", "select_competitor"]
     for i in range(META_ITERATIONS):
-        print(f"\n=== Meta-Evolution Iteration {i+1}/{META_ITERATIONS} ===")
-        evolver.evolve_component("mutate_gene") 
+        component = COMPONENTS[i % len(COMPONENTS)]
+        print(f"\n=== Meta-Evolution Iteration {i+1}/{META_ITERATIONS} — Evolving: {component} ===")
+        evolver.evolve_component(component) 
         time.sleep(2)

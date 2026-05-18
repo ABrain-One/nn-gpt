@@ -119,6 +119,82 @@ FORWARD_PATTERNS = {
     # """
 }
 
+DIVERSE_FORWARD_PATTERNS = {
+    "A_to_Fractal_plus_B": """
+    def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:
+        x = self._norm4d(x).to(self.device)
+        x_a_map = self.backbone_a(x)
+        x_a_img = self._feature_to_input_image(x_a_map, "a")
+        x_f = adaptive_pool_flatten(self.features(x_a_img))
+        x_b = adaptive_pool_flatten(self.backbone_b(x))
+        x_a = adaptive_pool_flatten(x_a_map)
+        fused = torch.cat([x_a, x_f, x_b], dim=1)
+        if is_probing: return fused
+        return self.classifier(fused)
+    """,
+    "B_to_Fractal_plus_A": """
+    def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:
+        x = self._norm4d(x).to(self.device)
+        x_b_map = self.backbone_b(x)
+        x_b_img = self._feature_to_input_image(x_b_map, "b")
+        x_f = adaptive_pool_flatten(self.features(x_b_img))
+        x_a = adaptive_pool_flatten(self.backbone_a(x))
+        x_b = adaptive_pool_flatten(x_b_map)
+        fused = torch.cat([x_b, x_f, x_a], dim=1)
+        if is_probing: return fused
+        return self.classifier(fused)
+    """,
+    "Fractal_to_DualBackbone": """
+    def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:
+        x = self._norm4d(x).to(self.device)
+        x_f_map = self.features(x)
+        x_f_img = self._feature_to_input_image(x_f_map, "f")
+        x_a = adaptive_pool_flatten(self.backbone_a(x_f_img))
+        x_b = adaptive_pool_flatten(self.backbone_b(x_f_img))
+        x_f = adaptive_pool_flatten(x_f_map)
+        fused = torch.cat([x_f, x_a, x_b], dim=1)
+        if is_probing: return fused
+        return self.classifier(fused)
+    """,
+    "A_to_Fractal_to_B": """
+    def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:
+        x = self._norm4d(x).to(self.device)
+        x_a_map = self.backbone_a(x)
+        x_a_img = self._feature_to_input_image(x_a_map, "a")
+        x_f_map = self.features(x_a_img)
+        x_f_img = self._feature_to_input_image(x_f_map, "f")
+        x_b = adaptive_pool_flatten(self.backbone_b(x_f_img))
+        x_a = adaptive_pool_flatten(x_a_map)
+        x_f = adaptive_pool_flatten(x_f_map)
+        fused = torch.cat([x_a, x_f, x_b], dim=1)
+        if is_probing: return fused
+        return self.classifier(fused)
+    """,
+}
+
+DIVERSE_FORWARD_HELPER = """
+    def _feature_to_input_image(self, x: torch.Tensor, adapter_name: str) -> torch.Tensor:
+        if x.dim() == 2:
+            x = x.unsqueeze(-1).unsqueeze(-1)
+        elif x.dim() == 3:
+            x = x.mean(dim=1).unsqueeze(-1).unsqueeze(-1)
+        elif x.dim() != 4:
+            x = x.flatten(1).unsqueeze(-1).unsqueeze(-1)
+
+        c_in, h, w = self._input_spec
+        in_channels = int(x.shape[1])
+        key = f"{adapter_name}_{in_channels}"
+        if not hasattr(self, "_input_adapters"):
+            self._input_adapters = nn.ModuleDict()
+        if key not in self._input_adapters:
+            self._input_adapters[key] = nn.Conv2d(in_channels, c_in, kernel_size=1).to(self.device)
+
+        x = self._input_adapters[key](x)
+        if x.shape[-2:] != (h, w):
+            x = torch.nn.functional.interpolate(x, size=(h, w), mode="bilinear", align_corners=False)
+        return x
+"""
+
 CHANNEL_LOGIC = {
     "Serial_Cascade": lambda img, a, b, f: (img, a, f),
     "Residual_Bypass": lambda img, a, b, f: (img, img, a + f),
@@ -222,7 +298,7 @@ def generate_conv_block():
     return ",\n        ".join([conv_first, bn, 'nn.ReLU(inplace=True)'])
 
 
-def alter(epochs, test_conf, llm_name, gguf_file=None):
+def _generate_patterns(epochs, patterns, max_variants, helper_code=""):
     print("Load Model Complete, Start Loop...")
 
     shutil.rmtree(epoch_dir(), ignore_errors=True)
@@ -231,17 +307,13 @@ def alter(epochs, test_conf, llm_name, gguf_file=None):
     for bb in available_backbones:
         probe_model_output_channels(bb)
 
-    max_variants = 50
-
     for epoch in range(epochs):
         out_path = epoch_dir(epoch)
         template_content = (fract_dir / 'backbone' / "FractalFusion_template.py").read_text()
 
         counter = 0
 
-        for pattern_name, forward_code in FORWARD_PATTERNS.items():
-            calc_logic = CHANNEL_LOGIC.get(pattern_name, lambda i,a,b,f: (i, i, i))
-
+        for pattern_name, forward_code in patterns.items():
             for i in range(max_variants):
                 block_code = generate_conv_block()
                 bb_a, bb_b = random.sample(available_backbones, 2)
@@ -254,14 +326,14 @@ def alter(epochs, test_conf, llm_name, gguf_file=None):
                 val_b = probe_model_output_channels(bb_b)
                 val_f = 64 * (2**(n-1))
 
-                ch_a_in, ch_f_in, ch_b_in = calc_logic(val_img, val_a, val_b, val_f)
+                ch_a_in, ch_f_in, ch_b_in = val_a, val_f, val_b
 
                 model_dir = synth_dir(out_path) / f"B{counter}"
                 model_dir.mkdir(parents=True, exist_ok=True)
 
                 nn_code = (template_content
                            .replace("$$", block_code)
-                           .replace("?FORWARD", forward_code)
+                           .replace("?FORWARD", helper_code + forward_code)
                            .replace("?PATTERN", pattern_name)
                            .replace("?CH_A_IN", str(ch_a_in))
                            .replace("?CH_F_IN", str(ch_f_in))
@@ -277,3 +349,10 @@ def alter(epochs, test_conf, llm_name, gguf_file=None):
                 if counter % 50 == 0:
                     print(f"Generated {counter} models total...")
 
+
+def alter(epochs, test_conf, llm_name, gguf_file=None):
+    _generate_patterns(epochs, FORWARD_PATTERNS, 50)
+
+
+def alter_diverse(epochs, variants_per_pattern=20):
+    _generate_patterns(epochs, DIVERSE_FORWARD_PATTERNS, variants_per_pattern, DIVERSE_FORWARD_HELPER)

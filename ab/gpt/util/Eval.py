@@ -1,6 +1,10 @@
 import os
 import re
 import ast
+import shutil
+import sys
+from contextlib import contextmanager
+from pathlib import Path
 
 import ab.nn.api as api
 from ab.nn.util.Util import uuid4
@@ -84,12 +88,21 @@ class Eval:
         nn_dataset.data.cache_clear()
         import random
         new_checksum = uuid4(code)
-        
         # Optimized check: only query for the specific checksum instead of fetching everything
         df = nn_dataset.data(nn=new_checksum)
         
         if df.empty:
-            return api.check_nn(code, self.task, self.dataset, self.metric, self.prm, self.save_to_db, self.prefix, self.save_path)
+            with _isolated_eval_tmp_modules():
+                return api.check_nn(
+                    code,
+                    self.task,
+                    self.dataset,
+                    self.metric,
+                    self.prm,
+                    self.save_to_db,
+                    self.prefix,
+                    self.save_path,
+                )
         else:
             print(f"  [INFO] NN with checksum {new_checksum} already exists in database. Skipping.")
             return {"accuracy": df["accuracy"].iloc[0] if "accuracy" in df.columns else 0.0}
@@ -102,3 +115,39 @@ class Eval:
             'metric': self.metric,
             'prm': self.prm,
         }
+
+
+@contextmanager
+def _isolated_eval_tmp_modules():
+    """
+    Give each evaluator process its own temporary Python package root.
+
+    The underlying nn-dataset trainer writes transient modules under
+    ``<ab_root_path>/<out>/nn/tmp``. Real multi-worker NNEval runs would race on
+    that shared location, so we remap only the trainer's ``out`` root per
+    process while the evaluation request is active.
+    """
+    try:
+        import ab.nn.util.Train as train_runtime
+        from ab.nn.util.Const import ab_root_path
+    except Exception:
+        yield
+        return
+
+    original_out = getattr(train_runtime, 'out', None)
+    if not isinstance(original_out, str) or not original_out:
+        yield
+        return
+
+    isolated_out = f"{original_out}_nneval_tmp_pid_{os.getpid()}"
+    isolated_root = Path(ab_root_path) / isolated_out
+    train_runtime.out = isolated_out
+    try:
+        yield
+    finally:
+        train_runtime.out = original_out
+        stale_prefix = f"{isolated_out}."
+        for module_name in tuple(sys.modules):
+            if module_name == isolated_out or module_name.startswith(stale_prefix):
+                sys.modules.pop(module_name, None)
+        shutil.rmtree(isolated_root, ignore_errors=True)
