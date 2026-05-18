@@ -6,6 +6,7 @@ from datetime import datetime
 import shutil
 from ab.nn.util.Util import release_memory, uuid4
 from ab.gpt.util.Util import read_py_file_as_string
+import ab.nn.api as nn_dataset
 
 from ab.gpt.util.Const import epoch_dir, new_nn_file, nngpt_dir, synth_dir, hp_file, NN_TRAIN_EPOCHS
 from ab.gpt.util.Eval import Eval
@@ -59,210 +60,196 @@ def main(nn_name_prefix=NN_NAME_PREFIX, nn_train_epochs=NN_TRAIN_EPOCHS, only_ep
          dropout_aux=DROPOUT_AUX, attention_dropout=ATTENTION_DROPOUT, norm_momentum=NORM_MOMENTUM,
          score_thresh=SCORE_THRESH, nms_thresh=NMS_THRESH, iou_thresh=IOU_THRESH, detections_per_img=DETECTIONS_PER_IMG,
          topk_candidates=TOPK_CANDIDATES, neg_to_pos_ratio=NEG_TO_POS_RATIO, pretrained=PRETRAINED, patch_size=PATCH_SIZE,
-         prm_json=PRM_JSON):
-    base_nngpt_path = nngpt_dir  # out/nngpt
-    if nn_alter_epochs is None:
-        if epoch_dir().is_dir():
-            nn_alter_epochs = len(os.listdir(epoch_dir()))
-        else:
-            print()
-            print(f"Directory {epoch_dir()} doesn't exist", file=sys.stderr)
+         prm_json=PRM_JSON,
+         feature_cache_dir=None, feature_cache_mode='read', num_workers=0, pin_memory=False,
+         freeze_gpt2=False, force_eval=False):
+    import sys
+    print(f"DEBUG: sys.argv={sys.argv}")
+    
+    # SE STANDARD: Use relative path resolution via Const.py for generalization
+    base_nngpt_path = nngpt_dir
+    epoch_base = epoch_dir()
+    
+    if not epoch_base.is_dir():
+        print(f"[ERROR] Epoch directory {epoch_base} doesn't exist.")
+        return
 
-    if nn_alter_epochs:
-        for i in ([only_epoch] if only_epoch is not None else range(nn_alter_epochs)):
-            # Track cycle number and epoch number separately
-            # Cycle is the finetuning iteration, epoch is within a cycle
-            current_cycle = cycle if cycle is not None else i  # Default to epoch if cycle not specified
-            current_epoch = i
-            cycle_start_time = time.time()
+    # Scan all epoch directories matching * pattern (e.g., A0, A1, etc.)
+    if custom_synth_dir:
+        epoch_dirs = [Path("custom_epoch")]
+        print("Using custom synth directory, bypassing epoch scan.")
+    else:
+        epoch_dirs = sorted(list(epoch_base.glob("*")))
+        print(f"Found {len(epoch_dirs)} epoch directories to scan.")
+    
+    for current_alter_epoch_path in epoch_dirs:
+        # Filter by only_epoch if specified
+        valid_names = {f"A{only_epoch}", f"Epoch_{only_epoch}"}
+        if only_epoch is not None and not custom_synth_dir and current_alter_epoch_path.name not in valid_names:
+            continue
             
-            # Path to the output of one NNAlter.py epoch (e.g., out/nngpt/llm/epoch/A0)
-            current_alter_epoch_path = epoch_dir(i)
+        models_base_dir = current_alter_epoch_path / "synth_nn"
+        if custom_synth_dir:
+            models_base_dir = Path(custom_synth_dir)
+            
+        if not models_base_dir.is_dir():
+            print(f"Directory {models_base_dir} not found. Skipping.")
+            continue
+        
+        print(f"\n--- Scanning NNAlter Epoch: {current_alter_epoch_path.name} ---")
+        cycle_start_time = time.time()
+        current_cycle = cycle if cycle is not None else current_alter_epoch_path.name
+        
+        for model_id in os.listdir(models_base_dir):
+            model_dir_path = models_base_dir / model_id
+            if not model_dir_path.is_dir(): continue
 
-            # If a custom custom_synth_dir is given, use it; otherwise build from epoch_dir
-            if custom_synth_dir:
-                models_base_dir = Path(custom_synth_dir)
-            else:
-                models_base_dir = synth_dir(current_alter_epoch_path)
+            code_file_path = model_dir_path / new_nn_file
+            if not code_file_path.exists(): continue
 
-            if not models_base_dir.exists():
-                print(f"Directory {models_base_dir} for NNAlter epoch {i} not found. Skipping.")
+            if not force_eval and (model_dir_path / 'eval_info.json').exists():
+                print(f"  [SKIP] Model {model_id} already evaluated (eval_info.json exists).")
                 continue
 
-            print(f"\n--- Scanning NNAlter Epoch Directory: {current_alter_epoch_path} ---")
-            print(f"--- Synthesized Models Directory: {models_base_dir} ---")
+            print(f"\n--- Evaluating Model: {model_id} ---")
 
-            # Initialize cycle metrics collection (will be populated from eval_info.json files after evaluation)
-            for model_id in os.listdir(models_base_dir):
-                model_dir_path = models_base_dir / model_id
-                if not model_dir_path.is_dir():
-                    continue
+            if not verify_nn_code(model_dir_path, code_file_path):
+                print(f"Code verification failed for {model_id}. Skipping.")
+                continue
 
-                code_file_path = model_dir_path / new_nn_file
-                df_file_path = model_dir_path / 'dataframe.df'  # Original model's metadata
+            # Construct Hyperparameters (prm)
+            prm = {
+                'lr': lr, 'batch': batch, 'dropout': dropout, 'momentum': momentum,
+                'transform': transform, 'epoch': nn_train_epochs,
+                'limit': prm_json.get('limit', 7000) if prm_json else 7000,
+                'num_workers': num_workers, 'pin_memory': pin_memory,
+                'feature_cache_dir': feature_cache_dir, 'feature_cache_mode': feature_cache_mode,
+                'freeze_gpt2': freeze_gpt2
+            }
+            
+            prefix_for_db = nn_name_prefix
+            orig_pref = None
+            
+            # 1. Try SQL Priority (Professor Requirement)
+            try:
+                original_files = list(model_dir_path.glob("original_*.py"))
+                if original_files:
+                    with open(original_files[0], 'r') as f:
+                        b_code = f.read()
+                    b_checksum = uuid4(b_code)
+                    db_df = nn_dataset.data(nn=b_checksum)
+                    if not db_df.empty:
+                        row = db_df.iloc[0]
+                        task, dataset, metric = row.get('task', task), row.get('dataset', dataset), row.get('metric', metric)
+                        if isinstance(row.get('prm'), dict): prm.update(row['prm'])
+                        orig_pref = row['nn'].split('-')[0] if 'nn' in row else None
+                        print(f"  [SQL] Found baseline metadata for {b_checksum}")
+            except Exception: pass
 
-                if not code_file_path.exists():
-                    print(f"Code file {new_nn_file} not found in {model_dir_path}. Skipping.")
-                    continue
-
-                print(f"\n--- Evaluating Model: {model_dir_path.relative_to(base_nngpt_path)} ---")
-
-                if not verify_nn_code(model_dir_path, code_file_path):
-                    print(f"Code verification failed for {code_file_path}. Skipping evaluation.")
-                    with open(model_dir_path / 'eval_verification_failed.txt', 'w') as f:
-                        f.write("Initial code verification failed.")
-                    continue
-
-                # Initialize task, dataset, metric, and prm from command-line arguments (or their defaults)
-                task = task
-                dataset = dataset
-                metric = metric
-                # This prm structure is consistent with LEMUR dataset's expectations for model training
-                prm = None
-                hp_path = model_dir_path / hp_file
-                if hp_path.exists():
-                    try:
-                        with open(hp_path) as f:
-                            prm = json.load(f)
-                        print(f'Training model {model_id} with LLM recommended prm {prm}')
-                    except Exception as e:
-                        print(f"Error loading LLM recommended training params from {hp_path}: {e}.")
-                if not prm:
-                    prm = {
-                        'lr': lr,
-                        'batch': batch,
-                        'dropout': dropout,
-                        'momentum': momentum,
-                        'transform': transform, # Default transform from CLI
-                        # 'epoch' will be set explicitly later
-                        'stochastic_depth_prob': stochastic_depth_prob,
-                        'norm_eps': norm_eps,
-                        'norm_std': norm_std,
-                        'tie_weights': tie_weights,
-                        'dropout_aux': dropout_aux,
-                        'attention_dropout': attention_dropout,
-                        'norm_momentum': norm_momentum,
-                        'score_thresh': score_thresh,
-                        'nms_thresh': nms_thresh,
-                        'iou_thresh': iou_thresh,
-                        'detections_per_img': detections_per_img,
-                        'topk_candidates': topk_candidates,
-                        'neg_to_pos_ratio': neg_to_pos_ratio,
-                        'pretrained': pretrained,
-                        'patch_size': patch_size,
-                    }
-                    print(f'Training model {model_id} with command-line/default training params {prm}')
-                prefix_for_db = nn_name_prefix  # Default prefix
-                orig_pref = None
-                if df_file_path.exists():
-                    try:
-                        origdf = pd.read_pickle(df_file_path)
-                        # Override with values from dataframe.df if they exist
-                        task = origdf.get('task', task)
-                        dataset = origdf.get('dataset', dataset)
-                        metric = origdf.get('metric', metric)
-                        orig_pref = origdf['nn'].split('-')[0]
-
-                        original_prm_from_df = origdf.get('prm')
-                        if isinstance(original_prm_from_df, dict):
-                            # Update prm with values from df, df values take precedence.
-                            # This will update lr, batch, dropout, momentum, transform if they exist in original_prm_from_df,
-                            # and also add any other model-specific hyperparameters from the original model.
-                            prm.update(original_prm_from_df)
-
-                        prefix_for_db = nn_name_prefix or (origdf['nn'].split('-')[0] if 'nn' in origdf else prefix_for_db)
-                        print(f"  Loaded metadata from dataframe.df: task={task}, dataset={dataset}, metric={metric}")
-                    except Exception as e:
-                        print(f"  Error loading dataframe.df from {df_file_path}: {e}. Using command-line/default parameters for task, dataset, metric, and prm structure.")
-                else:
-                    print(f"  No dataframe.df found. Using command-line/default evaluation parameters.")
-
-                if prm_json:
-                    prm.update(prm_json)
-                    print(f"  Applied --prm_json overrides: {prm_json}")
-
-                # Crucial: set training epochs for this evaluation from nn_train_epochs
-                # This overrides any 'epoch' value that might have come from original_prm_from_df
-                prm['epoch'] = nn_train_epochs
-                
-                # Ensure transform is never None (must be a valid string for ab.nn.transform module)
-                if prm.get('transform') is None or not isinstance(prm.get('transform'), str):
-                    prm['transform'] = transform if transform else TRANSFORM
-                
-                print(f"  Final parameters for Eval: {prm}")
-                print(f"  Task: {task}, Dataset: {dataset}, Metric: {metric}, Prefix: {prefix_for_db}")
-
+            # 2. Fallback to dataframe.df if SQL failed or was incomplete
+            df_file_path = model_dir_path / 'dataframe.df'
+            if df_file_path.exists():
                 try:
-                    evaluator = Eval(
-                        model_source_package=str(model_dir_path),
-                        task=task,
-                        dataset=dataset,
-                        metric=metric,
-                        prm=prm,  # Pass the constructed prm
-                        save_to_db=save_to_db,
-                        prefix=prefix_for_db,
-                        save_path=model_dir_path
-                    )
-                    if epoch_limit_minutes:
-                        evaluator.epoch_limit_minutes = epoch_limit_minutes
-                    eval_results = evaluator.evaluate(code_file_path)
-                    print(f"  Evaluation results for {model_id}: {eval_results}")
-                    
-                    eval_info_data = {
-                        "eval_args": evaluator.get_args(),  # This will show the prm used by Eval
-                        "eval_results": eval_results,
-                        "cli_args": {'task': task, 'dataset': dataset, "metric": metric, "lr": lr, "batch": batch,
-                                     'dropout': dropout, 'momentum': momentum, 'transform': transform}
-                    }
-                    with open(model_dir_path / 'eval_info.json', 'w+') as f:
-                        json.dump(eval_info_data, f, indent=4, default=str)
+                    origdf = pd.read_pickle(df_file_path)
+                    task = origdf.get('task', task)
+                    dataset = origdf.get('dataset', dataset)
+                    metric = origdf.get('metric', metric)
+                    if isinstance(origdf.get('prm'), dict): prm.update(origdf['prm'])
+                    orig_pref = orig_pref or (origdf['nn'].split('-')[0] if 'nn' in origdf else None)
+                except Exception: pass
 
-                    nn_name = uuid4(read_py_file_as_string(code_file_path))
+            if prm_json: prm.update(prm_json)
+            
+            # Ensure CLI overrides last only if explicitly provided or missing
+            if lr != LR or 'lr' not in prm: prm['lr'] = lr
+            if batch != BATCH or 'batch' not in prm: prm['batch'] = batch
+            prm['epoch'] = nn_train_epochs
+            
+            print(f"DEBUG: CLI transform={transform}, Default TRANSFORM={TRANSFORM}, prm['transform'] before override={prm.get('transform')}")
+            if transform != TRANSFORM or 'transform' not in prm: prm['transform'] = transform
+            print(f"DEBUG: prm['transform'] after override={prm.get('transform')}")
+            prefix_for_db = nn_name_prefix or orig_pref
 
-                    pref = nn_name_prefix or orig_pref
-                    if pref:
-                        nn_name = pref + '-' + nn_name
-                    copy_to_lemur(model_dir_path, nn_name, task, dataset, metric)
+            try:
+                evaluator = Eval(
+                    model_source_package=str(model_dir_path),
+                    task=task, dataset=dataset, metric=metric, prm=prm,
+                    save_to_db=save_to_db, prefix=prefix_for_db, save_path=model_dir_path
+                )
+                if epoch_limit_minutes: evaluator.epoch_limit_minutes = epoch_limit_minutes
+                
+                # --- Lightweight NAS Bridge Contract Check ---
+                if task == 'img-captioning' and prm.get('transform') == 'cached_blip2':
+                    print(f"  [NAS] Checking CrossModalBridge shape contract for {model_id}...")
+                    try:
+                        import torch
+                        import importlib.util
+                        import sys
 
-                except Exception as e:
-                    error_msg = f"Error evaluating model {model_id}: {e}"
-                    print(f"  {error_msg}")
-                    detailed_error = traceback.format_exc()
-                    print(detailed_error)
-                    with open(model_dir_path / 'error.txt', 'w+') as f:
-                        f.write(f"{error_msg}\n\n{detailed_error}")
-                finally:
-                    release_memory()
-            
-            # Generate cycle results JSON after all evaluations complete
-            # Read all eval_info.json files that were created during evaluation
-            cycle_end_time = time.time()
-            cycle_time_minutes = (cycle_end_time - cycle_start_time) / 60.0
-            
-            # Collect metrics from all eval_info.json files in the models directory
-            eval_results_list, model_dirs_list, successful_models, failed_models = collect_cycle_metrics(
-                models_base_dir, current_alter_epoch_path
-            )
-            
-            # Generate cycle results JSON from collected metrics
-            # Note: cycle is the finetuning iteration, epoch is within a cycle
-            cycle_results = generate_cycle_results(
-                cycle=current_cycle,
-                models_base_dir=models_base_dir,
-                eval_results_list=eval_results_list,
-                model_dirs_list=model_dirs_list,
-                successful_models=successful_models,
-                failed_models=failed_models,
-                cycle_time_minutes=cycle_time_minutes,
-                current_alter_epoch_path=current_alter_epoch_path
-            )
-            
-            # Save cycle results JSON
-            cycle_results_path = base_nngpt_path / "cycle_results.json"
-            save_cycle_results(cycle_results, cycle_results_path)
-            print(f"\n--- Cycle {current_cycle} (Epoch {current_epoch}) results saved to: {cycle_results_path} ---")
-            print(f"  Found {len(eval_results_list)} successful evaluations from eval_info.json files")
-            print(f"  Found {len(failed_models)} failed models")
+                        module_name = f"nas_check_{model_id}_{uuid4(str(code_file_path))[:8]}"
+                        spec = importlib.util.spec_from_file_location(module_name, str(code_file_path))
+                        mod = importlib.util.module_from_spec(spec)
+                        sys.modules[module_name] = mod
+                        spec.loader.exec_module(mod)
+
+                        # Check only the bridge to save memory/time
+                        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                        bridge = mod.CrossModalBridge(prm).to(device)
+                        bridge.eval()
+
+                        x = torch.randn(2, 32, 768, device=device)
+                        with torch.no_grad():
+                            y = bridge(x, None)
+
+                        if not torch.is_tensor(y) or tuple(y.shape) != (2, 32, 768):
+                            raise RuntimeError(f"Bridge shape invalid: got {tuple(y.shape) if torch.is_tensor(y) else type(y)}")
+
+                        del bridge, x, y
+                        release_memory()
+                        print("  [NAS] Bridge shape check passed.")
+                    except Exception as dry_run_err:
+                        print(f"  [SKIP] Bridge contract failed: {dry_run_err}")
+                        with open(model_dir_path / 'error.txt', 'w+') as f:
+                            f.write(f"Bridge Contract Failed: {dry_run_err}")
+                        continue
+
+                eval_results = evaluator.evaluate(code_file_path)
+                
+                eval_info_data = {
+                    "eval_args": evaluator.get_args(),
+                    "eval_results": eval_results,
+                    "cli_args": {'task': task, 'dataset': dataset, "metric": metric}
+                }
+                with open(model_dir_path / 'eval_info.json', 'w+') as f:
+                    json.dump(eval_info_data, f, indent=4, default=str)
+                
+                # Standard Naming & LEMUR Storage (Exact Location)
+                # Save directly to the LEMUR staging area without subfolders
+                from ab.gpt.util.Const import new_lemur_nn_dir
+                Path(new_lemur_nn_dir).mkdir(parents=True, exist_ok=True)
+                
+                # Final naming: The folder name IS the proper name (Blip2Fast-A0-B0)
+                final_name = model_id
+                
+                print(f"  [Standard] Saving model to LEMUR (Flat): {new_lemur_nn_dir}/{final_name}.py")
+                shutil.copyfile(model_dir_path / new_nn_file, new_lemur_nn_dir / f"{final_name}.py")
+                
+                # Also record in stats (this handles the stat folder nesting as required by Train.py)
+                copy_to_lemur(model_dir_path, final_name, task, dataset, metric)
+
+            except Exception as e:
+                error_msg = traceback.format_exc()
+                print(f"  [ERROR] {e}")
+                with open(model_dir_path / 'error.txt', 'w+') as f: f.write(error_msg)
+            finally:
+                release_memory()
+                time.sleep(1)
+
+        # Cycle Results
+        cycle_time = (time.time() - cycle_start_time) / 60.0
+        metrics = collect_cycle_metrics(models_base_dir, current_alter_epoch_path)
+        c_res = generate_cycle_results(current_cycle, models_base_dir, *metrics, cycle_time, current_alter_epoch_path)
+        save_cycle_results(c_res, base_nngpt_path / "cycle_results.json")
 
 
 
@@ -335,10 +322,16 @@ if __name__ == "__main__":
     # Custom custom_synth_dir
     parser.add_argument('--custom_synth_dir', dest='custom_synth_dir', type=str, default=CUSTOM_SYNTH_DIR,
                         help="Custom directory containing generated models")
-    parser.add_argument('--epoch_limit_minutes', type=int, default=EPOCH_LIMIT_MINUTES,
-                        help="Max minutes allowed per epoch (default: specified in NN Dataset).")
+    parser.add_argument('--num_workers', type=int, default=0, help="Number of workers for DataLoader.")
+    parser.add_argument('--pin_memory', action=argparse.BooleanOptionalAction, default=False, help="Whether to pin memory in DataLoader.")
+    parser.add_argument('--feature_cache_dir', type=str, default=None, help="Directory for feature caching.")
+    parser.add_argument('--feature_cache_mode', type=str, default='read', choices=['read', 'write', 'auto'], help="Feature cache mode.")
+    parser.add_argument('--epoch_limit_minutes', type=int, default=None, help="Time limit per epoch.")
+    parser.add_argument('--freeze_gpt2', action=argparse.BooleanOptionalAction, default=False,
+                        help="Whether to freeze the GPT-2 decoder backbone (default: disabled).")
     parser.add_argument('--cycle', type=int, default=CYCLE,
                         help="Cycle number (finetuning iteration, separate from epoch). If not specified, defaults to epoch number.")
+    parser.add_argument('--force_eval', action='store_true', help="Force re-evaluation of models even if eval_info.json exists.")
 
     args = parser.parse_args()
     """
@@ -364,11 +357,27 @@ if __name__ == "__main__":
             print(f"Error parsing --prm_json: {e}", file=sys.stderr)
             sys.exit(1)
 
-    main(args.nn_name_prefix, args.nn_train_epochs, args.only_epoch, args.save_to_db, args.nn_alter_epochs,
-         args.task, args.dataset, args.metric, args.lr, args.batch_size, args.dropout, args.momentum,
-         args.transform, args.epoch_limit_minutes, args.custom_synth_dir, args.cycle,
-         args.stochastic_depth_prob, args.norm_eps, args.norm_std, args.tie_weights,
-         args.dropout_aux, args.attention_dropout, args.norm_momentum,
-         args.score_thresh, args.nms_thresh, args.iou_thresh, args.detections_per_img,
-         args.topk_candidates, args.neg_to_pos_ratio, args.pretrained, args.patch_size,
-         prm_json_dict)
+    main(
+        nn_alter_epochs=args.nn_alter_epochs,
+        nn_train_epochs=args.nn_train_epochs,
+        task=args.task,
+        dataset=args.dataset,
+        metric=args.metric,
+        save_to_db=args.save_to_db,
+        nn_name_prefix=args.nn_name_prefix,
+        custom_synth_dir=args.custom_synth_dir,
+        epoch_limit_minutes=args.epoch_limit_minutes,
+        cycle=args.cycle,
+        lr=args.lr,
+        batch=args.batch_size,
+        dropout=args.dropout,
+        momentum=args.momentum,
+        transform=args.transform,
+        prm_json=prm_json_dict,
+        feature_cache_dir=args.feature_cache_dir,
+        feature_cache_mode=args.feature_cache_mode,
+        num_workers=args.num_workers,
+        pin_memory=args.pin_memory,
+        freeze_gpt2=args.freeze_gpt2,
+        force_eval=args.force_eval
+    )

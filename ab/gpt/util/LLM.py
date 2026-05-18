@@ -33,12 +33,13 @@ class LLM:
                  gguf_file=None,
                  training_args=None,
                  use_unsloth=False,
-                 load_in_4bit=True):
+                 load_in_4bit=False):
         self.context_length = context_length
         self._use_unsloth = use_unsloth
         
         # ===== Unsloth Fast Path =====
         if use_unsloth:
+            from unsloth import FastModel
             self.model, self.tokenizer = FastModel.from_pretrained(
                 model_name=model_path,
                 dtype = None,
@@ -137,6 +138,9 @@ class LLM:
             **deepspeed_specific_prm
         )
         
+        if bnb_config is None and load_in_4bit:
+            bnb_config = quantization_config_4bit
+
         if bnb_config is not None:
             model_kwargs["quantization_config"] = bnb_config
         

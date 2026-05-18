@@ -1,39 +1,55 @@
 {
   "improvement_captioning_delta": {
     "comment": [
-      "Delta-based generation for Image Captioning (Blip2Fast)",
-      "LLM generates code deltas to improve the trainable CaptionDecoder head."
+      "LEMUR NAS prompt for GIT-SOTA Bridge Optimization",
+      "LLM synthesizes ONLY the CrossModalBridge class to connect frozen vision features to the decoder."
     ],
+    "description": "Bridge-Only Architectural Synthesis Protocol.",
     "use_delta": true,
     "task": "img-captioning",
     "addon_task": null,
-    "nn_prefixes": ["Blip2Fast"],
+    "nn_prefixes": ["GIT-SOTA"],
     "input_list": [
-      {"para": "nn_code", "value": "nn_code"},
       {"para": "accuracy", "value": "accuracy"},
       {"para": "epoch", "value": "epoch"},
-      {"para": "dataset", "value": "dataset"},
-      {"para": "task", "value": "task"},
-      {"para": "metric", "value": "metric"},
-      {"para": "transform_code", "value": "transform_code"},
       {"para": "prm", "value": "prm"}
     ],
     "no_repeat": [],
-    "keep_same": [],
+    "keep_same": [
+      "Net interface",
+      "Frozen GIT image encoder",
+      "GitProcessor logic"
+    ],
     "prompt": [
-      "Objective: Synthesize a Delta patch (<delta>) to optimize the [TRAINABLE] components of the provided Multimodal Image Captioning model.",
+      "You are an expert NAS engineer optimizing a GIT-SOTA image captioning model.",
+      "",
+      "Task:",
+      "Generate ONLY a PyTorch class `CrossModalBridge(nn.Module)` that transforms frozen vision features into decoder-compatible embeddings.",
+      "",
       "Context:",
-      "- Task: {task} on {dataset} utilizing {metric}.",
-      "- Current Performance: {accuracy} (Baseline at epoch {epoch}).",
-      "- Architecture Template: <tr>{transform_code}</tr> and <nn>{nn_code}</nn>",
-      "Design Principles & Constraints:",
-      "1. Architectural Integrity: The 'FrozenBlip2Encoder' must remain strictly immutable ([FROZEN]). Only the 'CaptionDecoder' or projection layers within the [TRAINABLE] block may be modified.",
-      "2. Protocol Compliance: The synthesized code must strictly adhere to the LEMUR Net interface. Specifically, 'train_setup(prm)' must dynamically initialize model attributes (lr, batch_size, etc.) from the input 'prm' dictionary to ensure compatibility with NAS optimization cycles.",
-      "3. Generative Logic: The 'forward' method must implement a dual-mode protocol: return a scalar Loss tensor when 'captions' are provided (Training/Validation), and return generated token sequences when 'captions' is None (Inference).",
-      "4. Delta Specification: Use a unified diff format. Line numbers must correspond exactly to the provided <nn> block.",
+      "- Input Features: `visual_features` of shape [B, 197, 768] (from frozen GIT-Large).",
+      "- Target Output: `visual_embeds` of shape [B, T_bridge, 768].",
+      "- Current Best Accuracy: {accuracy} at epoch {epoch}",
+      "",
+      "Requirements for CrossModalBridge:",
+      "1. Must implement `__init__(self, prm)` and `forward(self, visual_features, captions=None)`.",
+      "2. Must use `prm.get()` for dropout, bottleneck_dim, and num_heads.",
+      "3. Innovation ideas: Add a residual bottleneck, a gated fusion layer, or a small transformer adapter block.",
+      "4. Output ONLY the class `CrossModalBridge`.",
+      "5. CRITICAL: Do NOT use custom classes like `Bottleneck`, `TransformerBlock`, or `GatedFusion` UNLESS you define them yourself inside the <nn_head> block.",
+      "6. Prefer using standard `nn` modules (e.g., `nn.Linear`, `nn.TransformerEncoderLayer`, `nn.MultiheadAttention`, `nn.LayerNorm`).",
+      "7. CRITICAL: Do NOT use ANY attributes that were not explicitly retrieved using prm.get() or explicitly initialized in __init__ (e.g., do NOT hallucinate self.adapter_expansion).",
+      "",
       "Output Protocol:",
-      "- Provide optimized hyperparameters in <hp>{{\"batch\": 16, \"lr\": 1e-4}}</hp> tags.",
-      "- Provide the code delta in <delta> tags."
+      "1. Optimized hyperparameters in <hp> JSON tags.",
+      "2. Python code in <nn_head> tags.",
+      "",
+      "Example Output:",
+      "<hp>{\"dropout\": 0.1, \"bottleneck_dim\": 512}</hp>",
+      "<nn_head>",
+      "class CrossModalBridge(nn.Module):",
+      "    ...",
+      "</nn_head>"
     ]
   }
 }
