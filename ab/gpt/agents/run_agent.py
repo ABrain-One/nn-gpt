@@ -48,8 +48,8 @@ def run_agent_controller(initial_state: dict):
     # Manager uses route function + edge map to decide next node
     workflow.add_conditional_edges("manager", route, edge_map)
 
-    # generator → evaluator directly (no manager in between — evaluation always follows generation)
-    workflow.add_edge("generator", "evaluator")
+    # generator routes based on next_action: "evaluate" → evaluator, "finetune" → finetuner
+    workflow.add_conditional_edges("generator", route, edge_map)
 
     # evaluator, finetuner, predictor all return to manager
     workflow.add_edge("evaluator", "manager")

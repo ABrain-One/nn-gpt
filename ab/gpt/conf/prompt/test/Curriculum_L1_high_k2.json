@@ -1,0 +1,124 @@
+{
+  "curriculum_L1_high_k2": {
+    "type": "curriculum_prompt",
+    "is_generation": true,
+    "selection_mode": "tall",
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "metric": "acc",
+    "nn_prefixes": [],
+    "num_joint_nns": 2,
+    "similarity_mode": "anchor_band_db_minhash",
+    "similarity_band": "high",
+    "anchor_strategy": "auto",
+    "input_list": [
+      {
+        "para": "dataset",
+        "value": "dataset"
+      },
+      {
+        "para": "task",
+        "value": "task"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "epoch",
+        "value": "epoch"
+      },
+      {
+        "para": "acc_1",
+        "value": "acc_1"
+      },
+      {
+        "para": "hp_1",
+        "value": "hp_1"
+      },
+      {
+        "para": "tr_1",
+        "value": "tr_1"
+      },
+      {
+        "para": "nn_1",
+        "value": "nn_1"
+      },
+      {
+        "para": "acc_2",
+        "value": "acc_2"
+      },
+      {
+        "para": "hp_2",
+        "value": "hp_2"
+      },
+      {
+        "para": "tr_2",
+        "value": "tr_2"
+      },
+      {
+        "para": "nn_2",
+        "value": "nn_2"
+      }
+    ],
+    "prompt": [
+      "Do not use <think> tags.",
+      "Do not reason before generating.",
+      "Your response must begin with <nn> immediately.",
+      "Your first output character must be '<'.",
+      "Do not write explanations.",
+      "Do not think out loud.",
+      "Do not write analysis.",
+      "Do not write markdown fences.",
+      "Do not write any text before <nn>.",
+      "Do not write any text after </tr>.",
+      "self.features() must receive the raw input tensor x directly — never backbone output.",
+      "The correct pattern is: x_f = adaptive_pool_flatten(self.features(x))",
+      "Never pass any backbone output to self.features() — backbone and features are always parallel.",
+      "Wrong: x_f = self.features(self.backbone_a(x)) or x_f = self.features(x_bf)",
+      "Right: x_f = adaptive_pool_flatten(self.features(x))",
+      "",
+      "Return EXACTLY and ONLY these XML blocks in this exact order:",
+      "<nn>...</nn>",
+      "<hp>...</hp>",
+      "<tr>...</tr>",
+      "",
+      "The <nn> block must be first.",
+      "If <nn> is missing, the answer is invalid.",
+      "If <hp> is missing, the answer is invalid.",
+      "If <tr> is missing, the answer is invalid.",
+      "",
+      "You are generating one complete evaluator-compatible LEMUR neural network model for dataset='{dataset}', task='{task}', metric='{metric}', epoch={epoch}.",
+      "The goal is to improve over the baseline model and target at least accuracy {acc_2}.",
+      "",
+      "Use Reference A as the baseline anchor.",
+      "Use Reference B only as a secondary source of one useful improvement.",
+      "Keep the final model structurally closer to Reference A than to Reference B.",
+      "",
+      "Make only a small but meaningful improvement.",
+      "Prefer changing at most 1 architectural idea and at most 1 hyperparameter decision.",
+      "Do not rewrite the entire model from scratch unless necessary.",
+      "",
+      "The final <nn> code must be a complete runnable LEMUR evaluator-compatible file.",
+      "It must contain imports, supported_hyperparameters(), class Net(nn.Module), train_setup(device), and learn(data, target, device).",
+      "",
+      "The <hp> block must contain valid JSON.",
+      "The 'transform' value in <hp> must be exactly 'norm_256_flip'.",
+      "supported_hyperparameters() must return exactly these keys: 'batch', 'dropout', 'epoch', 'lr', 'momentum', 'transform'.",
+      "Every key in supported_hyperparameters() must appear by that exact name in the code.",
+      "",
+      "The <tr> block must contain valid Python code.",
+      "",
+      "Reference A (baseline anchor, accuracy={acc_1}):",
+      "<hp>{hp_1}</hp>",
+      "<tr>{tr_1}</tr>",
+      "<nn>{nn_1}</nn>",
+      "",
+      "Reference B (improvement source, accuracy={acc_2}):",
+      "<hp>{hp_2}</hp>",
+      "<tr>{tr_2}</tr>",
+      "<nn>{nn_2}</nn>"
+    ],
+    "output": []
+  }
+}

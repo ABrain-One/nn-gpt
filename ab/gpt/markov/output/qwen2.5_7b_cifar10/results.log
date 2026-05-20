@@ -1,0 +1,1217 @@
+iteration: 1, accuracy: 0.4840, timestamp: 2026-03-24 12:55:50
+iteration: 2, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [256, 64, 1, 1], expected input[2, 3, 32, 32] to have 64 channels, but got 3 channels instead, timestamp: 2026-03-24 12:56:25
+iteration: 3, accuracy: 0.4750, timestamp: 2026-03-24 12:57:04
+iteration: 4, accuracy: 0.4840, timestamp: 2026-03-24 12:57:37
+iteration: 5, accuracy: 0.4840, timestamp: 2026-03-24 12:58:11
+iteration: 6, accuracy: 0.1000, timestamp: 2026-03-24 12:58:40
+iteration: 7, accuracy: 0.4840, timestamp: 2026-03-24 12:59:11
+iteration: 8, accuracy: 0.5877, timestamp: 2026-03-24 12:59:47
+iteration: 9, accuracy: 0.5840, timestamp: 2026-03-24 13:00:23
+iteration: 10, accuracy: 0.5840, timestamp: 2026-03-24 13:00:56
+iteration: 11, error: Code validation failed: Validation error: RuntimeError: running_mean should contain 512 elements not 10, timestamp: 2026-03-24 13:01:22
+iteration: 12, accuracy: 0.4318, timestamp: 2026-03-24 13:01:54
+iteration: 13, accuracy: 0.4318, timestamp: 2026-03-24 13:02:26
+iteration: 14, accuracy: 0.5877, timestamp: 2026-03-24 13:03:00
+iteration: 15, accuracy: 0.5840, timestamp: 2026-03-24 13:03:34
+iteration: 16, error: Code validation failed: Validation error: RuntimeError: running_mean should contain 512 elements not 10, timestamp: 2026-03-24 13:03:58
+iteration: 17, error: Code validation failed: Output classes mismatch: expected 10, got 512, timestamp: 2026-03-24 13:04:21
+iteration: 18, accuracy: 0.5877, timestamp: 2026-03-24 13:04:53
+iteration: 19, error: Code validation failed: Validation error: RuntimeError: running_mean should contain 512 elements not 10, timestamp: 2026-03-24 13:05:22
+iteration: 20, accuracy: 0.4682, timestamp: 2026-03-24 13:05:54
+iteration: 21, accuracy: 0.5877, timestamp: 2026-03-24 13:06:29
+iteration: 22, accuracy: 0.4682, timestamp: 2026-03-24 13:07:01
+iteration: 23, accuracy: 0.5461, timestamp: 2026-03-24 13:07:36
+iteration: 24, accuracy: 0.5385, timestamp: 2026-03-24 13:08:13
+iteration: 25, accuracy: 0.5385, timestamp: 2026-03-24 13:08:54
+iteration: 26, accuracy: 0.4774, timestamp: 2026-03-24 13:09:29
+iteration: 27, accuracy: 0.5840, timestamp: 2026-03-24 13:10:04
+iteration: 28, error: Code validation failed: Validation error: RuntimeError: running_mean should contain 512 elements not 10, timestamp: 2026-03-24 13:10:31
+iteration: 29, accuracy: 0.5840, timestamp: 2026-03-24 13:11:06
+iteration: 30, accuracy: 0.5742, timestamp: 2026-03-24 13:11:40
+iteration: 31, accuracy: 0.5877, timestamp: 2026-03-24 13:12:17
+iteration: 32, error: Code validation failed: Validation error: RuntimeError: running_mean should contain 10 elements not 512, timestamp: 2026-03-24 13:12:51
+iteration: 33, accuracy: 0.5877, timestamp: 2026-03-24 13:13:26
+iteration: 34, accuracy: 0.5840, timestamp: 2026-03-24 13:14:01
+iteration: 35, accuracy: 0.5461, timestamp: 2026-03-24 13:14:37
+iteration: 36, accuracy: 0.5961, timestamp: 2026-03-24 13:15:12
+iteration: 37, accuracy: 0.6093, timestamp: 2026-03-24 13:15:51
+iteration: 38, accuracy: 0.6141, timestamp: 2026-03-24 13:16:31
+iteration: 39, accuracy: 0.6292, timestamp: 2026-03-24 13:17:07
+iteration: 40, accuracy: 0.6292, timestamp: 2026-03-24 13:17:47
+iteration: 41, accuracy: 0.6315, timestamp: 2026-03-24 13:18:26
+iteration: 42, accuracy: 0.6315, timestamp: 2026-03-24 13:19:07
+iteration: 43, accuracy: 0.6345, timestamp: 2026-03-24 13:19:51
+iteration: 44, accuracy: 0.6338, timestamp: 2026-03-24 13:20:33
+iteration: 45, accuracy: 0.6345, timestamp: 2026-03-24 13:21:17
+iteration: 46, accuracy: 0.6298, timestamp: 2026-03-24 13:22:03
+iteration: 47, accuracy: 0.6403, timestamp: 2026-03-24 13:22:44
+iteration: 48, accuracy: 0.6531, timestamp: 2026-03-24 13:23:31
+iteration: 49, accuracy: 0.6531, timestamp: 2026-03-24 13:24:15
+iteration: 50, accuracy: 0.3647, timestamp: 2026-03-24 13:25:02
+iteration: 51, accuracy: 0.6501, timestamp: 2026-03-24 13:25:45
+iteration: 52, accuracy: 0.6501, timestamp: 2026-03-24 13:26:31
+iteration: 53, accuracy: 0.6531, timestamp: 2026-03-24 13:27:16
+iteration: 54, accuracy: 0.6323, timestamp: 2026-03-24 13:28:03
+iteration: 55, accuracy: 0.6501, timestamp: 2026-03-24 13:28:48
+iteration: 56, accuracy: 0.6531, timestamp: 2026-03-24 13:29:31
+iteration: 57, accuracy: 0.5351, timestamp: 2026-03-24 13:30:15
+iteration: 58, accuracy: 0.6531, timestamp: 2026-03-24 13:30:58
+iteration: 59, accuracy: 0.6501, timestamp: 2026-03-24 13:31:42
+iteration: 60, accuracy: 0.6501, timestamp: 2026-03-24 13:32:28
+iteration: 61, accuracy: 0.6501, timestamp: 2026-03-24 13:33:10
+iteration: 62, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [64, 32, 3, 3], expected input[2, 3, 32, 32] to have 32 channels, but got 3 channels instead, timestamp: 2026-03-24 13:33:51
+iteration: 63, accuracy: 0.6531, timestamp: 2026-03-24 13:34:36
+iteration: 64, accuracy: 0.6531, timestamp: 2026-03-24 13:35:21
+iteration: 65, accuracy: 0.6501, timestamp: 2026-03-24 13:36:04
+iteration: 66, accuracy: 0.6501, timestamp: 2026-03-24 13:36:47
+iteration: 67, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [32, 32, 1, 1], expected input[2, 3, 32, 32] to have 32 channels, but got 3 channels instead, timestamp: 2026-03-24 13:37:35
+iteration: 68, accuracy: 0.6641, timestamp: 2026-03-24 13:38:29
+iteration: 69, error: Code validation failed: Validation error: RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 16 but got size 8 for tensor number 1 in the list., timestamp: 2026-03-24 13:39:09
+iteration: 70, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:40:00
+iteration: 71, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:40:51
+iteration: 72, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:41:40
+iteration: 73, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:42:28
+iteration: 74, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:43:14
+iteration: 75, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:44:02
+iteration: 76, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:44:51
+iteration: 77, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:45:44
+iteration: 78, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:46:30
+iteration: 79, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:47:13
+iteration: 80, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:48:00
+iteration: 81, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:48:47
+iteration: 82, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:49:41
+iteration: 83, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:50:33
+iteration: 84, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:51:27
+iteration: 85, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:52:20
+iteration: 86, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:53:10
+iteration: 87, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:54:15
+iteration: 88, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:55:24
+iteration: 89, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:56:18
+iteration: 90, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:57:13
+iteration: 91, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:58:06
+iteration: 92, error: Code validation failed: Validation error: ValueError: expected 2D or 3D input (got 4D input), timestamp: 2026-03-24 13:58:51
+iteration: 93, accuracy: 0.6257, timestamp: 2026-03-24 13:59:40
+iteration: 94, accuracy: 0.6053, timestamp: 2026-03-24 14:00:30
+iteration: 95, accuracy: 0.5779, timestamp: 2026-03-24 14:01:18
+iteration: 96, accuracy: 0.5848, timestamp: 2026-03-24 14:02:04
+iteration: 97, accuracy: 0.5959, timestamp: 2026-03-24 14:02:52
+iteration: 98, accuracy: 0.5959, timestamp: 2026-03-24 14:03:42
+iteration: 99, accuracy: 0.6400, timestamp: 2026-03-24 14:04:20
+iteration: 100, accuracy: 0.6580, timestamp: 2026-03-24 14:05:14
+iteration: 101, accuracy: 0.6319, timestamp: 2026-03-24 14:06:10
+iteration: 102, error: Code validation failed: Validation error: RuntimeError: shape '[-1, 2048]' is invalid for input of size 4608, timestamp: 2026-03-24 14:07:05
+iteration: 103, accuracy: 0.6816, timestamp: 2026-03-24 14:08:00
+iteration: 104, accuracy: 0.6816, timestamp: 2026-03-24 14:08:59
+iteration: 105, accuracy: 0.6750, timestamp: 2026-03-24 14:09:56
+iteration: 106, accuracy: 0.6674, timestamp: 2026-03-24 14:10:52
+iteration: 107, accuracy: 0.6816, timestamp: 2026-03-24 14:11:47
+iteration: 108, accuracy: 0.6966, timestamp: 2026-03-24 14:12:41
+iteration: 109, accuracy: 0.6966, timestamp: 2026-03-24 14:13:35
+iteration: 110, accuracy: 0.6520, timestamp: 2026-03-24 14:14:26
+iteration: 111, accuracy: 0.6966, timestamp: 2026-03-24 14:15:19
+iteration: 112, accuracy: 0.6811, timestamp: 2026-03-24 14:16:07
+iteration: 113, accuracy: 0.6852, timestamp: 2026-03-24 14:16:56
+iteration: 114, accuracy: 0.6966, timestamp: 2026-03-24 14:17:49
+iteration: 115, accuracy: 0.6520, timestamp: 2026-03-24 14:18:40
+iteration: 116, accuracy: 0.6853, timestamp: 2026-03-24 14:19:31
+iteration: 117, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'attention4', timestamp: 2026-03-24 14:20:16
+iteration: 118, accuracy: 0.6802, timestamp: 2026-03-24 14:21:13
+iteration: 119, accuracy: 0.6766, timestamp: 2026-03-24 14:22:05
+iteration: 120, accuracy: 0.6639, timestamp: 2026-03-24 14:22:57
+iteration: 121, accuracy: 0.6766, timestamp: 2026-03-24 14:23:47
+iteration: 122, accuracy: 0.6714, timestamp: 2026-03-24 14:24:36
+iteration: 123, accuracy: 0.6766, timestamp: 2026-03-24 14:25:23
+iteration: 124, accuracy: 0.6563, timestamp: 2026-03-24 14:26:13
+iteration: 125, accuracy: 0.6607, timestamp: 2026-03-24 14:27:01
+iteration: 126, accuracy: 0.6624, timestamp: 2026-03-24 14:27:51
+iteration: 127, accuracy: 0.6816, timestamp: 2026-03-24 14:28:41
+iteration: 128, accuracy: 0.6566, timestamp: 2026-03-24 14:29:31
+iteration: 129, accuracy: 0.6818, timestamp: 2026-03-24 14:30:22
+iteration: 130, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [64, 3, 3, 3], expected input[2, 64, 16, 16] to have 3 channels, but got 64 channels instead, timestamp: 2026-03-24 14:31:13
+iteration: 131, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (128) must match the size of tensor b (64) at non-singleton dimension 1, timestamp: 2026-03-24 14:32:03
+iteration: 132, accuracy: 0.6889, timestamp: 2026-03-24 14:32:56
+iteration: 133, error: Code validation failed: Validation error: RuntimeError: mat1 and mat2 shapes cannot be multiplied (1x4096 and 2048x1024), timestamp: 2026-03-24 14:33:42
+iteration: 134, accuracy: 0.6889, timestamp: 2026-03-24 14:34:35
+iteration: 135, accuracy: 0.6766, timestamp: 2026-03-24 14:35:24
+iteration: 136, accuracy: 0.6607, timestamp: 2026-03-24 14:36:18
+iteration: 137, accuracy: 0.6766, timestamp: 2026-03-24 14:37:11
+iteration: 138, accuracy: 0.6557, timestamp: 2026-03-24 14:38:10
+iteration: 139, accuracy: 0.6451, timestamp: 2026-03-24 14:39:07
+iteration: 140, accuracy: 0.6215, timestamp: 2026-03-24 14:40:06
+iteration: 141, accuracy: 0.6766, timestamp: 2026-03-24 14:41:01
+iteration: 142, accuracy: 0.6618, timestamp: 2026-03-24 14:41:56
+iteration: 143, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [64, 64, 1, 1], expected input[2, 3, 32, 32] to have 64 channels, but got 3 channels instead, timestamp: 2026-03-24 14:42:44
+iteration: 144, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [64, 64, 1, 1], expected input[2, 3, 32, 32] to have 64 channels, but got 3 channels instead, timestamp: 2026-03-24 14:43:36
+iteration: 145, accuracy: 0.6881, timestamp: 2026-03-24 14:44:31
+iteration: 146, accuracy: 0.6815, timestamp: 2026-03-24 14:45:28
+iteration: 147, accuracy: 0.6669, timestamp: 2026-03-24 14:46:25
+iteration: 148, accuracy: 0.6410, timestamp: 2026-03-24 14:47:23
+iteration: 149, accuracy: 0.6669, timestamp: 2026-03-24 14:48:18
+iteration: 150, accuracy: 0.6815, timestamp: 2026-03-24 14:49:14
+iteration: 151, accuracy: 0.6669, timestamp: 2026-03-24 14:50:11
+iteration: 152, accuracy: 0.6632, timestamp: 2026-03-24 14:51:15
+iteration: 153, accuracy: 0.6815, timestamp: 2026-03-24 14:52:14
+iteration: 154, accuracy: 0.6793, timestamp: 2026-03-24 14:53:09
+iteration: 155, accuracy: 0.6815, timestamp: 2026-03-24 14:54:04
+iteration: 156, accuracy: 0.6791, timestamp: 2026-03-24 14:55:08
+iteration: 157, accuracy: 0.6823, timestamp: 2026-03-24 14:56:02
+iteration: 158, accuracy: 0.6881, timestamp: 2026-03-24 14:57:01
+iteration: 159, accuracy: 0.6815, timestamp: 2026-03-24 14:57:56
+iteration: 160, accuracy: 0.6669, timestamp: 2026-03-24 14:58:56
+iteration: 161, accuracy: 0.6669, timestamp: 2026-03-24 14:59:55
+iteration: 162, accuracy: 0.6815, timestamp: 2026-03-24 15:00:51
+iteration: 163, accuracy: 0.6803, timestamp: 2026-03-24 15:01:36
+iteration: 164, accuracy: 0.6815, timestamp: 2026-03-24 15:02:33
+iteration: 165, accuracy: 0.6971, timestamp: 2026-03-24 15:03:29
+iteration: 166, accuracy: 0.6899, timestamp: 2026-03-24 15:04:23
+iteration: 167, accuracy: 0.6971, timestamp: 2026-03-24 15:05:15
+iteration: 168, accuracy: 0.6887, timestamp: 2026-03-24 15:06:08
+iteration: 169, accuracy: 0.6971, timestamp: 2026-03-24 15:07:03
+iteration: 170, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (14) must match the size of tensor b (16) at non-singleton dimension 3, timestamp: 2026-03-24 15:07:52
+iteration: 171, accuracy: 0.6669, timestamp: 2026-03-24 15:08:49
+iteration: 172, accuracy: 0.6971, timestamp: 2026-03-24 15:09:44
+iteration: 173, accuracy: 0.6122, timestamp: 2026-03-24 15:10:43
+iteration: 174, accuracy: 0.6971, timestamp: 2026-03-24 15:11:36
+iteration: 175, accuracy: 0.6816, timestamp: 2026-03-24 15:12:34
+iteration: 176, accuracy: 0.6951, timestamp: 2026-03-24 15:13:28
+iteration: 177, accuracy: 0.6951, timestamp: 2026-03-24 15:14:23
+iteration: 178, accuracy: 0.6951, timestamp: 2026-03-24 15:15:18
+iteration: 179, accuracy: 0.6951, timestamp: 2026-03-24 15:16:13
+iteration: 180, accuracy: 0.6951, timestamp: 2026-03-24 15:17:10
+iteration: 181, accuracy: 0.6951, timestamp: 2026-03-24 15:18:07
+iteration: 182, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 15:18:59
+iteration: 183, accuracy: 0.6793, timestamp: 2026-03-24 15:19:59
+iteration: 184, accuracy: 0.6669, timestamp: 2026-03-24 15:20:57
+iteration: 185, accuracy: 0.6971, timestamp: 2026-03-24 15:21:50
+iteration: 186, accuracy: 0.6971, timestamp: 2026-03-24 15:22:47
+iteration: 187, accuracy: 0.6722, timestamp: 2026-03-24 15:23:33
+iteration: 188, accuracy: 0.6681, timestamp: 2026-03-24 15:24:31
+iteration: 189, accuracy: 0.6971, timestamp: 2026-03-24 15:25:26
+iteration: 190, accuracy: 0.6971, timestamp: 2026-03-24 15:26:20
+iteration: 191, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:27:09
+iteration: 192, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:28:11
+iteration: 193, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:29:28
+iteration: 194, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:30:17
+iteration: 195, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:31:06
+iteration: 196, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:31:55
+iteration: 197, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:32:42
+iteration: 198, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:33:29
+iteration: 199, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:34:15
+iteration: 200, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:35:03
+iteration: 201, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:35:52
+iteration: 202, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:36:40
+iteration: 203, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:37:32
+iteration: 204, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:38:24
+iteration: 205, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:39:17
+iteration: 206, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:40:07
+iteration: 207, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:41:02
+iteration: 208, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:41:54
+iteration: 209, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:42:45
+iteration: 210, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:43:36
+iteration: 211, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:44:30
+iteration: 212, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:45:25
+iteration: 213, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:46:20
+iteration: 214, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:47:11
+iteration: 215, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:48:06
+iteration: 216, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:48:56
+iteration: 217, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:49:50
+iteration: 218, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:50:46
+iteration: 219, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:51:38
+iteration: 220, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:52:28
+iteration: 221, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:53:23
+iteration: 222, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:54:45
+iteration: 223, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:55:37
+iteration: 224, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:56:34
+iteration: 225, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:57:27
+iteration: 226, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:58:21
+iteration: 227, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 15:59:16
+iteration: 228, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:00:10
+iteration: 229, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:01:02
+iteration: 230, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:01:56
+iteration: 231, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:02:49
+iteration: 232, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:03:44
+iteration: 233, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:04:40
+iteration: 234, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:05:36
+iteration: 235, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:06:31
+iteration: 236, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:07:27
+iteration: 237, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:08:21
+iteration: 238, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:09:18
+iteration: 239, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:10:13
+iteration: 240, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:11:09
+iteration: 241, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:12:05
+iteration: 242, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:13:02
+iteration: 243, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:13:57
+iteration: 244, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:14:51
+iteration: 245, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:15:45
+iteration: 246, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:16:40
+iteration: 247, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:17:36
+iteration: 248, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:18:30
+iteration: 249, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:19:25
+iteration: 250, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:20:19
+iteration: 251, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:21:13
+iteration: 252, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:22:08
+iteration: 253, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:23:03
+iteration: 254, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:23:57
+iteration: 255, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:24:53
+iteration: 256, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:25:48
+iteration: 257, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:26:42
+iteration: 258, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:27:38
+iteration: 259, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:28:32
+iteration: 260, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:29:27
+iteration: 261, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:30:26
+iteration: 262, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:31:22
+iteration: 263, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:32:16
+iteration: 264, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:33:10
+iteration: 265, error: Code validation failed: Validation error: ValueError: out_channels must be divisible by groups, timestamp: 2026-03-24 16:34:06
+iteration: 266, error: Code extraction failed: Code syntax error: Syntax error at line 146: '(' was never closed, timestamp: 2026-03-24 16:35:02
+iteration: 267, accuracy: 0.6971, timestamp: 2026-03-24 16:35:57
+iteration: 268, accuracy: 0.6669, timestamp: 2026-03-24 16:36:54
+iteration: 269, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [512, 512, 1, 1], expected input[2, 256, 4, 4] to have 512 channels, but got 256 channels instead, timestamp: 2026-03-24 16:37:45
+iteration: 270, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [512, 512, 1, 1], expected input[2, 256, 4, 4] to have 512 channels, but got 256 channels instead, timestamp: 2026-03-24 16:38:38
+iteration: 271, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [512, 512, 1, 1], expected input[2, 256, 4, 4] to have 512 channels, but got 256 channels instead, timestamp: 2026-03-24 16:39:33
+iteration: 272, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [512, 512, 1, 1], expected input[2, 256, 4, 4] to have 512 channels, but got 256 channels instead, timestamp: 2026-03-24 16:40:23
+iteration: 273, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [512, 512, 1, 1], expected input[2, 256, 4, 4] to have 512 channels, but got 256 channels instead, timestamp: 2026-03-24 16:41:13
+iteration: 274, accuracy: 0.6691, timestamp: 2026-03-24 16:42:12
+iteration: 275, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [512, 64, 1, 1], expected input[2, 512, 2, 2] to have 64 channels, but got 512 channels instead, timestamp: 2026-03-24 16:43:07
+iteration: 276, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [512, 64, 1, 1], expected input[2, 512, 1, 1] to have 64 channels, but got 512 channels instead, timestamp: 2026-03-24 16:44:03
+iteration: 277, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [512, 64, 1, 1], expected input[2, 512, 1, 1] to have 64 channels, but got 512 channels instead, timestamp: 2026-03-24 16:44:58
+iteration: 278, error: Code extraction failed: Code syntax error: Syntax error at line 128: invalid syntax, timestamp: 2026-03-24 16:45:53
+iteration: 279, accuracy: 0.6996, timestamp: 2026-03-24 16:46:50
+iteration: 280, accuracy: 0.6996, timestamp: 2026-03-24 16:47:48
+iteration: 281, accuracy: 0.6996, timestamp: 2026-03-24 16:48:46
+iteration: 282, error: Code validation failed: Validation error: RuntimeError: mat1 and mat2 shapes cannot be multiplied (2x512 and 2048x1024), timestamp: 2026-03-24 16:49:39
+iteration: 283, error: Code validation failed: Validation error: RuntimeError: mat1 and mat2 shapes cannot be multiplied (2x512 and 2048x1024), timestamp: 2026-03-24 16:50:37
+iteration: 284, accuracy: 0.6996, timestamp: 2026-03-24 16:51:33
+iteration: 285, accuracy: 0.6996, timestamp: 2026-03-24 16:52:32
+iteration: 286, accuracy: 0.6996, timestamp: 2026-03-24 16:53:32
+iteration: 287, accuracy: 0.6996, timestamp: 2026-03-24 16:54:32
+iteration: 288, accuracy: 0.6996, timestamp: 2026-03-24 16:55:32
+iteration: 289, accuracy: 0.6996, timestamp: 2026-03-24 16:56:31
+iteration: 290, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (16) must match the size of tensor b (32) at non-singleton dimension 3, timestamp: 2026-03-24 16:57:25
+iteration: 291, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (16) must match the size of tensor b (32) at non-singleton dimension 3, timestamp: 2026-03-24 16:58:21
+iteration: 292, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (16) must match the size of tensor b (32) at non-singleton dimension 3, timestamp: 2026-03-24 16:59:16
+iteration: 293, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 17:00:11
+iteration: 294, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 17:01:27
+iteration: 295, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 17:02:23
+iteration: 296, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 17:03:24
+iteration: 297, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 17:04:20
+iteration: 298, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 17:05:17
+iteration: 299, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 17:06:12
+iteration: 300, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 17:07:05
+iteration: 301, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 17:08:00
+iteration: 302, error: Code extraction failed: Code syntax error: Syntax error at line 135: '(' was never closed, timestamp: 2026-03-24 17:09:08
+iteration: 303, error: AcceleratorError: CUDA error: out of memory
+Search for `cudaErrorMemoryAllocation' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+Traceback (most recent call last):
+  File "/home/gu/Desktop/nngpt_iterative_generation_integration/Resource-Efficient-Iterative-LLM-Based-NAS-with-Feedback-Memory/nn-gpt/ab/gpt/iterative_prompt_improvement/train_script.py", line 298, in main
+    model = model.to(device)
+  File "/home/gu/miniconda3/envs/promptimprove/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1371, in to
+    return self._apply(convert)
+  File "/home/gu/miniconda3/envs/promptimprove/lib/python3.10/site-packages/torch/nn/modules/module.py", line 930, in _apply
+    module._apply(fn)
+  File "/home/gu/miniconda3/envs/promptimprove/lib/python3.10/site-packages/torch/nn/modules/module.py", line 957, in _apply
+    param_applied = fn(param)
+  File "/home/gu/miniconda3/envs/promptimprove/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1357, in convert
+    return t.to(
+torch.AcceleratorError: CUDA error: out of memory
+Search for `cudaErrorMemoryAllocation' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+, timestamp: 2026-03-24 17:10:06
+iteration: 304, accuracy: 0.6308, timestamp: 2026-03-24 17:11:04
+iteration: 305, accuracy: 0.6996, timestamp: 2026-03-24 17:12:04
+iteration: 306, accuracy: 0.6996, timestamp: 2026-03-24 17:13:06
+iteration: 307, accuracy: 0.6973, timestamp: 2026-03-24 17:14:07
+iteration: 308, accuracy: 0.6973, timestamp: 2026-03-24 17:15:34
+iteration: 309, accuracy: 0.7015, timestamp: 2026-03-24 17:16:34
+iteration: 310, accuracy: 0.7015, timestamp: 2026-03-24 17:17:34
+iteration: 311, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 17:18:26
+iteration: 312, accuracy: 0.6822, timestamp: 2026-03-24 17:19:27
+iteration: 313, accuracy: 0.6705, timestamp: 2026-03-24 17:20:28
+iteration: 314, accuracy: 0.6996, timestamp: 2026-03-24 17:21:27
+iteration: 315, accuracy: 0.6538, timestamp: 2026-03-24 17:22:29
+iteration: 316, accuracy: 0.7015, timestamp: 2026-03-24 17:23:27
+iteration: 317, accuracy: 0.7015, timestamp: 2026-03-24 17:24:25
+iteration: 318, accuracy: 0.6538, timestamp: 2026-03-24 17:25:26
+iteration: 319, accuracy: 0.7015, timestamp: 2026-03-24 17:26:23
+iteration: 320, accuracy: 0.7015, timestamp: 2026-03-24 17:27:21
+iteration: 321, accuracy: 0.7015, timestamp: 2026-03-24 17:28:20
+iteration: 322, accuracy: 0.7015, timestamp: 2026-03-24 17:29:17
+iteration: 323, accuracy: 0.7015, timestamp: 2026-03-24 17:30:16
+iteration: 324, accuracy: 0.7015, timestamp: 2026-03-24 17:31:12
+iteration: 325, accuracy: 0.7015, timestamp: 2026-03-24 17:32:11
+iteration: 326, accuracy: 0.7015, timestamp: 2026-03-24 17:33:12
+iteration: 327, accuracy: 0.7015, timestamp: 2026-03-24 17:34:10
+iteration: 328, accuracy: 0.6658, timestamp: 2026-03-24 17:35:12
+iteration: 329, accuracy: 0.6773, timestamp: 2026-03-24 17:36:09
+iteration: 330, accuracy: 0.6773, timestamp: 2026-03-24 17:37:08
+iteration: 331, accuracy: 0.7015, timestamp: 2026-03-24 17:38:07
+iteration: 332, accuracy: 0.7015, timestamp: 2026-03-24 17:39:04
+iteration: 333, accuracy: 0.7015, timestamp: 2026-03-24 17:40:03
+iteration: 334, accuracy: 0.7015, timestamp: 2026-03-24 17:41:02
+iteration: 335, accuracy: 0.7015, timestamp: 2026-03-24 17:42:01
+iteration: 336, accuracy: 0.7015, timestamp: 2026-03-24 17:43:01
+iteration: 337, error: Code extraction failed: Code syntax error: Syntax error at line 136: '(' was never closed, timestamp: 2026-03-24 17:43:55
+iteration: 338, accuracy: 0.7015, timestamp: 2026-03-24 17:44:49
+iteration: 339, accuracy: 0.7015, timestamp: 2026-03-24 17:45:50
+iteration: 340, accuracy: 0.7015, timestamp: 2026-03-24 17:46:50
+iteration: 341, accuracy: 0.7015, timestamp: 2026-03-24 17:47:48
+iteration: 342, accuracy: 0.7015, timestamp: 2026-03-24 17:48:47
+iteration: 343, accuracy: 0.7015, timestamp: 2026-03-24 17:49:53
+iteration: 344, accuracy: 0.6209, timestamp: 2026-03-24 17:50:53
+iteration: 345, accuracy: 0.7015, timestamp: 2026-03-24 17:51:54
+iteration: 346, accuracy: 0.7015, timestamp: 2026-03-24 17:52:53
+iteration: 347, accuracy: 0.7015, timestamp: 2026-03-24 17:53:52
+iteration: 348, accuracy: 0.6856, timestamp: 2026-03-24 17:54:53
+iteration: 349, accuracy: 0.7015, timestamp: 2026-03-24 17:55:52
+iteration: 350, accuracy: 0.7015, timestamp: 2026-03-24 17:56:52
+iteration: 351, accuracy: 0.6773, timestamp: 2026-03-24 17:57:52
+iteration: 352, accuracy: 0.6773, timestamp: 2026-03-24 17:58:51
+iteration: 353, accuracy: 0.7000, timestamp: 2026-03-24 17:59:51
+iteration: 354, accuracy: 0.7015, timestamp: 2026-03-24 18:00:50
+iteration: 355, accuracy: 0.6597, timestamp: 2026-03-24 18:01:48
+iteration: 356, accuracy: 0.6971, timestamp: 2026-03-24 18:02:46
+iteration: 357, accuracy: 0.6719, timestamp: 2026-03-24 18:03:37
+iteration: 358, accuracy: 0.6780, timestamp: 2026-03-24 18:04:33
+iteration: 359, accuracy: 0.7057, timestamp: 2026-03-24 18:05:33
+iteration: 360, accuracy: 0.6726, timestamp: 2026-03-24 18:06:33
+iteration: 361, accuracy: 0.7057, timestamp: 2026-03-24 18:07:30
+iteration: 362, accuracy: 0.7185, timestamp: 2026-03-24 18:08:32
+iteration: 363, accuracy: 0.7148, timestamp: 2026-03-24 18:09:37
+iteration: 364, accuracy: 0.7185, timestamp: 2026-03-24 18:10:40
+iteration: 365, error: Code validation failed: Validation error: TypeError: MultiheadAttention.forward() missing 2 required positional arguments: 'key' and 'value', timestamp: 2026-03-24 18:11:32
+iteration: 366, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 192, 1, 1], expected input[1, 1, 2, 49152] to have 192 channels, but got 1 channels instead, timestamp: 2026-03-24 18:12:24
+iteration: 367, accuracy: 0.7185, timestamp: 2026-03-24 18:13:27
+iteration: 368, accuracy: 0.6989, timestamp: 2026-03-24 18:14:30
+iteration: 369, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'g', timestamp: 2026-03-24 18:15:21
+iteration: 370, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 18:16:15
+iteration: 371, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 18:17:09
+iteration: 372, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 18:18:07
+iteration: 373, error: Code validation failed: Validation error: TypeError: MultiheadAttention.forward() missing 2 required positional arguments: 'key' and 'value', timestamp: 2026-03-24 18:19:01
+iteration: 374, error: Code validation failed: Validation error: TypeError: MultiheadAttention.forward() missing 2 required positional arguments: 'key' and 'value', timestamp: 2026-03-24 18:19:55
+iteration: 375, error: Code validation failed: Validation error: TypeError: MultiheadAttention.forward() missing 2 required positional arguments: 'key' and 'value', timestamp: 2026-03-24 18:20:47
+iteration: 376, error: Code validation failed: Validation error: TypeError: MultiheadAttention.forward() missing 2 required positional arguments: 'key' and 'value', timestamp: 2026-03-24 18:21:42
+iteration: 377, error: Code validation failed: Validation error: TypeError: MultiheadAttention.forward() missing 2 required positional arguments: 'key' and 'value', timestamp: 2026-03-24 18:22:38
+iteration: 378, error: Code validation failed: Validation error: TypeError: MultiheadAttention.forward() missing 2 required positional arguments: 'key' and 'value', timestamp: 2026-03-24 18:23:31
+iteration: 379, error: Code validation failed: Validation error: TypeError: MultiheadAttention.forward() missing 2 required positional arguments: 'key' and 'value', timestamp: 2026-03-24 18:24:24
+iteration: 380, error: Code validation failed: Validation error: RuntimeError: permute(sparse_coo): number of dimensions in the tensor input does not match the length of the desired ordering of dimensions i.e. input.dim() = 4 is not equal to len(dims) = 3, timestamp: 2026-03-24 18:25:19
+iteration: 381, error: Code validation failed: Validation error: TypeError: MultiheadAttention.forward() missing 2 required positional arguments: 'key' and 'value', timestamp: 2026-03-24 18:26:11
+iteration: 382, error: Code validation failed: Validation error: TypeError: MultiheadAttention.forward() missing 2 required positional arguments: 'key' and 'value', timestamp: 2026-03-24 18:27:08
+iteration: 383, error: Code validation failed: Validation error: TypeError: MultiheadAttention.forward() missing 2 required positional arguments: 'key' and 'value', timestamp: 2026-03-24 18:28:04
+iteration: 384, error: Code validation failed: Validation error: RuntimeError: view size is not compatible with input tensor's size and stride (at least one dimension spans across two contiguous subspaces). Use .reshape(...) instead., timestamp: 2026-03-24 18:29:00
+iteration: 385, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [384, 192, 3, 3], expected input[1, 2, 192, 256] to have 192 channels, but got 2 channels instead, timestamp: 2026-03-24 18:29:53
+iteration: 386, error: Code extraction failed: Code syntax error: Syntax error at line 121: '(' was never closed, timestamp: 2026-03-24 18:30:49
+iteration: 387, accuracy: 0.7185, timestamp: 2026-03-24 18:31:50
+iteration: 388, accuracy: 0.7185, timestamp: 2026-03-24 18:32:50
+iteration: 389, accuracy: 0.1128, timestamp: 2026-03-24 18:33:52
+iteration: 390, accuracy: 0.7022, timestamp: 2026-03-24 18:34:53
+iteration: 391, accuracy: 0.6851, timestamp: 2026-03-24 18:35:54
+iteration: 392, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:36:45
+iteration: 393, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:37:34
+iteration: 394, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:38:29
+iteration: 395, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:39:29
+iteration: 396, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:40:22
+iteration: 397, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:41:15
+iteration: 398, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:42:09
+iteration: 399, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:43:01
+iteration: 400, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:43:54
+iteration: 401, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:44:46
+iteration: 402, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:45:41
+iteration: 403, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:46:32
+iteration: 404, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:47:26
+iteration: 405, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:48:19
+iteration: 406, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:49:11
+iteration: 407, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:50:07
+iteration: 408, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:51:01
+iteration: 409, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:51:53
+iteration: 410, error: Code validation failed: Validation error: RuntimeError: mat1 and mat2 shapes cannot be multiplied (2x3072 and 192x3), timestamp: 2026-03-24 18:52:47
+iteration: 411, error: Code validation failed: Validation error: RuntimeError: mat1 and mat2 shapes cannot be multiplied (2x3072 and 192x3), timestamp: 2026-03-24 18:53:40
+iteration: 412, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-24 18:54:30
+iteration: 413, accuracy: 0.6826, timestamp: 2026-03-24 18:55:28
+iteration: 414, accuracy: 0.7185, timestamp: 2026-03-24 18:56:27
+iteration: 415, accuracy: 0.7223, timestamp: 2026-03-24 18:57:28
+iteration: 416, accuracy: 0.6645, timestamp: 2026-03-24 18:58:25
+iteration: 417, accuracy: 0.7223, timestamp: 2026-03-24 18:59:34
+iteration: 418, accuracy: 0.7152, timestamp: 2026-03-24 19:00:35
+iteration: 419, accuracy: 0.7223, timestamp: 2026-03-24 19:01:32
+iteration: 420, accuracy: 0.6978, timestamp: 2026-03-24 19:02:25
+iteration: 421, accuracy: 0.7223, timestamp: 2026-03-24 19:03:26
+iteration: 422, accuracy: 0.7148, timestamp: 2026-03-24 19:04:30
+iteration: 423, accuracy: 0.6918, timestamp: 2026-03-24 19:05:31
+iteration: 424, accuracy: 0.7223, timestamp: 2026-03-24 19:06:34
+iteration: 425, accuracy: 0.7087, timestamp: 2026-03-24 19:07:34
+iteration: 426, accuracy: 0.7102, timestamp: 2026-03-24 19:08:34
+iteration: 427, accuracy: 0.7185, timestamp: 2026-03-24 19:09:38
+iteration: 428, accuracy: 0.7223, timestamp: 2026-03-24 19:10:39
+iteration: 429, accuracy: 0.7223, timestamp: 2026-03-24 19:11:38
+iteration: 430, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 19:12:32
+iteration: 431, accuracy: 0.7223, timestamp: 2026-03-24 19:13:30
+iteration: 432, accuracy: 0.7223, timestamp: 2026-03-24 19:14:34
+iteration: 433, accuracy: 0.7223, timestamp: 2026-03-24 19:15:36
+iteration: 434, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 19:16:28
+iteration: 435, accuracy: 0.7041, timestamp: 2026-03-24 19:17:31
+iteration: 436, accuracy: 0.7058, timestamp: 2026-03-24 19:18:30
+iteration: 437, accuracy: 0.7090, timestamp: 2026-03-24 19:19:30
+iteration: 438, accuracy: 0.7090, timestamp: 2026-03-24 19:20:30
+iteration: 439, accuracy: 0.7090, timestamp: 2026-03-24 19:21:30
+iteration: 440, accuracy: 0.7223, timestamp: 2026-03-24 19:22:29
+iteration: 441, accuracy: 0.7223, timestamp: 2026-03-24 19:23:29
+iteration: 442, accuracy: 0.7223, timestamp: 2026-03-24 19:24:31
+iteration: 443, accuracy: 0.6404, timestamp: 2026-03-24 19:25:34
+iteration: 444, accuracy: 0.7223, timestamp: 2026-03-24 19:26:35
+iteration: 445, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (384) must match the size of tensor b (192) at non-singleton dimension 1, timestamp: 2026-03-24 19:27:28
+iteration: 446, error: Code extraction failed: Code syntax error: Syntax error at line 129: '(' was never closed, timestamp: 2026-03-24 19:28:22
+iteration: 447, accuracy: 0.7223, timestamp: 2026-03-24 19:29:21
+iteration: 448, accuracy: 0.7008, timestamp: 2026-03-24 19:30:20
+iteration: 449, accuracy: 0.7223, timestamp: 2026-03-24 19:31:21
+iteration: 450, accuracy: 0.7223, timestamp: 2026-03-24 19:32:24
+iteration: 451, accuracy: 0.6978, timestamp: 2026-03-24 19:33:27
+iteration: 452, accuracy: 0.7069, timestamp: 2026-03-24 19:34:30
+iteration: 453, accuracy: 0.7069, timestamp: 2026-03-24 19:35:34
+iteration: 454, accuracy: 0.7223, timestamp: 2026-03-24 19:36:34
+iteration: 455, accuracy: 0.6937, timestamp: 2026-03-24 19:37:30
+iteration: 456, accuracy: 0.7209, timestamp: 2026-03-24 19:38:34
+iteration: 457, accuracy: 0.6937, timestamp: 2026-03-24 19:39:31
+iteration: 458, accuracy: 0.6937, timestamp: 2026-03-24 19:40:34
+iteration: 459, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 19:41:26
+iteration: 460, accuracy: 0.6937, timestamp: 2026-03-24 19:42:22
+iteration: 461, accuracy: 0.6937, timestamp: 2026-03-24 19:43:26
+iteration: 462, accuracy: 0.5671, timestamp: 2026-03-24 19:44:29
+iteration: 463, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 19:45:23
+iteration: 464, accuracy: 0.7223, timestamp: 2026-03-24 19:46:26
+iteration: 465, accuracy: 0.7057, timestamp: 2026-03-24 19:47:27
+iteration: 466, accuracy: 0.7223, timestamp: 2026-03-24 19:48:28
+iteration: 467, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 19:49:16
+iteration: 468, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 19:50:11
+iteration: 469, accuracy: 0.6798, timestamp: 2026-03-24 19:51:05
+iteration: 470, accuracy: 0.6798, timestamp: 2026-03-24 19:52:03
+iteration: 471, accuracy: 0.6985, timestamp: 2026-03-24 19:53:06
+iteration: 472, accuracy: 0.5894, timestamp: 2026-03-24 19:54:07
+iteration: 473, accuracy: 0.7223, timestamp: 2026-03-24 19:55:10
+iteration: 474, error: Code validation failed: Validation error: RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 1 but got size 2 for tensor number 1 in the list., timestamp: 2026-03-24 19:56:04
+iteration: 475, accuracy: 0.6985, timestamp: 2026-03-24 19:57:08
+iteration: 476, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 19:58:01
+iteration: 477, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 19:58:56
+iteration: 478, error: Code extraction failed: Code syntax error: Syntax error at line 140: invalid syntax, timestamp: 2026-03-24 19:59:50
+iteration: 479, accuracy: 0.5778, timestamp: 2026-03-24 20:00:52
+iteration: 480, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 193, 1, 1], expected input[2, 384, 4, 4] to have 193 channels, but got 384 channels instead, timestamp: 2026-03-24 20:01:46
+iteration: 481, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 193, 1, 1], expected input[2, 384, 4, 4] to have 193 channels, but got 384 channels instead, timestamp: 2026-03-24 20:02:43
+iteration: 482, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 193, 1, 1], expected input[2, 384, 4, 4] to have 193 channels, but got 384 channels instead, timestamp: 2026-03-24 20:03:50
+iteration: 483, error: Code extraction failed: Code syntax error: Syntax error at line 139: '(' was never closed, timestamp: 2026-03-24 20:04:43
+iteration: 484, accuracy: 0.7223, timestamp: 2026-03-24 20:05:45
+iteration: 485, accuracy: 0.7223, timestamp: 2026-03-24 20:06:47
+iteration: 486, accuracy: 0.7223, timestamp: 2026-03-24 20:07:45
+iteration: 487, accuracy: 0.7223, timestamp: 2026-03-24 20:08:46
+iteration: 488, accuracy: 0.7184, timestamp: 2026-03-24 20:09:56
+iteration: 489, accuracy: 0.6943, timestamp: 2026-03-24 20:11:00
+iteration: 490, accuracy: 0.6961, timestamp: 2026-03-24 20:11:54
+iteration: 491, accuracy: 0.6947, timestamp: 2026-03-24 20:12:48
+iteration: 492, accuracy: 0.7223, timestamp: 2026-03-24 20:13:48
+iteration: 493, accuracy: 0.7064, timestamp: 2026-03-24 20:14:52
+iteration: 494, accuracy: 0.7064, timestamp: 2026-03-24 20:15:56
+iteration: 495, accuracy: 0.7223, timestamp: 2026-03-24 20:16:58
+iteration: 496, accuracy: 0.7026, timestamp: 2026-03-24 20:17:52
+iteration: 497, accuracy: 0.7223, timestamp: 2026-03-24 20:18:55
+iteration: 498, accuracy: 0.7083, timestamp: 2026-03-24 20:19:56
+iteration: 499, accuracy: 0.7083, timestamp: 2026-03-24 20:20:58
+iteration: 500, accuracy: 0.7223, timestamp: 2026-03-24 20:22:00
+iteration: 501, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 20:22:53
+iteration: 502, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-24 20:23:45
+iteration: 503, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-24 20:24:42
+iteration: 504, accuracy: 0.7193, timestamp: 2026-03-24 20:25:44
+iteration: 505, accuracy: 0.7193, timestamp: 2026-03-24 20:26:46
+iteration: 506, accuracy: 0.7193, timestamp: 2026-03-24 20:27:48
+iteration: 507, accuracy: 0.7193, timestamp: 2026-03-24 20:28:53
+iteration: 508, accuracy: 0.7076, timestamp: 2026-03-24 20:29:45
+iteration: 509, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 20:30:38
+iteration: 510, accuracy: 0.7223, timestamp: 2026-03-24 20:31:40
+iteration: 511, accuracy: 0.6985, timestamp: 2026-03-24 20:32:40
+iteration: 512, accuracy: 0.6998, timestamp: 2026-03-24 20:33:33
+iteration: 513, error: Code extraction failed: Code syntax error: Syntax error at line 138: '(' was never closed, timestamp: 2026-03-24 20:34:24
+iteration: 514, accuracy: 0.7076, timestamp: 2026-03-24 20:35:15
+iteration: 515, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 20:36:07
+iteration: 516, accuracy: 0.7223, timestamp: 2026-03-24 20:37:09
+iteration: 517, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 20:38:02
+iteration: 518, accuracy: 0.6985, timestamp: 2026-03-24 20:39:02
+iteration: 519, accuracy: 0.7076, timestamp: 2026-03-24 20:39:56
+iteration: 520, accuracy: 0.7223, timestamp: 2026-03-24 20:40:53
+iteration: 521, accuracy: 0.7223, timestamp: 2026-03-24 20:41:58
+iteration: 522, accuracy: 0.7223, timestamp: 2026-03-24 20:43:03
+iteration: 523, accuracy: 0.7223, timestamp: 2026-03-24 20:44:05
+iteration: 524, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 20:44:57
+iteration: 525, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'fc', timestamp: 2026-03-24 20:45:51
+iteration: 526, accuracy: 0.7022, timestamp: 2026-03-24 20:46:51
+iteration: 527, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 20:47:44
+iteration: 528, accuracy: 0.6985, timestamp: 2026-03-24 20:48:44
+iteration: 529, accuracy: 0.6985, timestamp: 2026-03-24 20:49:47
+iteration: 530, accuracy: 0.6985, timestamp: 2026-03-24 20:50:49
+iteration: 531, accuracy: 0.6952, timestamp: 2026-03-24 20:51:50
+iteration: 532, accuracy: 0.7155, timestamp: 2026-03-24 20:52:52
+iteration: 533, accuracy: 0.7155, timestamp: 2026-03-24 20:53:55
+iteration: 534, accuracy: 0.6952, timestamp: 2026-03-24 20:54:52
+iteration: 535, accuracy: 0.7155, timestamp: 2026-03-24 20:55:52
+iteration: 536, accuracy: 0.7057, timestamp: 2026-03-24 20:56:53
+iteration: 537, accuracy: 0.7223, timestamp: 2026-03-24 20:57:53
+iteration: 538, accuracy: 0.7236, timestamp: 2026-03-24 20:58:53
+iteration: 539, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [384, 192, 3, 3], expected input[2, 576, 16, 16] to have 192 channels, but got 576 channels instead, timestamp: 2026-03-24 20:59:47
+iteration: 540, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [384, 192, 2, 2], expected input[2, 576, 16, 16] to have 192 channels, but got 576 channels instead, timestamp: 2026-03-24 21:00:42
+iteration: 541, accuracy: 0.7236, timestamp: 2026-03-24 21:01:44
+iteration: 542, accuracy: 0.7236, timestamp: 2026-03-24 21:02:47
+iteration: 543, accuracy: 0.7236, timestamp: 2026-03-24 21:03:51
+iteration: 544, accuracy: 0.7236, timestamp: 2026-03-24 21:04:55
+iteration: 545, accuracy: 0.7102, timestamp: 2026-03-24 21:05:58
+iteration: 546, accuracy: 0.7102, timestamp: 2026-03-24 21:07:02
+iteration: 547, accuracy: 0.7102, timestamp: 2026-03-24 21:08:06
+iteration: 548, accuracy: 0.7102, timestamp: 2026-03-24 21:09:11
+iteration: 549, accuracy: 0.7102, timestamp: 2026-03-24 21:10:17
+iteration: 550, accuracy: 0.7214, timestamp: 2026-03-24 21:11:28
+iteration: 551, accuracy: 0.7102, timestamp: 2026-03-24 21:12:33
+iteration: 552, error: Code extraction failed: Code syntax error: Syntax error at line 127: invalid syntax, timestamp: 2026-03-24 21:13:25
+iteration: 553, accuracy: 0.7236, timestamp: 2026-03-24 21:14:24
+iteration: 554, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 21:15:18
+iteration: 555, accuracy: 0.7236, timestamp: 2026-03-24 21:16:21
+iteration: 556, accuracy: 0.6958, timestamp: 2026-03-24 21:17:25
+iteration: 557, accuracy: 0.6693, timestamp: 2026-03-24 21:18:20
+iteration: 558, accuracy: 0.5747, timestamp: 2026-03-24 21:19:18
+iteration: 559, accuracy: 0.5747, timestamp: 2026-03-24 21:20:21
+iteration: 560, accuracy: 0.5747, timestamp: 2026-03-24 21:21:24
+iteration: 561, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:22:17
+iteration: 562, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:23:11
+iteration: 563, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:24:05
+iteration: 564, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:24:59
+iteration: 565, error: Code extraction failed: Code syntax error: Syntax error at line 118: '(' was never closed, timestamp: 2026-03-24 21:25:55
+iteration: 566, accuracy: 0.7236, timestamp: 2026-03-24 21:26:56
+iteration: 567, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:27:47
+iteration: 568, accuracy: 0.7236, timestamp: 2026-03-24 21:28:50
+iteration: 569, accuracy: 0.7236, timestamp: 2026-03-24 21:29:53
+iteration: 570, accuracy: 0.7236, timestamp: 2026-03-24 21:30:56
+iteration: 571, accuracy: 0.6899, timestamp: 2026-03-24 21:31:56
+iteration: 572, accuracy: 0.1000, timestamp: 2026-03-24 21:33:01
+iteration: 573, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:33:47
+iteration: 574, error: Code validation failed: Validation error: AssertionError: was expecting embedding dimension of 192, but got 256, timestamp: 2026-03-24 21:34:41
+iteration: 575, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:35:35
+iteration: 576, accuracy: 0.1000, timestamp: 2026-03-24 21:36:40
+iteration: 577, accuracy: 0.1000, timestamp: 2026-03-24 21:37:46
+iteration: 578, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:38:40
+iteration: 579, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:39:29
+iteration: 580, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:40:19
+iteration: 581, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:41:15
+iteration: 582, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:42:00
+iteration: 583, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:42:55
+iteration: 584, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:43:43
+iteration: 585, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:44:33
+iteration: 586, accuracy: 0.6864, timestamp: 2026-03-24 21:45:39
+iteration: 587, accuracy: 0.6864, timestamp: 2026-03-24 21:46:43
+iteration: 588, accuracy: 0.6864, timestamp: 2026-03-24 21:47:52
+iteration: 589, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:48:43
+iteration: 590, error: Code validation failed: Validation error: AssertionError: was expecting embedding dimension of 192, but got 256, timestamp: 2026-03-24 21:49:34
+iteration: 591, error: Code validation failed: Validation error: AssertionError: was expecting embedding dimension of 192, but got 256, timestamp: 2026-03-24 21:50:31
+iteration: 592, error: Code validation failed: Validation error: AssertionError: was expecting embedding dimension of 192, but got 256, timestamp: 2026-03-24 21:51:26
+iteration: 593, error: Code validation failed: Validation error: AssertionError: was expecting embedding dimension of 192, but got 256, timestamp: 2026-03-24 21:52:15
+iteration: 594, accuracy: 0.6936, timestamp: 2026-03-24 21:53:23
+iteration: 595, accuracy: 0.6936, timestamp: 2026-03-24 21:54:26
+iteration: 596, accuracy: 0.6936, timestamp: 2026-03-24 21:55:34
+iteration: 597, accuracy: 0.6945, timestamp: 2026-03-24 21:56:40
+iteration: 598, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:57:33
+iteration: 599, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:58:24
+iteration: 600, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 21:59:16
+iteration: 601, error: Code validation failed: Validation error: AssertionError: query should be unbatched 2D or batched 3D tensor but received 4-D query tensor, timestamp: 2026-03-24 22:00:11
+iteration: 602, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (16) must match the size of tensor b (192) at non-singleton dimension 3, timestamp: 2026-03-24 22:01:05
+iteration: 603, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (16) must match the size of tensor b (192) at non-singleton dimension 3, timestamp: 2026-03-24 22:01:57
+iteration: 604, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (16) must match the size of tensor b (192) at non-singleton dimension 3, timestamp: 2026-03-24 22:02:52
+iteration: 605, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (16) must match the size of tensor b (192) at non-singleton dimension 3, timestamp: 2026-03-24 22:03:42
+iteration: 606, error: Code validation failed: Validation error: NameError: name 'self' is not defined, timestamp: 2026-03-24 22:04:35
+iteration: 607, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:05:30
+iteration: 608, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:06:26
+iteration: 609, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:07:18
+iteration: 610, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:08:13
+iteration: 611, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:09:08
+iteration: 612, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:10:05
+iteration: 613, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:10:59
+iteration: 614, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:11:58
+iteration: 615, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:12:53
+iteration: 616, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:13:47
+iteration: 617, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:14:39
+iteration: 618, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:15:34
+iteration: 619, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:16:28
+iteration: 620, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:17:24
+iteration: 621, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:18:19
+iteration: 622, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:19:14
+iteration: 623, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:20:07
+iteration: 624, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:21:03
+iteration: 625, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:21:43
+iteration: 626, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:22:24
+iteration: 627, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:23:08
+iteration: 628, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:23:49
+iteration: 629, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:24:33
+iteration: 630, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:25:15
+iteration: 631, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:25:56
+iteration: 632, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:26:42
+iteration: 633, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:27:26
+iteration: 634, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:28:13
+iteration: 635, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:29:03
+iteration: 636, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:29:49
+iteration: 637, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:30:40
+iteration: 638, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:31:41
+iteration: 639, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:32:28
+iteration: 640, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:33:15
+iteration: 641, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:34:00
+iteration: 642, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:34:47
+iteration: 643, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:35:39
+iteration: 644, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:36:32
+iteration: 645, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:37:24
+iteration: 646, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:38:19
+iteration: 647, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:39:14
+iteration: 648, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:40:08
+iteration: 649, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:41:09
+iteration: 650, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:42:01
+iteration: 651, error: Code validation failed: Validation error: ValueError: expected 4D input (got 3D input), timestamp: 2026-03-24 22:42:53
+iteration: 652, error: OutOfMemoryError: CUDA out of memory. Tried to allocate 384.00 MiB. GPU 0 has a total capacity of 23.63 GiB of which 245.50 MiB is free. Process 6099 has 16.53 GiB memory in use. Process 36151 has 516.00 MiB memory in use. Including non-PyTorch memory, this process has 6.23 GiB memory in use. Of the allocated memory 5.74 GiB is allocated by PyTorch, and 54.98 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+Traceback (most recent call last):
+  File "/home/gu/Desktop/nngpt_iterative_generation_integration/Resource-Efficient-Iterative-LLM-Based-NAS-with-Feedback-Memory/nn-gpt/ab/gpt/iterative_prompt_improvement/train_script.py", line 333, in main
+    train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, device)
+  File "/home/gu/Desktop/nngpt_iterative_generation_integration/Resource-Efficient-Iterative-LLM-Based-NAS-with-Feedback-Memory/nn-gpt/ab/gpt/iterative_prompt_improvement/train_script.py", line 218, in train_epoch
+    outputs = model(inputs)
+  File "/home/gu/miniconda3/envs/promptimprove/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/gu/miniconda3/envs/promptimprove/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "<string>", line 106, in forward
+  File "/home/gu/miniconda3/envs/promptimprove/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/gu/miniconda3/envs/promptimprove/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "<string>", line 28, in forward
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 384.00 MiB. GPU 0 has a total capacity of 23.63 GiB of which 245.50 MiB is free. Process 6099 has 16.53 GiB memory in use. Process 36151 has 516.00 MiB memory in use. Including non-PyTorch memory, this process has 6.23 GiB memory in use. Of the allocated memory 5.74 GiB is allocated by PyTorch, and 54.98 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+, timestamp: 2026-03-24 22:43:46
+iteration: 653, error: Code validation failed: Validation error: NameError: name 'ResidualBlock' is not defined, timestamp: 2026-03-24 22:44:31
+iteration: 654, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (192) must match the size of tensor b (3) at non-singleton dimension 1, timestamp: 2026-03-24 22:45:52
+iteration: 655, error: Code validation failed: Validation error: NameError: name 'ResidualBlock' is not defined, timestamp: 2026-03-24 22:46:39
+iteration: 656, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 22:47:34
+iteration: 657, error: Code validation failed: Validation error: NameError: name 'ResidualBlock' is not defined, timestamp: 2026-03-24 22:48:25
+iteration: 658, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (192) must match the size of tensor b (3) at non-singleton dimension 1, timestamp: 2026-03-24 22:49:20
+iteration: 659, error: Code validation failed: Validation error: NameError: name 'ResidualBlock' is not defined, timestamp: 2026-03-24 22:50:15
+iteration: 660, error: Code validation failed: Validation error: NameError: name 'ResidualBlock' is not defined, timestamp: 2026-03-24 22:51:16
+iteration: 661, error: Code validation failed: Validation error: KeyError: "'__name__' not in globals", timestamp: 2026-03-24 22:52:10
+iteration: 662, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (192) must match the size of tensor b (3) at non-singleton dimension 1, timestamp: 2026-03-24 22:53:08
+iteration: 663, error: Code validation failed: Validation error: NameError: name 'ResidualBlock' is not defined, timestamp: 2026-03-24 22:54:01
+iteration: 664, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 22:54:54
+iteration: 665, error: Code validation failed: Validation error: NameError: name 'ResidualBlock' is not defined, timestamp: 2026-03-24 22:55:45
+iteration: 666, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (192) must match the size of tensor b (3) at non-singleton dimension 1, timestamp: 2026-03-24 22:56:40
+iteration: 667, error: Code validation failed: Validation error: NameError: name 'ResidualBlock' is not defined, timestamp: 2026-03-24 22:57:35
+iteration: 668, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 22:58:35
+iteration: 669, error: Code validation failed: Validation error: NameError: name 'ResidualBlock' is not defined, timestamp: 2026-03-24 22:59:31
+iteration: 670, error: Code validation failed: Validation error: NotImplementedError: Module [Net] is missing the required "forward" function, timestamp: 2026-03-24 23:00:25
+iteration: 671, error: Code validation failed: Validation error: NameError: name 'ResidualBlock' is not defined, timestamp: 2026-03-24 23:01:19
+iteration: 672, error: Code validation failed: Validation error: NameError: name 'ResidualBlock' is not defined, timestamp: 2026-03-24 23:02:33
+iteration: 673, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (192) must match the size of tensor b (3) at non-singleton dimension 1, timestamp: 2026-03-24 23:03:28
+iteration: 674, error: Code validation failed: Validation error: NameError: name 'ResidualBlock' is not defined, timestamp: 2026-03-24 23:04:23
+iteration: 675, error: Code validation failed: Validation error: NameError: name 'ResidualBlock' is not defined, timestamp: 2026-03-24 23:05:32
+iteration: 676, error: Code extraction failed: Code syntax error: Syntax error at line 133: '(' was never closed, timestamp: 2026-03-24 23:06:25
+iteration: 677, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:07:17
+iteration: 678, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:08:11
+iteration: 679, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:09:04
+iteration: 680, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:09:59
+iteration: 681, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:10:54
+iteration: 682, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:11:48
+iteration: 683, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:12:43
+iteration: 684, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:13:37
+iteration: 685, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:14:38
+iteration: 686, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:15:32
+iteration: 687, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:16:26
+iteration: 688, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:17:20
+iteration: 689, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:18:16
+iteration: 690, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:19:11
+iteration: 691, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:20:05
+iteration: 692, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:21:02
+iteration: 693, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:22:03
+iteration: 694, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:23:02
+iteration: 695, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:23:57
+iteration: 696, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:24:52
+iteration: 697, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:25:45
+iteration: 698, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:26:43
+iteration: 699, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:27:38
+iteration: 700, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:28:43
+iteration: 701, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:29:41
+iteration: 702, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:30:36
+iteration: 703, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:31:31
+iteration: 704, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:32:26
+iteration: 705, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:33:20
+iteration: 706, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:34:17
+iteration: 707, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:35:12
+iteration: 708, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:36:09
+iteration: 709, error: Code extraction failed: Code structure error: Net class does not have forward method, timestamp: 2026-03-24 23:37:07
+iteration: 710, accuracy: 0.7236, timestamp: 2026-03-24 23:38:08
+iteration: 711, accuracy: 0.7048, timestamp: 2026-03-24 23:39:09
+iteration: 712, error: Code validation failed: Validation error: RuntimeError: mat1 and mat2 shapes cannot be multiplied (6144x2 and 6144x768), timestamp: 2026-03-24 23:40:01
+iteration: 713, error: Code validation failed: Validation error: RuntimeError: mat1 and mat2 shapes cannot be multiplied (6144x2 and 6144x768), timestamp: 2026-03-24 23:41:03
+iteration: 714, error: Code validation failed: Validation error: RuntimeError: mat1 and mat2 shapes cannot be multiplied (2x1536 and 6144x768), timestamp: 2026-03-24 23:41:56
+iteration: 715, accuracy: 0.7048, timestamp: 2026-03-24 23:43:04
+iteration: 716, accuracy: 0.6958, timestamp: 2026-03-24 23:44:04
+iteration: 717, accuracy: 0.6970, timestamp: 2026-03-24 23:45:05
+iteration: 718, accuracy: 0.7236, timestamp: 2026-03-24 23:46:06
+iteration: 719, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-24 23:46:57
+iteration: 720, error: Code extraction failed: Code syntax error: Syntax error at line 142: invalid syntax, timestamp: 2026-03-24 23:48:00
+iteration: 721, accuracy: 0.6958, timestamp: 2026-03-24 23:48:56
+iteration: 722, error: Code validation failed: Validation error: ValueError: Input dimension should be at least 3, timestamp: 2026-03-24 23:49:47
+iteration: 723, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'flatten', timestamp: 2026-03-24 23:50:38
+iteration: 724, error: Code validation failed: Validation error: ValueError: Input dimension should be at least 3, timestamp: 2026-03-24 23:51:31
+iteration: 725, accuracy: 0.6958, timestamp: 2026-03-24 23:52:34
+iteration: 726, accuracy: 0.6958, timestamp: 2026-03-24 23:53:42
+iteration: 727, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'fc2', timestamp: 2026-03-24 23:54:41
+iteration: 728, accuracy: 0.6958, timestamp: 2026-03-24 23:55:49
+iteration: 729, accuracy: 0.6958, timestamp: 2026-03-24 23:56:52
+iteration: 730, error: Code validation failed: Validation error: ValueError: Input dimension should be at least 3, timestamp: 2026-03-24 23:57:42
+iteration: 731, error: Code validation failed: Validation error: ValueError: Input dimension should be at least 3, timestamp: 2026-03-24 23:58:35
+iteration: 732, error: Code validation failed: Validation error: ValueError: Input dimension should be at least 3, timestamp: 2026-03-24 23:59:29
+iteration: 733, error: Code validation failed: Validation error: ValueError: Input dimension should be at least 3, timestamp: 2026-03-25 00:00:22
+iteration: 734, error: Code validation failed: Validation error: ValueError: Input dimension should be at least 3, timestamp: 2026-03-25 00:01:13
+iteration: 735, error: Code validation failed: Validation error: ValueError: Input dimension should be at least 3, timestamp: 2026-03-25 00:02:05
+iteration: 736, accuracy: 0.6958, timestamp: 2026-03-25 00:03:09
+iteration: 737, error: Code validation failed: Validation error: ValueError: Input dimension should be at least 3, timestamp: 2026-03-25 00:04:00
+iteration: 738, accuracy: 0.6958, timestamp: 2026-03-25 00:05:05
+iteration: 739, accuracy: 0.6958, timestamp: 2026-03-25 00:06:07
+iteration: 740, error: Code validation failed: Validation error: ValueError: Input dimension should be at least 3, timestamp: 2026-03-25 00:06:59
+iteration: 741, error: Code validation failed: Validation error: RuntimeError: shape '[-1, 1536, 2, 2]' is invalid for input of size 1536, timestamp: 2026-03-25 00:07:52
+iteration: 742, error: Code validation failed: Validation error: RuntimeError: shape '[-1, 1536, 2, 2]' is invalid for input of size 1536, timestamp: 2026-03-25 00:08:43
+iteration: 743, accuracy: 0.6958, timestamp: 2026-03-25 00:09:44
+iteration: 744, accuracy: 0.6958, timestamp: 2026-03-25 00:10:45
+iteration: 745, accuracy: 0.6958, timestamp: 2026-03-25 00:11:45
+iteration: 746, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 00:12:35
+iteration: 747, accuracy: 0.6913, timestamp: 2026-03-25 00:13:38
+iteration: 748, accuracy: 0.6913, timestamp: 2026-03-25 00:14:40
+iteration: 749, accuracy: 0.6913, timestamp: 2026-03-25 00:15:42
+iteration: 750, accuracy: 0.6913, timestamp: 2026-03-25 00:16:44
+iteration: 751, accuracy: 0.6913, timestamp: 2026-03-25 00:17:46
+iteration: 752, error: Code extraction failed: Code syntax error: Syntax error at line 138: '(' was never closed, timestamp: 2026-03-25 00:18:38
+iteration: 753, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (768) must match the size of tensor b (10) at non-singleton dimension 1, timestamp: 2026-03-25 00:19:30
+iteration: 754, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (768) must match the size of tensor b (10) at non-singleton dimension 1, timestamp: 2026-03-25 00:20:27
+iteration: 755, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (768) must match the size of tensor b (10) at non-singleton dimension 1, timestamp: 2026-03-25 00:21:25
+iteration: 756, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (768) must match the size of tensor b (10) at non-singleton dimension 1, timestamp: 2026-03-25 00:22:27
+iteration: 757, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (10) must match the size of tensor b (768) at non-singleton dimension 1, timestamp: 2026-03-25 00:23:22
+iteration: 758, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (10) must match the size of tensor b (768) at non-singleton dimension 1, timestamp: 2026-03-25 00:24:17
+iteration: 759, accuracy: 0.6913, timestamp: 2026-03-25 00:25:19
+iteration: 760, accuracy: 0.6913, timestamp: 2026-03-25 00:26:23
+iteration: 761, accuracy: 0.6913, timestamp: 2026-03-25 00:27:25
+iteration: 762, accuracy: 0.6913, timestamp: 2026-03-25 00:28:26
+iteration: 763, accuracy: 0.6913, timestamp: 2026-03-25 00:29:29
+iteration: 764, accuracy: 0.6913, timestamp: 2026-03-25 00:30:31
+iteration: 765, accuracy: 0.6848, timestamp: 2026-03-25 00:31:33
+iteration: 766, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 00:32:29
+iteration: 767, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 's', timestamp: 2026-03-25 00:33:24
+iteration: 768, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 's', timestamp: 2026-03-25 00:34:17
+iteration: 769, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 's', timestamp: 2026-03-25 00:35:12
+iteration: 770, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 00:36:07
+iteration: 771, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 00:37:00
+iteration: 772, error: Code validation failed: Validation error: RuntimeError: mat1 and mat2 shapes cannot be multiplied (2x6144 and 1536x1024), timestamp: 2026-03-25 00:37:56
+iteration: 773, accuracy: 0.5282, timestamp: 2026-03-25 00:38:57
+iteration: 774, accuracy: 0.5535, timestamp: 2026-03-25 00:39:54
+iteration: 775, accuracy: 0.5498, timestamp: 2026-03-25 00:40:49
+iteration: 776, accuracy: 0.5561, timestamp: 2026-03-25 00:41:48
+iteration: 777, accuracy: 0.5498, timestamp: 2026-03-25 00:42:44
+iteration: 778, accuracy: 0.5498, timestamp: 2026-03-25 00:43:39
+iteration: 779, accuracy: 0.5498, timestamp: 2026-03-25 00:44:32
+iteration: 780, accuracy: 0.6698, timestamp: 2026-03-25 00:45:16
+iteration: 781, accuracy: 0.6659, timestamp: 2026-03-25 00:46:16
+iteration: 782, accuracy: 0.6772, timestamp: 2026-03-25 00:47:03
+iteration: 783, accuracy: 0.6348, timestamp: 2026-03-25 00:48:02
+iteration: 784, error: Code extraction failed: Code syntax error: Syntax error at line 134: invalid syntax, timestamp: 2026-03-25 00:48:56
+iteration: 785, accuracy: 0.6958, timestamp: 2026-03-25 00:49:55
+iteration: 786, accuracy: 0.6013, timestamp: 2026-03-25 00:50:53
+iteration: 787, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'flatten', timestamp: 2026-03-25 00:51:43
+iteration: 788, accuracy: 0.6913, timestamp: 2026-03-25 00:52:47
+iteration: 789, accuracy: 0.7048, timestamp: 2026-03-25 00:53:48
+iteration: 790, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 00:54:40
+iteration: 791, accuracy: 0.6958, timestamp: 2026-03-25 00:55:40
+iteration: 792, accuracy: 0.6958, timestamp: 2026-03-25 00:56:39
+iteration: 793, accuracy: 0.6958, timestamp: 2026-03-25 00:57:43
+iteration: 794, accuracy: 0.6958, timestamp: 2026-03-25 00:58:42
+iteration: 795, accuracy: 0.6958, timestamp: 2026-03-25 00:59:44
+iteration: 796, accuracy: 0.6958, timestamp: 2026-03-25 01:00:47
+iteration: 797, accuracy: 0.6958, timestamp: 2026-03-25 01:01:49
+iteration: 798, accuracy: 0.6958, timestamp: 2026-03-25 01:02:51
+iteration: 799, accuracy: 0.6958, timestamp: 2026-03-25 01:03:51
+iteration: 800, accuracy: 0.6958, timestamp: 2026-03-25 01:04:51
+iteration: 801, accuracy: 0.6958, timestamp: 2026-03-25 01:05:51
+iteration: 802, accuracy: 0.6863, timestamp: 2026-03-25 01:06:48
+iteration: 803, accuracy: 0.6806, timestamp: 2026-03-25 01:07:43
+iteration: 804, accuracy: 0.6863, timestamp: 2026-03-25 01:08:41
+iteration: 805, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [1536, 384, 1, 1], expected input[2, 768, 4, 4] to have 384 channels, but got 768 channels instead, timestamp: 2026-03-25 01:09:31
+iteration: 806, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [1536, 384, 1, 1], expected input[2, 768, 4, 4] to have 384 channels, but got 768 channels instead, timestamp: 2026-03-25 01:10:22
+iteration: 807, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [1536, 384, 1, 1], expected input[2, 768, 4, 4] to have 384 channels, but got 768 channels instead, timestamp: 2026-03-25 01:11:14
+iteration: 808, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [1536, 384, 1, 1], expected input[2, 768, 4, 4] to have 384 channels, but got 768 channels instead, timestamp: 2026-03-25 01:12:09
+iteration: 809, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [1536, 384, 3, 3], expected input[2, 768, 4, 4] to have 384 channels, but got 768 channels instead, timestamp: 2026-03-25 01:12:57
+iteration: 810, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [1536, 384, 3, 3], expected input[2, 768, 4, 4] to have 384 channels, but got 768 channels instead, timestamp: 2026-03-25 01:14:01
+iteration: 811, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [1536, 384, 3, 3], expected input[2, 768, 4, 4] to have 384 channels, but got 768 channels instead, timestamp: 2026-03-25 01:14:56
+iteration: 812, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [1536, 384, 3, 3], expected input[2, 768, 4, 4] to have 384 channels, but got 768 channels instead, timestamp: 2026-03-25 01:15:49
+iteration: 813, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 384, 3, 3], expected input[2, 768, 4, 4] to have 384 channels, but got 768 channels instead, timestamp: 2026-03-25 01:16:41
+iteration: 814, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 384, 1, 1], expected input[2, 768, 4, 4] to have 384 channels, but got 768 channels instead, timestamp: 2026-03-25 01:17:36
+iteration: 815, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [384, 192, 3, 3], expected input[2, 768, 4, 4] to have 192 channels, but got 768 channels instead, timestamp: 2026-03-25 01:18:30
+iteration: 816, error: Code extraction failed: Code syntax error: Syntax error at line 136: '(' was never closed, timestamp: 2026-03-25 01:19:23
+iteration: 817, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 384, 3, 3], expected input[2, 768, 8, 8] to have 384 channels, but got 768 channels instead, timestamp: 2026-03-25 01:20:14
+iteration: 818, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 384, 3, 3], expected input[2, 768, 8, 8] to have 384 channels, but got 768 channels instead, timestamp: 2026-03-25 01:21:07
+iteration: 819, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 384, 3, 3], expected input[2, 768, 8, 8] to have 384 channels, but got 768 channels instead, timestamp: 2026-03-25 01:22:01
+iteration: 820, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 384, 3, 3], expected input[2, 768, 8, 8] to have 384 channels, but got 768 channels instead, timestamp: 2026-03-25 01:22:53
+iteration: 821, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 384, 3, 3], expected input[2, 768, 8, 8] to have 384 channels, but got 768 channels instead, timestamp: 2026-03-25 01:23:44
+iteration: 822, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 384, 3, 3], expected input[2, 768, 8, 8] to have 384 channels, but got 768 channels instead, timestamp: 2026-03-25 01:24:36
+iteration: 823, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-25 01:25:30
+iteration: 824, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-25 01:26:23
+iteration: 825, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-25 01:27:17
+iteration: 826, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-25 01:28:12
+iteration: 827, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-25 01:29:08
+iteration: 828, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-25 01:30:07
+iteration: 829, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-25 01:31:01
+iteration: 830, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-25 01:31:54
+iteration: 831, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-25 01:32:51
+iteration: 832, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-25 01:33:49
+iteration: 833, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-25 01:34:44
+iteration: 834, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-25 01:35:52
+iteration: 835, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-25 01:36:49
+iteration: 836, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-25 01:37:50
+iteration: 837, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-25 01:38:47
+iteration: 838, error: Code validation failed: Validation error: NameError: name 'att' is not defined, timestamp: 2026-03-25 01:39:43
+iteration: 839, error: Code extraction failed: Code syntax error: Syntax error at line 134: invalid syntax, timestamp: 2026-03-25 01:40:39
+iteration: 840, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 768, 3, 3], expected input[2, 384, 8, 8] to have 768 channels, but got 384 channels instead, timestamp: 2026-03-25 01:41:32
+iteration: 841, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 768, 3, 3], expected input[2, 384, 8, 8] to have 768 channels, but got 384 channels instead, timestamp: 2026-03-25 01:42:26
+iteration: 842, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 768, 3, 3], expected input[2, 384, 8, 8] to have 768 channels, but got 384 channels instead, timestamp: 2026-03-25 01:43:20
+iteration: 843, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 768, 3, 3], expected input[2, 384, 8, 8] to have 768 channels, but got 384 channels instead, timestamp: 2026-03-25 01:44:12
+iteration: 844, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 768, 3, 3], expected input[2, 384, 8, 8] to have 768 channels, but got 384 channels instead, timestamp: 2026-03-25 01:45:06
+iteration: 845, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 768, 3, 3], expected input[2, 384, 8, 8] to have 768 channels, but got 384 channels instead, timestamp: 2026-03-25 01:46:04
+iteration: 846, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 768, 3, 3], expected input[2, 384, 8, 8] to have 768 channels, but got 384 channels instead, timestamp: 2026-03-25 01:46:57
+iteration: 847, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 768, 3, 3], expected input[2, 384, 8, 8] to have 768 channels, but got 384 channels instead, timestamp: 2026-03-25 01:47:51
+iteration: 848, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 768, 3, 3], expected input[2, 384, 8, 8] to have 768 channels, but got 384 channels instead, timestamp: 2026-03-25 01:48:44
+iteration: 849, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 768, 3, 3], expected input[2, 384, 8, 8] to have 768 channels, but got 384 channels instead, timestamp: 2026-03-25 01:49:39
+iteration: 850, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [768, 768, 3, 3], expected input[2, 384, 8, 8] to have 768 channels, but got 384 channels instead, timestamp: 2026-03-25 01:50:34
+iteration: 851, error: Code extraction failed: Code syntax error: Syntax error at line 134: '(' was never closed, timestamp: 2026-03-25 01:51:32
+iteration: 852, error: Code validation failed: Validation error: RuntimeError: mat1 and mat2 shapes cannot be multiplied (2x24576 and 6144x768), timestamp: 2026-03-25 01:52:21
+iteration: 853, error: Code extraction failed: Code syntax error: Syntax error at line 131: invalid syntax, timestamp: 2026-03-25 01:53:14
+iteration: 854, accuracy: 0.7011, timestamp: 2026-03-25 01:54:05
+iteration: 855, accuracy: 0.6499, timestamp: 2026-03-25 01:55:15
+iteration: 856, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 01:56:11
+iteration: 857, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 01:57:10
+iteration: 858, error: Code extraction failed: Code structure error: Net class does not have forward method, timestamp: 2026-03-25 01:58:04
+iteration: 859, accuracy: 0.6958, timestamp: 2026-03-25 01:59:03
+iteration: 860, accuracy: 0.6958, timestamp: 2026-03-25 02:00:06
+iteration: 861, error: Code validation failed: Validation error: RuntimeError: mat1 and mat2 shapes cannot be multiplied (2x98304 and 6144x768), timestamp: 2026-03-25 02:00:59
+iteration: 862, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [384, 192, 3, 3], expected input[2, 384, 16, 16] to have 192 channels, but got 384 channels instead, timestamp: 2026-03-25 02:01:53
+iteration: 863, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [384, 192, 3, 3], expected input[2, 384, 16, 16] to have 192 channels, but got 384 channels instead, timestamp: 2026-03-25 02:02:48
+iteration: 864, error: Code extraction failed: Code syntax error: Syntax error at line 131: invalid syntax, timestamp: 2026-03-25 02:03:43
+iteration: 865, accuracy: 0.6958, timestamp: 2026-03-25 02:04:42
+iteration: 866, accuracy: 0.6958, timestamp: 2026-03-25 02:05:43
+iteration: 867, error: Code validation failed: Validation error: RuntimeError: mat1 and mat2 shapes cannot be multiplied (2x24576 and 6144x768), timestamp: 2026-03-25 02:06:35
+iteration: 868, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 1536, 4, 4] to have 3 channels, but got 1536 channels instead, timestamp: 2026-03-25 02:07:27
+iteration: 869, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 1536, 4, 4] to have 3 channels, but got 1536 channels instead, timestamp: 2026-03-25 02:08:30
+iteration: 870, error: Code validation failed: Validation error: RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 4 but got size 16 for tensor number 1 in the list., timestamp: 2026-03-25 02:09:22
+iteration: 871, error: Code validation failed: Validation error: RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 4 but got size 16 for tensor number 1 in the list., timestamp: 2026-03-25 02:10:14
+iteration: 872, error: Code validation failed: Validation error: RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 4 but got size 16 for tensor number 1 in the list., timestamp: 2026-03-25 02:11:07
+iteration: 873, error: Code validation failed: Validation error: RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 4 but got size 16 for tensor number 1 in the list., timestamp: 2026-03-25 02:11:58
+iteration: 874, error: Code validation failed: Validation error: RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 4 but got size 16 for tensor number 1 in the list., timestamp: 2026-03-25 02:12:50
+iteration: 875, error: Code validation failed: Validation error: RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 4 but got size 16 for tensor number 1 in the list., timestamp: 2026-03-25 02:13:44
+iteration: 876, error: Code validation failed: Validation error: RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 4 but got size 16 for tensor number 1 in the list., timestamp: 2026-03-25 02:14:37
+iteration: 877, error: Code validation failed: Validation error: RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 4 but got size 16 for tensor number 1 in the list., timestamp: 2026-03-25 02:15:30
+iteration: 878, error: Code extraction failed: Code syntax error: Syntax error at line 131: invalid syntax, timestamp: 2026-03-25 02:16:31
+iteration: 879, accuracy: 0.7018, timestamp: 2026-03-25 02:17:39
+iteration: 880, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 02:18:31
+iteration: 881, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'ups', timestamp: 2026-03-25 02:19:24
+iteration: 882, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 02:20:17
+iteration: 883, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'adaptive', timestamp: 2026-03-25 02:21:10
+iteration: 884, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'adaptive', timestamp: 2026-03-25 02:22:03
+iteration: 885, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 02:22:55
+iteration: 886, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'adaptive', timestamp: 2026-03-25 02:23:48
+iteration: 887, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 02:24:42
+iteration: 888, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 02:25:38
+iteration: 889, error: Code validation failed: Validation error: AttributeError: module 'torch.nn' has no attribute 'Concatenate', timestamp: 2026-03-25 02:26:34
+iteration: 890, error: Code validation failed: Validation error: AttributeError: module 'torch.nn' has no attribute 'Concatenate', timestamp: 2026-03-25 02:27:26
+iteration: 891, error: Code validation failed: Validation error: AttributeError: module 'torch.nn' has no attribute 'Concatenate', timestamp: 2026-03-25 02:28:19
+iteration: 892, error: Code extraction failed: Code syntax error: Syntax error at line 137: '(' was never closed, timestamp: 2026-03-25 02:29:12
+iteration: 893, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'flatten', timestamp: 2026-03-25 02:29:59
+iteration: 894, accuracy: 0.7236, timestamp: 2026-03-25 02:31:00
+iteration: 895, error: Code extraction failed: Code syntax error: Syntax error at line 136: '(' was never closed, timestamp: 2026-03-25 02:31:53
+iteration: 896, accuracy: 0.7236, timestamp: 2026-03-25 02:32:50
+iteration: 897, error: Code extraction failed: Code syntax error: Syntax error at line 133: '(' was never closed, timestamp: 2026-03-25 02:33:45
+iteration: 898, error: Code extraction failed: Code syntax error: Syntax error at line 136: '(' was never closed, timestamp: 2026-03-25 02:34:38
+iteration: 899, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (16) must match the size of tensor b (32) at non-singleton dimension 3, timestamp: 2026-03-25 02:35:30
+iteration: 900, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (16) must match the size of tensor b (32) at non-singleton dimension 3, timestamp: 2026-03-25 02:36:22
+iteration: 901, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (16) must match the size of tensor b (32) at non-singleton dimension 3, timestamp: 2026-03-25 02:37:16
+iteration: 902, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (16) must match the size of tensor b (32) at non-singleton dimension 3, timestamp: 2026-03-25 02:38:15
+iteration: 903, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (16) must match the size of tensor b (32) at non-singleton dimension 3, timestamp: 2026-03-25 02:39:08
+iteration: 904, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (16) must match the size of tensor b (32) at non-singleton dimension 3, timestamp: 2026-03-25 02:40:00
+iteration: 905, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (16) must match the size of tensor b (32) at non-singleton dimension 3, timestamp: 2026-03-25 02:40:54
+iteration: 906, error: Code validation failed: Validation error: RuntimeError: The size of tensor a (16) must match the size of tensor b (32) at non-singleton dimension 3, timestamp: 2026-03-25 02:41:58
+iteration: 907, error: Code extraction failed: Code syntax error: Syntax error at line 139: '(' was never closed, timestamp: 2026-03-25 02:42:52
+iteration: 908, accuracy: 0.7236, timestamp: 2026-03-25 02:43:50
+iteration: 909, accuracy: 0.7236, timestamp: 2026-03-25 02:44:52
+iteration: 910, accuracy: 0.7236, timestamp: 2026-03-25 02:45:55
+iteration: 911, error: Code validation failed: Validation error: RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 2 but got size 32 for tensor number 1 in the list., timestamp: 2026-03-25 02:46:48
+iteration: 912, error: Code validation failed: Validation error: RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 2 but got size 32 for tensor number 1 in the list., timestamp: 2026-03-25 02:47:49
+iteration: 913, error: Code extraction failed: Code syntax error: Syntax error at line 140: invalid syntax, timestamp: 2026-03-25 02:48:41
+iteration: 914, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 02:49:33
+iteration: 915, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 02:50:29
+iteration: 916, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 02:51:23
+iteration: 917, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 02:52:15
+iteration: 918, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 02:53:08
+iteration: 919, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 02:54:01
+iteration: 920, error: Code extraction failed: Code syntax error: Syntax error at line 88: '(' was never closed, timestamp: 2026-03-25 02:54:56
+iteration: 921, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 02:55:49
+iteration: 922, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 02:56:43
+iteration: 923, error: Code extraction failed: Code structure error: Net class does not have forward method, timestamp: 2026-03-25 02:57:33
+iteration: 924, accuracy: 0.7236, timestamp: 2026-03-25 02:58:32
+iteration: 925, error: Code extraction failed: Code syntax error: Syntax error at line 135: '(' was never closed, timestamp: 2026-03-25 02:59:26
+iteration: 926, error: Code validation failed: Validation error: NameError: name 'e1' is not defined, timestamp: 2026-03-25 03:00:17
+iteration: 927, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:01:10
+iteration: 928, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:02:03
+iteration: 929, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:02:57
+iteration: 930, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:03:49
+iteration: 931, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:04:45
+iteration: 932, error: Code extraction failed: Code syntax error: Syntax error at line 130: invalid syntax, timestamp: 2026-03-25 03:05:47
+iteration: 933, accuracy: 0.7236, timestamp: 2026-03-25 03:06:45
+iteration: 934, error: Code extraction failed: Code syntax error: Syntax error at line 137: '(' was never closed, timestamp: 2026-03-25 03:07:38
+iteration: 935, error: Code extraction failed: Code syntax error: Syntax error at line 137: '(' was never closed, timestamp: 2026-03-25 03:08:31
+iteration: 936, error: Code extraction failed: Code structure error: Net class does not have forward method, timestamp: 2026-03-25 03:09:23
+iteration: 937, accuracy: 0.7236, timestamp: 2026-03-25 03:10:22
+iteration: 938, accuracy: 0.7236, timestamp: 2026-03-25 03:11:22
+iteration: 939, accuracy: 0.6808, timestamp: 2026-03-25 03:12:24
+iteration: 940, accuracy: 0.6808, timestamp: 2026-03-25 03:13:25
+iteration: 941, error: Code extraction failed: Code structure error: Net class does not have forward method, timestamp: 2026-03-25 03:14:17
+iteration: 942, accuracy: 0.6958, timestamp: 2026-03-25 03:15:15
+iteration: 943, error: Code extraction failed: Code syntax error: Syntax error at line 127: '(' was never closed, timestamp: 2026-03-25 03:16:09
+iteration: 944, accuracy: 0.6958, timestamp: 2026-03-25 03:17:09
+iteration: 945, error: Code extraction failed: Code syntax error: Syntax error at line 137: '(' was never closed, timestamp: 2026-03-25 03:18:02
+iteration: 946, error: Code validation failed: Validation error: RuntimeError: mat1 and mat2 shapes cannot be multiplied (6144x4 and 12288x768), timestamp: 2026-03-25 03:18:43
+iteration: 947, error: Code extraction failed: Code syntax error: Syntax error at line 83: invalid syntax. Maybe you meant '==' or ':=' instead of '='?, timestamp: 2026-03-25 03:19:36
+iteration: 948, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:20:28
+iteration: 949, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:21:40
+iteration: 950, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:22:40
+iteration: 951, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:23:35
+iteration: 952, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:24:39
+iteration: 953, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:25:31
+iteration: 954, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:26:26
+iteration: 955, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:27:19
+iteration: 956, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:28:14
+iteration: 957, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:29:07
+iteration: 958, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:30:02
+iteration: 959, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:30:57
+iteration: 960, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:31:51
+iteration: 961, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:32:47
+iteration: 962, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:34:11
+iteration: 963, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:35:05
+iteration: 964, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:36:10
+iteration: 965, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:37:13
+iteration: 966, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:38:07
+iteration: 967, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 's', timestamp: 2026-03-25 03:39:00
+iteration: 968, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'sil', timestamp: 2026-03-25 03:39:55
+iteration: 969, error: Code extraction failed: Code syntax error: Syntax error at line 130: '(' was never closed, timestamp: 2026-03-25 03:41:09
+iteration: 970, accuracy: 0.7236, timestamp: 2026-03-25 03:42:10
+iteration: 971, error: Code extraction failed: Code syntax error: Syntax error at line 131: '(' was never closed, timestamp: 2026-03-25 03:43:04
+iteration: 972, accuracy: 0.7236, timestamp: 2026-03-25 03:43:57
+iteration: 973, error: Code extraction failed: Code structure error: Net class does not have forward method, timestamp: 2026-03-25 03:44:50
+iteration: 974, accuracy: 0.7236, timestamp: 2026-03-25 03:45:50
+iteration: 975, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 03:46:44
+iteration: 976, error: Code extraction failed: Code structure error: Net class does not have forward method, timestamp: 2026-03-25 03:47:43
+iteration: 977, accuracy: 0.7236, timestamp: 2026-03-25 03:48:42
+iteration: 978, error: Code extraction failed: Code syntax error: Syntax error at line 136: '(' was never closed, timestamp: 2026-03-25 03:49:35
+iteration: 979, accuracy: 0.7236, timestamp: 2026-03-25 03:50:33
+iteration: 980, error: Code extraction failed: Code syntax error: Syntax error at line 123: '(' was never closed, timestamp: 2026-03-25 03:51:54
+iteration: 981, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'flatten', timestamp: 2026-03-25 03:52:50
+iteration: 982, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [384, 192, 3, 3], expected input[2, 384, 16, 16] to have 192 channels, but got 384 channels instead, timestamp: 2026-03-25 03:54:03
+iteration: 983, error: Code extraction failed: Code structure error: Net class does not have forward method, timestamp: 2026-03-25 03:54:57
+iteration: 984, error: Code extraction failed: Code syntax error: Syntax error at line 121: '(' was never closed, timestamp: 2026-03-25 03:56:11
+iteration: 985, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'flatten', timestamp: 2026-03-25 03:56:58
+iteration: 986, error: Code validation failed: Validation error: RuntimeError: mat1 and mat2 shapes cannot be multiplied (1x12288 and 6144x768), timestamp: 2026-03-25 03:57:49
+iteration: 987, error: Code extraction failed: Code structure error: Net class does not have forward method, timestamp: 2026-03-25 03:58:43
+iteration: 988, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'flatten', timestamp: 2026-03-25 03:59:25
+iteration: 989, error: Code validation failed: Validation error: RuntimeError: running_mean should contain 12288 elements not 768, timestamp: 2026-03-25 04:00:12
+iteration: 990, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:01:06
+iteration: 991, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:02:00
+iteration: 992, error: Code validation failed: Validation error: AttributeError: module 'torch.nn' has no attribute 'Concatenate', timestamp: 2026-03-25 04:02:55
+iteration: 993, error: Code extraction failed: Code structure error: Net class does not have forward method, timestamp: 2026-03-25 04:03:46
+iteration: 994, accuracy: 0.7236, timestamp: 2026-03-25 04:04:46
+iteration: 995, accuracy: 0.7134, timestamp: 2026-03-25 04:05:49
+iteration: 996, accuracy: 0.7133, timestamp: 2026-03-25 04:06:50
+iteration: 997, accuracy: 0.7112, timestamp: 2026-03-25 04:07:52
+iteration: 998, accuracy: 0.7236, timestamp: 2026-03-25 04:08:52
+iteration: 999, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'silu5', timestamp: 2026-03-25 04:09:46
+iteration: 1000, accuracy: 0.7086, timestamp: 2026-03-25 04:10:49
+iteration: 1001, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 1, 1], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 04:11:41
+iteration: 1002, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 1, 1], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 04:12:34
+iteration: 1003, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 1, 1], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 04:13:27
+iteration: 1004, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 1, 1], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 04:14:19
+iteration: 1005, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 1, 1], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 04:15:10
+iteration: 1006, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 1, 1], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 04:16:02
+iteration: 1007, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 1, 1], expected input[2, 192, 32, 32] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 04:16:55
+iteration: 1008, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 1, 1], expected input[2, 192, 32, 32] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 04:17:49
+iteration: 1009, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 1, 1], expected input[2, 192, 32, 32] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 04:18:45
+iteration: 1010, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 1, 1], expected input[2, 192, 32, 32] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 04:19:39
+iteration: 1011, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 1, 1], expected input[2, 192, 32, 32] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 04:20:32
+iteration: 1012, error: Code extraction failed: Code structure error: Net class does not have forward method, timestamp: 2026-03-25 04:21:25
+iteration: 1013, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 1, 1], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 04:22:17
+iteration: 1014, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 1, 1], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 04:23:13
+iteration: 1015, accuracy: 0.7236, timestamp: 2026-03-25 04:24:15
+iteration: 1016, error: Code extraction failed: Code structure error: Net class does not have forward method, timestamp: 2026-03-25 04:25:07
+iteration: 1017, accuracy: 0.7236, timestamp: 2026-03-25 04:26:06
+iteration: 1018, accuracy: 0.6958, timestamp: 2026-03-25 04:27:09
+iteration: 1019, accuracy: 0.4854, timestamp: 2026-03-25 04:28:12
+iteration: 1020, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:29:06
+iteration: 1021, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:29:59
+iteration: 1022, accuracy: 0.6958, timestamp: 2026-03-25 04:31:02
+iteration: 1023, accuracy: 0.7112, timestamp: 2026-03-25 04:32:06
+iteration: 1024, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:32:58
+iteration: 1025, error: Code extraction failed: Code syntax error: Syntax error at line 145: '(' was never closed, timestamp: 2026-03-25 04:33:50
+iteration: 1026, accuracy: 0.7028, timestamp: 2026-03-25 04:34:49
+iteration: 1027, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 's', timestamp: 2026-03-25 04:35:42
+iteration: 1028, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:36:35
+iteration: 1029, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:37:42
+iteration: 1030, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:38:34
+iteration: 1031, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:39:27
+iteration: 1032, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:40:20
+iteration: 1033, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:41:15
+iteration: 1034, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:42:09
+iteration: 1035, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:43:24
+iteration: 1036, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:44:18
+iteration: 1037, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:45:12
+iteration: 1038, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'residual4', timestamp: 2026-03-25 04:46:04
+iteration: 1039, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'residual4', timestamp: 2026-03-25 04:47:00
+iteration: 1040, accuracy: 0.6762, timestamp: 2026-03-25 04:47:59
+iteration: 1041, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:48:53
+iteration: 1042, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:49:54
+iteration: 1043, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:50:47
+iteration: 1044, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:51:40
+iteration: 1045, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:52:40
+iteration: 1046, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:53:35
+iteration: 1047, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:54:28
+iteration: 1048, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:55:27
+iteration: 1049, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:56:19
+iteration: 1050, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:57:22
+iteration: 1051, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 04:58:15
+iteration: 1052, error: Code extraction failed: Code syntax error: Syntax error at line 135: expected ':', timestamp: 2026-03-25 04:59:07
+iteration: 1053, accuracy: 0.6958, timestamp: 2026-03-25 05:00:07
+iteration: 1054, accuracy: 0.6961, timestamp: 2026-03-25 05:01:05
+iteration: 1055, accuracy: 0.6958, timestamp: 2026-03-25 05:02:08
+iteration: 1056, accuracy: 0.6961, timestamp: 2026-03-25 05:03:07
+iteration: 1057, accuracy: 0.6961, timestamp: 2026-03-25 05:04:08
+iteration: 1058, accuracy: 0.6961, timestamp: 2026-03-25 05:05:09
+iteration: 1059, accuracy: 0.6958, timestamp: 2026-03-25 05:06:10
+iteration: 1060, accuracy: 0.6961, timestamp: 2026-03-25 05:07:11
+iteration: 1061, accuracy: 0.6958, timestamp: 2026-03-25 05:08:11
+iteration: 1062, error: Code extraction failed: Code syntax error: Syntax error at line 136: '(' was never closed, timestamp: 2026-03-25 05:09:03
+iteration: 1063, accuracy: 0.6961, timestamp: 2026-03-25 05:10:01
+iteration: 1064, accuracy: 0.6961, timestamp: 2026-03-25 05:11:02
+iteration: 1065, accuracy: 0.6961, timestamp: 2026-03-25 05:12:03
+iteration: 1066, accuracy: 0.6961, timestamp: 2026-03-25 05:13:03
+iteration: 1067, accuracy: 0.6958, timestamp: 2026-03-25 05:14:03
+iteration: 1068, accuracy: 0.6898, timestamp: 2026-03-25 05:15:04
+iteration: 1069, accuracy: 0.6992, timestamp: 2026-03-25 05:16:04
+iteration: 1070, accuracy: 0.6898, timestamp: 2026-03-25 05:17:03
+iteration: 1071, accuracy: 0.6898, timestamp: 2026-03-25 05:18:06
+iteration: 1072, accuracy: 0.6969, timestamp: 2026-03-25 05:19:08
+iteration: 1073, accuracy: 0.6992, timestamp: 2026-03-25 05:20:06
+iteration: 1074, accuracy: 0.6898, timestamp: 2026-03-25 05:21:03
+iteration: 1075, accuracy: 0.6898, timestamp: 2026-03-25 05:22:07
+iteration: 1076, accuracy: 0.6992, timestamp: 2026-03-25 05:23:10
+iteration: 1077, accuracy: 0.6992, timestamp: 2026-03-25 05:24:15
+iteration: 1078, accuracy: 0.6898, timestamp: 2026-03-25 05:25:16
+iteration: 1079, accuracy: 0.6898, timestamp: 2026-03-25 05:26:16
+iteration: 1080, accuracy: 0.6898, timestamp: 2026-03-25 05:27:18
+iteration: 1081, accuracy: 0.6898, timestamp: 2026-03-25 05:28:20
+iteration: 1082, accuracy: 0.6898, timestamp: 2026-03-25 05:29:19
+iteration: 1083, accuracy: 0.6898, timestamp: 2026-03-25 05:30:21
+iteration: 1084, accuracy: 0.6898, timestamp: 2026-03-25 05:31:19
+iteration: 1085, accuracy: 0.6974, timestamp: 2026-03-25 05:32:21
+iteration: 1086, accuracy: 0.7051, timestamp: 2026-03-25 05:33:23
+iteration: 1087, accuracy: 0.7051, timestamp: 2026-03-25 05:34:26
+iteration: 1088, accuracy: 0.7051, timestamp: 2026-03-25 05:35:27
+iteration: 1089, accuracy: 0.6981, timestamp: 2026-03-25 05:36:31
+iteration: 1090, accuracy: 0.7076, timestamp: 2026-03-25 05:37:30
+iteration: 1091, accuracy: 0.7122, timestamp: 2026-03-25 05:38:32
+iteration: 1092, accuracy: 0.7122, timestamp: 2026-03-25 05:39:29
+iteration: 1093, accuracy: 0.7110, timestamp: 2026-03-25 05:40:30
+iteration: 1094, accuracy: 0.7238, timestamp: 2026-03-25 05:41:28
+iteration: 1095, accuracy: 0.7166, timestamp: 2026-03-25 05:42:28
+iteration: 1096, accuracy: 0.7238, timestamp: 2026-03-25 05:43:27
+iteration: 1097, accuracy: 0.7238, timestamp: 2026-03-25 05:44:29
+iteration: 1098, accuracy: 0.7174, timestamp: 2026-03-25 05:45:30
+iteration: 1099, accuracy: 0.7174, timestamp: 2026-03-25 05:46:32
+iteration: 1100, accuracy: 0.7174, timestamp: 2026-03-25 05:47:36
+iteration: 1101, accuracy: 0.7238, timestamp: 2026-03-25 05:48:38
+iteration: 1102, error: Code extraction failed: Code structure error: Net class does not have forward method, timestamp: 2026-03-25 05:49:30
+iteration: 1103, accuracy: 0.7238, timestamp: 2026-03-25 05:50:25
+iteration: 1104, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 05:51:17
+iteration: 1105, accuracy: 0.7238, timestamp: 2026-03-25 05:52:19
+iteration: 1106, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'fc', timestamp: 2026-03-25 05:53:14
+iteration: 1107, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'fc', timestamp: 2026-03-25 05:54:08
+iteration: 1108, error: Code validation failed: Validation error: AttributeError: 'Net' object has no attribute 'fc', timestamp: 2026-03-25 05:55:06
+iteration: 1109, accuracy: 0.7043, timestamp: 2026-03-25 05:56:10
+iteration: 1110, accuracy: 0.7166, timestamp: 2026-03-25 05:57:09
+iteration: 1111, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 05:58:02
+iteration: 1112, accuracy: 0.6932, timestamp: 2026-03-25 05:59:04
+iteration: 1113, accuracy: 0.7124, timestamp: 2026-03-25 06:00:05
+iteration: 1114, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 06:00:53
+iteration: 1115, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 06:01:41
+iteration: 1116, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 06:02:32
+iteration: 1117, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 06:03:22
+iteration: 1118, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 06:04:15
+iteration: 1119, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 06:05:08
+iteration: 1120, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 06:05:58
+iteration: 1121, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 06:06:50
+iteration: 1122, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 06:07:40
+iteration: 1123, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 06:08:32
+iteration: 1124, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 06:09:25
+iteration: 1125, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [256, 3, 3, 3], expected input[2, 256, 16, 16] to have 3 channels, but got 256 channels instead, timestamp: 2026-03-25 06:10:21
+iteration: 1126, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 06:11:12
+iteration: 1127, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 06:12:03
+iteration: 1128, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 3, 3, 3], expected input[2, 192, 16, 16] to have 3 channels, but got 192 channels instead, timestamp: 2026-03-25 06:12:55
+iteration: 1129, error: Code extraction failed: Code syntax error: Syntax error at line 133: '(' was never closed, timestamp: 2026-03-25 06:13:48
+iteration: 1130, accuracy: 0.7238, timestamp: 2026-03-25 06:14:46
+iteration: 1131, accuracy: 0.7238, timestamp: 2026-03-25 06:15:49
+iteration: 1132, accuracy: 0.7238, timestamp: 2026-03-25 06:16:50
+iteration: 1133, accuracy: 0.7027, timestamp: 2026-03-25 06:17:51
+iteration: 1134, accuracy: 0.6867, timestamp: 2026-03-25 06:18:39
+iteration: 1135, accuracy: 0.6867, timestamp: 2026-03-25 06:19:28
+iteration: 1136, error: Code validation failed: Validation error: RuntimeError: Given groups=1, weight of size [192, 192, 1, 1], expected input[2, 3, 32, 32] to have 192 channels, but got 3 channels instead, timestamp: 2026-03-25 06:20:16
+iteration: 1137, accuracy: 0.7238, timestamp: 2026-03-25 06:21:17
+iteration: 1138, accuracy: 0.7238, timestamp: 2026-03-25 06:22:20
+iteration: 1139, accuracy: 0.7238, timestamp: 2026-03-25 06:23:21
+iteration: 1140, accuracy: 0.7238, timestamp: 2026-03-25 06:24:25
+iteration: 1141, error: Code validation failed: Validation error: AttributeError: 'NoneType' object has no attribute 'shape', timestamp: 2026-03-25 06:25:18
+iteration: 1142, accuracy: 0.7238, timestamp: 2026-03-25 06:26:19
+iteration: 1143, error: Code extraction failed: Code syntax error: Syntax error at line 134: invalid syntax, timestamp: 2026-03-25 06:27:12
+iteration: 1144, accuracy: 0.7238, timestamp: 2026-03-25 06:28:09
+iteration: 1145, accuracy: 0.7238, timestamp: 2026-03-25 06:29:10
+iteration: 1146, accuracy: 0.6961, timestamp: 2026-03-25 06:30:12
+iteration: 1147, accuracy: 0.7238, timestamp: 2026-03-25 06:31:10
+iteration: 1148, accuracy: 0.7238, timestamp: 2026-03-25 06:32:11
+iteration: 1149, accuracy: 0.6882, timestamp: 2026-03-25 06:33:13
+iteration: 1150, accuracy: 0.6940, timestamp: 2026-03-25 06:34:12
+iteration: 1151, accuracy: 0.6578, timestamp: 2026-03-25 06:35:15
+iteration: 1152, accuracy: 0.6578, timestamp: 2026-03-25 06:36:16
+iteration: 1153, accuracy: 0.6952, timestamp: 2026-03-25 06:37:31
+iteration: 1154, accuracy: 0.6952, timestamp: 2026-03-25 06:38:33
+iteration: 1155, accuracy: 0.6875, timestamp: 2026-03-25 06:39:34
+iteration: 1156, accuracy: 0.6084, timestamp: 2026-03-25 06:40:34
+iteration: 1157, accuracy: 0.6197, timestamp: 2026-03-25 06:41:33
+iteration: 1158, accuracy: 0.6893, timestamp: 2026-03-25 06:42:33
+iteration: 1159, accuracy: 0.6657, timestamp: 2026-03-25 06:43:33
+iteration: 1160, accuracy: 0.7005, timestamp: 2026-03-25 06:44:34
+iteration: 1161, accuracy: 0.6657, timestamp: 2026-03-25 06:45:38
+iteration: 1162, accuracy: 0.6934, timestamp: 2026-03-25 06:46:42
+iteration: 1163, accuracy: 0.6934, timestamp: 2026-03-25 06:47:49
+iteration: 1164, accuracy: 0.6657, timestamp: 2026-03-25 06:48:51
+iteration: 1165, accuracy: 0.7005, timestamp: 2026-03-25 06:49:53
+iteration: 1166, accuracy: 0.7238, timestamp: 2026-03-25 06:50:57
+iteration: 1167, accuracy: 0.7238, timestamp: 2026-03-25 06:52:00
+iteration: 1168, accuracy: 0.7238, timestamp: 2026-03-25 06:53:04
+iteration: 1169, accuracy: 0.7238, timestamp: 2026-03-25 06:54:10
+iteration: 1170, accuracy: 0.7124, timestamp: 2026-03-25 06:55:13
+iteration: 1171, accuracy: 0.7124, timestamp: 2026-03-25 06:56:11
+iteration: 1172, accuracy: 0.7124, timestamp: 2026-03-25 06:57:13
+iteration: 1173, accuracy: 0.6882, timestamp: 2026-03-25 06:58:14
+iteration: 1174, accuracy: 0.6882, timestamp: 2026-03-25 06:59:14
+iteration: 1175, accuracy: 0.6882, timestamp: 2026-03-25 07:00:16
+iteration: 1176, accuracy: 0.7124, timestamp: 2026-03-25 07:01:16
+iteration: 1177, accuracy: 0.7124, timestamp: 2026-03-25 07:02:16

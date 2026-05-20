@@ -1,2 +1,4 @@
 deepspeed==0.18.7
 flash_attn==2.8.3
+# Required for Unsloth with OSS
+triton_kernels @ git+https://github.com/triton-lang/triton.git@v3.5.0#subdirectory=python/triton_kernels

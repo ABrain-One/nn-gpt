@@ -1,0 +1,119 @@
+{
+  "curriculum_L2_medium_k3": {
+    "type": "curriculum_prompt",
+    "is_generation": true,
+    "selection_mode": "tall",
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "metric": "acc",
+    "nn_prefixes": [],
+    "num_joint_nns": 3,
+    "similarity_mode": "anchor_band_db_minhash",
+    "similarity_band": "medium",
+    "anchor_strategy": "auto",
+    "input_list": [
+      {
+        "para": "dataset",
+        "value": "dataset"
+      },
+      {
+        "para": "task",
+        "value": "task"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "epoch",
+        "value": "epoch"
+      },
+      {
+        "para": "acc_1",
+        "value": "acc_1"
+      },
+      {
+        "para": "hp_1",
+        "value": "hp_1"
+      },
+      {
+        "para": "tr_1",
+        "value": "tr_1"
+      },
+      {
+        "para": "nn_1",
+        "value": "nn_1"
+      },
+      {
+        "para": "acc_2",
+        "value": "acc_2"
+      },
+      {
+        "para": "hp_2",
+        "value": "hp_2"
+      },
+      {
+        "para": "tr_2",
+        "value": "tr_2"
+      },
+      {
+        "para": "nn_2",
+        "value": "nn_2"
+      },
+      {
+        "para": "acc_3",
+        "value": "acc_3"
+      },
+      {
+        "para": "hp_3",
+        "value": "hp_3"
+      },
+      {
+        "para": "tr_3",
+        "value": "tr_3"
+      },
+      {
+        "para": "nn_3",
+        "value": "nn_3"
+      }
+    ],
+    "prompt": [
+  "Do not use <think> tags.",
+  "Do not reason before generating.",
+  "Your response must begin with <nn> immediately.",
+  "Your first output character must be '<'.",
+  "Do not write any text before <nn>.",
+  "Do not write any text after </tr>.",
+  "Output only these three XML blocks in order: <nn>...</nn><hp>...</hp><tr>...</tr>.",
+  "You are generating a LEMUR-compatible neural network for dataset='{dataset}', task='{task}', metric='{metric}', epoch={epoch}.",
+  "Target accuracy above {acc_3}.",
+  "Use Reference A as the structural base. Integrate at most two improvements from References B and C combined.",
+  "Use at most two backbone models total — never three.",
+  "Only use these backbone models: 'resnet50', 'densenet169', 'mobilenet_v3_large', 'efficientnet_b0', 'efficientnet_b3'. Never use efficientnet_b4, resnext50_32x4d, or swin_t — they are too large for this GPU.",
+  "Never pass keyword arguments to backbone forward calls — use self.backbone_a(x) not self.backbone_a(x, kwarg=value).",
+  "supported_hyperparameters() must return exactly: 'batch', 'dropout', 'epoch', 'lr', 'momentum', 'transform'.",
+  "Every key in supported_hyperparameters() must appear at least twice in the code by exact name.",
+  "The <hp> block must contain a valid JSON dict — example: {{\"batch\": 32, \"dropout\": 0.2, \"epoch\": 1, \"lr\": 0.01, \"momentum\": 0.9, \"transform\": \"norm_256_flip\"}}.",
+  "Never generate a list in <hp> — only a JSON dict.",
+  "The 'transform' value in <hp> must be exactly 'norm_256_flip'.",
+  "Net.__init__ signature must be: def __init__(self, in_shape, out_shape, prm, device).",
+  "self.features() must always receive the raw input tensor x — never a concatenation of backbone outputs.",
+      "Never create a variable that combines backbone outputs and pass it to self.features().",
+      "Wrong: mid = torch.cat([f_a, f_b], dim=1); self.features(mid)",
+      "Right: x_f = adaptive_pool_flatten(self.features(x))",
+  "Reference A (structural anchor, accuracy={acc_1}):",
+  "<hp>{hp_1}</hp>",
+  "<tr>{tr_1}</tr>",
+  "<nn>{nn_1}</nn>",
+  "Reference B (accuracy={acc_2}):",
+  "<hp>{hp_2}</hp>",
+  "<tr>{tr_2}</tr>",
+  "<nn>{nn_2}</nn>",
+  "Reference C (accuracy={acc_3}):",
+  "<hp>{hp_3}</hp>",
+  "<tr>{tr_3}</tr>",
+  "<nn>{nn_3}</nn>"
+],
+    "output": []
+  }
+}

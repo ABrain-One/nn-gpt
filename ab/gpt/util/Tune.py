@@ -16,6 +16,8 @@ from os.path import isfile
 import glob
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
+
 import numpy as np
 import pandas as pd
 import torch
@@ -24,10 +26,11 @@ import deepspeed
 from ab.nn.util.Util import release_memory, create_file
 from peft import PeftModel
 from tqdm import tqdm
-from ab.gpt.util.Const import nngpt_dir
+
 import ab.gpt.NNEval as NNEval
 from ab.gpt.util.Chatbot import ChatBot
 from ab.gpt.util.Const import *
+from ab.gpt.util.Const import nngpt_dir
 
 from ab.gpt.util.LLMUtil import quantization_config_4bit
 from ab.gpt.util.LoRA import LoRA
@@ -41,9 +44,11 @@ from ab.gpt.util.Util import (
 from ab.gpt.util.prompt.NNGenPrompt import NNGenPrompt
 from ab.gpt.util.DeltaUtil import apply_delta, validate_delta, repair_code
 from ab.gpt.util.Const import nngpt_upload
+import ab.gpt.util.SFTUtil as SFTUtil
 from ab.gpt.brute.trans.TransformEval import run_eval
 from ab.gpt.util.prompt.TransformGenPrompt import TransformGenPrompt, load_data_from_folders
 from ab.gpt.agents.state import AgentState
+import ab.gpt.util.training_runtime as TrainingRuntime
 
 ds_conf = conf_dir / 'DeepSpeed.json'
 TRANSFORM_OUT_DIR = trans_dir / 'dataset_epoch1'
@@ -117,19 +122,48 @@ def nn_gen(
         for pr in key_config["prompt"]:
             prompt += pr + "\n"
 
-        data = (
-            lemur.data(only_best_accuracy=True, task=key_config["task"])
-            .groupby(by="nn")
-            .sample(n=1)[:test_nn]
-        )
+        num_joint_nns = key_config.get("num_joint_nns", 1)
+        use_join = num_joint_nns >= 2
+        if use_join:
+            from ab.nn.util.db.Query import JoinConf
+            from ab.gpt.util.lemur_enrichment import patch_join_nn_query, enrich_dataframe
+            patch_join_nn_query()
+            data = lemur.data(
+                only_best_accuracy=True,
+                task=key_config["task"],
+                sql=JoinConf(
+                    num_joint_nns=num_joint_nns,
+                    same_columns=tuple(key_config.get("keep_same", [])),
+                    diff_columns=tuple(key_config.get("no_repeat", [])),
+                    enhance_nn=key_config.get("improve", False),
+                ),
+            )[:test_nn]
+            if key_config.get("output_type") == "classification":
+                enrich_dataframe(data)
+            addon_data = None
+        else:
+            data = (
+                lemur.data(only_best_accuracy=True, task=key_config["task"])
+                .groupby(by="nn")
+                .sample(n=1)[:test_nn]
+            )
+            addon_task = key_config.get("addon_task")
+            addon_data = lemur.data(only_best_accuracy=True, task=addon_task) if addon_task else None
 
-        addon_task = key_config.get("addon_task")
-        addon_data = lemur.data(only_best_accuracy=True, task=addon_task) if addon_task else None
+        output_type = key_config.get("output_type", "code")
+        nn_code_max_chars = key_config.get("nn_code_max_chars")
 
         for _, row in data.iterrows():
             para_dict = {}
             for it in key_config["input_list"]:
                 para_dict[it["para"]] = row[it["value"]]
+            if use_backbone:
+                target_pattern = None
+                if "nn_code" in row and isinstance(row["nn_code"], str):
+                    target_pattern = SFTUtil.extract_target_pattern_from_code(row["nn_code"])
+                para_dict["target_pattern"] = target_pattern or SFTUtil.available_patterns[len(prompts) % len(SFTUtil.available_patterns)]
+            if nn_code_max_chars and "nn_code" in para_dict and isinstance(para_dict["nn_code"], str):
+                para_dict["nn_code"] = para_dict["nn_code"][:nn_code_max_chars]
 
             if addon_data is not None and not addon_data.empty:
                 available_addon = addon_data.loc[addon_data.nn != row["nn"]]
@@ -139,14 +173,14 @@ def nn_gen(
                         for it in key_config["addon_list"]:
                             para_dict[it["para"]] = addon_row[it["value"]]
 
-            prompts.append((prompt.format(**para_dict), row))
+            prompts.append((prompt.format(**para_dict), row, output_type))
 
     models_dir = synth_dir(out_path)
 
     if use_delta:
         for idx, prompt_data in tqdm(enumerate(prompts)):
             model_dir = models_dir / f"B{idx}"
-            prompt_text, origdf = prompt_data
+            prompt_text, origdf, output_type = prompt_data
 
             seed = epoch * 10000 + idx
             torch.manual_seed(seed)
@@ -184,11 +218,9 @@ def nn_gen(
                     code = code.replace(sig_forward, textwrap.indent(textwrap.dedent(forward_code), "    "))
                 else:
                     code = extract_code(full_out)
-
-
-            if code is None:
-                print(f'[ERROR] No code generated for model B{idx}')
-                continue  # Skip if no code is generated at all
+                if code is None:
+                    print(f'[ERROR] No code generated for model B{idx}')
+                    continue  # Skip if no code is generated at all
 
 
             makedirs(model_dir, exist_ok=True)
@@ -279,7 +311,7 @@ def nn_gen(
     else:
         pending = []
         for idx, prompt_data in tqdm(enumerate(prompts)):
-            prompt_text, origdf = prompt_data
+            prompt_text, origdf, output_type = prompt_data
 
             if unsloth_max_input_length:
                 in_text = [{"role": "user", "content": prompt_text}]
@@ -289,7 +321,7 @@ def nn_gen(
                     print(f'Prompt is too long, skipping...')
                     continue
 
-            pending.append((idx, prompt_text, origdf))
+            pending.append((idx, prompt_text, origdf, output_type))
 
         if prompt_batch < 1:
             prompt_batch = 1
@@ -305,11 +337,20 @@ def nn_gen(
             else:
                 batch_outputs = [chat_bot.chat(p, engineer_prompt=False, max_new_tokens=max_new_tokens) for p in batch_prompts]
 
-            for (idx, prompt_text, origdf), output in zip(batch, batch_outputs):
+            for (idx, prompt_text, origdf, output_type), output in zip(batch, batch_outputs):
                 model_dir = models_dir / f"B{idx}"
                 code, hp, tr, full_out = output
+                if use_backbone:
+                    code = SFTUtil.assemble_backbone_xml_completion(full_out)
+                    if code is None:
+                        print(f'[ERROR] Missing backbone XML tags for model B{idx}')
 
                 makedirs(model_dir, exist_ok=True)
+                if output_type == "classification":
+                    create_file(model_dir, new_out_file, full_out)
+                    if origdf is not None:
+                        origdf.to_pickle(model_dir / "dataframe.df")
+                    continue
                 if save_llm_output:
                     create_file(model_dir, new_out_file, full_out)
 
@@ -350,22 +391,18 @@ def nn_gen(
                     create_file(model_dir, f"original_{origdf['nn']}.py", origdf['nn_code'])
                     origdf.to_pickle(df_file)
 
-    print('[DEBUG] Release memory.')
-    release_memory()
-
-    # === EPOCH TRACKER + MERGE SYSTEM ===
+    # Track generation-side progress even before later merge logic or external
+    # tooling reads cycle_results.json.
     tracker_file = nngpt_dir / "epoch_tracker.json"
-
     if tracker_file.exists():
         try:
             with open(tracker_file) as f:
                 tracker_data = json.load(f)
-        except:
+        except Exception:
             tracker_data = []
     else:
         tracker_data = []
 
-    # Try to get accuracy from cycle_results
     accuracy = None
     cycle_file = nngpt_dir / "cycle_results.json"
     if cycle_file.exists():
@@ -373,23 +410,24 @@ def nn_gen(
             with open(cycle_file) as f:
                 cycle_data = json.load(f)
             accuracy = cycle_data.get("evaluation", {}).get("best_accuracy")
-        except:
+        except Exception:
             pass
 
-    # Add current epoch to list
-    tracker_data.append({
-        "epoch": epoch,
-        "timestamp": datetime.now().isoformat(),
-        "models_generated": len(list(models_dir.glob("B*"))) if exists(models_dir) else 0,
-        "accuracy": accuracy
-    })
-
-    # Save updated list
+    tracker_data.append(
+        {
+            "epoch": epoch,
+            "timestamp": datetime.now().isoformat(),
+            "models_generated": len(list(models_dir.glob("B*"))) if exists(models_dir) else 0,
+            "accuracy": accuracy,
+        }
+    )
     tracker_file.parent.mkdir(parents=True, exist_ok=True)
     with open(tracker_file, "w") as f:
         json.dump(tracker_data, f, indent=2)
-
     print(f"[EPOCH TRACKER] Wrote epoch {epoch} (acc={accuracy})")
+
+    print('[DEBUG] Release memory.')
+    release_memory()
 
 
 def trans_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict_global, test_nn, max_new_tokens, save_llm_output, nn_name_prefix):
@@ -486,6 +524,17 @@ def _has_generated_nn_code(out_path) -> bool:
     return False
 
 
+def _has_generated_output(out_path) -> bool:
+    """Returns True if at least one synthesized model directory B*/ contains full_output.txt."""
+    models_dir = synth_dir(out_path)
+    if not exists(models_dir):
+        return False
+    for bdir in glob.glob(str(models_dir / "B*")):
+        if isfile(os.path.join(bdir, new_out_file)):
+            return True
+    return False
+
+
 def generate_step(state: AgentState) -> dict:
     epoch = state["current_epoch"]
     skip_epoch = state.get("skip_epoch", 0)
@@ -528,14 +577,18 @@ def generate_step(state: AgentState) -> dict:
             use_backbone=state.get("use_backbone",False),
         )
 
-    if not _has_generated_nn_code(out_path):
+    # Classification prompts may intentionally emit labels or structured output
+    # without generating a runnable new_nn.py file.
+    classification_mode = state.get("classification_mode", False)
+    has_output = _has_generated_output(out_path) if classification_mode else _has_generated_nn_code(out_path)
+    if not has_output:
         print(f"[INFO] No code generated at epoch {epoch}, skipping evaluation")
         return {"next_action": "finetune"}
 
     return {"next_action": "evaluate"}
 
 
-def _evaluate_epoch(epoch, out_path, nn_name_prefix, nn_train_epochs, trans_mode):
+def _evaluate_epoch(epoch, out_path, nn_name_prefix, nn_train_epochs, trans_mode, classification_mode=False):
     """
     Single source of truth for one evaluation epoch.
     Runs NNEval (trains generated NNs for nn_train_epochs and records accuracy).
@@ -546,7 +599,12 @@ def _evaluate_epoch(epoch, out_path, nn_name_prefix, nn_train_epochs, trans_mode
     results = {"epoch": epoch}
 
     if exists(models_dir):
-        if trans_mode:
+        if classification_mode:
+            from ab.gpt.ClassificationEval import evaluate_epoch as cls_eval
+
+            cls_result = cls_eval(models_dir)
+            results[f"epoch_{epoch + 1}_accuracy"] = cls_result["accuracy"]
+        elif trans_mode:
             try:
                 run_eval(epoch_num=epoch, FT_MODE=True)
                 print('[DEBUG] Release_memory.')
@@ -554,36 +612,17 @@ def _evaluate_epoch(epoch, out_path, nn_name_prefix, nn_train_epochs, trans_mode
                 print(f"Error running evaluation main(): {e}", flush=True)
             print('Folder data reload will occur next epoch.')
         else:
-            NNEval.main(nn_name_prefix, nn_train_epochs, epoch)
-
-            # === MERGE SYSTEM ===
-            enable_merge = False
-            try:
-                run_cfg_path = nngpt_dir / "run_config.json"
-                if run_cfg_path.exists():
-                    with open(run_cfg_path) as f:
-                        run_cfg = json.load(f)
-                    enable_merge = run_cfg.get("enable_merge", False)
-            except:
-                pass
-
-            if enable_merge:
-                try:
-                    from ab.gpt.util.Merge import rebuild_from_lineage
-                    print(f"[MERGE] Running merge for epoch {epoch}")
-                    rebuild_from_lineage()
-                except Exception as e:
-                    print(f"[MERGE] failed: {e}")
-                    import traceback
-                    traceback.print_exc()
-
+            NNEval.main(
+                nn_name_prefix=nn_name_prefix,
+                nn_train_epochs=nn_train_epochs,
+                only_epoch=epoch,
+            )
             print('[DEBUG] Release_memory.')
             release_memory()
 
         print('Clear LEMUR query cache.')
         lemur.data.cache_clear()
         print('The cache has been cleared.')
-
 
     # Read accuracy from cycle_results.json (written by NNEval after evaluation)
     cycle_file = out_path.parent / "cycle_results.json"
@@ -665,6 +704,7 @@ def evaluate_step(state: AgentState) -> dict:
         state.get("nn_name_prefix"),
         state["nn_train_epochs"],
         state.get("trans_mode", False),
+        state.get("classification_mode", False),
     )
 
     updates = {}
@@ -708,7 +748,9 @@ def _finetune_epoch(
     train_config_path, only_best_accuracy, max_prompts,
     max_new_tokens, base_model_name, trans_mode,
     temperature=1.0, top_k=50, top_p=0.9,
+    resume_trainer_checkpoint=None,
     use_backbone=False,
+    sft_nn_prefixes=None,
 ):
     """
     Single source of truth for one finetune epoch.
@@ -727,7 +769,8 @@ def _finetune_epoch(
         from ab.gpt.util.prompt.SFTGenPrompt import SFTGenPrompt
         data_processor = SFTGenPrompt(
             context_length if context_length else model_loader.get_max_length(),
-            tokenizer
+            tokenizer,
+            nn_prefixes=sft_nn_prefixes,
         )
     else:
         length = (
@@ -745,7 +788,13 @@ def _finetune_epoch(
 
     print("Dataset length:", len(dataset))
     model.train()
-    model = lora_tuner.train(dataset, tokenizer, out_path / base_model_name)
+    model = lora_tuner.train(
+        dataset,
+        tokenizer,
+        out_path / base_model_name,
+        resume_from_checkpoint=resume_trainer_checkpoint,
+        checkpoint_label="trainer",
+    )
 
     del dataset
     release_memory()
@@ -769,7 +818,9 @@ def finetune_step(state: AgentState) -> dict:
         state.get("max_prompts"), state["max_new_tokens"],
         state["base_model_name"], state.get("trans_mode", False),
         state.get("temperature", 1.0), state.get("top_k", 50), state.get("top_p", 0.9),
+        state.get("trainer_resume_checkpoint"),
         state.get("use_backbone", False),
+        state.get("sft_nn_prefixes"),
     )
 
     return {
@@ -777,12 +828,25 @@ def finetune_step(state: AgentState) -> dict:
         "chat_bot": chat_bot,
         "current_epoch": epoch + 1,
         "next_action": "generate",
+        "trainer_resume_checkpoint": None,
     }
 
 
 # ============================================================
 # MAIN: tune()
 # ============================================================
+
+
+def _resolve_tune_resume_trainer_checkpoint(initial_adapter_path) -> Optional[str]:
+    # Classic mode and agent mode both consume the same one-shot trainer resume path.
+    resume_spec = TrainingRuntime.resolve_resume_spec(
+        trainer_env="NNGPT_TRAIN_RESUME_TRAINER_CHECKPOINT",
+        initial_adapter_active=bool(initial_adapter_path),
+        initial_adapter_label="llm_path/--peft",
+    )
+    if resume_spec.trainer_checkpoint is None:
+        return None
+    return str(resume_spec.trainer_checkpoint)
 
 def tune(
     test_nn,
@@ -808,8 +872,12 @@ def tune(
     prompt_batch=1,
     use_agents=False,
     use_predictor=False,
-    use_backbone=False,
+    use_unsloth=False,
     enable_merge=False,
+    classification_mode=False,
+    use_backbone=False,
+    sft_nn_prefixes=None,
+    num_cycles=None,
 ):
     if not isinstance(conf_keys, (list, tuple)):
         conf_keys = (conf_keys,)
@@ -828,12 +896,12 @@ def tune(
     else:
         print(f"[EVOLUTION] Using base model from config: {base_model_name}")
 
-    llm_tune_epochs = int(config["num_epochs"])
+    llm_tune_epochs = int(num_cycles) if num_cycles is not None else int(config["num_epochs"])
     use_deepspeed = config["use_deepspeed"]
     only_best_accuracy = config["only_best_accuracy"]
     context_length = config.get("context_length")
     unsloth_max_input_length = config.get("max_input_length", None)
-    use_unsloth = config.get("use_unsloth", False)
+    use_unsloth = config.get("use_unsloth", use_unsloth)
     unsloth_load_in_4bit = config.get("load_in_4bit", True)
     max_new_tokens = config.get("max_new_tokens", max_new_tokens)
     use_backbone = config.get("backbone", use_backbone)
@@ -866,6 +934,7 @@ def tune(
 
     model = model_loader.get_model()
     tokenizer = model_loader.get_tokenizer()
+    trainer_resume_checkpoint = _resolve_tune_resume_trainer_checkpoint(llm_path)
 
     if llm_path:
         print(f'Load saved LoRA layer from path: {llm_path}')
@@ -926,7 +995,10 @@ def tune(
 
         "use_predictor": use_predictor,
         "use_backbone": use_backbone,
-        "enable_merge": enable_merge
+        "sft_nn_prefixes": sft_nn_prefixes,
+        "trainer_resume_checkpoint": trainer_resume_checkpoint,
+        "enable_merge": enable_merge,
+        "classification_mode": classification_mode,
     }
 
     shutil.rmtree(epoch_dir(), ignore_errors=True)
@@ -946,7 +1018,7 @@ def tune(
             else:
                 nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix, unsloth_max_input_length, prompt_batch, use_backbone=use_backbone)
 
-            _evaluate_epoch(epoch, out_path, nn_name_prefix, nn_train_epochs, trans_mode)
+            _evaluate_epoch(epoch, out_path, nn_name_prefix, nn_train_epochs, trans_mode, classification_mode)
 
         print(f'[DEBUG]Perform finetune at epoch {epoch}.')
         model, chat_bot = _finetune_epoch(
@@ -955,5 +1027,8 @@ def tune(
             train_config_path, only_best_accuracy, max_prompts,
             max_new_tokens, base_model_name, trans_mode,
             temperature, top_k, top_p,
+            trainer_resume_checkpoint,
             use_backbone=use_backbone,
+            sft_nn_prefixes=sft_nn_prefixes,
         )
+        trainer_resume_checkpoint = None

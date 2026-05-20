@@ -3,6 +3,8 @@ import argparse
 import hashlib
 import json
 import time
+import shutil
+from datetime import datetime
 from contextlib import contextmanager
 import sys
 
@@ -41,11 +43,79 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ARCH_DIR = os.path.join(BASE_DIR, 'ga_fractal_arch') 
 STATS_DIR = os.path.join(BASE_DIR, 'stats')
 CHECKPOINT = 'fractal_ga_ckpt.pkl'
+BEST_STATS_DIR = os.path.join(BASE_DIR, 'best_fractal_stats')
 
 os.makedirs(ARCH_DIR, exist_ok=True)
 os.makedirs(STATS_DIR, exist_ok=True)
 
 seen_checksums = set()
+
+# Persist checksums across runs: load checksums from existing stats folders
+def _load_existing_checksums():
+    """Scan stats/ directory for previously evaluated models to avoid re-evaluation."""
+    count = 0
+    # prefix = "img-classification_cifar_FractalNet-"   # BUG: missing '-10', never matched any folder
+    prefix = "img-classification_cifar-10_FractalNet-"
+    if os.path.isdir(STATS_DIR):
+        for name in os.listdir(STATS_DIR):
+            if name.startswith(prefix):
+                checksum = name[len(prefix):]
+                seen_checksums.add(checksum)
+                count += 1
+    if count:
+        print(f"[Init] Loaded {count} existing checksums from stats/ (skipping duplicates)")
+
+_load_existing_checksums()
+
+def _lookup_stored_fitness(checksum: str) -> float:
+    """
+    For a previously-evaluated model (duplicate), read its stored accuracy
+    from the stats/ folder instead of returning 0.0.
+    Returns fitness as a percentage (e.g. 54.69), or 0.0 if the file is missing/unreadable.
+    """
+    stats_dir_name = f"img-classification_cifar-10_FractalNet-{checksum}"
+    stats_dir_path = os.path.join(STATS_DIR, stats_dir_name)
+    if not os.path.isdir(stats_dir_path):
+        print(f"  - Duplicate: no stored stats found for {checksum[:8]}, returning 0.0")
+        return 0.0
+
+    # Pick the highest-numbered epoch JSON (most complete result)
+    json_files = sorted(
+        [f for f in os.listdir(stats_dir_path) if f.endswith('.json')],
+        key=lambda x: int(x.replace('.json', '')) if x.replace('.json', '').isdigit() else 0
+    )
+    if not json_files:
+        print(f"  - Duplicate: stats folder empty for {checksum[:8]}, returning 0.0")
+        return 0.0
+
+    json_path = os.path.join(stats_dir_path, json_files[-1])
+    try:
+        with open(json_path) as f:
+            data = json.load(f)
+    except Exception as e:
+        print(f"  - Duplicate: could not read stats for {checksum[:8]}: {e}")
+        return 0.0
+
+    # Layered extraction — same priority order as for fresh evaluations
+    hp = data.get('hyperparameters', {})
+    ts = data.get('training_summary', {})
+    for src, key in [
+        (data, 'accuracy'), (data, 'best_accuracy'),
+        (hp,   'accuracy'), (hp,   'best_accuracy'),
+        (ts,   'final_accuracy'), (ts, 'best_accuracy'),
+    ]:
+        val = src.get(key)
+        if val is not None:
+            try:
+                fitness = float(val) * 100
+                if fitness > 0:
+                    print(f"  - Duplicate {checksum[:8]}: reusing stored fitness {fitness:.2f}% (from {key})")
+                    return fitness
+            except (TypeError, ValueError):
+                pass
+
+    print(f"  - Duplicate {checksum[:8]}: stored stats had no valid accuracy, returning 0.0")
+    return 0.0
 
 def uuid4(s: str) -> str:
     return hashlib.md5(s.encode()).hexdigest()
@@ -58,15 +128,14 @@ def fitness_function(chromosome: dict) -> float:
         # New uuid4 checksum matching LLM_guided
         model_checksum = uuid4(code_str)
         
-        # Deduplication
+        # Deduplication — look up stored fitness instead of discarding signal
         if model_checksum in seen_checksums:
-            print(f"  - Duplicate (checksum: {model_checksum[:8]}) -> skip")
-            return 0.0
+            return _lookup_stored_fitness(model_checksum)
             
         print(f"  - Evaluating unique arch (checksum: {model_checksum[:8]}...)")
         
         # 2. Save Model File to ARCH_DIR
-        model_name = f"img-classification_cifar-10_FractalNet-{model_checksum}"
+        model_name = f"FractalNet-{model_checksum}"
         filepath = os.path.join(ARCH_DIR, f"{model_name}.py")
         
         with open(filepath, 'w') as f: 
@@ -76,9 +145,10 @@ def fitness_function(chromosome: dict) -> float:
         eval_prm = {
             'lr': chromosome['lr'],
             'momentum': chromosome['momentum'],
-            'batch': 32, 
-            'epoch': 1, # Short epochs for Meta-Evaluation
-            'transform': "norm_256_flip" 
+            'batch': 64,  # Increased from 32: more signal per step, avoids AccuracyException floor
+            'epoch': 1,   # Short epochs for Meta-Evaluation
+            'transform': "norm_32_flip",  # Native CIFAR-10 resolution (was 256 → massive slowdown)
+            'max_batches': None,  # None = full dataset (782 batches), or set int for proxy eval (e.g. 200)
         }
 
         # --- FIX: Delete stale training_summary.json before eval so it
@@ -157,7 +227,7 @@ def fitness_function(chromosome: dict) -> float:
         
         # Save exact requested stats format to a JSON folder structure
         # One JSON file per epoch: 1.json, 2.json, ..., N.json
-        model_stats_dir_name = f"img-classification_cifar_FractalNet-{model_checksum}"
+        model_stats_dir_name = f"img-classification_cifar-10_FractalNet-{model_checksum}"
         model_stats_dir_path = os.path.join(STATS_DIR, model_stats_dir_name)
         os.makedirs(model_stats_dir_path, exist_ok=True)
 
@@ -186,23 +256,44 @@ def fitness_function(chromosome: dict) -> float:
                 json.dump(full_res, sf, indent=4)
             print(f"  - Saved stats (fallback) to: {stat_file}")
 
+        # --- Layered accuracy extraction ---
+        # Priority: top-level > hyperparameters (library writes here) >
+        #           training_summary > scalar result fallback
         final_accuracy = 0.0
+        _acc_source = "none"
+
         if 'accuracy' in full_res:
-            final_accuracy = full_res['accuracy'] * 100
+            final_accuracy = float(full_res['accuracy']) * 100
+            _acc_source = "full_res.accuracy"
         elif 'best_accuracy' in full_res:
-            final_accuracy = full_res['best_accuracy'] * 100
-        elif isinstance(result, tuple) and len(result) >= 2:
-            final_accuracy = float(result[1]) * 100
-        elif isinstance(result, float):
-            final_accuracy = result * 100
-        elif result is not None:
-            try:
+            final_accuracy = float(full_res['best_accuracy']) * 100
+            _acc_source = "full_res.best_accuracy"
+        elif isinstance(full_res.get('hyperparameters'), dict):
+            hp = full_res['hyperparameters']
+            if 'accuracy' in hp and hp['accuracy']:
+                final_accuracy = float(hp['accuracy']) * 100
+                _acc_source = "hyperparameters.accuracy"
+            elif 'best_accuracy' in hp and hp['best_accuracy']:
+                final_accuracy = float(hp['best_accuracy']) * 100
+                _acc_source = "hyperparameters.best_accuracy"
+        if final_accuracy == 0.0 and isinstance(full_res.get('training_summary'), dict):
+            ts = full_res['training_summary']
+            for key in ('best_accuracy', 'final_accuracy'):
+                if key in ts and ts[key]:
+                    final_accuracy = float(ts[key]) * 100
+                    _acc_source = f"training_summary.{key}"
+                    break
+        if final_accuracy == 0.0:
+            # Scalar / tuple fallback from the raw evaluator return value
+            if isinstance(result, tuple) and len(result) >= 2:
+                final_accuracy = float(result[1]) * 100
+                _acc_source = "result tuple[1]"
+            elif isinstance(result, (int, float)) and result is not None:
                 final_accuracy = float(result) * 100
-            except:
-                pass
+                _acc_source = "result scalar"
 
         print(f"\n  {'='*40}")
-        print(f"  >>> FITNESS SCORE: {final_accuracy:.2f}%  (checksum: {model_checksum})")
+        print(f"  >>> FITNESS SCORE: {final_accuracy:.2f}%  (source: {_acc_source}, checksum: {model_checksum})")
         print(f"  {'='*40}\n")
         seen_checksums.add(model_checksum)
         
@@ -243,6 +334,45 @@ if __name__ == "__main__":
              best_path = os.path.join(BASE_DIR, "best_fractal_model.py")
              with open(best_path, "w") as f:
                  f.write(best_code)
+             print(f"[Best] Saved best model to {best_path}")
+
+             # Copy Winning Stats
+             best_checksum = uuid4(best_code)
+             best_folder_name = f"img-classification_cifar-10_FractalNet-{best_checksum}"
+             src_stats_path = os.path.join(STATS_DIR, best_folder_name)
+             dst_stats_path = os.path.join(BEST_STATS_DIR, best_folder_name)
+
+             os.makedirs(BEST_STATS_DIR, exist_ok=True)
+             
+             # Refresh the best_fractal_stats folder for this run
+             if os.path.exists(BEST_STATS_DIR):
+                 for item in os.listdir(BEST_STATS_DIR):
+                     item_path = os.path.join(BEST_STATS_DIR, item)
+                     if os.path.isdir(item_path):
+                         shutil.rmtree(item_path)
+                     else:
+                         os.remove(item_path)
+
+             if os.path.isdir(src_stats_path):
+                 print(f"[Best] Copying stats from {src_stats_path}...")
+                 shutil.copytree(src_stats_path, dst_stats_path)
+                 print(f"[Best] Saved best stats to {dst_stats_path}")
+             else:
+                 print(f"[Best] Warning: stats folder not found for checksum {best_checksum[:8]}")
+
+             # Save Best Info Metadata
+             info_path = os.path.join(BASE_DIR, "best_fractal_info.json")
+             best_info = {
+                 "timestamp": datetime.now().isoformat(),
+                 "checksum": best_checksum,
+                 "fitness": best.get('fitness'),
+                 "chromosome": best.get('chromosome'),
+                 "source_stats_dir": src_stats_path,
+                 "copied_stats_dir": dst_stats_path
+             }
+             with open(info_path, "w") as f:
+                 json.dump(best_info, f, indent=4)
+             print(f"[Best] Saved best info metadata to {info_path}")
 
         # Meta-Score Calculation
         if history:
@@ -255,5 +385,7 @@ if __name__ == "__main__":
         print(f"META_SCORE: {meta_score:.4f}")
 
     except Exception as e:
-        # print(f"CRITICAL GA FAIL: {e}")
+        import traceback
+        print(f"CRITICAL GA FAIL: {e}")
+        traceback.print_exc()
         print("META_SCORE: 0.0")

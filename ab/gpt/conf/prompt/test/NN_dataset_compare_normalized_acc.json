@@ -1,0 +1,43 @@
+{
+  "dataset_comparison": {
+    "comment": [],
+    "task": "img-classification",
+    "addon_task": "img-classification",
+    "num_joint_nns": 2,
+    "keep_same": ["epoch", "metric", "task", "nn"],
+    "no_repeat": ["dataset"],
+    "improve": false,
+    "nn_prefixes": [],
+    "output_type": "classification",
+    "nn_code_max_chars": 2000,
+    "max_new_tokens": 20,
+    "input_list": [
+      { "para": "nn_code",        "value": "nn_code" },
+      { "para": "epoch",          "value": "epoch" },
+      { "para": "dataset_1",      "value": "dataset" },
+      { "para": "norm_acc_1",     "value": "norm_acc" },
+      { "para": "dataset_2",      "value": "dataset_2" },
+      { "para": "norm_acc_2",     "value": "norm_acc_2" }
+     
+    ],
+
+    "prompt": [
+      "A neural network was trained on two different image classification datasets for {epoch} epochs.",
+      "",
+      "Neural Network Code:",
+      "{nn_code}",
+      "",
+      "Dataset 1: {dataset_1}",
+      "  - Normalized accuracy: {norm_acc_1}",
+      "",
+      "Dataset 2: {dataset_2}",
+      "  - Normalized accuracy: {norm_acc_2}",
+      "",
+      "On which dataset does this neural network perform better?",
+      "Answer with ONLY the dataset name, nothing else. One of: {dataset_1}, {dataset_2}"
+    ],
+    "output": [
+      "{better_dataset}"
+    ]
+  }
+}

@@ -118,6 +118,7 @@ class ChatBot:
                 padding=True,
                 truncation=True,
                 max_length=max_input_len,
+                add_special_tokens=False,  # chat template already includes BOS; prevents EOS being appended
             )
         finally:
             self.tokenizer.padding_side = original_padding_side
@@ -142,10 +143,9 @@ class ChatBot:
                 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
         inputs = {k: v.to(device) for k, v in inputs.items()}
-        if 'attention_mask' in inputs:
-            input_lengths = inputs['attention_mask'].sum(dim=1).tolist()
-        else:
-            input_lengths = [inputs['input_ids'].shape[1]] * inputs['input_ids'].shape[0]
+        # With left-padding, all sequences in the batch share the same padded input length.
+        # The generated tokens start at index padded_input_length in each output row.
+        padded_input_length = inputs['input_ids'].shape[1]
 
         with torch.no_grad():
             outputs = self.model.generate(
@@ -162,7 +162,7 @@ class ChatBot:
 
         results = []
         for i in range(outputs.shape[0]):
-            generated_ids = outputs[i][int(input_lengths[i]):]
+            generated_ids = outputs[i][padded_input_length:]
             generated = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
             nn = extract_code(generated)
             results.append((nn, extract_hyperparam(generated), extract_transform(generated), generated))
@@ -188,7 +188,7 @@ class ChatBot:
                 generation_kwargs = {
                     "max_new_tokens": max_new_tokens,
                     "do_sample": True,
-                    "max_len": max_len,
+                    "max_length": max_len,
                     "temperature": self.temperature,
                     "top_k": self.top_k,
                     "top_p": self.top_p,
@@ -255,7 +255,8 @@ class ChatBot:
                 formatted_prompt,
                 return_tensors="pt",
                 truncation=True,
-                max_length=self.tokenizer.model_max_length - (max_new_tokens or 4096)
+                max_length=max(self.tokenizer.model_max_length - (max_new_tokens or 4096), 128),
+                add_special_tokens=False,  # chat template already includes BOS; prevents EOS being appended
             )
 
 

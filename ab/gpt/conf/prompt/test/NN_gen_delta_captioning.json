@@ -1,0 +1,33 @@
+{
+  "improvement_captioning_delta": {
+    "comment": [
+      "Delta-based generation for Image Captioning (Blip2Fast)",
+      "LLM generates code deltas to improve the trainable CaptionDecoder head."
+    ],
+    "use_delta": true,
+    "task": "img-captioning",
+    "addon_task": null,
+    "nn_prefixes": ["Blip2Fast"],
+    "input_list": [
+      {"para": "nn_code", "value": "nn_code"},
+      {"para": "accuracy", "value": "accuracy"},
+      {"para": "epoch", "value": "epoch"},
+      {"para": "dataset", "value": "dataset"},
+      {"para": "task", "value": "task"},
+      {"para": "metric", "value": "metric"},
+      {"para": "transform_code", "value": "transform_code"},
+      {"para": "prm", "value": "prm"}
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "prompt": [
+      "Task: Generate a <delta> XML tag containing a unified diff to improve the [TRAINABLE] sections in the model code below.",
+      "Base Model Architecture:",
+      "<tr>{transform_code}</tr>",
+      "<nn>{nn_code}</nn>",
+      "Performance: {accuracy} (BLEU) at epoch {epoch}. Task: {task} on {dataset} using {metric}.",
+      "Rules: 1. Only modify [TRAINABLE] sections. 2. Keep [FROZEN] sections strictly identical. 3. Use real line numbers from <nn>. 4. Focus on improving projection or decoder logic. 5. IMPORTANT: train_setup() must strictly use prm.get('batch', 32) and prm.get('lr', 1e-4) to pass AST validation. Even if 'batch' is unused in the function, you MUST include `self.batch_size = prm.get('batch', 32)` or it will crash. 6. IMPORTANT: The forward method must return ONLY loss when captions are provided, and generate text when captions=None. 7. Maintain FrozenBlip2Encoder completely intact.",
+      "Output format: <hp>{{\"batch\": 8, \"lr\": 1e-4}}</hp> <tr>{transform_code}</tr> <delta>--- model_file.py\n+++ improved_model_file.py\n@@ -X,Y +X,Y @@\n...</delta>"
+    ]
+  }
+}

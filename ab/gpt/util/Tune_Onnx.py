@@ -1,4 +1,4 @@
-# ab/gpt/util/Tune.py
+# ab/gpt/util/Tune_Onnx.py
 
 import os
 import shutil
@@ -67,7 +67,8 @@ def flatten_chunks(data):
 def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_conf, conf_keys, llm_conf,
          training_args, peft_config, max_prompts=None, save_llm_output=True, max_new_tokens=16 * 1024,
          nn_name_prefix=None, temperature=1.0, top_k=50, top_p=0.9, test_metric=None, onnx_run=False, trans_mode=False,
-         prompt_batch=1):
+         prompt_batch=1, use_unsloth=False,
+         classification_mode=False, use_agents=False, use_predictor=False, enable_merge=False, use_backbone=False):
 
     if not isinstance(conf_keys, (list, tuple)):
         conf_keys = (conf_keys,)
@@ -242,7 +243,7 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
         if epoch < skip_epoch:
             print(f'Skipped nn generation at epoch {epoch}')
         else:
-            nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix, prompt_batch)
+            nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix, prompt_batch, classification_mode=classification_mode)
         # ============================================================
         # FREE ONNX MODEL FROM GPU BEFORE FINE-TUNING
         # ============================================================
@@ -399,7 +400,7 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
             print('[INFO] ========================================')
 
           
-def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix, prompt_batch):
+def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix, prompt_batch, classification_mode=False):
   
     print('Preparing prompts for generation, this might take a while...')
     
@@ -423,8 +424,13 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
         # addon_data = lemur.data(only_best_accuracy=True, task=addon_task) if addon_task else None
         from ab.nn.api import JoinConf
 
+        output_type = key_config.get('output_type', 'code')
+        nn_code_max_chars = key_config.get('nn_code_max_chars')
+
         num_joint_nns = prompt_dict_key.get('num_joint_nns') or 1
         if num_joint_nns >= 2:
+            from ab.gpt.util.lemur_enrichment import patch_join_nn_query, enrich_dataframe
+            patch_join_nn_query()
             data = lemur.data(
                 only_best_accuracy=True,
                 task=prompt_dict_key['task'],
@@ -436,6 +442,8 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
                     enhance_nn=prompt_dict_key.get('improve', False)
                 )
             ).groupby(by='nn').sample(n=1)[:test_nn]
+            if output_type == 'classification':
+                enrich_dataframe(data)
             addon_data = None  # JoinConf already pairs the data — no separate addon needed
         else:
             data = lemur.data(only_best_accuracy=True, task=prompt_dict_key['task']).groupby(by='nn').sample(n=1)[:test_nn]
@@ -446,6 +454,8 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
             para_dict = dict()
             for it in prompt_dict_key['input_list']:
                 para_dict[it['para']] = row[it['value']]
+            if nn_code_max_chars and 'nn_code' in para_dict and isinstance(para_dict['nn_code'], str):
+                para_dict['nn_code'] = para_dict['nn_code'][:nn_code_max_chars]
 
             if addon_data is not None and not addon_data.empty:
                 available_addon = addon_data.loc[addon_data.nn != row['nn']]
@@ -455,7 +465,7 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
                         for it in prompt_dict_key['addon_list']:
                             para_dict[it['para']] = addon_row[it['value']]
 
-            prompts.append((prompt.format(**para_dict), row))
+            prompts.append((prompt.format(**para_dict), row, output_type))
 
     models_dir = synth_dir(out_path)
     pending = list(enumerate(prompts))
@@ -475,8 +485,17 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
 
         for (idx, prompt_data), output in zip(batch, batch_outputs):
             model_dir = models_dir / f'B{idx}'
-            prompt, origdf = prompt_data
+            prompt, origdf, output_type = prompt_data
             code, hp, tr, full_out = output
+
+            makedirs(model_dir, exist_ok=True)
+            # Classification prompts may only need the raw model output plus
+            # source metadata, without constructing a runnable new_nn.py file.
+            if output_type == 'classification':
+                create_file(model_dir, new_out_file, full_out)
+                if origdf is not None:
+                    origdf.to_pickle(model_dir / 'dataframe.df')
+                continue
 
             # DEBUG BLOCK - to check the output of the llm
             print(f"[DEBUG B{idx}] Generated output length: {len(full_out) if full_out else 0} chars")
@@ -485,8 +504,6 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
 
             if save_llm_output:
                 create_file(model_dir, new_out_file, full_out)
-
-            makedirs(model_dir, exist_ok=True)
 
             if use_delta and origdf is not None:
                 try:
@@ -557,7 +574,18 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
             release_memory()
 
     if exists(models_dir):
-        NNEval.main(nn_name_prefix, nn_train_epochs, epoch)
+        if classification_mode:
+            from ab.gpt.ClassificationEval import evaluate_epoch as cls_eval
+
+            cls_eval(models_dir)
+        else:
+            # Use keyword arguments so future NNEval entrypoint growth does not
+            # silently remap positional arguments here.
+            NNEval.main(
+                nn_name_prefix=nn_name_prefix,
+                nn_train_epochs=nn_train_epochs,
+                only_epoch=epoch,
+            )
 
     print('[DEBUG] Release_memory.')
     release_memory()

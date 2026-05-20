@@ -33,9 +33,11 @@ class AgentState(TypedDict, total=False):
     only_best_accuracy: bool
     max_prompts: Optional[int]
     trans_mode: bool
+    classification_mode: bool
     context_length: Optional[int]
     use_unsloth: bool
     unsloth_max_input_length: Optional[int]
+    trainer_resume_checkpoint: Optional[str]
 
     # ---- Sampling ----
     temperature: float

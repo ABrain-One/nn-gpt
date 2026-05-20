@@ -39,7 +39,8 @@ class LLM:
         
         # ===== Unsloth Fast Path =====
         if use_unsloth:
-            self.model, self.tokenizer = FastModel.from_pretrained(
+            from unsloth import FastLanguageModel
+            self.model, self.tokenizer = FastLanguageModel.from_pretrained(
                 model_name=model_path,
                 dtype = None,
                 max_seq_length=context_length or 4096,

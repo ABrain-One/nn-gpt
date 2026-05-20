@@ -14,11 +14,8 @@ overrides>=7.7.0
 datasketch # to check code novelty
 langgraph>=1.0.4
 
-# transformers @ git+https://github.com/huggingface/transformers.git@main
-# Unsloth dependencies (official installation)
 unsloth==2026.3.4
 unsloth-zoo==2026.3.2
-triton_kernels @ git+https://github.com/triton-lang/triton.git@v3.5.0#subdirectory=python/triton_kernels
 triton>=3.4.0
 
 matplotlib

@@ -2,7 +2,7 @@
   "apiVersion": "batch/v1",
   "kind": "Job",
   "metadata": {
-    "name": "nngpt-fractal-meta-evo-01"
+    "name": "nngpt-fractal-meta-evo-clone3"
   },
   "spec": {
     "parallelism": 1,
@@ -24,7 +24,7 @@
             "env": [
               {
                 "name": "POPULATION_SIZE",
-                "value": "20"
+                "value": "10"
               },
               {
                 "name": "GENERATIONS",
@@ -36,7 +36,7 @@
               },
               {
                 "name": "META_ATTEMPTS",
-                "value": "50"
+                "value": "10"
               }
             ],
             "securityContext": {
@@ -47,7 +47,7 @@
             "resources": {
               "requests": {
                 "nvidia.com/gpu": 1,
-                "cpu": 8,
+                "cpu": 10,
                 "memory": "32Gi"
               },
               "limits": {
@@ -84,7 +84,7 @@
           {
             "name": "v0",
             "hostPath": {
-              "path": "/shared/ssd/home/b-a-singh/Thesis/nn-gpt",
+              "path": "/shared/ssd/home/b-a-singh/Thesis/clone3/nn-gpt",
               "type": "Directory"
             }
           },

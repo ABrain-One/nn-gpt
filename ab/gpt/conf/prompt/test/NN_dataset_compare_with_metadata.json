@@ -1,0 +1,55 @@
+{
+  "dataset_comparison": {
+    "comment": [],
+    "task": "img-classification",
+    "addon_task": "img-classification",
+    "num_joint_nns": 2,
+    "keep_same": ["epoch", "metric", "task", "nn"],
+    "no_repeat": ["dataset"],
+    "improve": false,
+    "nn_prefixes": [],
+    "output_type": "classification",
+    "nn_code_max_chars": 2000,
+    "max_new_tokens": 20,
+    "input_list": [
+      { "para": "nn_code",               "value": "nn_code" },
+      { "para": "epoch",                 "value": "epoch" },
+      { "para": "dataset_1",             "value": "dataset" },
+      { "para": "num_train_images_1",    "value": "num_train_images_1" },
+      { "para": "img_size_1",            "value": "img_size_1" },
+      { "para": "num_channels_1",        "value": "num_channels_1" },
+      { "para": "num_classes_1",         "value": "num_classes_1" },
+      { "para": "dataset_2",             "value": "dataset_2" },
+      { "para": "num_train_images_2",    "value": "num_train_images_2" },
+      { "para": "img_size_2",            "value": "img_size_2" },
+      { "para": "num_channels_2",        "value": "num_channels_2" },
+      { "para": "num_classes_2",         "value": "num_classes_2" }
+    ],
+
+    "prompt": [
+      "A neural network was trained on two different image classification datasets for {epoch} epochs.",
+      "",
+      "Network architecture:",
+      "{nn_code}",
+      "",
+      "Dataset 1: {dataset_1}",
+      "  - Training images: {num_train_images_1}",
+      "  - Image size: {img_size_1}x{img_size_1} px",
+      "  - Channels: {num_channels_1}",
+      "  - Number of classes: {num_classes_1}",
+      "",
+      "Dataset 2: {dataset_2}",
+      "  - Training images: {num_train_images_2}",
+      "  - Image size: {img_size_2}x{img_size_2} px",
+      "  - Channels: {num_channels_2}",
+      "  - Number of classes: {num_classes_2}",
+      "",
+      "Based on the network architecture and the properties of the two datasets,",
+      "on which dataset does this network achieve higher relative accuracy?",
+      "Answer with ONLY the dataset name, nothing else. One of: {dataset_1}, {dataset_2}"
+    ],
+    "output": [
+      "{better_dataset}"
+    ]
+  }
+}

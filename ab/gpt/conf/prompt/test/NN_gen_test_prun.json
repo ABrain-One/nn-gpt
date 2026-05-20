@@ -1,0 +1,29 @@
+{
+    "pruning_improvement_test": {
+        "task": "img-classification",
+        "input_list": [
+            {
+                "para": "accuracy_target",
+                "value": "accuracy"
+            },
+            {
+                "para": "dataset",
+                "value": "dataset"
+            }
+        ],
+        "prompt": [
+            "Generate a PRUNED PyTorch model for {dataset} that achieves accuracy of at least {accuracy_target} after pruning.",
+            "",
+            "CRITICAL REQUIREMENTS:",
+            "1. Class name MUST be 'NN'",
+            "2. __init__ signature: def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device)",
+            "3. forward signature: def forward(self, x: torch.Tensor, is_probing: bool = False)",
+            "4. Code must be complete with proper indentation",
+            "",
+            "Output format:",
+            "<hp>{{\"batch\": 32, \"lr\": 0.001}}</hp>",
+            "<transform>transform code here</transform>",
+            "<nn>model code here</nn>"
+        ]
+    }
+}

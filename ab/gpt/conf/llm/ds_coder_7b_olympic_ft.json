@@ -1,0 +1,11 @@
+{
+  "base_model_name": "/home/anujayavijayakumar/PycharmProjects/Curriculum_Generation/nn-gpt/out/llm_to_upload/OlympicCoder-7B",
+  "num_epochs": 100,
+  "num_test_epochs": 2,
+  "use_deepspeed": false,
+  "token_from_file": false,
+  "only_best_accuracy": false,
+  "context_length": 8192,
+  "max_input_length": 8192,
+  "max_new_tokens": 16384
+}

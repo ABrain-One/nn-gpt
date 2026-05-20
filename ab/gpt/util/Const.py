@@ -1,6 +1,6 @@
 from ab.nn.util.Const import base_module, ab_root_path, out_dir
 import json
-
+from pathlib import Path
 NN_TRAIN_EPOCHS = 1# How many epochs to train the altered NN for evaluation
 
 new_nn_file = 'new_nn.py'
@@ -17,6 +17,16 @@ conf_train_dir = conf_prompt_dir / 'train'
 conf_llm_dir = conf_dir / 'llm'
 
 nngpt_dir = out_dir / 'nngpt'
+
+# ── Branch isolation override ─────────────────────────────────────────────────
+# Setting NNGPT_DIR_OVERRIDE env var to redirect all nngpt output to a custom path.
+# Used by CurriculumGenerationPipeline.py to isolate per-dataset/level/k runs.
+import os as _os
+_nngpt_override = _os.environ.get("NNGPT_DIR_OVERRIDE")
+if _nngpt_override:
+    nngpt_dir = Path(_nngpt_override)
+    print(f"[Const] nngpt_dir overridden → {nngpt_dir}")
+# ─────────────────────────────────────────────────────────────────────────────
 acgpt_dir = out_dir / 'acgpt'
 nnrag_dir = out_dir / 'rag'
 
