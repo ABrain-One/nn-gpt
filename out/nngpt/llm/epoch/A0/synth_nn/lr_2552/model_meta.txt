@@ -1,0 +1,5 @@
+architecture: FractalNet
+scheduler: ReduceLROnPlateau_f03_p3
+weight_decay: 0.0001
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['factor', 'patience']

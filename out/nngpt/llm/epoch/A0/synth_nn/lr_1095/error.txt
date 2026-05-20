@@ -1,0 +1,46 @@
+Error evaluating model lr_1095: CUDA out of memory. Tried to allocate 24.00 MiB. GPU 0 has a total capacity of 23.52 GiB of which 12.56 MiB is free. Including non-PyTorch memory, this process has 7.89 GiB memory in use. Process 374685 has 6.73 GiB memory in use. Process 374646 has 3.60 GiB memory in use. Process 374651 has 4.77 GiB memory in use. Process 380111 has 392.70 MiB memory in use. Of the allocated memory 7.41 GiB is allocated by PyTorch, and 15.30 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 208, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 87, in evaluate
+    return api.check_nn(code, self.task, self.dataset, self.metric, self.prm, self.save_to_db, self.prefix, self.save_path)
+  File "/home/hafsamateen/lib/python3.10/site-packages/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+  File "/home/hafsamateen/lib/python3.10/site-packages/ab/nn/util/Train.py", line 553, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes, False, export_onnx, train_set, save_path=save_path)
+  File "/home/hafsamateen/lib/python3.10/site-packages/ab/nn/util/Train.py", line 315, in train_n_eval
+    self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/out/nn/tmp/lr-1f7380dff81505e4bddf59b08bf13a30.py", line 84, in learn
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/out/nn/tmp/lr-1f7380dff81505e4bddf59b08bf13a30.py", line 171, in forward
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/out/nn/tmp/lr-1f7380dff81505e4bddf59b08bf13a30.py", line 165, in _forward_impl
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/out/nn/tmp/lr-1f7380dff81505e4bddf59b08bf13a30.py", line 45, in forward
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torchvision/ops/stochastic_depth.py", line 62, in forward
+    return stochastic_depth(input, self.p, self.mode, self.training)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torchvision/ops/stochastic_depth.py", line 44, in stochastic_depth
+    return input * noise
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 24.00 MiB. GPU 0 has a total capacity of 23.52 GiB of which 12.56 MiB is free. Including non-PyTorch memory, this process has 7.89 GiB memory in use. Process 374685 has 6.73 GiB memory in use. Process 374646 has 3.60 GiB memory in use. Process 374651 has 4.77 GiB memory in use. Process 380111 has 392.70 MiB memory in use. Of the allocated memory 7.41 GiB is allocated by PyTorch, and 15.30 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)

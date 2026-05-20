@@ -1,0 +1,5 @@
+architecture: DPN107
+scheduler: ReduceLROnPlateau_f03_p3
+weight_decay: 1e-05
+original_hp: ['lr', 'momentum']
+added_hp: ['factor', 'patience']

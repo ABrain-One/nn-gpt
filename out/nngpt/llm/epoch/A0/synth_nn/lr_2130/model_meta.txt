@@ -1,0 +1,5 @@
+architecture: Diffuser
+scheduler: ExponentialLR_g095
+weight_decay: 1e-05
+original_hp: ['lr', 'momentum']
+added_hp: ['gamma']

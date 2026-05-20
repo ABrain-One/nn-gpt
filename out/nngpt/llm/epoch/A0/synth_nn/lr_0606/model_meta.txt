@@ -1,0 +1,5 @@
+architecture: BagNet
+scheduler: MultiStepLR_m3_7_g03
+weight_decay: 0.0001
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['gamma']

@@ -1,0 +1,5 @@
+architecture: ResNet
+scheduler: CosineWarmRestarts_T5
+weight_decay: 0.0001
+original_hp: ['lr', 'momentum']
+added_hp: ['T_0', 'eta_min']

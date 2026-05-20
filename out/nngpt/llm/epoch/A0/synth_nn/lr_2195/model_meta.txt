@@ -1,0 +1,5 @@
+architecture: Diffuser
+scheduler: ReduceLROnPlateau_f05_p2
+weight_decay: 0.0001
+original_hp: ['lr', 'momentum']
+added_hp: ['factor', 'patience']

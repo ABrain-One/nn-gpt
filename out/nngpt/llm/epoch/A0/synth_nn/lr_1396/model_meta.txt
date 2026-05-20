@@ -1,0 +1,5 @@
+architecture: DPN107
+scheduler: PolynomialLR_p2
+weight_decay: 5e-05
+original_hp: ['lr', 'momentum']
+added_hp: ['total_iters', 'power']

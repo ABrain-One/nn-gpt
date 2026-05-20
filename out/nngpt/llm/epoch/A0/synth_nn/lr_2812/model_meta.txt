@@ -1,0 +1,5 @@
+architecture: ICNet
+scheduler: StepLR_s5_g03
+weight_decay: 0.0005
+original_hp: ['lr', 'momentum']
+added_hp: ['step_size', 'gamma', 'epoch_max']

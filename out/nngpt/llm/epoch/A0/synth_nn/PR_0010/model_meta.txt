@@ -1,0 +1,5 @@
+architecture: ResNet
+scheduler: LinearLR_sf01
+weight_decay: 0.0001
+original_hp: ['lr', 'momentum']
+added_hp: ['start_factor', 'total_iters']

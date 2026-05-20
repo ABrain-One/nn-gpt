@@ -1,0 +1,5 @@
+architecture: ConvNeXt
+scheduler: CyclicLR_exp
+weight_decay: 0.005
+original_hp: ['lr', 'momentum', 'norm_eps', 'norm_std', 'stochastic_depth_prob']
+added_hp: ['base_lr', 'max_lr', 'gamma']

@@ -1,0 +1,5 @@
+architecture: MobileNetV3
+scheduler: LinearLR_sf01
+weight_decay: 5e-05
+original_hp: ['dropout', 'lr', 'momentum', 'norm_eps', 'norm_momentum']
+added_hp: ['start_factor', 'total_iters']

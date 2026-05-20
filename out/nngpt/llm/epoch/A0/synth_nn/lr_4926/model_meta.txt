@@ -1,0 +1,5 @@
+architecture: VGG
+scheduler: StepLR_s3_g01
+weight_decay: 0.0005
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['step_size', 'gamma', 'epoch_max']

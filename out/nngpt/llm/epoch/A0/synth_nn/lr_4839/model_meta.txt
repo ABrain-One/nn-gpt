@@ -1,0 +1,5 @@
+architecture: UNet2D
+scheduler: CyclicLR_tri
+weight_decay: 1e-05
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['base_lr', 'max_lr']

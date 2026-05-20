@@ -1,0 +1,5 @@
+architecture: BayesianNet-1
+scheduler: ReduceLROnPlateau_f01_p5
+weight_decay: 0.005
+original_hp: ['lr', 'momentum']
+added_hp: ['factor', 'patience']

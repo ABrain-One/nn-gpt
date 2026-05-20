@@ -1,0 +1,5 @@
+architecture: ConvNeXt
+scheduler: OneCycleLR_005
+weight_decay: 0.001
+original_hp: ['lr', 'momentum', 'norm_eps', 'norm_std', 'stochastic_depth_prob']
+added_hp: ['max_lr']

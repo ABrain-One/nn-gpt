@@ -1,0 +1,5 @@
+architecture: ConvNeXt
+scheduler: ReduceLROnPlateau_f03_p3
+weight_decay: 5e-05
+original_hp: ['lr', 'momentum', 'norm_eps', 'norm_std', 'stochastic_depth_prob']
+added_hp: ['factor', 'patience']

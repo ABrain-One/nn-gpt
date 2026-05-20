@@ -1,0 +1,5 @@
+architecture: ShuffleNet
+scheduler: CosineAnnealingLR_T5
+weight_decay: 1e-05
+original_hp: ['lr', 'momentum']
+added_hp: ['T_max', 'eta_min', 'epoch_max']

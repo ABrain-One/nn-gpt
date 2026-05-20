@@ -1,0 +1,5 @@
+architecture: DPN131
+scheduler: StepLR_s3_g01
+weight_decay: 0.0001
+original_hp: ['lr', 'momentum']
+added_hp: ['step_size', 'gamma', 'epoch_max']

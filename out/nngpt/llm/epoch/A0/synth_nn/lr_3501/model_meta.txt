@@ -1,0 +1,5 @@
+architecture: MobileNetV2
+scheduler: StepLR_s10_g05
+weight_decay: 0.0
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['step_size', 'gamma', 'epoch_max']

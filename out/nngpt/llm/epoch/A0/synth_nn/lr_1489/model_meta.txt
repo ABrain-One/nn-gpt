@@ -1,0 +1,5 @@
+architecture: DPN131
+scheduler: MultiStepLR_m2_4_g01
+weight_decay: 0.0005
+original_hp: ['lr', 'momentum']
+added_hp: ['gamma']

@@ -1,0 +1,5 @@
+architecture: Diffuser
+scheduler: CyclicLR_exp
+weight_decay: 5e-05
+original_hp: ['lr', 'momentum']
+added_hp: ['base_lr', 'max_lr', 'gamma']

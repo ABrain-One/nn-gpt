@@ -1,0 +1,5 @@
+architecture: Diffuser
+scheduler: StepLR_s5_g03
+weight_decay: 0.0
+original_hp: ['lr', 'momentum']
+added_hp: ['step_size', 'gamma', 'epoch_max']

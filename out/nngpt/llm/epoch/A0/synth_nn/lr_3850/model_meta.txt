@@ -1,0 +1,5 @@
+architecture: MobileNetV3
+scheduler: PolynomialLR_p2
+weight_decay: 0.005
+original_hp: ['dropout', 'lr', 'momentum', 'norm_eps', 'norm_momentum']
+added_hp: ['total_iters', 'power']

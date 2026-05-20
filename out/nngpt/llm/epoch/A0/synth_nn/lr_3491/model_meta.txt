@@ -1,0 +1,5 @@
+architecture: MaxVit
+scheduler: LinearLR_sf01
+weight_decay: 0.0005
+original_hp: ['attention_dropout', 'dropout', 'lr', 'momentum', 'stochastic_depth_prob']
+added_hp: ['start_factor', 'total_iters']

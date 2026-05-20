@@ -1,0 +1,5 @@
+architecture: BagNet
+scheduler: CyclicLR_exp
+weight_decay: 0.0005
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['base_lr', 'max_lr', 'gamma']

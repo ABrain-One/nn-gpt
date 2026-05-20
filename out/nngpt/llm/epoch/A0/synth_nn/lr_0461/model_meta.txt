@@ -1,0 +1,5 @@
+architecture: AlexNet
+scheduler: ReduceLROnPlateau_f01_p5
+weight_decay: 0.001
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['factor', 'patience']

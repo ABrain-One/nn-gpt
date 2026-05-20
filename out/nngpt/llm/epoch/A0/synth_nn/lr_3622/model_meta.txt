@@ -1,0 +1,5 @@
+architecture: MobileNetV2
+scheduler: CyclicLR_tri2
+weight_decay: 5e-05
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['base_lr', 'max_lr']

@@ -1,0 +1,5 @@
+architecture: DPN68
+scheduler: ReduceLROnPlateau_f05_p2
+weight_decay: 1e-05
+original_hp: ['lr', 'momentum']
+added_hp: ['factor', 'patience']

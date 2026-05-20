@@ -1,0 +1,12 @@
+Error evaluating model PR_0006: no such table: stat
+
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 165, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 55, in evaluate
+    df = nn_dataset.data()
+  File "/home/hafsamateen/lib/python3.10/site-packages/ab/nn/api.py", line 47, in data
+    dt: tuple[dict, ...] = DB_Read.data(only_best_accuracy, task=task, dataset=dataset, metric=metric, nn=nn, epoch=epoch, max_rows=max_rows,
+  File "/home/hafsamateen/lib/python3.10/site-packages/ab/nn/util/db/Read.py", line 198, in data
+    cur.execute(f'CREATE TEMP TABLE {tmp_data} AS {base_query} ORDER BY RANDOM()' if sql else
+sqlite3.OperationalError: no such table: stat

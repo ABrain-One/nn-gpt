@@ -1,0 +1,5 @@
+architecture: MaxVit
+scheduler: StepLR_s5_g03
+weight_decay: 5e-05
+original_hp: ['attention_dropout', 'dropout', 'lr', 'momentum', 'stochastic_depth_prob']
+added_hp: ['step_size', 'gamma', 'epoch_max']

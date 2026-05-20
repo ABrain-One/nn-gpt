@@ -1,0 +1,12 @@
+{
+  "lr": 0.01,
+  "batch": 64,
+  "dropout": 0.2,
+  "momentum": 0.9,
+  "transform": "norm_256_flip",
+  "epoch_max": 50,
+  "attention_dropout": 0.0,
+  "patch_size": 0.5,
+  "T_0": 0.1,
+  "eta_min": 1e-06
+}

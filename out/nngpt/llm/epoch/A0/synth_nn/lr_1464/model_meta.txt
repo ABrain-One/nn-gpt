@@ -1,0 +1,5 @@
+architecture: DPN131
+scheduler: CosineAnnealingLR_T20
+weight_decay: 0.0
+original_hp: ['lr', 'momentum']
+added_hp: ['T_max', 'eta_min', 'epoch_max']

@@ -1,0 +1,5 @@
+architecture: Diffuser
+scheduler: CosineAnnealingLR_T10
+weight_decay: 0.001
+original_hp: ['lr', 'momentum']
+added_hp: ['T_max', 'eta_min', 'epoch_max']

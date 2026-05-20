@@ -1,0 +1,5 @@
+architecture: DPN68
+scheduler: CyclicLR_exp
+weight_decay: 0.0001
+original_hp: ['lr', 'momentum']
+added_hp: ['base_lr', 'max_lr', 'gamma']

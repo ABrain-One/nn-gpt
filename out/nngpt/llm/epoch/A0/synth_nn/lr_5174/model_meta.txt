@@ -1,0 +1,5 @@
+architecture: VisionTransformer
+scheduler: ReduceLROnPlateau_f03_p3
+weight_decay: 0.0
+original_hp: ['attention_dropout', 'dropout', 'lr', 'momentum', 'patch_size']
+added_hp: ['factor', 'patience']

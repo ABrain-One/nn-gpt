@@ -1,0 +1,5 @@
+architecture: AlexNet
+scheduler: MultiStepLR_m5_10_g05
+weight_decay: 5e-05
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['gamma']

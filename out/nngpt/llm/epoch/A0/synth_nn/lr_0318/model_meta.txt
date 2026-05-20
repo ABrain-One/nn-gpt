@@ -1,0 +1,5 @@
+architecture: AirNext
+scheduler: OneCycleLR_005
+weight_decay: 5e-05
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['max_lr']

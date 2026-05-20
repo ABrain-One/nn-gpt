@@ -1,0 +1,5 @@
+architecture: VGG
+scheduler: CosineAnnealingLR_T20
+weight_decay: 0.001
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['T_max', 'eta_min', 'epoch_max']
