@@ -1,50 +1,56 @@
 {
-    "improvement_with_supporting_models": {
-        "input_list": [
-            {
-                "para": "nn_code",
-                "value": "nn_code"
-            },
-            {
-                "para": "accuracy",
-                "value": "accuracy"
-            }
-        ],
-        "addon_list": [
-            {
-                "para": "addon_nn_code",
-                "value": "nn_code"
-            },
-            {
-                "para": "addon_accuracy",
-                "value": "accuracy"
-            }
-        ],
-        "task": "img-classification",
-        "addon_task": "img-classification",
-        "no_repeat": [
-            "nn"
-        ],
-        "keep_same": [],
-        "prompt": [
-            "CREATE an IMPROVED neural network by combining the best elements from these models:",
-            "",
-            "MAIN MODEL (current accuracy: {accuracy}):",
-            "```python",
-            "{nn_code}",
-            "```",
-            "",
-            "{supporting_models_prompt}",
-            "",
-            "IMPROVEMENT RULES - FOLLOW EXACTLY:",
-            "1. Class name: 'Net' (unchanged)",
-            "2. Methods: __init__, forward, train_setup(device), learn(data,target,device) - keep signatures",
-            "3. Include: supported_hyperparameters() → ['lr', 'momentum']",
-            "4. Only standard PyTorch (no torchvision)",
-            "5. Works with 32x32 RGB images → 10 classes",
-            "",
-            "IMPROVE by combining best features from all models above.",
-            "Provide COMPLETE improved model code:"
-        ]
-    }
+  "improvement_with_supporting_models": {
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      }
+    ],
+    "addon_list": [
+      {
+        "para": "addon_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "addon_accuracy",
+        "value": "accuracy"
+      }
+    ],
+    "task": "img-classification",
+    "system": [
+      "You are an expert PyTorch neural network architect.",
+      "Synthesise an improved model by combining the strongest structural elements from multiple reference implementations.",
+      "Output a complete, runnable Python class named 'Net' with all required LEMUR interface methods.",
+      "Use only standard PyTorch — no torchvision pre-built models."
+    ],
+    "addon_task": "img-classification",
+    "no_repeat": [
+      "nn"
+    ],
+    "keep_same": [],
+    "prompt": [
+      "CREATE an IMPROVED neural network by combining the best elements from these models:",
+      "",
+      "MAIN MODEL (current accuracy: {accuracy}):",
+      "```python",
+      "{nn_code}",
+      "```",
+      "",
+      "{supporting_models_prompt}",
+      "",
+      "IMPROVEMENT RULES - FOLLOW EXACTLY:",
+      "1. Class name: 'Net' (unchanged)",
+      "2. Methods: __init__, forward, train_setup(device), learn(data,target,device) - keep signatures",
+      "3. Include: supported_hyperparameters() → ['lr', 'momentum']",
+      "4. Only standard PyTorch (no torchvision)",
+      "5. Works with 32x32 RGB images → 10 classes",
+      "",
+      "IMPROVE by combining best features from all models above.",
+      "Provide COMPLETE improved model code:"
+    ]
+  }
 }

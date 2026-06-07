@@ -1,91 +1,117 @@
 {
-     "improvement_transform_general": {
-        "comment": [
-            "para: where you fill in content, value: where data come from (colum key in api.data() DataFrame).",
-            "task(only in addon_list): which task the additional content come from.",
-            "comment: explain the usage of this file"
-        ],
-        "input_list": [{"para": "transform_code","value": "transform_code"}],
-        "addon_list": [],
-        "task": "img-classification",
-        "addon_task": null,
-        "prompt":  [
-            "Change the transformation layers in the following implementation to increase the accuracy on image classification tasks.",
-            "You should answer not only the transform you modified but with ***FULL CODES INCLUDING EVERYTHING NOT CHANGED***",
-            "You have to reply with full transform codes, don't be afraid of actually reducing the accuracy.",
-            "***Strictly check and make sure at least one transformation being modified.***",
-            "```\nimport torchvision.transforms as transforms\n\ndef transform(norm):\n    return transforms.Compose([\n        transforms.Resize(256),\n        transforms.CenterCrop(256),\n        transforms.RandomHorizontalFlip(),\n        transforms.ToTensor(),\n        transforms.Normalize(*norm)])\n```"
-        ]
-    },
-
-    "Zero shot prompts for transforms":
-    {
-        "input_list": [],
-        "addon_list": [],
-        "task": null,
-        "addon_task": null,
-        "prompt": [
-            "Write torchvision transform code for an efficient image preprocessing pipeline that includes data augmentation blocks.",
-            "Design a transform pipeline for image classification task. Make sure it is composed of all transforms needed in such pipeline.",
-            "Build an image preprocessing pipeline that extends basic normalization, so it will allow for better generalization.",
-            "Create a state-of-the-art transform pipeline for image classification that not only includes all necessary transforms, but also incorporate new features to enhance model robustness and accuracy.",
-            "Build a nuanced transform pipeline for image classification that will achieve accuracy of at least 60%."
-        ]
-    },
-
-       "Transform RCI":
-    {
-        "input_list": [],
-        "addon_list": [],
-        "task": null,
-        "addon_task": null,
-        "prompt": [
-            "Design a transform function for image classification that resembles torchvision approaches, ensure that the generated function is complete. After generating the code, review your previous answer and identify any issues. Based on your critique, improve the code to address those issues.",
-            "Build an image preprocessing function that extends basic normalization, so it will allow for extraction of more complex features. After generating the code, review your previous answer and identify any issues. Based on your critique, improve the code to address those issues.",
-            "Create a complete state-of-the-art transform function for image classification. After generating the code, review your previous answer and identify any issues. Based on your critique, improve the code to address those issues.",
-            "Build a nuanced transform function for image classification that will achieve accuracy of at least 70%. After generating the code, review your previous answer and identify any issues. Based on your critique, improve the code to address those issues."
-        ]
-    },
-
-    "Progressive Hint Prompting for transforms":
-    {
-        "input_list": [],
-        "addon_list": [],
-        "task": null,
-        "addon_task": null,
-        "prompt": [
-            "Start by generating a basic implementation of image preprocessing function. Make sure it initializes transforms correctly and contains appropriate composition. In the next step, provide a more novel solution by introducing additional features. Finally, correct the pipeline so that it will achieve accuracy of at least 70%.",
-            "Start by generating a basic implementation of image preprocessing pipeline. Make sure it initializes transforms correctly and contains appropriate composition. In the next step, provide a more novel solution by introducing additional features.",
-            "Start by building an image preprocessing pipeline that extends basic normalization, so it will allow for extraction of more complex features. Make sure it initializes transforms correctly and contains appropriate composition. In the next step, provide a more novel solution by introducing additional features.",
-            "Start by creating a complete state-of-the-art transform pipeline for image classification. Make sure it initializes transforms correctly and contains appropriate composition. In the next step, provide a more novel solution by introducing additional features.",
-            "Start by generating a basic implementation of image preprocessing pipeline. Make sure it initializes transforms correctly and contains appropriate composition. In the next step, provide a more novel solution by introducing additional features. Finally, correct the pipeline so that it will achieve accuracy of at least 70%."
-        ]
-    },
-
-      "Persona Pattern for transforms":
-    {
-        "input_list": [],
-        "addon_list": [],
-        "task": null,
-        "addon_task": null,
-        "prompt": [
-            "Adopt the persona of a cutting-edge AI researcher at Google. Build a nuanced transform function for image classification that will achieve accuracy of at least 60%.",
-            "Adopt the persona of a cutting-edge AI researcher at Google. Build an image preprocessing function that extends basic normalization, so it will allow for extraction of more complex features.",
-            "Adopt the persona of a cutting-edge AI researcher at Google. Design a transform pipeline for image classification task. Make sure it is composed of all transforms needed in such pipeline.",
-            "Adopt the persona of a cutting-edge AI researcher at Google. Create a state-of-the-art transform pipeline for image classification task that not only includes all necessary transforms, but also incorporate new features to enhance model robustness and accuracy."  
-        ]
-    },
-
-   "Zero-shot Chain-of-Thought for transforms":
-    {
-        "input_list": [],
-        "addon_list": [],
-        "task": null,
-        "addon_task": null,
-        "prompt": [
-            "Let's think step by step and design a transform function for image classification task. The solution should include full usable transforms.",
-              "Let's think step by step and create a state-of-the-art transform pipeline for image classification task. Make sure it contains all necessary transforms and also incorporate new features to enhance model robustness and accuracy. Start by outlining the typical weak points of image preprocessing and then account for them in the generated code.",
-            "Let's think step by step and build a nuanced transform pipeline for image classification that will achieve accuracy of at least 80%. Start by identifying the key factors that influence model accuracy, then implement the code incorporating strategies to address these factors."
-        ]
-    }
+  "improvement_transform_general": {
+    "comment": [
+      "para: where you fill in content, value: where data come from (colum key in api.data() DataFrame).",
+      "task(only in addon_list): which task the additional content come from.",
+      "comment: explain the usage of this file"
+    ],
+    "system": [
+      "You are an expert in torchvision image preprocessing pipelines.",
+      "Improve existing transform implementations to increase model accuracy on image classification tasks.",
+      "Return the complete transform code including unchanged parts.",
+      "Ensure at least one transformation is meaningfully modified."
+    ],
+    "input_list": [
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      }
+    ],
+    "addon_list": [],
+    "task": "img-classification",
+    "addon_task": null,
+    "prompt": [
+      "Change the transformation layers in the following implementation to increase the accuracy on image classification tasks.",
+      "You should answer not only the transform you modified but with ***FULL CODES INCLUDING EVERYTHING NOT CHANGED***",
+      "You have to reply with full transform codes, don't be afraid of actually reducing the accuracy.",
+      "***Strictly check and make sure at least one transformation being modified.***",
+      "```\nimport torchvision.transforms as transforms\n\ndef transform(norm):\n    return transforms.Compose([\n        transforms.Resize(256),\n        transforms.CenterCrop(256),\n        transforms.RandomHorizontalFlip(),\n        transforms.ToTensor(),\n        transforms.Normalize(*norm)])\n```"
+    ]
+  },
+  "Zero shot prompts for transforms": {
+    "input_list": [],
+    "addon_list": [],
+    "task": null,
+    "system": [
+      "You are an expert in computer vision data augmentation and image preprocessing with torchvision.",
+      "Generate complete, runnable Python transform functions for computer vision tasks.",
+      "Always name the transform function 'transform' and include all necessary imports."
+    ],
+    "addon_task": null,
+    "prompt": [
+      "Write torchvision transform code for an efficient image preprocessing pipeline that includes data augmentation blocks.",
+      "Design a transform pipeline for image classification task. Make sure it is composed of all transforms needed in such pipeline.",
+      "Build an image preprocessing pipeline that extends basic normalization, so it will allow for better generalization.",
+      "Create a state-of-the-art transform pipeline for image classification that not only includes all necessary transforms, but also incorporate new features to enhance model robustness and accuracy.",
+      "Build a nuanced transform pipeline for image classification that will achieve accuracy of at least 60%."
+    ]
+  },
+  "Transform RCI": {
+    "input_list": [],
+    "addon_list": [],
+    "task": null,
+    "system": [
+      "You are an expert in computer vision data augmentation and image preprocessing with torchvision.",
+      "Generate complete, runnable Python transform functions for computer vision tasks.",
+      "Always name the transform function 'transform' and include all necessary imports."
+    ],
+    "addon_task": null,
+    "prompt": [
+      "Design a transform function for image classification that resembles torchvision approaches, ensure that the generated function is complete. After generating the code, review your previous answer and identify any issues. Based on your critique, improve the code to address those issues.",
+      "Build an image preprocessing function that extends basic normalization, so it will allow for extraction of more complex features. After generating the code, review your previous answer and identify any issues. Based on your critique, improve the code to address those issues.",
+      "Create a complete state-of-the-art transform function for image classification. After generating the code, review your previous answer and identify any issues. Based on your critique, improve the code to address those issues.",
+      "Build a nuanced transform function for image classification that will achieve accuracy of at least 70%. After generating the code, review your previous answer and identify any issues. Based on your critique, improve the code to address those issues."
+    ]
+  },
+  "Progressive Hint Prompting for transforms": {
+    "input_list": [],
+    "addon_list": [],
+    "task": null,
+    "system": [
+      "You are an expert in computer vision data augmentation and image preprocessing with torchvision.",
+      "Generate complete, runnable Python transform functions for computer vision tasks.",
+      "Always name the transform function 'transform' and include all necessary imports."
+    ],
+    "addon_task": null,
+    "prompt": [
+      "Start by generating a basic implementation of image preprocessing function. Make sure it initializes transforms correctly and contains appropriate composition. In the next step, provide a more novel solution by introducing additional features. Finally, correct the pipeline so that it will achieve accuracy of at least 70%.",
+      "Start by generating a basic implementation of image preprocessing pipeline. Make sure it initializes transforms correctly and contains appropriate composition. In the next step, provide a more novel solution by introducing additional features.",
+      "Start by building an image preprocessing pipeline that extends basic normalization, so it will allow for extraction of more complex features. Make sure it initializes transforms correctly and contains appropriate composition. In the next step, provide a more novel solution by introducing additional features.",
+      "Start by creating a complete state-of-the-art transform pipeline for image classification. Make sure it initializes transforms correctly and contains appropriate composition. In the next step, provide a more novel solution by introducing additional features.",
+      "Start by generating a basic implementation of image preprocessing pipeline. Make sure it initializes transforms correctly and contains appropriate composition. In the next step, provide a more novel solution by introducing additional features. Finally, correct the pipeline so that it will achieve accuracy of at least 70%."
+    ]
+  },
+  "Persona Pattern for transforms": {
+    "input_list": [],
+    "addon_list": [],
+    "task": null,
+    "system": [
+      "You are an expert in computer vision data augmentation and image preprocessing with torchvision.",
+      "Generate complete, runnable Python transform functions for computer vision tasks.",
+      "Always name the transform function 'transform' and include all necessary imports."
+    ],
+    "addon_task": null,
+    "prompt": [
+      "Adopt the persona of a cutting-edge AI researcher at Google. Build a nuanced transform function for image classification that will achieve accuracy of at least 60%.",
+      "Adopt the persona of a cutting-edge AI researcher at Google. Build an image preprocessing function that extends basic normalization, so it will allow for extraction of more complex features.",
+      "Adopt the persona of a cutting-edge AI researcher at Google. Design a transform pipeline for image classification task. Make sure it is composed of all transforms needed in such pipeline.",
+      "Adopt the persona of a cutting-edge AI researcher at Google. Create a state-of-the-art transform pipeline for image classification task that not only includes all necessary transforms, but also incorporate new features to enhance model robustness and accuracy."
+    ]
+  },
+  "Zero-shot Chain-of-Thought for transforms": {
+    "input_list": [],
+    "addon_list": [],
+    "task": null,
+    "system": [
+      "You are an expert in computer vision data augmentation and image preprocessing with torchvision.",
+      "Generate complete, runnable Python transform functions for computer vision tasks.",
+      "Always name the transform function 'transform' and include all necessary imports."
+    ],
+    "addon_task": null,
+    "prompt": [
+      "Let's think step by step and design a transform function for image classification task. The solution should include full usable transforms.",
+      "Let's think step by step and create a state-of-the-art transform pipeline for image classification task. Make sure it contains all necessary transforms and also incorporate new features to enhance model robustness and accuracy. Start by outlining the typical weak points of image preprocessing and then account for them in the generated code.",
+      "Let's think step by step and build a nuanced transform pipeline for image classification that will achieve accuracy of at least 80%. Start by identifying the key factors that influence model accuracy, then implement the code incorporating strategies to address these factors."
+    ]
+  }
 }

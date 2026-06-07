@@ -7,14 +7,25 @@
       "Bridge contract: Input (B, 32, 768) → Output (B, 32, 768)"
     ],
     "description": "Bridge-Only Architectural Synthesis for Blip2Fast Captioning.",
+    "system": [
+      "You are an expert in multimodal deep learning, specialising in image captioning architectures.",
+      "Generate targeted code diffs that improve only the trainable CaptionDecoder components of a Blip2Fast model.",
+      "Never modify sections marked [FROZEN]. Preserve 'self.encoder.eval()' in every forward pass.",
+      "Focus improvements on the visual-projection mapping and decoder forward logic."
+    ],
     "use_delta": true,
     "task": "img-captioning",
     "addon_task": null,
     "nn_prefixes": ["Blip2Fast"],
     "input_list": [
-      {"para": "accuracy", "value": "accuracy"},
-      {"para": "epoch", "value": "epoch"},
-      {"para": "prm", "value": "prm"}
+      { "para": "nn_code", "value": "nn_code" },
+      { "para": "accuracy", "value": "accuracy" },
+      { "para": "epoch", "value": "epoch" },
+      { "para": "dataset", "value": "dataset" },
+      { "para": "task", "value": "task" },
+      { "para": "metric", "value": "metric" },
+      { "para": "transform_code", "value": "transform_code" },
+      { "para": "prm", "value": "prm" }
     ],
     "no_repeat": [],
     "keep_same": [

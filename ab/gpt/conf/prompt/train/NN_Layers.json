@@ -6,7 +6,17 @@
       "Dropout layers are not permitted.",
       "The resulting model must have significantly different convolutional structure from the original."
     ],
-    "input_list": [{"para": "nn_code", "value": "nn_code"}],
+    "system": [
+      "You are an expert PyTorch neural network architect specialising in layer-level architecture design.",
+      "Redesign network layer configurations to improve accuracy on image classification tasks.",
+      "Return the complete improved model code \u2014 do not truncate or omit unchanged sections."
+    ],
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      }
+    ],
     "addon_list": [],
     "task": "img-classification",
     "addon_task": null,
@@ -33,13 +43,12 @@
       "- Return a complete and valid Python class that can compile and train the model.",
       "- Ensure the new architecture is substantially different from the original model (no repetition of the same blocks).",
       "- Do not include any `Dropout`, and use only modules that improve learning capacity.",
-      "- **Do NOT output any auxiliary text—no `**Notes**`, no “Modified Code” label—just the plain code block.**",
+      "- **Do NOT output any auxiliary text\u2014no `**Notes**`, no \u201cModified Code\u201d label\u2014just the plain code block.**",
       "",
       "**Original Code to Modify:**",
       "```\n{nn_code}\n```"
     ]
   },
-
   "improvement_segmentation_codeonly": {
     "comment": [
       "This prompt enforces major architectural changes to CNN segmentation models (like UNet).",
@@ -47,7 +56,17 @@
       "Dropout layers are not allowed.",
       "It encourages the use of advanced convolutions, attention mechanisms, and architectural diversity."
     ],
-    "input_list": [{"para": "nn_code", "value": "nn_code"}],
+    "system": [
+      "You are an expert PyTorch neural network architect specialising in segmentation layer design.",
+      "Redesign network layer configurations to improve accuracy on image segmentation tasks.",
+      "Return the complete improved model code \u2014 do not truncate or omit unchanged sections."
+    ],
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      }
+    ],
     "addon_list": [],
     "task": "img-segmentation",
     "addon_task": null,
@@ -59,7 +78,7 @@
       "   - Introduce new blocks (e.g., Residual, Bottleneck, or Attention blocks)",
       "   - Use modern convolutional layers: Depthwise, Grouped, or Dilated Convolutions",
       "   - Optional: Squeeze-and-Excitation, CBAM, or Transformer layers for attention",
-      "2. You must add, remove, or reorder layers—not just alter filter sizes or kernel values.",
+      "2. You must add, remove, or reorder layers\u2014not just alter filter sizes or kernel values.",
       "3. **Dropout is not allowed**. Use `BatchNorm2d`, `SiLU`, or similar non-regularization modules.",
       "4. The model structure must clearly differ from standard UNet-style models.",
       "",
@@ -72,7 +91,7 @@
       "- Ensure the architecture is syntactically correct and logically valid.",
       "- Do not include Dropout or use any hyperparameters other than `lr` and `momentum`.",
       "- The model must reflect a significant architectural change from the original code.",
-      "- **Do NOT output any auxiliary text—no `**Notes**`, no “Modified Code” label—just the plain code block.**",
+      "- **Do NOT output any auxiliary text\u2014no `**Notes**`, no \u201cModified Code\u201d label\u2014just the plain code block.**",
       "",
       "**Here is the code to modify:**",
       "```\n{nn_code}\n```"

@@ -145,23 +145,23 @@ If recently added dependencies are missing in the <a href='https://hub.docker.co
 
 ## Citation
 
-The original version of this project was created at the Computer Vision Laboratory of the University of Würzburg by the authors mentioned below. If you find this project to be useful for your research, please consider citing our articles for <a target='_blank' href='https://arxiv.org/pdf/2511.20333'>NNGPT</a>, <a target='_blank' href='https://arxiv.org/pdf/2601.02997'>architecture design</a>, <a target='_blank' href='https://openaccess.thecvf.com/content/ICCV2025W/AIM/papers/Kochnev_Optuna_vs_Code_Llama_Are_LLMs_a_New_Paradigm_for_ICCVW_2025_paper.pdf'>hyperparameter tuning</a> and <a target='_blank' href='https://arxiv.org/abs/2605.04903'>delta-based NAS</a> with LLMs:
+The original version of this project was created at the Computer Vision Laboratory of the University of Würzburg by the authors mentioned below. If you find this project to be useful for your research, please consider citing our articles for <a target='_blank' href='https://openaccess.thecvf.com/content/CVPR2026W/CVPR-NAS26/papers/Kochnev_NNGPT_Rethinking_AutoML_with_Large_Language_Models_CVPRW_2026_paper.pdf'>NNGPT</a>, <a target='_blank' href='https://openaccess.thecvf.com/content/CVPR2026W/CVPR-NAS26/papers/Khalid_From_Memorization_to_Creativity_LLM_as_a_Designer_of_Novel_CVPRW_2026_paper.pdf'>architecture design</a>, <a target='_blank' href='https://openaccess.thecvf.com/content/ICCV2025W/AIM/papers/Kochnev_Optuna_vs_Code_Llama_Are_LLMs_a_New_Paradigm_for_ICCVW_2025_paper.pdf'>hyperparameter tuning</a> and <a target='_blank' href='https://arxiv.org/abs/2605.04903'>delta-based NAS</a> with LLMs:
 ```bibtex
 
 @InProceedings{ABrain.NNGPT,
 	title = {{NNGPT}: Rethinking {AutoML} with Large Language Models},
 	author = {Kochnev, Roman and Khalid, Waleed and Uzun, Tolgay Atinc and Zhang, Xi and Dhameliya, Yashkumar Sanjaybhai and Qin, Furui and Vysyaraju, Chandini and Duvvuri, Raghuvir and Goyal, Avi and Ignatov, Dmitry and Timofte, Radu},
-	booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)},	
-	year={2026},
-    note={to appear}
+	booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)},		
+	pages = {5664--5674},	
+	year={2026}
 }
 
 @InProceedings{ABrain.Architect,
 	title={From Memorization to Creativity: {LLM} as a Designer of Novel Neural Architectures},
 	author={Khalid, Waleed and Ignatov, Dmitry and Timofte, Radu},
 	booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)},	
-	year={2026},
-    note={to appear}
+	pages = {3252--3261},	
+	year={2026}
 }
 
 @InProceedings{ABrain.HPGPT,
@@ -170,7 +170,8 @@ The original version of this project was created at the Computer Vision Laborato
 	booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision Workshops (ICCVW)},
 	url={https://openaccess.thecvf.com/content/ICCV2025W/AIM/papers/Kochnev_Optuna_vs_Code_Llama_Are_LLMs_a_New_Paradigm_for_ICCVW_2025_paper.pdf},
 	pages = {5664--5674},
-	year={2025}
+	year={2025},
+	doi={10.1109/ICCVW69036.2025.00598}
 }
 
 @Article{ABrain.DeltaNAS,

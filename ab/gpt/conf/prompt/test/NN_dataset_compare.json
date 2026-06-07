@@ -3,7 +3,7 @@
     "comment": [],
     "system": [
       "You are an expert in deep learning model evaluation.",
-      "Given a neural network architecture and its performance on two datasets, identify which dataset yields better relative accuracy.",
+      "Given a neural network architecture and performance results on two datasets, determine on which dataset the model achieves higher relative accuracy.",
       "Respond with only the dataset name \u2014 no explanation, no extra text."
     ],
     "task": "img-classification",
@@ -36,19 +36,31 @@
         "value": "dataset"
       },
       {
+        "para": "norm_acc_1",
+        "value": "norm_acc"
+      },
+      {
         "para": "dataset_2",
         "value": "dataset_2"
+      },
+      {
+        "para": "norm_acc_2",
+        "value": "norm_acc_2"
       }
     ],
     "prompt": [
-      "You are an expert in deep learning architecture analysis.",
-      "A neural network was trained on two image classification datasets for {epoch} epochs.",
-      "Analyze the architecture code below and predict on which dataset it achieves higher relative accuracy.",
+      "A neural network was trained on two different image classification datasets for {epoch} epochs.",
       "",
-      "Neural network code:",
+      "Neural Network Code:",
       "{nn_code}",
       "",
-      "Which dataset does this network perform better on?",
+      "Dataset 1: {dataset_1}",
+      "  - Normalized accuracy: {norm_acc_1}",
+      "",
+      "Dataset 2: {dataset_2}",
+      "  - Normalized accuracy: {norm_acc_2}",
+      "",
+      "On which dataset does this neural network perform better?",
       "Answer with ONLY the dataset name, nothing else. One of: {dataset_1}, {dataset_2}"
     ],
     "output": [

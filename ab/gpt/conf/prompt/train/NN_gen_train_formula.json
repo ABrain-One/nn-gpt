@@ -1,50 +1,59 @@
 {
-    "efficiency_estimation": {
-        "task": "img-classification",
-        "input_list": [
-            {
-                "para": "accuracy",
-                "value": "accuracy"
-            },
-            {
-                "para": "duration",
-                "value": "duration"
-            },
-            {
-                "para": "model_name",
-                "value": "model_name"
-            }
-        ],
-        "prompt": [
-            "For the computer vision model {model_name}, given its accuracy and inference time, estimate its inference efficiency.",
-            "Accuracy: {accuracy}",
-            "Inference time: {duration}s"
-        ],
-        "output": [
-            "The inference efficiency for {model_name} is << accuracy / duration >>."
-        ]
-    },
-    "model_recommendation_by_efficiency": {
-        "task": "img-classification",
-        "input_list": [
-            {
-                "para": "accuracy",
-                "value": "accuracy"
-            },
-            {
-                "para": "duration",
-                "value": "duration"
-            },
-            {
-                "para": "model_name",
-                "value": "model_name"
-            }
-        ],
-        "prompt": [
-            "Please provide a computer vision model which gives us an accuracy around {accuracy} and an inference efficiency around << accuracy / duration >>."
-        ],
-        "output": [
-            "The model {model_name} fits this criteria."
-        ]
-    }
+  "efficiency_estimation": {
+    "system": [
+      "You are an expert in evaluating deep learning model computational efficiency.",
+      "Given a model's accuracy and inference time, compute its efficiency score precisely and concisely."
+    ],
+    "task": "img-classification",
+    "input_list": [
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "duration",
+        "value": "duration"
+      },
+      {
+        "para": "model_name",
+        "value": "model_name"
+      }
+    ],
+    "prompt": [
+      "For the computer vision model {model_name}, given its accuracy and inference time, estimate its inference efficiency.",
+      "Accuracy: {accuracy}",
+      "Inference time: {duration}s"
+    ],
+    "output": [
+      "The inference efficiency for {model_name} is << accuracy / duration >>."
+    ]
+  },
+  "model_recommendation_by_efficiency": {
+    "system": [
+      "You are an expert in recommending deep learning models based on efficiency and accuracy requirements.",
+      "Given target accuracy and efficiency criteria, identify the best matching model from available candidates.",
+      "Respond with the model name only \u2014 no extra explanation."
+    ],
+    "task": "img-classification",
+    "input_list": [
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "duration",
+        "value": "duration"
+      },
+      {
+        "para": "model_name",
+        "value": "model_name"
+      }
+    ],
+    "prompt": [
+      "Please provide a computer vision model which gives us an accuracy around {accuracy} and an inference efficiency around << accuracy / duration >>."
+    ],
+    "output": [
+      "The model {model_name} fits this criteria."
+    ]
+  }
 }

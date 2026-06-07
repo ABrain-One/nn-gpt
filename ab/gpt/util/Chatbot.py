@@ -50,7 +50,7 @@ def _strip_prompt_prefix(text, prompt):
 
 class ChatBot:
     def __init__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, keep_memory=False,
-                 temperature=1.0, top_k=50, top_p=0.9):
+                 temperature=1.0, top_k=50, top_p=0.9, system_prompt: str = None):
         self.show_additional_info = False
         self.model = model
         self.tokenizer = tokenizer
@@ -58,6 +58,7 @@ class ChatBot:
         self.temperature = temperature
         self.top_k = top_k
         self.top_p = top_p
+        self.system_prompt = system_prompt
         
         # Check if model is ONNX (wrapped or direct ORTModel)
         self.is_onnx = (
@@ -86,9 +87,17 @@ class ChatBot:
         if self.__keep_memory:
             self.__messages = []
 
+    def _build_messages(self, user_content: str) -> list:
+        """Build a messages list with optional system role prepended."""
+        messages = []
+        if self.system_prompt:
+            messages.append({"role": "system", "content": self.system_prompt})
+        messages.append({"role": "user", "content": user_content})
+        return messages
+
     def _prepare_pipeline_input(self, prompt_text):
         """Build a pipeline-ready text prompt using chat template when available."""
-        messages = [{"role": "user", "content": prompt_text}]
+        messages = self._build_messages(prompt_text)
         if hasattr(self.tokenizer, 'apply_chat_template'):
             return self.tokenizer.apply_chat_template(
                 messages,
@@ -177,10 +186,12 @@ class ChatBot:
             prompt += extra_instructions
         
         if self.__keep_memory:
+            if not self.__messages and self.system_prompt:
+                self.__messages.append({"role": "system", "content": self.system_prompt})
             self.__messages.append({"role": "user", "content": prompt})
             in_next = self.__messages
         else:
-            in_next = [{"role": "user", "content": prompt}]
+            in_next = self._build_messages(prompt)
         
         # Use pipeline if available (PyTorch path)
         if self.__pipeline is not None:

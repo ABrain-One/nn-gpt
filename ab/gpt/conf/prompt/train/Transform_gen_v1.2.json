@@ -1,18 +1,38 @@
 {
   "improve_classification_only": {
+    "system": [
+      "You are an expert in computer vision data augmentation.",
+      "Synthesise effective image preprocessing strategies by combining successful patterns from reference transforms.",
+      "Always name the transform function 'transform' and include all necessary imports.",
+      "Output strictly a single <tr>...</tr> block \u2014 no markdown fences, no SVG, no HTML."
+    ],
     "type": "change_parameters",
     "is_generation": false,
     "task": null,
     "addon_task": null,
     "input_list": [
-      {"para": "accuracy", "value": "accuracy"},
-      {"para": "transform_code", "value": "transform_code"}
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      }
     ],
     "addon_list": [
-      {"para": "addon_accuracy", "value": "accuracy"},
-      {"para": "addon_transform_code", "value": "transform_code"}
+      {
+        "para": "addon_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "addon_transform_code",
+        "value": "transform_code"
+      }
     ],
-    "no_repeat": ["transform_code"],
+    "no_repeat": [
+      "transform_code"
+    ],
     "keep_same": [],
     "improve": true,
     "same_pref": false,
@@ -27,7 +47,7 @@
       "1. Output valid Python code only.",
       "2. Wrap code strictly in <tr> tags.",
       "3. NO SVG, HTML, or markdown text.",
-      "4. Use standard 'torchvision.transforms'."  
+      "4. Use standard 'torchvision.transforms'."
     ],
     "output": [
       "<tr>{addon_transform_code}</tr>"

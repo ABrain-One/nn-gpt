@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import gc
+import torch.nn.functional as F
 import torch.utils.checkpoint as cp
 from torch.nn import MaxPool2d
 
@@ -19,10 +20,70 @@ def supported_hyperparameters():
 # -------------------------------------------------
 # Main Conv Block
 # -------------------------------------------------
-def drop_conv3x3_block(in_channels, out_channels, stride=1, padding=1, bias=False, dropout_prob=0.0, element_list=??):
-    return nn.Sequential(
-        $$
-    )
+def drop_conv3x3_block(in_channels, out_channels, stride=1, padding=1, bias=False, dropout_prob=0.0, element_list=None, block_type=0):
+    if block_type == 0:
+        return MultiBranchConvBlock(in_channels, out_channels, stride, padding, bias, dropout_prob, element_list)
+    else:
+        return SecondColumnBlock(in_channels, out_channels, stride, padding, bias, dropout_prob, element_list)
+
+
+# -------------------------------------------------
+# Multi-branch block
+# -------------------------------------------------
+class MultiBranchConvBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1, padding=1, bias=False, dropout_prob=0.0, element_list=None):
+        super().__init__()
+
+        self.in_pr = (nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False) if in_channels != out_channels else nn.Identity())
+
+        # ----- Branch 1 -----
+        self.branch1 = nn.Sequential(
+            $$
+        )
+
+        # ----- Branch 2 -----
+        self.branch2 = nn.Sequential(
+            $
+        )
+
+    def _fix_size(self, x, target):
+        if x.shape[-2:] != target.shape[-2:]:
+            x = F.interpolate(x, size=target.shape[-2:], mode="nearest")
+        return x
+
+    def forward(self, x):
+        x = self.in_pr(x)
+
+        b1 = self.branch1(x)
+        b2 = self.branch2(x)
+
+        b2 = self._fix_size(b2, b1)
+        return (b1 + b2) / 2.0
+
+# -------------------------------------------------
+# Second Column Block
+# -------------------------------------------------
+class SecondColumnBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1, padding=1, bias=False, dropout_prob=0.0, element_list=None):
+        super().__init__()
+
+        self.in_pr = (nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False) if in_channels != out_channels else nn.Identity())
+
+        self.main = nn.Sequential(
+            _SEC_
+        )
+
+    def _fix_size(self, x, target):
+        if x.shape[-2:] != target.shape[-2:]:
+            x = F.interpolate(x, size=target.shape[-2:], mode="nearest")
+        return x
+
+    def forward(self, x):
+        x = self.in_pr(x)
+        out = self.main(x)
+        out = self._fix_size(out, x)
+        return out
+
 # -------------------------------------------------
 # Fractal Block
 # -------------------------------------------------
@@ -38,11 +99,10 @@ class FractalBlock(nn.Module):
             for j in range(self.num_columns):
                 if (i + 1) % (2 ** j) == 0:
                     in_ch_ij = in_channels if (i + 1 == 2 ** j) else out_channels
-                    # -------- SKIP CONNECTION BLOCK --------
+                    # deterministic choice
+                    block_type = (i + j) % 2
                     level.append(
-                        nn.Sequential(
-                            @@
-                    )
+                        drop_conv3x3_block(in_ch_ij,out_channels,stride=1,padding=1,bias=False,dropout_prob=dropout_prob,element_list=None,block_type=block_type)
                     )
                 else:
                     level.append(nn.Identity())
@@ -54,8 +114,7 @@ class FractalBlock(nn.Module):
         outs = [x for _ in range(self.num_columns)]
         for level in self.blocks:
             new_outs = outs.copy()
-            active_cols = []
-            active_outs = []
+            active = []
             for col_idx, blk in enumerate(level):
                 inp = outs[col_idx]
                 if self.use_checkpoint_per_subblock:
@@ -64,14 +123,13 @@ class FractalBlock(nn.Module):
                     out = blk(inp)
                 new_outs[col_idx] = out
                 if not isinstance(blk, nn.Identity):
-                    active_cols.append(col_idx)
-                    active_outs.append(out)
+                    active.append(out)
 
-            # ---- FRACTAL MERGE ----
-            if len(active_outs) > 1:
-                joined = torch.stack(active_outs, dim=0).mean(dim=0)
-                for col_idx in active_cols:
-                    new_outs[col_idx] = joined
+            if len(active) > 1:
+                merged = torch.stack(active, dim=0).mean(dim=0)
+                for idx in range(len(new_outs)):
+                    if not isinstance(level[idx], nn.Identity):
+                        new_outs[idx] = merged
             outs = new_outs
         return outs[0]
 # -------------------------------------------------

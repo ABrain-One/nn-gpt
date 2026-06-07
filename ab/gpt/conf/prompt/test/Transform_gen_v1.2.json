@@ -1,19 +1,36 @@
 {
   "improve_classification_only": {
     "task": "img-classification",
+    "system": [
+      "You are an expert in computer vision data augmentation.",
+      "Synthesise effective image preprocessing strategies by combining successful patterns from reference transforms.",
+      "Briefly analyse what made each reference work, then output a single <tr>...</tr> block with complete executable Python code.",
+      "No markdown fences, no SVG, no HTML — strictly the requested format."
+    ],
     "addon_task": null,
     "input_list": [
-      {"para": "accuracy", "value": "accuracy"},
-      {"para": "transform_code", "value": "transform_code"}
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      }
     ],
     "addon_list": [
-      {"para": "addon_accuracy", "value": "accuracy"},
-      {"para": "addon_transform_code", "value": "transform_code"}
+      {
+        "para": "addon_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "addon_transform_code",
+        "value": "transform_code"
+      }
     ],
     "no_repeat": [],
     "keep_same": [],
     "prompt": [
-      "You are an expert image transformation generator.",
       "Your task is to synthesize a high-performance augmentation strategy with common patterns and ideas of two reference transforms.",
       "### Reference 1 (Acc: {accuracy})",
       "<tr>{transform_code}</tr>",
@@ -29,7 +46,7 @@
       "- DO NOT output SVG, <path>, <g>, or HTML tags.",
       "- DO NOT output markdown fences (```).",
       "Respond strictly in this format:",
-      "<tr>... code ...</tr>"  
+      "<tr>... code ...</tr>"
     ]
   }
 }

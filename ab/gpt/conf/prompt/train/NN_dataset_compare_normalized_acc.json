@@ -1,26 +1,53 @@
 {
   "dataset_comparison": {
     "comment": [],
+    "system": [
+      "You are an expert in deep learning model evaluation.",
+      "Given normalised accuracy scores for a model on two datasets, determine which dataset the model performs better on.",
+      "Respond with only the dataset name \u2014 no explanation, no extra text."
+    ],
     "task": "img-classification",
     "addon_task": "img-classification",
     "num_joint_nns": 2,
-    "keep_same": ["epoch", "metric", "task", "nn"],
-    "no_repeat": ["dataset"],
+    "keep_same": [
+      "epoch",
+      "metric",
+      "task",
+      "nn"
+    ],
+    "no_repeat": [
+      "dataset"
+    ],
     "improve": false,
     "nn_prefixes": [],
     "output_type": "classification",
     "nn_code_max_chars": 2000,
-    "max_new_tokens": 20,
     "input_list": [
-      { "para": "nn_code",        "value": "nn_code" },
-      { "para": "epoch",          "value": "epoch" },
-      { "para": "dataset_1",      "value": "dataset" },
-      { "para": "norm_acc_1",     "value": "norm_acc" },
-      { "para": "dataset_2",      "value": "dataset_2" },
-      { "para": "norm_acc_2",     "value": "norm_acc_2" }
-     
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "epoch",
+        "value": "epoch"
+      },
+      {
+        "para": "dataset_1",
+        "value": "dataset"
+      },
+      {
+        "para": "norm_acc_1",
+        "value": "norm_acc"
+      },
+      {
+        "para": "dataset_2",
+        "value": "dataset_2"
+      },
+      {
+        "para": "norm_acc_2",
+        "value": "norm_acc_2"
+      }
     ],
-
     "prompt": [
       "A neural network was trained on two different image classification datasets for {epoch} epochs.",
       "",

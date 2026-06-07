@@ -84,6 +84,7 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
         # Generate Prompts
         prompts = []
         for key in prompt_dict.keys():
+            system_text = "\n".join(prompt_dict[key].get('system', []))
             prompt = ""
             for pr in prompt_dict[key]['prompt']:
                 prompt += pr + "\n"
@@ -133,7 +134,7 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
                             para_dict[it['para']] = first_model[it['para']]
                 # Format the prompt with supporting models
                 formatted_prompt = format_prompt_with_supporting_models(prompt, para_dict, supporting_models)
-                prompts.append((formatted_prompt, row))
+                prompts.append((system_text, formatted_prompt, row))
 
         # produce new CV models
         B_index = 0
@@ -147,11 +148,13 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
                 for i in tqdm(range(0, len(prompts), batch_size), desc=f"Generate Codes (Batch {batch_size})"):
                     batch_raw = prompts[i:i + batch_size]
                     batch_ids, batch_rows = [], []
-                    for p_text, p_row in batch_raw:
+                    for p_system, p_text, p_row in batch_raw:
+                        msgs = [{'role': 'system', 'content': p_system}] if p_system else []
+                        msgs.append({'role': 'user', 'content': p_text})
                         try:
-                            ids = tokenizer.apply_chat_template([{'role': 'user', 'content': p_text}], add_generation_prompt=True, tokenize=True)
+                            ids = tokenizer.apply_chat_template(msgs, add_generation_prompt=True, tokenize=True)
                         except TypeError:
-                            rendered = tokenizer.apply_chat_template([{'role': 'user', 'content': p_text}], add_generation_prompt=True, tokenize=False)
+                            rendered = tokenizer.apply_chat_template(msgs, add_generation_prompt=True, tokenize=False)
                             ids = tokenizer(rendered, add_special_tokens=False).input_ids
                         if inference_gpt_oss and inference_gpt_oss_max_input_length is not None:
                             if len(ids) > inference_gpt_oss_max_input_length:
@@ -199,12 +202,14 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
                 tokenizer.padding_side = old_padding_side
             continue
 
-        for idx, prompt in tqdm(enumerate(prompts), desc="Generate Codes"):
-            prompt, origdf = prompt
-            model_dir = synth_dir(out_path) / f"Blip2Fast-A{epoch}-B{B_index}"
+        for idx, prompt_data in tqdm(enumerate(prompts), desc="Generate Codes"):
+            system_text, prompt, origdf = prompt_data
+            model_dir = synth_dir(out_path) / f"B{B_index}"
             code_file = model_dir / new_nn_file
             df_file = model_dir / 'dataframe.df'
-            inputs = tokenizer.apply_chat_template([{'role': 'user', 'content': prompt}, ], add_generation_prompt=True, return_tensors="pt")
+            msgs = [{'role': 'system', 'content': system_text}] if system_text else []
+            msgs.append({'role': 'user', 'content': prompt})
+            inputs = tokenizer.apply_chat_template(msgs, add_generation_prompt=True, return_tensors="pt")
             # Handle both tensor and BatchEncoding return types
             if hasattr(inputs, 'input_ids'):
                 inputs = inputs.input_ids.to(model.device)

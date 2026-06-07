@@ -1,69 +1,77 @@
 {
-    "optimal_channel_configuration_test": {
-        "comment": ["Test prompt for optimal channel configuration evaluation"],
-        "task": "img-classification",
-        "addon_task": null,
-        "input_list": [
-            {
-                "para": "nn_code",
-                "value": "nn_code"
-            },
-            {
-                "para": "accuracy",
-                "value": "accuracy"
-            },
-            {
-                "para": "epoch",
-                "value": "epoch"
-            },
-            {
-                "para": "dataset",
-                "value": "dataset"
-            },
-            {
-                "para": "task",
-                "value": "task"
-            },
-            {
-                "para": "metric",
-                "value": "metric"
-            },
-            {
-                "para": "metric_code",
-                "value": "metric_code"
-            },
-            {
-                "para": "transform_code",
-                "value": "transform_code"
-            },
-            {
-                "para": "prm",
-                "value": "prm"
-            }
-        ],
-        "no_repeat": [],
-        "keep_same": [],
-        "prompt": [
-            "Provide the training hyperparameters (as a JSON object between XML tags <hp> and </hp>), corresponding transformer code (as a Python code between XML tags <tr> and </tr>) and neural network model (as a Python code between XML tags <nn> and </nn>) that achieves a maximum value for the metric '{metric}' after first epoch of training on the '{dataset}' dataset for the task '{task}'.",
-            "1. Training hyperparameters (JSON object between XML tags <hp> and </hp>):",
-            "  Obligatory keys \"batch\", \"transform\", and all keys from the 'supported_hyperparameters' function in model code. Do not use any other keys like \"hp*\".",
-            "  If unsure, use: \"batch\": 64, \"transform\": \"norm_256_flip\".",
-            "2. Transformer code (full code between XML tags <tr> and </tr>):",
-            "  Use any appropriate transformers available in 'torchvision' package, or your custom implementations.",
-            "3. Neural network model (Python code between XML tags <nn> and </nn>):",
-            "   Focus specifically on changing the channel configuration throughout the network architecture.",
-            "   It's critical to modify the returned model's internal architecture with channel dimensions by:",
-            "   - Strategically adjusting channel dimensions at each layer for better feature extraction",
-            "   - Analyze and optimize channel dimensions at each layer for better feature extraction",
-            "   - Examine and establish new channel growth/reduction patterns",
-            "   - Consider computational constraints and parameter efficiency",
-            "   - Try different channel configurations align with dataset complexity and task requirements",
-            "   Examine channel sizes, patterns and ideas from the following reference LEMUR Dataset neural network model and its training configuration, which achieved for a metric '{metric}' value of {accuracy} at epoch {epoch} on the '{dataset}' dataset for the task '{task}' with training hyperparameters <hp>{prm}</hp>, and a code provided in the corresponding tags:",
-            "<tr>{transform_code}</tr>",
-            "<metric>{metric_code}</metric>",
-            "<nn>{nn_code}</nn>",
-            "Ensure the neural network code follows the LEMUR NN Dataset conventions and focuses on channel configuration optimization.",
-            "Provide a single final JSON object with the hyperparameters, a single complete code of the transformer and a single complete Python neural network model code, without any truncations or missing parts."
-        ]
-    }
+  "optimal_channel_configuration_test": {
+    "comment": [
+      "Test prompt for optimal channel configuration evaluation"
+    ],
+    "system": [
+      "You are an expert PyTorch neural network architect specialising in channel dimension optimisation.",
+      "Redesign CNN channel configurations to maximise feature extraction efficiency and accuracy.",
+      "Analyse channel growth/reduction patterns and computational constraints carefully.",
+      "Always follow LEMUR NN Dataset conventions and output only the requested XML tags (<hp>, <tr>, <nn>)."
+    ],
+    "task": "img-classification",
+    "addon_task": null,
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "epoch",
+        "value": "epoch"
+      },
+      {
+        "para": "dataset",
+        "value": "dataset"
+      },
+      {
+        "para": "task",
+        "value": "task"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "metric_code",
+        "value": "metric_code"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "prompt": [
+      "Provide the training hyperparameters (as a JSON object between XML tags <hp> and </hp>), corresponding transformer code (as a Python code between XML tags <tr> and </tr>) and neural network model (as a Python code between XML tags <nn> and </nn>) that achieves a maximum value for the metric '{metric}' after first epoch of training on the '{dataset}' dataset for the task '{task}'.",
+      "1. Training hyperparameters (JSON object between XML tags <hp> and </hp>):",
+      "  Obligatory keys \"batch\", \"transform\", and all keys from the 'supported_hyperparameters' function in model code. Do not use any other keys like \"hp*\".",
+      "  If unsure, use: \"batch\": 64, \"transform\": \"norm_256_flip\".",
+      "2. Transformer code (full code between XML tags <tr> and </tr>):",
+      "  Use any appropriate transformers available in 'torchvision' package, or your custom implementations.",
+      "3. Neural network model (Python code between XML tags <nn> and </nn>):",
+      "   Focus specifically on changing the channel configuration throughout the network architecture.",
+      "   It's critical to modify the returned model's internal architecture with channel dimensions by:",
+      "   - Strategically adjusting channel dimensions at each layer for better feature extraction",
+      "   - Analyze and optimize channel dimensions at each layer for better feature extraction",
+      "   - Examine and establish new channel growth/reduction patterns",
+      "   - Consider computational constraints and parameter efficiency",
+      "   - Try different channel configurations align with dataset complexity and task requirements",
+      "   Examine channel sizes, patterns and ideas from the following reference LEMUR Dataset neural network model and its training configuration, which achieved for a metric '{metric}' value of {accuracy} at epoch {epoch} on the '{dataset}' dataset for the task '{task}' with training hyperparameters <hp>{prm}</hp>, and a code provided in the corresponding tags:",
+      "<tr>{transform_code}</tr>",
+      "<metric>{metric_code}</metric>",
+      "<nn>{nn_code}</nn>",
+      "Ensure the neural network code follows the LEMUR NN Dataset conventions and focuses on channel configuration optimization.",
+      "Provide a single final JSON object with the hyperparameters, a single complete code of the transformer and a single complete Python neural network model code, without any truncations or missing parts."
+    ]
+  }
 }

@@ -35,13 +35,14 @@ class NNGenPrompt(Prompt):
         """
         prompt_lists = []
 
-        with open(self.prompts_path) as prompt_file: # /workspace/nn-gpt/ab/gpt/conf/prompt/train/NN_gen.json
+        # /workspace/nn-gpt/ab/gpt/conf/prompt/train/NN_gen.json
+        with open(self.prompts_path) as prompt_file:
             prompt_dict = json.load(prompt_file)
         assert isinstance(prompt_dict, dict)
 
-
         for key in prompt_dict.keys():
-            dataframe = DataFrame(columns=['instruction', 'context', 'response', 'category', 'text'])
+            dataframe = DataFrame(
+                columns=['instruction', 'context', 'response', 'category', 'text'])
             prompt_lists.append(dataframe)
             prompt = '\n'.join(prompt_dict[key]['prompt'])
             print('Preparing Data...', flush=True)
@@ -51,6 +52,9 @@ class NNGenPrompt(Prompt):
             # For JOIN queries, do NOT pass max_rows — the LIMIT applies before
             # the JOIN and causes an O(n²) correlated scan. Slice the result after.
             use_join = num_joint_nns >= 2
+            system_text = '\n'.join(prompt_dict[key].get('system', []))
+            prompt_template = '\n'.join(prompt_dict[key]['prompt'])
+            print(f'Preparing Data for key: {key}...', flush=True)
 
             # ========== SMALL SWITCH TO DETECT PRUNING CONFIG ==========
             # Check if this is a pruning task (key starts with 'pruning' or contains 'pruning')
@@ -67,7 +71,8 @@ class NNGenPrompt(Prompt):
                 # Filter only successful pruning experiments
                 if 'status' in data.columns:
                     data = data[data['status'] == 'success']
-                print(f"[PRUN] Fetched {len(data)} records from PRUN table for key: {key}")
+                print(
+                    f"[PRUN] Fetched {len(data)} records from PRUN table for key: {key}")
             else:
                 # for classification tasks: Patch LEMUR's join query before the data call so that dataset_2
                 # and its siblings appear in the result set.
@@ -97,12 +102,13 @@ class NNGenPrompt(Prompt):
             print('Data acquisition complete', flush=True)
 
             # Check if this is delta mode
-            use_delta = key_dict.get('use_delta', False) or 'delta' in key.lower()
+            use_delta = key_dict.get(
+                'use_delta', False) or 'delta' in key.lower()
 
             for _, row in tqdm(data.iterrows(), total=n_training_prompts or len(data)):
                 if n_training_prompts and len(dataframe) >= n_training_prompts:
                     break
-                
+
                 para_dict = dict()
                 for it in prompt_dict[key]['input_list']:
                     # Handle column name mapping gracefully
@@ -115,9 +121,11 @@ class NNGenPrompt(Prompt):
                         elif db_column == 'nn' and 'model_name' in row:
                             para_dict[it['para']] = row['model_name']
                         else:
-                            para_dict[it['para']] = row.get(db_column, f"Missing: {db_column}")
+                            para_dict[it['para']] = row.get(
+                                db_column, f"Missing: {db_column}")
                     except Exception as e:
-                        print(f"[WARNING] Could not get column '{db_column}': {e}")
+                        print(
+                            f"[WARNING] Could not get column '{db_column}': {e}")
                         para_dict[it['para']] = None
 
                 nn_code_max_chars = key_dict.get('nn_code_max_chars')
@@ -144,7 +152,8 @@ class NNGenPrompt(Prompt):
                         improved_code = para_dict.get('addon_nn_code', '')
 
                         if baseline_code and improved_code:
-                            computed_delta = compute_delta(baseline_code, improved_code)
+                            computed_delta = compute_delta(
+                                baseline_code, improved_code)
                             if not computed_delta:
                                 computed_delta = ""
                         else:
@@ -157,9 +166,11 @@ class NNGenPrompt(Prompt):
                             response = output
                             for k, v in para_dict.items():
                                 response = response.replace(f'{{{k}}}', str(v))
-                        response = response.replace('{computed_delta}', computed_delta)
+                        response = response.replace(
+                            '{computed_delta}', computed_delta)
                     except Exception as e:
-                        print(f'[WARNING] Failed to compute delta for key {key}: {e}. Using regular output.', flush=True)
+                        print(
+                            f'[WARNING] Failed to compute delta for key {key}: {e}. Using regular output.', flush=True)
                         output = '\n'.join(prompt_dict[key]['output'])
                         try:
                             response = output.format(**para_dict)
@@ -180,16 +191,19 @@ class NNGenPrompt(Prompt):
                 # ========== PRINT FOR VERIFICATION (AFTER response EXISTS) ==========
                 if len(dataframe) < 10:
                     print(f"\n[EXAMPLE {len(dataframe)+1}]:")
-                    print(f"INPUT: {inst[:1000]}...")
+                    print(f"SYS: {system_text}")
+                    print(f"USER: {inst[:1000]}...")
                     print(f"OUTPUT: {response[:500]}...")
                     print("-" * 50)
                 # ================================================================
 
                 text = self.tokenizer.apply_chat_template(
-                    [
-                        {'role': 'user', 'content': inst},
-                        {'role': 'assistant', 'content': response}
-                    ], tokenize=False)
+                    self._build_messages(
+                        inst, response, system_prompt=system_text or None),
+                    tokenize=False)
+
+                # print(f"Prompt: {inst}", flush=True)
+                # print(f"Output: {response}", flush=True)
 
                 dataframe.loc[len(dataframe)] = [inst, "", response, "", text]
 

@@ -1,32 +1,37 @@
 {
-    "improvement_classification_codeonly": {
-        "comment": [
-            "para: where you fill in content, value: where data come from (colum key in api.data() DataFrame).",
-            "task(only in addon_list): which task the additional content come from.",
-            "comment: explain the usage of this file"
-        ],
-        "input_list": [
-            {
-                "para": "nn_code",
-                "value": "nn_code"
-            }
-        ],
-        "addon_list": [],
-        "task": "img-classification",
-        "addon_task": "img-classification",
-        "no_repeat": [],
-        "keep_same": [],
-        "prompt": [
-            "Modify this PyTorch model to improve image classification, with the following constraints:",
-            "The class name must be `Net`.",
-            "Keep the `train_setup` and `learn` method",
-            "Strictly NO use of models in `torchvision`.",
-            "DO NOT have any comments.",
-            "Output the full code only.",
-            "NOT use ``` to wrap the code.",
-            "You can only modify the layers in the `__init__` method.",
-            "You can only modify the `forward` method.",
-            "{nn_code}"
-        ]
-    }
+  "improvement_classification_codeonly": {
+    "comment": [
+      "para: where you fill in content, value: where data come from (colum key in api.data() DataFrame).",
+      "task(only in addon_list): which task the additional content come from.",
+      "comment: explain the usage of this file"
+    ],
+    "system": [
+      "You are an expert PyTorch neural network architect.",
+      "Improve the given neural network to achieve higher accuracy on image classification tasks.",
+      "Always follow LEMUR NN Dataset conventions and output only the requested XML tags (<hp>, <tr>, <nn>)."
+    ],
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      }
+    ],
+    "addon_list": [],
+    "task": "img-classification",
+    "addon_task": "img-classification",
+    "no_repeat": [],
+    "keep_same": [],
+    "prompt": [
+      "Modify this PyTorch model to improve image classification, with the following constraints:",
+      "The class name must be `Net`.",
+      "Keep the `train_setup` and `learn` method",
+      "Strictly NO use of models in `torchvision`.",
+      "DO NOT have any comments.",
+      "Output the full code only.",
+      "NOT use ``` to wrap the code.",
+      "You can only modify the layers in the `__init__` method.",
+      "You can only modify the `forward` method.",
+      "{nn_code}"
+    ]
+  }
 }

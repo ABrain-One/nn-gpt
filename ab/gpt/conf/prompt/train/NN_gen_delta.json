@@ -3,25 +3,69 @@
     "comment": [
       "Delta-based generation: LLM generates code deltas instead of full code"
     ],
+    "system": [
+      "You are an expert software engineer specialising in neural network optimisation.",
+      "Generate precise unified diffs that improve model accuracy without breaking the existing architecture.",
+      "Never modify frozen or infrastructure sections. Output only valid unified diff format inside the requested XML tags."
+    ],
     "use_delta": true,
     "task": "img-classification",
     "addon_task": null,
     "num_joint_nns": 2,
     "improve": true,
     "input_list": [
-      {"para": "nn_code", "value": "nn_code"},
-      {"para": "accuracy", "value": "accuracy"},
-      {"para": "epoch", "value": "epoch"},
-      {"para": "dataset", "value": "dataset"},
-      {"para": "task", "value": "task"},
-      {"para": "metric", "value": "metric"},
-      {"para": "transform_code", "value": "transform_code"},
-      {"para": "prm", "value": "prm"},
-      {"para": "addon_accuracy", "value": "accuracy_2"},
-      {"para": "addon_epoch", "value": "epoch_2"},
-      {"para": "addon_nn_code", "value": "nn_code_2"},
-      {"para": "addon_transform_code", "value": "transform_code_2"},
-      {"para": "addon_prm", "value": "prm_2"}
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "epoch",
+        "value": "epoch"
+      },
+      {
+        "para": "dataset",
+        "value": "dataset"
+      },
+      {
+        "para": "task",
+        "value": "task"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      },
+      {
+        "para": "addon_accuracy",
+        "value": "accuracy_2"
+      },
+      {
+        "para": "addon_epoch",
+        "value": "epoch_2"
+      },
+      {
+        "para": "addon_nn_code",
+        "value": "nn_code_2"
+      },
+      {
+        "para": "addon_transform_code",
+        "value": "transform_code_2"
+      },
+      {
+        "para": "addon_prm",
+        "value": "prm_2"
+      }
     ],
     "no_repeat": ["nn"],
     "keep_same": ["epoch", "metric", "dataset", "task"],
