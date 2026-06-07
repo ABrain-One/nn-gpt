@@ -69,7 +69,7 @@ def main():
     # the generic AlterNN.py functionality for other students.
     print("Applying captioning-specific skeleton assembly to generated models...")
     from pathlib import Path
-    from ab.gpt.util.Util import assemble_nn_code
+    from ab.gpt.util.CaptioningUtil import assemble_nn_code
     
     base_path = Path("out/nngpt/llm/epoch/")
     count = 0

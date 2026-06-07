@@ -33,7 +33,7 @@ class LLM:
                  gguf_file=None,
                  training_args=None,
                  use_unsloth=False,
-                 load_in_4bit=False):
+                 load_in_4bit=True):
         self.context_length = context_length
         self._use_unsloth = use_unsloth
         

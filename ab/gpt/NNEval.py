@@ -14,6 +14,7 @@ from ab.nn.util.Util import release_memory, uuid4
 from ab.gpt.util.Util import read_py_file_as_string
 import ab.nn.api as nn_dataset
 from ab.gpt.util.Const import epoch_dir, new_nn_file, nngpt_dir, synth_dir, hp_file, NN_TRAIN_EPOCHS
+from ab.gpt.util.Eval import Eval
 from ab.gpt.util.Util import verify_nn_code, copy_to_lemur
 from ab.gpt.util.CycleResults import generate_cycle_results, collect_cycle_metrics, save_cycle_results
 from ab.gpt.util import nneval_worker_pool as NNEvalWorkerPool
@@ -71,8 +72,7 @@ def main(nn_name_prefix=NN_NAME_PREFIX, nn_train_epochs=NN_TRAIN_EPOCHS, only_ep
          prm_json=PRM_JSON,
          feature_cache_dir=None, feature_cache_mode='read', num_workers=0, pin_memory=False,
          freeze_gpt2=False, force_eval=False):
-    import sys
-    print(f"DEBUG: sys.argv={sys.argv}")
+    run_summary = {"epochs": []}  # Upstream API compatibility
     
     # SE STANDARD: Use relative path resolution via Const.py for generalization
     base_nngpt_path = nngpt_dir
@@ -171,6 +171,7 @@ def main(nn_name_prefix=NN_NAME_PREFIX, nn_train_epochs=NN_TRAIN_EPOCHS, only_ep
             # Ensure CLI overrides last only if explicitly provided or missing
             if lr != LR or 'lr' not in prm: prm['lr'] = lr
             if batch != BATCH or 'batch' not in prm: prm['batch'] = batch
+            if num_workers != 0 or 'num_workers' not in prm: prm['num_workers'] = num_workers
             prm['epoch'] = nn_train_epochs
             
             print(f"DEBUG: CLI transform={transform}, Default TRANSFORM={TRANSFORM}, prm['transform'] before override={prm.get('transform')}")
@@ -187,7 +188,7 @@ def main(nn_name_prefix=NN_NAME_PREFIX, nn_train_epochs=NN_TRAIN_EPOCHS, only_ep
                 if epoch_limit_minutes: evaluator.epoch_limit_minutes = epoch_limit_minutes
                 
                 # --- Lightweight NAS Bridge Contract Check ---
-                if task == 'img-captioning' and prm.get('transform') == 'cached_blip2':
+                if task == 'img-captioning' and prm.get('transform') in ['cached_blip2', 'cached_blip2fast_processor']:
                     print(f"  [NAS] Checking CrossModalBridge shape contract for {model_id}...")
                     try:
                         import torch

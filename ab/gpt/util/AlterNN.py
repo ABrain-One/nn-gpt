@@ -463,7 +463,10 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
                     
                     # IMMEDIATELY assemble the code using the updated Util template
                     try:
-                        from ab.gpt.util.Util import assemble_nn_code
+                        if "CrossModalBridge" in llm_code or "Blip2Fast" in llm_code:
+                            from ab.gpt.util.CaptioningUtil import assemble_nn_code
+                        else:
+                            from ab.gpt.util.Util import assemble_nn_code
                         from ab.nn.util.Util import uuid4
                         assembled_code = assemble_nn_code(llm_code)
                         assembled_code += f"\n\n# Trial ID: {uuid4(assembled_code)}\n"
@@ -503,7 +506,10 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
                 
                 # IMMEDIATELY assemble the code using the updated Util template
                 try:
-                    from ab.gpt.util.Util import assemble_nn_code
+                    if "CrossModalBridge" in llm_code or "Blip2Fast" in llm_code:
+                        from ab.gpt.util.CaptioningUtil import assemble_nn_code
+                    else:
+                        from ab.gpt.util.Util import assemble_nn_code
                     from ab.nn.util.Util import uuid4
                     assembled_code = assemble_nn_code(llm_code)
                     assembled_code += f"\n\n# Trial ID: {uuid4(assembled_code)}\n"
