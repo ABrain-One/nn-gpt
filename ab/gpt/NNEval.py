@@ -14,7 +14,6 @@ from ab.nn.util.Util import release_memory, uuid4
 from ab.gpt.util.Util import read_py_file_as_string
 import ab.nn.api as nn_dataset
 from ab.gpt.util.Const import epoch_dir, new_nn_file, nngpt_dir, synth_dir, hp_file, NN_TRAIN_EPOCHS
-from ab.gpt.util.Eval import Eval
 from ab.gpt.util.Util import verify_nn_code, copy_to_lemur
 from ab.gpt.util.CycleResults import generate_cycle_results, collect_cycle_metrics, save_cycle_results
 from ab.gpt.util import nneval_worker_pool as NNEvalWorkerPool
@@ -62,286 +61,873 @@ CUSTOM_SYNTH_DIR = None
 CYCLE = None
 
 
-def main(nn_name_prefix=NN_NAME_PREFIX, nn_train_epochs=NN_TRAIN_EPOCHS, only_epoch=ONLY_EPOCH, save_to_db=SAVE_TO_DB,
-         nn_alter_epochs=NN_ALTER_EPOCHS, task=TASK, dataset=DATASET, metric=METRIC, lr=LR, batch=BATCH, dropout=DROPOUT, momentum=MOMENTUM,
-         transform=TRANSFORM, epoch_limit_minutes=EPOCH_LIMIT_MINUTES, custom_synth_dir=CUSTOM_SYNTH_DIR, cycle=CYCLE,
-         stochastic_depth_prob=STOCHASTIC_DEPTH_PROB, norm_eps=NORM_EPS, norm_std=NORM_STD, tie_weights=TIE_WEIGHTS,
-         dropout_aux=DROPOUT_AUX, attention_dropout=ATTENTION_DROPOUT, norm_momentum=NORM_MOMENTUM,
-         score_thresh=SCORE_THRESH, nms_thresh=NMS_THRESH, iou_thresh=IOU_THRESH, detections_per_img=DETECTIONS_PER_IMG,
-         topk_candidates=TOPK_CANDIDATES, neg_to_pos_ratio=NEG_TO_POS_RATIO, pretrained=PRETRAINED, patch_size=PATCH_SIZE,
-         prm_json=PRM_JSON,
-         feature_cache_dir=None, feature_cache_mode='read', num_workers=0, pin_memory=False,
-         freeze_gpt2=False, force_eval=False):
-    run_summary = {"epochs": []}  # Upstream API compatibility
-    
-    # SE STANDARD: Use relative path resolution via Const.py for generalization
-    base_nngpt_path = nngpt_dir
-    epoch_base = epoch_dir()
-    
-    if not epoch_base.is_dir():
-        print(f"[ERROR] Epoch directory {epoch_base} doesn't exist.")
+def _resolve_use_all_visible_gpus(use_all_visible_gpus: Optional[bool]) -> bool:
+    if use_all_visible_gpus is not None:
+        return bool(use_all_visible_gpus)
+    raw = os.getenv("NNGPT_NNEVAL_USE_ALL_VISIBLE_GPUS")
+    if raw is None or raw == "":
+        return True
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _default_eval_prm(
+    *,
+    lr: float,
+    batch: int,
+    dropout: float,
+    momentum: float,
+    transform: str,
+    stochastic_depth_prob: float,
+    norm_eps: float,
+    norm_std: float,
+    tie_weights: float,
+    dropout_aux: float,
+    attention_dropout: float,
+    norm_momentum: float,
+    score_thresh: float,
+    nms_thresh: float,
+    iou_thresh: float,
+    detections_per_img: float,
+    topk_candidates: float,
+    neg_to_pos_ratio: float,
+    pretrained: float,
+    patch_size: float,
+    feature_cache_dir: Optional[str] = None,
+    feature_cache_mode: str = 'read',
+    num_workers: int = 0,
+    pin_memory: bool = False,
+    freeze_gpt2: bool = False,
+) -> Dict[str, Any]:
+    # Build the baseline prm payload before per-model metadata or explicit
+    # prm_json overrides are applied.
+    return {
+        "lr": lr,
+        "batch": batch,
+        "dropout": dropout,
+        "momentum": momentum,
+        "transform": transform,
+        "stochastic_depth_prob": stochastic_depth_prob,
+        "norm_eps": norm_eps,
+        "norm_std": norm_std,
+        "tie_weights": tie_weights,
+        "dropout_aux": dropout_aux,
+        "attention_dropout": attention_dropout,
+        "norm_momentum": norm_momentum,
+        "score_thresh": score_thresh,
+        "nms_thresh": nms_thresh,
+        "iou_thresh": iou_thresh,
+        "detections_per_img": detections_per_img,
+        "topk_candidates": topk_candidates,
+        "neg_to_pos_ratio": neg_to_pos_ratio,
+        "pretrained": pretrained,
+        "patch_size": patch_size,
+        "feature_cache_dir": feature_cache_dir,
+        "feature_cache_mode": feature_cache_mode,
+        "num_workers": num_workers,
+        "pin_memory": pin_memory,
+        "freeze_gpt2": freeze_gpt2,
+    }
+
+
+def _extract_accuracy_from_eval_payload(payload: Dict[str, Any]) -> Optional[float]:
+    eval_results = payload.get("eval_results")
+    if not isinstance(eval_results, dict):
+        return None
+    accuracy = eval_results.get("accuracy", eval_results.get("acc"))
+    if accuracy is None:
+        epochs_data = eval_results.get("epochs", [])
+        if epochs_data:
+            first_epoch = epochs_data[0] or {}
+            if isinstance(first_epoch, dict):
+                accuracy = first_epoch.get("accuracy", first_epoch.get("acc"))
+    if accuracy is None:
+        return None
+    try:
+        return float(accuracy)
+    except (TypeError, ValueError):
+        return None
+
+
+def _load_existing_success_result(model_dir_path: Path) -> Optional[Dict[str, Any]]:
+    eval_info_path = model_dir_path / "eval_info.json"
+    if not eval_info_path.exists():
+        return None
+    try:
+        payload = json.loads(eval_info_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    accuracy = _extract_accuracy_from_eval_payload(payload)
+    if accuracy is None:
+        return None
+    return {
+        "model_id": model_dir_path.name,
+        "success": True,
+        "accuracy": float(accuracy),
+        "skipped": True,
+        "code_file": str(model_dir_path / new_nn_file),
+    }
+
+
+def _validate_full_stat_artifact(model_dir_path: Path, *, save_to_db: bool) -> None:
+    stat_path = model_dir_path / "1.json"
+    if not stat_path.exists():
+        if save_to_db:
+            raise FileNotFoundError(
+                f"Expected full nn-dataset stat artifact at {stat_path}; "
+                "NNEval must not replace it with a slim summary."
+            )
         return
 
-    # Scan all epoch directories matching * pattern (e.g., A0, A1, etc.)
-    if custom_synth_dir:
-        epoch_dirs = [Path("custom_epoch")]
-        print("Using custom synth directory, bypassing epoch scan.")
-    else:
-        epoch_dirs = sorted(list(epoch_base.glob("*")))
-        print(f"Found {len(epoch_dirs)} epoch directories to scan.")
-    
-    for current_alter_epoch_path in epoch_dirs:
-        # Filter by only_epoch if specified
-        valid_names = {f"A{only_epoch}", f"Epoch_{only_epoch}"}
-        if only_epoch is not None and not custom_synth_dir and current_alter_epoch_path.name not in valid_names:
+    try:
+        payload = json.loads(stat_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ValueError(f"Invalid stat artifact JSON at {stat_path}: {exc}") from exc
+
+    rows = payload if isinstance(payload, list) else [payload]
+    required = {"uid", "transform", "duration", "accuracy"}
+    if not any(isinstance(row, dict) and required.issubset(row) for row in rows):
+        raise ValueError(
+            f"Stat artifact at {stat_path} is not a full nn-dataset trial JSON; "
+            f"missing required fields {sorted(required)}."
+        )
+
+
+def _write_success_outputs(spec: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any]:
+    model_dir_path = Path(spec["model_dir"])
+    accuracy = float(result["accuracy"])
+    _validate_full_stat_artifact(model_dir_path, save_to_db=bool(spec.get("save_to_db")))
+    eval_info_data = {
+        "eval_args": result.get("eval_args", {}),
+        "eval_results": {
+            "checksum": result.get("checksum"),
+            "accuracy": accuracy,
+            "full_result": result.get("full_result", ""),
+        },
+        "cli_args": {
+            "task": spec["task"],
+            "dataset": spec["dataset"],
+            "metric": spec["metric"],
+            "lr": spec["prm"].get("lr"),
+            "batch": spec["prm"].get("batch"),
+            "dropout": spec["prm"].get("dropout"),
+            "momentum": spec["prm"].get("momentum"),
+            "transform": spec["prm"].get("transform"),
+        },
+    }
+    (model_dir_path / "eval_summary.json").write_text(
+        json.dumps([{"epoch": int(spec["prm"].get("epoch", 1)), "accuracy": accuracy}], indent=2),
+        encoding="utf-8",
+    )
+    (model_dir_path / "eval_info.json").write_text(
+        json.dumps(eval_info_data, indent=4, default=str),
+        encoding="utf-8",
+    )
+    error_path = model_dir_path / "error.txt"
+    if error_path.exists():
+        error_path.unlink()
+    verification_failure_path = model_dir_path / "eval_verification_failed.txt"
+    if verification_failure_path.exists():
+        verification_failure_path.unlink()
+
+    nn_name = uuid4(read_py_file_as_string(spec["code_file"]))
+    lemur_prefix = spec.get("lemur_prefix")
+    if lemur_prefix:
+        nn_name = str(lemur_prefix) + "-" + nn_name
+    copy_to_lemur(
+        model_dir_path,
+        nn_name,
+        spec["task"],
+        spec["dataset"],
+        spec["metric"],
+    )
+    return {
+        "model_id": spec["model_id"],
+        "success": True,
+        "accuracy": accuracy,
+        "skipped": False,
+        "code_file": spec["code_file"],
+    }
+
+
+def _write_failure_outputs(spec: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any]:
+    model_dir_path = Path(spec["model_dir"])
+    error_text = str(result.get("error", "Unknown evaluation error"))
+    traceback_text = str(result.get("traceback", ""))
+    (model_dir_path / "error.txt").write_text(
+        f"{error_text}\n\n{traceback_text}".strip() + "\n",
+        encoding="utf-8",
+    )
+    return {
+        "model_id": spec["model_id"],
+        "success": False,
+        "error": error_text,
+        "is_oom": bool(result.get("is_oom", False)),
+        "skipped": False,
+    }
+
+
+def _build_eval_request(
+    *,
+    model_id: str,
+    model_dir_path: Path,
+    code_file_path: Path,
+    task: str,
+    dataset: str,
+    metric: str,
+    prm: Dict[str, Any],
+    save_to_db: bool,
+    prefix_for_db: Optional[str],
+    epoch_limit_minutes: Optional[int],
+    lemur_prefix: Optional[str],
+) -> Dict[str, Any]:
+    return {
+        "model_id": str(model_id),
+        "model_dir": str(model_dir_path),
+        "code_file": str(code_file_path),
+        "task": str(task),
+        "dataset": str(dataset),
+        "metric": str(metric),
+        "prm": dict(prm),
+        "save_to_db": bool(save_to_db),
+        "prefix": prefix_for_db,
+        "save_path": str(model_dir_path),
+        "epoch_limit_minutes": epoch_limit_minutes,
+        "lemur_prefix": lemur_prefix,
+        "use_ast_validation": None,
+    }
+
+
+def _collect_epoch_requests(
+    *,
+    models_base_dir: Path,
+    nn_name_prefix: Optional[str],
+    nn_train_epochs: int,
+    save_to_db: bool,
+    task: str,
+    dataset: str,
+    metric: str,
+    lr: float,
+    batch: int,
+    dropout: float,
+    momentum: float,
+    transform: str,
+    stochastic_depth_prob: float,
+    norm_eps: float,
+    norm_std: float,
+    tie_weights: float,
+    dropout_aux: float,
+    attention_dropout: float,
+    norm_momentum: float,
+    score_thresh: float,
+    nms_thresh: float,
+    iou_thresh: float,
+    detections_per_img: float,
+    topk_candidates: float,
+    neg_to_pos_ratio: float,
+    pretrained: float,
+    patch_size: float,
+    prm_json: Optional[Dict[str, Any]],
+    epoch_limit_minutes: Optional[int],
+    feature_cache_dir: Optional[str],
+    feature_cache_mode: str,
+    num_workers: int,
+    pin_memory: bool,
+    freeze_gpt2: bool,
+) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    requests: List[Dict[str, Any]] = []
+    immediate_results: List[Dict[str, Any]] = []
+    base_nngpt_path = nngpt_dir
+
+    for model_id in sorted(os.listdir(models_base_dir)):
+        model_dir_path = models_base_dir / model_id
+        if not model_dir_path.is_dir():
             continue
-            
-        models_base_dir = current_alter_epoch_path / "synth_nn"
-        if custom_synth_dir:
-            models_base_dir = Path(custom_synth_dir)
-            
-        if not models_base_dir.is_dir():
-            print(f"Directory {models_base_dir} not found. Skipping.")
+
+        code_file_path = model_dir_path / new_nn_file
+        df_file_path = model_dir_path / "dataframe.df"
+
+        if not code_file_path.exists():
+            print(f"Code file {new_nn_file} not found in {model_dir_path}. Skipping.")
             continue
-        
-        print(f"\n--- Scanning NNAlter Epoch: {current_alter_epoch_path.name} ---")
-        cycle_start_time = time.time()
-        current_cycle = cycle if cycle is not None else current_alter_epoch_path.name
-        
-        for model_id in os.listdir(models_base_dir):
-            model_dir_path = models_base_dir / model_id
-            if not model_dir_path.is_dir(): continue
 
-            code_file_path = model_dir_path / new_nn_file
-            if not code_file_path.exists(): continue
+        existing_result = _load_existing_success_result(model_dir_path)
+        if existing_result is not None:
+            print(
+                f"  [SKIP] {model_dir_path.relative_to(base_nngpt_path)} already evaluated "
+                f"({existing_result['accuracy'] * 100:.2f}%)"
+            )
+            immediate_results.append(existing_result)
+            continue
 
-            if not force_eval and (model_dir_path / 'eval_info.json').exists():
-                print(f"  [SKIP] Model {model_id} already evaluated (eval_info.json exists).")
-                continue
-
-            print(f"\n--- Evaluating Model: {model_id} ---")
-
-            if not verify_nn_code(model_dir_path, code_file_path):
-                print(f"Code verification failed for {model_id}. Skipping.")
-                continue
-
-            # Construct Hyperparameters (prm)
-            prm = {
-                'lr': lr, 'batch': batch, 'dropout': dropout, 'momentum': momentum,
-                'transform': transform, 'epoch': nn_train_epochs,
-                'limit': prm_json.get('limit', 7000) if prm_json else 7000,
-                'num_workers': num_workers, 'pin_memory': pin_memory,
-                'feature_cache_dir': feature_cache_dir, 'feature_cache_mode': feature_cache_mode,
-                'freeze_gpt2': freeze_gpt2
-            }
-            
-            prefix_for_db = nn_name_prefix
-            orig_pref = None
-            
-            # 1. Try SQL Priority (Professor Requirement)
-            try:
-                original_files = list(model_dir_path.glob("original_*.py"))
-                if original_files:
-                    with open(original_files[0], 'r') as f:
-                        b_code = f.read()
-                    b_checksum = uuid4(b_code)
-                    db_df = nn_dataset.data(nn=b_checksum)
-                    if not db_df.empty:
-                        row = db_df.iloc[0]
-                        task, dataset, metric = row.get('task', task), row.get('dataset', dataset), row.get('metric', metric)
-                        if isinstance(row.get('prm'), dict): prm.update(row['prm'])
-                        orig_pref = row['nn'].split('-')[0] if 'nn' in row else None
-                        print(f"  [SQL] Found baseline metadata for {b_checksum}")
-            except Exception: pass
-
-            # 2. Fallback to dataframe.df if SQL failed or was incomplete
-            df_file_path = model_dir_path / 'dataframe.df'
-            if df_file_path.exists():
-                try:
-                    origdf = pd.read_pickle(df_file_path)
-                    task = origdf.get('task', task)
-                    dataset = origdf.get('dataset', dataset)
-                    metric = origdf.get('metric', metric)
-                    if isinstance(origdf.get('prm'), dict): prm.update(origdf['prm'])
-                    orig_pref = orig_pref or (origdf['nn'].split('-')[0] if 'nn' in origdf else None)
-                except Exception: pass
-
-            if prm_json: prm.update(prm_json)
-            
-            # Ensure CLI overrides last only if explicitly provided or missing
-            if lr != LR or 'lr' not in prm: prm['lr'] = lr
-            if batch != BATCH or 'batch' not in prm: prm['batch'] = batch
-            if num_workers != 0 or 'num_workers' not in prm: prm['num_workers'] = num_workers
-            prm['epoch'] = nn_train_epochs
-            
-            print(f"DEBUG: CLI transform={transform}, Default TRANSFORM={TRANSFORM}, prm['transform'] before override={prm.get('transform')}")
-            if transform != TRANSFORM or 'transform' not in prm: prm['transform'] = transform
-            print(f"DEBUG: prm['transform'] after override={prm.get('transform')}")
-            prefix_for_db = nn_name_prefix or orig_pref
-
-            try:
-                evaluator = Eval(
-                    model_source_package=str(model_dir_path),
-                    task=task, dataset=dataset, metric=metric, prm=prm,
-                    save_to_db=save_to_db, prefix=prefix_for_db, save_path=model_dir_path
-                )
-                if epoch_limit_minutes: evaluator.epoch_limit_minutes = epoch_limit_minutes
-                
-                # --- Lightweight NAS Bridge Contract Check ---
-                if task == 'img-captioning' and prm.get('transform') in ['cached_blip2', 'cached_blip2fast_processor']:
-                    print(f"  [NAS] Checking CrossModalBridge shape contract for {model_id}...")
-                    try:
-                        import torch
-                        import importlib.util
-                        import sys
-
-                        module_name = f"nas_check_{model_id}_{uuid4(str(code_file_path))[:8]}"
-                        spec = importlib.util.spec_from_file_location(module_name, str(code_file_path))
-                        mod = importlib.util.module_from_spec(spec)
-                        sys.modules[module_name] = mod
-                        spec.loader.exec_module(mod)
-
-                        # Check only the bridge to save memory/time
-                        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                        bridge = mod.CrossModalBridge(prm).to(device)
-                        bridge.eval()
-
-                        x = torch.randn(2, 32, 768, device=device)
-                        with torch.no_grad():
-                            y = bridge(x, None)
-
-                        if not torch.is_tensor(y) or tuple(y.shape) != (2, 32, 768):
-                            raise RuntimeError(f"Bridge shape invalid: got {tuple(y.shape) if torch.is_tensor(y) else type(y)}")
-
-                        del bridge, x, y
-                        release_memory()
-                        print("  [NAS] Bridge shape check passed.")
-                    except Exception as dry_run_err:
-                        print(f"  [SKIP] Bridge contract failed: {dry_run_err}")
-                        with open(model_dir_path / 'error.txt', 'w+') as f:
-                            f.write(f"Bridge Contract Failed: {dry_run_err}")
-                        continue
-
-                eval_results = evaluator.evaluate(code_file_path)
-                
-                eval_info_data = {
-                    "eval_args": evaluator.get_args(),
-                    "eval_results": eval_results,
-                    "cli_args": {'task': task, 'dataset': dataset, "metric": metric}
+        print(f"\n--- Evaluating Model: {model_dir_path.relative_to(base_nngpt_path)} ---")
+        if not verify_nn_code(model_dir_path, code_file_path):
+            print(f"Code verification failed for {code_file_path}. Skipping evaluation.")
+            (model_dir_path / "eval_verification_failed.txt").write_text(
+                "Initial code verification failed.\n",
+                encoding="utf-8",
+            )
+            immediate_results.append(
+                {
+                    "model_id": model_id,
+                    "success": False,
+                    "error": "Initial code verification failed.",
+                    "is_oom": False,
+                    "skipped": False,
                 }
-                with open(model_dir_path / 'eval_info.json', 'w+') as f:
-                    json.dump(eval_info_data, f, indent=4, default=str)
-                
-                # Standard Naming & LEMUR Storage (Exact Location)
-                # Save directly to the LEMUR staging area without subfolders
-                from ab.gpt.util.Const import new_lemur_nn_dir
-                Path(new_lemur_nn_dir).mkdir(parents=True, exist_ok=True)
-                
-                # Final naming: The folder name IS the proper name (Blip2Fast-A0-B0)
-                final_name = model_id
-                
-                print(f"  [Standard] Saving model to LEMUR (Flat): {new_lemur_nn_dir}/{final_name}.py")
-                shutil.copyfile(model_dir_path / new_nn_file, new_lemur_nn_dir / f"{final_name}.py")
-                
-                # Also record in stats (this handles the stat folder nesting as required by Train.py)
-                copy_to_lemur(model_dir_path, final_name, task, dataset, metric)
+            )
+            continue
 
-            except Exception as e:
-                error_msg = traceback.format_exc()
-                print(f"  [ERROR] {e}")
-                with open(model_dir_path / 'error.txt', 'w+') as f: f.write(error_msg)
-            finally:
-                release_memory()
-                time.sleep(1)
+        # Start from command-line/default values, then let per-model files
+        # override them if available.
+        resolved_task = task
+        resolved_dataset = dataset
+        resolved_metric = metric
+        prm = None
+        hp_path = model_dir_path / hp_file
+        if hp_path.exists():
+            try:
+                prm = json.loads(hp_path.read_text(encoding="utf-8"))
+                print(f"Training model {model_id} with LLM recommended prm {prm}")
+            except Exception as exc:
+                print(f"Error loading LLM recommended training params from {hp_path}: {exc}.")
+        if not prm:
+            prm = _default_eval_prm(
+                lr=lr,
+                batch=batch,
+                dropout=dropout,
+                momentum=momentum,
+                transform=transform,
+                stochastic_depth_prob=stochastic_depth_prob,
+                norm_eps=norm_eps,
+                norm_std=norm_std,
+                tie_weights=tie_weights,
+                dropout_aux=dropout_aux,
+                attention_dropout=attention_dropout,
+                norm_momentum=norm_momentum,
+                score_thresh=score_thresh,
+                nms_thresh=nms_thresh,
+                iou_thresh=iou_thresh,
+                detections_per_img=detections_per_img,
+                topk_candidates=topk_candidates,
+                neg_to_pos_ratio=neg_to_pos_ratio,
+                pretrained=pretrained,
+                patch_size=patch_size,
+                feature_cache_dir=feature_cache_dir,
+                feature_cache_mode=feature_cache_mode,
+                num_workers=num_workers,
+                pin_memory=pin_memory,
+                freeze_gpt2=freeze_gpt2,
+            )
+            print(f"Training model {model_id} with command-line/default training params {prm}")
 
-        # Cycle Results
-        cycle_time = (time.time() - cycle_start_time) / 60.0
-        metrics = collect_cycle_metrics(models_base_dir, current_alter_epoch_path)
-        c_res = generate_cycle_results(current_cycle, models_base_dir, *metrics, cycle_time, current_alter_epoch_path)
-        save_cycle_results(c_res, base_nngpt_path / "cycle_results.json")
+        prefix_for_db = nn_name_prefix
+        orig_pref = None
+        # 1. Try SQL Priority (Professor Requirement)
+        try:
+            original_files = list(model_dir_path.glob("original_*.py"))
+            if original_files:
+                with open(original_files[0], 'r') as f:
+                    b_code = f.read()
+                b_checksum = uuid4(b_code)
+                db_df = nn_dataset.data(nn=b_checksum)
+                if not db_df.empty:
+                    row = db_df.iloc[0]
+                    resolved_task = row.get('task', resolved_task)
+                    resolved_dataset = row.get('dataset', resolved_dataset)
+                    resolved_metric = row.get('metric', resolved_metric)
+                    if isinstance(row.get('prm'), dict): prm.update(row['prm'])
+                    orig_pref = row['nn'].split('-')[0] if 'nn' in row else None
+                    print(f"  [SQL] Found baseline metadata for {b_checksum}")
+        except Exception: pass
+        
+        if df_file_path.exists():
+            try:
+                origdf = pd.read_pickle(df_file_path)
+                resolved_task = origdf.get("task", resolved_task)
+                resolved_dataset = origdf.get("dataset", resolved_dataset)
+                resolved_metric = origdf.get("metric", resolved_metric)
+                orig_pref = origdf["nn"].split("-")[0]
+                original_prm_from_df = origdf.get("prm")
+                if isinstance(original_prm_from_df, dict):
+                    prm.update(original_prm_from_df)
+                prefix_for_db = nn_name_prefix or (
+                    origdf.get("nn", "unknown").split("-")[0]
+                    if "nn" in origdf
+                    else prefix_for_db
+                )
+                print(
+                    f"  Loaded metadata from dataframe.df: "
+                    f"task={resolved_task}, dataset={resolved_dataset}, metric={resolved_metric}"
+                )
+            except Exception as exc:
+                print(
+                    f"  Error loading dataframe.df from {df_file_path}: {exc}. "
+                    "Using command-line/default parameters."
+                )
+        else:
+            print("  No dataframe.df found. Using command-line/default evaluation parameters.")
 
+        if prm_json:
+            prm.update(prm_json)
+            print(f"  Applied --prm_json overrides: {prm_json}")
+
+        # Always evaluate with nn_train_epochs for this run, regardless of what
+        # may have been stored in the original prm payload.
+        prm["epoch"] = int(nn_train_epochs)
+        # NNDataset expects a real transform name, never None.
+        if prm.get("transform") is None or not isinstance(prm.get("transform"), str):
+            prm["transform"] = transform if transform else TRANSFORM
+
+        print(f"  Final parameters for Eval: {prm}")
+        print(
+            f"  Task: {resolved_task}, Dataset: {resolved_dataset}, "
+            f"Metric: {resolved_metric}, Prefix: {prefix_for_db}"
+        )
+
+        requests.append(
+            _build_eval_request(
+                model_id=model_id,
+                model_dir_path=model_dir_path,
+                code_file_path=code_file_path,
+                task=resolved_task,
+                dataset=resolved_dataset,
+                metric=resolved_metric,
+                prm=prm,
+                save_to_db=save_to_db,
+                prefix_for_db=prefix_for_db,
+                epoch_limit_minutes=epoch_limit_minutes,
+                lemur_prefix=nn_name_prefix or orig_pref,
+            )
+        )
+
+    return requests, immediate_results
+
+
+def main(
+    nn_name_prefix=NN_NAME_PREFIX,
+    nn_train_epochs=NN_TRAIN_EPOCHS,
+    only_epoch=ONLY_EPOCH,
+    save_to_db=SAVE_TO_DB,
+    nn_alter_epochs=NN_ALTER_EPOCHS,
+    task=TASK,
+    dataset=DATASET,
+    metric=METRIC,
+    lr=LR,
+    batch=BATCH,
+    dropout=DROPOUT,
+    momentum=MOMENTUM,
+    transform=TRANSFORM,
+    stochastic_depth_prob=STOCHASTIC_DEPTH_PROB,
+    norm_eps=NORM_EPS,
+    norm_std=NORM_STD,
+    tie_weights=TIE_WEIGHTS,
+    dropout_aux=DROPOUT_AUX,
+    attention_dropout=ATTENTION_DROPOUT,
+    norm_momentum=NORM_MOMENTUM,
+    score_thresh=SCORE_THRESH,
+    nms_thresh=NMS_THRESH,
+    iou_thresh=IOU_THRESH,
+    detections_per_img=DETECTIONS_PER_IMG,
+    topk_candidates=TOPK_CANDIDATES,
+    neg_to_pos_ratio=NEG_TO_POS_RATIO,
+    pretrained=PRETRAINED,
+    patch_size=PATCH_SIZE,
+    prm_json=PRM_JSON,
+    epoch_limit_minutes=EPOCH_LIMIT_MINUTES,
+    custom_synth_dir=CUSTOM_SYNTH_DIR,
+    cycle=CYCLE,
+    use_all_visible_gpus: Optional[bool] = None,
+    feature_cache_dir: Optional[str] = None,
+    feature_cache_mode: str = 'read',
+    num_workers: int = 0,
+    pin_memory: bool = False,
+    freeze_gpt2: bool = False,
+    force_eval: bool = False,
+):
+    base_nngpt_path = nngpt_dir
+    if nn_alter_epochs is None:
+        if epoch_dir().is_dir():
+            nn_alter_epochs = len(os.listdir(epoch_dir()))
+        else:
+            print(f"Directory {epoch_dir()} doesn't exist", file=sys.stderr)
+            nn_alter_epochs = 0
+
+    run_summary = {"epochs": []}
+    resolved_use_all_visible_gpus = _resolve_use_all_visible_gpus(use_all_visible_gpus)
+
+    try:
+        if nn_alter_epochs:
+            epoch_indices = [only_epoch] if only_epoch is not None else list(range(nn_alter_epochs))
+            for i in epoch_indices:
+                # Track cycle number and epoch number separately. Iterative
+                # pipelines may reuse a cycle label across different epoch dirs.
+                current_cycle = cycle if cycle is not None else i
+                current_epoch = i
+                cycle_start_time = time.time()
+                # Path to one NNAlter epoch output, e.g. out/nngpt/llm/epoch/A0.
+                current_alter_epoch_path = epoch_dir(i)
+                # Allow callers to point directly at a synth dir instead of
+                # deriving it from epoch_dir().
+                models_base_dir = Path(custom_synth_dir) if custom_synth_dir else synth_dir(current_alter_epoch_path)
+
+                if not models_base_dir.exists():
+                    print(f"Directory {models_base_dir} for NNAlter epoch {i} not found. Skipping.")
+                    continue
+
+                print(f"\n--- Scanning NNAlter Epoch Directory: {current_alter_epoch_path} ---")
+                print(f"--- Synthesized Models Directory: {models_base_dir} ---")
+
+                # Build eval requests first so already successful models can be
+                # skipped without waking workers unnecessarily.
+                requests, epoch_results = _collect_epoch_requests(
+                    models_base_dir=models_base_dir,
+                    nn_name_prefix=nn_name_prefix,
+                    nn_train_epochs=nn_train_epochs,
+                    save_to_db=save_to_db,
+                    task=task,
+                    dataset=dataset,
+                    metric=metric,
+                    lr=lr,
+                    batch=batch,
+                    dropout=dropout,
+                    momentum=momentum,
+                    transform=transform,
+                    stochastic_depth_prob=stochastic_depth_prob,
+                    norm_eps=norm_eps,
+                    norm_std=norm_std,
+                    tie_weights=tie_weights,
+                    dropout_aux=dropout_aux,
+                    attention_dropout=attention_dropout,
+                    norm_momentum=norm_momentum,
+                    score_thresh=score_thresh,
+                    nms_thresh=nms_thresh,
+                    iou_thresh=iou_thresh,
+                    detections_per_img=detections_per_img,
+                    topk_candidates=topk_candidates,
+                    neg_to_pos_ratio=neg_to_pos_ratio,
+                    pretrained=pretrained,
+                    patch_size=patch_size,
+                    prm_json=prm_json,
+                    epoch_limit_minutes=epoch_limit_minutes,
+                    feature_cache_dir=feature_cache_dir,
+                    feature_cache_mode=feature_cache_mode,
+                    num_workers=num_workers,
+                    pin_memory=pin_memory,
+                    freeze_gpt2=freeze_gpt2,
+                )
+
+                if requests:
+                    # --- Lightweight NAS Bridge Contract Check ---
+                    for req in requests:
+                        if req["task"] == 'img-captioning' and req["prm"].get('transform') in ['cached_blip2', 'cached_blip2fast_processor']:
+                            model_id = req["model_id"]
+                            print(f"  [NAS] Checking CrossModalBridge shape contract for {model_id}...")
+                            try:
+                                import torch
+                                import importlib.util
+                                import sys
+
+                                code_file_path = req["code_file"]
+                                module_name = f"nas_check_{model_id}_{uuid4(str(code_file_path))[:8]}"
+                                spec = importlib.util.spec_from_file_location(module_name, str(code_file_path))
+                                mod = importlib.util.module_from_spec(spec)
+                                sys.modules[module_name] = mod
+                                spec.loader.exec_module(mod)
+
+                                # Check only the bridge to save memory/time
+                                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                                bridge = mod.CrossModalBridge(req["prm"]).to(device)
+                                bridge.eval()
+
+                                x = torch.randn(2, 32, 768, device=device)
+                                with torch.no_grad():
+                                    y = bridge(x, None)
+
+                                if not torch.is_tensor(y) or tuple(y.shape) != (2, 32, 768):
+                                    raise RuntimeError(f"Bridge shape invalid: got {tuple(y.shape) if torch.is_tensor(y) else type(y)}")
+
+                                del bridge, x, y
+                                release_memory()
+                                print("  [NAS] Bridge shape check passed.")
+                            except Exception as dry_run_err:
+                                print(f"  [SKIP] Bridge contract failed: {dry_run_err}")
+                                with open(Path(req["model_dir"]) / 'error.txt', 'w+') as f:
+                                    f.write(f"Bridge Contract Failed: {dry_run_err}")
+                                req["skip_nas"] = True
+                                
+                    requests = [r for r in requests if not r.get("skip_nas")]
+
+                    if not requests:
+                        continue
+                    NNEvalWorkerPool.prewarm_nneval_workers(
+                        use_all_visible_gpus=resolved_use_all_visible_gpus,
+                        timeout_seconds=60.0,
+                    )
+                    entries = [{"payload": request} for request in requests]
+                    worker_results = NNEvalWorkerPool.evaluate_model_entries(
+                        entries,
+                        use_all_visible_gpus=resolved_use_all_visible_gpus,
+                    )
+                    for request, worker_result in zip(requests, worker_results):
+                        model_id = request["model_id"]
+                        if worker_result.get("success"):
+                            print(f"  Evaluation results for {model_id}: {worker_result}")
+                            epoch_results.append(_write_success_outputs(request, worker_result))
+                        else:
+                            print(f"  Error evaluating model {model_id}: {worker_result.get('error')}")
+                            epoch_results.append(_write_failure_outputs(request, worker_result))
+                        release_memory()
+
+                # Rebuild cycle_results.json from the artifacts produced in this
+                # epoch directory after all worker results have been written.
+                cycle_end_time = time.time()
+                cycle_time_minutes = (cycle_end_time - cycle_start_time) / 60.0
+                eval_results_list, model_dirs_list, successful_models, failed_models = collect_cycle_metrics(
+                    models_base_dir,
+                    current_alter_epoch_path,
+                )
+                cycle_results = generate_cycle_results(
+                    cycle=current_cycle,
+                    models_base_dir=models_base_dir,
+                    eval_results_list=eval_results_list,
+                    model_dirs_list=model_dirs_list,
+                    successful_models=successful_models,
+                    failed_models=failed_models,
+                    cycle_time_minutes=cycle_time_minutes,
+                    current_alter_epoch_path=current_alter_epoch_path,
+                )
+                cycle_results_path = base_nngpt_path / "cycle_results.json"
+                if cycle_results_path.exists():
+                    backup_path = base_nngpt_path / f"cycle_results_{i-1}.json"
+                    shutil.copy2(cycle_results_path, backup_path)
+                    print(f"Backup saved -> {backup_path}")
+                save_cycle_results(cycle_results, cycle_results_path)
+                print(
+                    f"\n--- Cycle {current_cycle} (Epoch {current_epoch}) results saved to: "
+                    f"{cycle_results_path} ---"
+                )
+                print(f"  Found {len(eval_results_list)} successful evaluations from eval_info.json files")
+                print(f"  Found {len(failed_models)} failed models")
+                run_summary["epochs"].append(
+                    {
+                        "epoch": current_epoch,
+                        "cycle": current_cycle,
+                        "models_base_dir": str(models_base_dir),
+                        "cycle_results_path": str(cycle_results_path),
+                        "model_results": sorted(epoch_results, key=lambda item: str(item.get("model_id", ""))),
+                        "successful_models": len(successful_models),
+                        "failed_models": len(failed_models),
+                    }
+                )
+    finally:
+        NNEvalWorkerPool.shutdown_nneval_workers()
 
     return run_summary
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate Neural Networks generated by NNAlter.py.")
-    parser.add_argument('-ae', '--nn_alter_epochs', type=int, default=NN_ALTER_EPOCHS,
-                        help="Number of epochs NNAlter.py was run for (e.g., if NNAlter's -e was 8, use 8 here).")
-    parser.add_argument('-oe', '--only_epoch', type=int, default=ONLY_EPOCH,
-                        help="Run NNAlter.py for the specified epoch only.")
-    parser.add_argument('-te', '--nn_train_epochs', type=int, default=NN_TRAIN_EPOCHS,
-                        help=f"Number of epochs to train each altered NN during evaluation (default: {NN_TRAIN_EPOCHS}).")
-    # Configurable evaluation parameters
-    parser.add_argument('--task', type=str, default=TASK,
-                        help=f"Default task for NNEval if not in dataframe.df (default: {TASK}).")
-    parser.add_argument('--dataset', type=str, default=DATASET,
-                        help=f"Default dataset for NNEval if not in dataframe.df (default: {DATASET}).")
-    parser.add_argument('--metric', type=str, default=METRIC,
-                        help=f"Default metric for NNEval if not in dataframe.df (default: {METRIC}).")
-
-    # Configurable hyperparameters (part of prm dictionary for NNEval)
-    parser.add_argument('--lr', type=float, default=LR,
-                        help=f"Learning rate for NNEval if not in dataframe.df's prm (default: {LR}).")
-    parser.add_argument('--batch_size', type=int, default=BATCH,
-                        help=f"Batch size for NNEval if not in dataframe.df's prm (default: {BATCH}). Stored as 'batch' in prm.")
-    parser.add_argument('--dropout', type=float, default=DROPOUT,
-                        help=f"Dropout rate for NNEval if not in dataframe.df's prm (default: {DROPOUT}).")
-    parser.add_argument('--momentum', type=float, default=MOMENTUM,
-                        help=f"Momentum for NNEval if not in dataframe.df's prm (default: {MOMENTUM}).")
-    parser.add_argument('--transform', type=str, default=TRANSFORM,
-                        help=f"Default transform for NNEval if not in dataframe.df's prm (default: {TRANSFORM}). Stored as 'transform' in prm.")
-    parser.add_argument('--stochastic_depth_prob', type=float, default=STOCHASTIC_DEPTH_PROB,
-                        help=f"Stochastic depth probability (default: {STOCHASTIC_DEPTH_PROB}).")
-    parser.add_argument('--norm_eps', type=float, default=NORM_EPS,
-                        help=f"Epsilon for normalization layers (default: {NORM_EPS}).")
-    parser.add_argument('--norm_std', type=float, default=NORM_STD,
-                        help=f"Std for normalization (default: {NORM_STD}).")
-    parser.add_argument('--tie_weights', type=float, default=TIE_WEIGHTS,
-                        help=f"Tie weights flag as float, >0.5 means True (default: {TIE_WEIGHTS}).")
-    parser.add_argument('--dropout_aux', type=float, default=DROPOUT_AUX,
-                        help=f"Auxiliary dropout rate (default: {DROPOUT_AUX}).")
-    parser.add_argument('--attention_dropout', type=float, default=ATTENTION_DROPOUT,
-                        help=f"Attention dropout rate (default: {ATTENTION_DROPOUT}).")
-    parser.add_argument('--norm_momentum', type=float, default=NORM_MOMENTUM,
-                        help=f"Momentum for normalization layers (default: {NORM_MOMENTUM}).")
-    parser.add_argument('--score_thresh', type=float, default=SCORE_THRESH,
-                        help=f"Score threshold for detection (default: {SCORE_THRESH}).")
-    parser.add_argument('--nms_thresh', type=float, default=NMS_THRESH,
-                        help=f"NMS threshold for detection (default: {NMS_THRESH}).")
-    parser.add_argument('--iou_thresh', type=float, default=IOU_THRESH,
-                        help=f"IoU threshold for detection (default: {IOU_THRESH}).")
-    parser.add_argument('--detections_per_img', type=float, default=DETECTIONS_PER_IMG,
-                        help=f"Detections per image as float in [0,1] (default: {DETECTIONS_PER_IMG}).")
-    parser.add_argument('--topk_candidates', type=float, default=TOPK_CANDIDATES,
-                        help=f"Top-k candidates as float in [0,1] (default: {TOPK_CANDIDATES}).")
-    parser.add_argument('--neg_to_pos_ratio', type=float, default=NEG_TO_POS_RATIO,
-                        help=f"Neg-to-pos ratio as float in [0,1] (default: {NEG_TO_POS_RATIO}).")
-    parser.add_argument('--pretrained', type=float, default=PRETRAINED,
-                        help=f"Use pretrained weights as float, >0.5 means True (default: {PRETRAINED}).")
-    parser.add_argument('--patch_size', type=float, default=PATCH_SIZE,
-                        help=f"Patch size as fraction of image size, used by VisionTransformer (default: {PATCH_SIZE}).")
-    parser.add_argument('--prm_json', type=str, default=PRM_JSON,
-                        help='JSON string of hyperparameter overrides applied last, e.g. \'{"lr": 0.017, "batch": 32}\'. Overrides all other sources except epoch.')
-
-    # Other NNEval options
-    parser.add_argument('--save_to_db', action=argparse.BooleanOptionalAction, default=SAVE_TO_DB,
-                        help="Whether to save evaluation results to the database (enables with --save-to-db, disables with --no-save-to-db; default: enabled).")
-    parser.add_argument('--nn_name_prefix', type=str, default=NN_NAME_PREFIX,
-                        help=f"Default neural network name prefix (default: {NN_NAME_PREFIX}).")
-    # Custom custom_synth_dir
-    parser.add_argument('--custom_synth_dir', dest='custom_synth_dir', type=str, default=CUSTOM_SYNTH_DIR,
-                        help="Custom directory containing generated models")
+    parser.add_argument(
+        "-ae",
+        "--nn_alter_epochs",
+        type=int,
+        default=NN_ALTER_EPOCHS,
+        help="Number of epochs NNAlter.py was run for.",
+    )
+    parser.add_argument(
+        "-oe",
+        "--only_epoch",
+        type=int,
+        default=ONLY_EPOCH,
+        help="Run NNAlter.py for the specified epoch only.",
+    )
+    parser.add_argument(
+        "-te",
+        "--nn_train_epochs",
+        type=int,
+        default=NN_TRAIN_EPOCHS,
+        help=f"Number of epochs to train each altered NN during evaluation (default: {NN_TRAIN_EPOCHS}).",
+    )
+    # Configurable evaluation parameters.
+    parser.add_argument("--task", type=str, default=TASK, help=f"Default task for NNEval (default: {TASK}).")
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default=DATASET,
+        help=f"Default dataset for NNEval (default: {DATASET}).",
+    )
+    parser.add_argument(
+        "--metric",
+        type=str,
+        default=METRIC,
+        help=f"Default metric for NNEval (default: {METRIC}).",
+    )
+    # Configurable hyperparameters stored inside the prm payload.
+    parser.add_argument(
+        "--lr",
+        type=float,
+        default=LR,
+        help=f"Learning rate for NNEval if not in dataframe.df's prm (default: {LR}).",
+    )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=BATCH,
+        help=f"Batch size for NNEval if not in dataframe.df's prm (default: {BATCH}).",
+    )
+    parser.add_argument(
+        "--dropout",
+        type=float,
+        default=DROPOUT,
+        help=f"Dropout rate for NNEval if not in dataframe.df's prm (default: {DROPOUT}).",
+    )
+    parser.add_argument(
+        "--momentum",
+        type=float,
+        default=MOMENTUM,
+        help=f"Momentum for NNEval if not in dataframe.df's prm (default: {MOMENTUM}).",
+    )
+    parser.add_argument(
+        "--transform",
+        type=str,
+        default=TRANSFORM,
+        help=f"Default transform for NNEval if not in dataframe.df's prm (default: {TRANSFORM}).",
+    )
+    parser.add_argument(
+        "--stochastic_depth_prob",
+        type=float,
+        default=STOCHASTIC_DEPTH_PROB,
+        help=f"Stochastic depth probability (default: {STOCHASTIC_DEPTH_PROB}).",
+    )
+    parser.add_argument(
+        "--norm_eps",
+        type=float,
+        default=NORM_EPS,
+        help=f"Normalization epsilon (default: {NORM_EPS}).",
+    )
+    parser.add_argument(
+        "--norm_std",
+        type=float,
+        default=NORM_STD,
+        help=f"Normalization std (default: {NORM_STD}).",
+    )
+    parser.add_argument(
+        "--tie_weights",
+        type=float,
+        default=TIE_WEIGHTS,
+        help=f"Tie weights flag as float (default: {TIE_WEIGHTS}).",
+    )
+    parser.add_argument(
+        "--dropout_aux",
+        type=float,
+        default=DROPOUT_AUX,
+        help=f"Auxiliary dropout rate (default: {DROPOUT_AUX}).",
+    )
+    parser.add_argument(
+        "--attention_dropout",
+        type=float,
+        default=ATTENTION_DROPOUT,
+        help=f"Attention dropout rate (default: {ATTENTION_DROPOUT}).",
+    )
+    parser.add_argument(
+        "--norm_momentum",
+        type=float,
+        default=NORM_MOMENTUM,
+        help=f"Normalization momentum (default: {NORM_MOMENTUM}).",
+    )
+    parser.add_argument(
+        "--score_thresh",
+        type=float,
+        default=SCORE_THRESH,
+        help=f"Score threshold for detection tasks (default: {SCORE_THRESH}).",
+    )
+    parser.add_argument(
+        "--nms_thresh",
+        type=float,
+        default=NMS_THRESH,
+        help=f"NMS threshold for detection tasks (default: {NMS_THRESH}).",
+    )
+    parser.add_argument(
+        "--iou_thresh",
+        type=float,
+        default=IOU_THRESH,
+        help=f"IoU threshold for detection tasks (default: {IOU_THRESH}).",
+    )
+    parser.add_argument(
+        "--detections_per_img",
+        type=float,
+        default=DETECTIONS_PER_IMG,
+        help=f"Detections per image value (default: {DETECTIONS_PER_IMG}).",
+    )
+    parser.add_argument(
+        "--topk_candidates",
+        type=float,
+        default=TOPK_CANDIDATES,
+        help=f"Top-k candidates value (default: {TOPK_CANDIDATES}).",
+    )
+    parser.add_argument(
+        "--neg_to_pos_ratio",
+        type=float,
+        default=NEG_TO_POS_RATIO,
+        help=f"Negative-to-positive ratio value (default: {NEG_TO_POS_RATIO}).",
+    )
+    parser.add_argument(
+        "--pretrained",
+        type=float,
+        default=PRETRAINED,
+        help=f"Pretrained flag as float (default: {PRETRAINED}).",
+    )
+    parser.add_argument(
+        "--patch_size",
+        type=float,
+        default=PATCH_SIZE,
+        help=f"Patch size value (default: {PATCH_SIZE}).",
+    )
+    parser.add_argument(
+        "--prm_json",
+        type=str,
+        default=PRM_JSON,
+        help='JSON string of hyperparameter overrides, e.g. \'{"lr": 0.017, "batch": 32}\'.',
+    )
+    # Other NNEval options.
     parser.add_argument('--num_workers', type=int, default=0, help="Number of workers for DataLoader.")
     parser.add_argument('--pin_memory', action=argparse.BooleanOptionalAction, default=False, help="Whether to pin memory in DataLoader.")
     parser.add_argument('--feature_cache_dir', type=str, default=None, help="Directory for feature caching.")
     parser.add_argument('--feature_cache_mode', type=str, default='read', choices=['read', 'write', 'auto'], help="Feature cache mode.")
-    parser.add_argument('--epoch_limit_minutes', type=int, default=None, help="Time limit per epoch.")
     parser.add_argument('--freeze_gpt2', action=argparse.BooleanOptionalAction, default=False,
                         help="Whether to freeze the GPT-2 decoder backbone (default: disabled).")
-    parser.add_argument('--cycle', type=int, default=CYCLE,
-                        help="Cycle number (finetuning iteration, separate from epoch). If not specified, defaults to epoch number.")
     parser.add_argument('--force_eval', action='store_true', help="Force re-evaluation of models even if eval_info.json exists.")
+    parser.add_argument(
+        "--save_to_db",
+        action=argparse.BooleanOptionalAction,
+        default=SAVE_TO_DB,
+        help="Whether to save evaluation results to the database.",
+    )
+    parser.add_argument(
+        "--nn_name_prefix",
+        type=str,
+        default=NN_NAME_PREFIX,
+        help=f"Default neural network name prefix (default: {NN_NAME_PREFIX}).",
+    )
+    parser.add_argument(
+        "--custom_synth_dir",
+        dest="custom_synth_dir",
+        type=str,
+        default=CUSTOM_SYNTH_DIR,
+        help="Custom directory containing generated models",
+    )
+    parser.add_argument(
+        "--epoch_limit_minutes",
+        type=int,
+        default=EPOCH_LIMIT_MINUTES,
+        help="Max minutes allowed per epoch (default: specified in NN Dataset).",
+    )
+    parser.add_argument(
+        "--cycle",
+        type=int,
+        default=CYCLE,
+        help="Cycle number (finetuning iteration, separate from epoch).",
+    )
 
     args = parser.parse_args()
     prm_json_dict = None
@@ -364,17 +950,14 @@ if __name__ == "__main__":
     print(f"Prefix for the names of generated neural network: {args.nn_name_prefix}")
 
     main(
-        nn_alter_epochs=args.nn_alter_epochs,
+        nn_name_prefix=args.nn_name_prefix,
         nn_train_epochs=args.nn_train_epochs,
         only_epoch=args.only_epoch,
+        save_to_db=args.save_to_db,
+        nn_alter_epochs=args.nn_alter_epochs,
         task=args.task,
         dataset=args.dataset,
         metric=args.metric,
-        save_to_db=args.save_to_db,
-        nn_name_prefix=args.nn_name_prefix,
-        custom_synth_dir=args.custom_synth_dir,
-        epoch_limit_minutes=args.epoch_limit_minutes,
-        cycle=args.cycle,
         lr=args.lr,
         batch=args.batch_size,
         dropout=args.dropout,
@@ -396,10 +979,13 @@ if __name__ == "__main__":
         pretrained=args.pretrained,
         patch_size=args.patch_size,
         prm_json=prm_json_dict,
+        epoch_limit_minutes=args.epoch_limit_minutes,
+        custom_synth_dir=args.custom_synth_dir,
+        cycle=args.cycle,
         feature_cache_dir=args.feature_cache_dir,
         feature_cache_mode=args.feature_cache_mode,
         num_workers=args.num_workers,
         pin_memory=args.pin_memory,
         freeze_gpt2=args.freeze_gpt2,
-        force_eval=args.force_eval
+        force_eval=args.force_eval,
     )
