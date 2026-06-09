@@ -1,0 +1,5 @@
+architecture: SwinTransformer
+scheduler: CosineAnnealingLR_T5
+weight_decay: 0.005
+original_hp: ['attention_dropout', 'dropout', 'lr', 'momentum', 'stochastic_depth_prob']
+added_hp: ['T_max', 'eta_min', 'epoch_max']

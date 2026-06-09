@@ -1,0 +1,33 @@
+{
+  "eval_args": {
+    "model_package": "/home/hafsamateen/Project_ResNet/nn-gpt/out/nngpt/llm/epoch/A0/synth_nn/lr_1142",
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "metric": "acc",
+    "prm": {
+      "lr": 0.01,
+      "batch": 64,
+      "dropout": 0.2,
+      "momentum": 0.9,
+      "transform": "norm_256_flip",
+      "epoch_max": 50,
+      "stochastic_depth_prob": 0.1,
+      "norm_eps": 1e-06,
+      "norm_std": 0.02,
+      "factor": 0.5,
+      "patience": 3
+    },
+    "accuracy": 0.7189
+  },
+  "eval_results": [
+    "lr-e57e6110b45e3ead6ea6214ead44953c",
+    0.7189,
+    0.01,
+    0.85
+  ],
+  "cli_args": {
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "metric": "acc"
+  }
+}

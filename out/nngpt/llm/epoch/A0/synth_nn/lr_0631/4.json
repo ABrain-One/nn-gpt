@@ -1,0 +1,38 @@
+[
+    {
+        "accuracy": 0.3029,
+        "batch": 64,
+        "best_accuracy": 0.3029,
+        "best_epoch": 4,
+        "cpu_count": 16,
+        "cpu_type": "x86_64",
+        "cpu_usage_percent": 26.9,
+        "dropout": 0.2,
+        "duration": 1170818654882,
+        "epoch": 5,
+        "epoch_max": 50,
+        "factor": 0.5,
+        "gpu_memory_kb": 18025813.5,
+        "gpu_memory_usage_percent": 0.13,
+        "gpu_total_memory_kb": 24658816.0,
+        "gpu_type": "NVIDIA GeForce RTX 4090",
+        "gradient_norm": 2.9999996771294453,
+        "lr": 0.01,
+        "momentum": 0.9,
+        "occupied_gpu_memory_kb": 32412.0,
+        "occupied_ram_kb": 22959568.0,
+        "patience": 3,
+        "ram_usage_percent": 71.9,
+        "samples_per_second": 181.92978030877117,
+        "test_loss": 1.9002452337058486,
+        "total_ram_kb": 31936292.0,
+        "train_accuracy": 0.29692,
+        "train_loss": 1.9032373974085464,
+        "transform": "norm_256_flip",
+        "uid": "ed91dd05e660dcf27b4455d22b8b1b1e"
+    },
+    {
+        "accuracy": 0.252,
+        "epoch": 4
+    }
+]

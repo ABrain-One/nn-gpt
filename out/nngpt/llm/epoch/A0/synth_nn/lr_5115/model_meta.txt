@@ -1,0 +1,5 @@
+architecture: VisionTransformer
+scheduler: ExponentialLR_g09
+weight_decay: 0.0005
+original_hp: ['attention_dropout', 'dropout', 'lr', 'momentum', 'patch_size']
+added_hp: ['gamma']

@@ -1,0 +1,5 @@
+architecture: UNet2D
+scheduler: MultiStepLR_m3_7_g03
+weight_decay: 0.0005
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['gamma']

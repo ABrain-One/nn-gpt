@@ -1,0 +1,36 @@
+Error evaluating model lr_5024: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 23.52 GiB of which 70.69 MiB is free. Process 374643 has 8.71 GiB memory in use. Including non-PyTorch memory, this process has 2.31 GiB memory in use. Process 374646 has 7.49 GiB memory in use. Process 374651 has 4.39 GiB memory in use. Process 380111 has 392.70 MiB memory in use. Of the allocated memory 1.79 GiB is allocated by PyTorch, and 47.39 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 208, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 87, in evaluate
+    return api.check_nn(code, self.task, self.dataset, self.metric, self.prm, self.save_to_db, self.prefix, self.save_path)
+  File "/home/hafsamateen/lib/python3.10/site-packages/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+  File "/home/hafsamateen/lib/python3.10/site-packages/ab/nn/util/Train.py", line 553, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes, False, export_onnx, train_set, save_path=save_path)
+  File "/home/hafsamateen/lib/python3.10/site-packages/ab/nn/util/Train.py", line 315, in train_n_eval
+    self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/out/nn/tmp/lr-8f37b7789eb403f80962d2b7281865ca.py", line 44, in learn
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/out/nn/tmp/lr-8f37b7789eb403f80962d2b7281865ca.py", line 83, in forward
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/modules/pooling.py", line 224, in forward
+    return F.max_pool2d(
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/_jit_internal.py", line 619, in fn
+    return if_false(*args, **kwargs)
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/nn/functional.py", line 833, in _max_pool2d
+    return torch.max_pool2d(input, kernel_size, stride, padding, dilation, ceil_mode)
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 23.52 GiB of which 70.69 MiB is free. Process 374643 has 8.71 GiB memory in use. Including non-PyTorch memory, this process has 2.31 GiB memory in use. Process 374646 has 7.49 GiB memory in use. Process 374651 has 4.39 GiB memory in use. Process 380111 has 392.70 MiB memory in use. Of the allocated memory 1.79 GiB is allocated by PyTorch, and 47.39 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)

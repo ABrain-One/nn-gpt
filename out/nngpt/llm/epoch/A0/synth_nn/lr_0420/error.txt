@@ -1,0 +1,8 @@
+Error evaluating model lr_0420: NN already exists (checksum: b4a0bdb7d004a42178612a6f7f3354fd). Skipping API call.
+
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 208, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 89, in evaluate
+    raise Exception(f'NN already exists (checksum: {new_checksum}). Skipping API call.')
+Exception: NN already exists (checksum: b4a0bdb7d004a42178612a6f7f3354fd). Skipping API call.

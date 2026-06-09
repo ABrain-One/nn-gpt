@@ -1,0 +1,5 @@
+architecture: VisionTransformer
+scheduler: OneCycleLR_005
+weight_decay: 5e-05
+original_hp: ['attention_dropout', 'dropout', 'lr', 'momentum', 'patch_size']
+added_hp: ['max_lr']

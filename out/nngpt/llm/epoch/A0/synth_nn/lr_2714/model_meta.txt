@@ -1,0 +1,5 @@
+architecture: GoogLeNet
+scheduler: MultiStepLR_m2_4_g01
+weight_decay: 0.0005
+original_hp: ['dropout', 'dropout_aux', 'lr', 'momentum']
+added_hp: ['gamma']

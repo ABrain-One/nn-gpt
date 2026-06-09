@@ -1,0 +1,5 @@
+architecture: ResNet
+scheduler: StepLR_s20_g07
+weight_decay: 0.001
+original_hp: ['lr', 'momentum']
+added_hp: ['step_size', 'gamma', 'epoch_max']

@@ -1,0 +1,53 @@
+{
+    "eval_args": {
+        "model_package": "/home/hafsamateen/Project_ResNet/nn-gpt/out/nngpt/llm/epoch/A0/synth_nn/lr_2310",
+        "task": "img-classification",
+        "dataset": "cifar-10",
+        "metric": "acc",
+        "prm": {
+            "lr": 0.01,
+            "batch": 64,
+            "dropout": 0.2,
+            "momentum": 0.9,
+            "transform": "norm_256_flip",
+            "epoch_max": 50,
+            "gamma": 0.5,
+            "weight_decay": 0.005,
+            "epoch": 5,
+            "train_loss": 0.5064695196802659,
+            "test_loss": 0.5942563674632152,
+            "train_accuracy": 0.83758,
+            "gradient_norm": 2.999999537368412,
+            "samples_per_second": 176.9644472246458,
+            "best_accuracy": 0.812,
+            "best_epoch": 5,
+            "cpu_type": "x86_64",
+            "cpu_count": 16,
+            "total_ram_kb": 31936292.0,
+            "gpu_type": "NVIDIA GeForce RTX 4090",
+            "gpu_total_memory_kb": 24658816.0,
+            "occupied_ram_kb": 22232024.0,
+            "ram_usage_percent": 69.6,
+            "cpu_usage_percent": 21.4,
+            "occupied_gpu_memory_kb": 65088.0,
+            "gpu_memory_usage_percent": 0.26,
+            "gpu_memory_kb": 15837130.0
+        }
+    },
+    "eval_results": [
+        "lr-2e13da9a500f89795ec7a3b48a9498cd",
+        0.812,
+        0.05137907350941799,
+        0.73
+    ],
+    "cli_args": {
+        "task": "img-classification",
+        "dataset": "cifar-10",
+        "metric": "acc",
+        "lr": 0.01,
+        "batch": 256,
+        "dropout": 0.2,
+        "momentum": 0.9,
+        "transform": "norm_256_flip"
+    }
+}

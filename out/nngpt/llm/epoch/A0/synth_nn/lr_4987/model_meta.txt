@@ -1,0 +1,5 @@
+architecture: VGG
+scheduler: MultiStepLR_m2_4_g01
+weight_decay: 5e-05
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['gamma']

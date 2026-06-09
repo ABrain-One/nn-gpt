@@ -1,0 +1,23 @@
+Error evaluating model lr_3403: [Errno 2] No such file or directory: '/home/hafsamateen/Project_ResNet/nn-gpt/out/nn/tmp/lr-4102b4a1a339a6ba0d591809def0e03a.py'
+
+Traceback (most recent call last):
+  File "/home/hafsamateen/lib/python3.10/site-packages/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+  File "/home/hafsamateen/lib/python3.10/site-packages/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+  File "/home/hafsamateen/lib/python3.10/site-packages/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+ModuleNotFoundError: No module named 'out.nn.tmp.lr-4102b4a1a339a6ba0d591809def0e03a'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 208, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 87, in evaluate
+    return api.check_nn(code, self.task, self.dataset, self.metric, self.prm, self.save_to_db, self.prefix, self.save_path)
+  File "/home/hafsamateen/lib/python3.10/site-packages/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+  File "/home/hafsamateen/lib/python3.10/site-packages/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/home/hafsamateen/Project_ResNet/nn-gpt/out/nn/tmp/lr-4102b4a1a339a6ba0d591809def0e03a.py'

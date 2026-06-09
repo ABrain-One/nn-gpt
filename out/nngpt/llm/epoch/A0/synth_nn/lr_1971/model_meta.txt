@@ -1,0 +1,5 @@
+architecture: DenseNet
+scheduler: ExponentialLR_g098
+weight_decay: 0.0001
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['gamma']

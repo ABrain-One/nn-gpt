@@ -1,0 +1,5 @@
+architecture: UNet2D
+scheduler: ReduceLROnPlateau_f05_p2
+weight_decay: 0.0005
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['factor', 'patience']

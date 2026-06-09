@@ -1,0 +1,21 @@
+Error evaluating model lr_4758: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 23.52 GiB of which 493.94 MiB is free. Process 374643 has 3.33 GiB memory in use. Process 374685 has 4.87 GiB memory in use. Process 374646 has 8.71 GiB memory in use. Including non-PyTorch memory, this process has 5.59 GiB memory in use. Process 380111 has 392.70 MiB memory in use. Of the allocated memory 5.07 GiB is allocated by PyTorch, and 58.60 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+
+Traceback (most recent call last):
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/NNEval.py", line 208, in main
+    eval_results = evaluator.evaluate(code_file_path)
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/ab/gpt/util/Eval.py", line 87, in evaluate
+    return api.check_nn(code, self.task, self.dataset, self.metric, self.prm, self.save_to_db, self.prefix, self.save_path)
+  File "/home/hafsamateen/lib/python3.10/site-packages/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+  File "/home/hafsamateen/lib/python3.10/site-packages/ab/nn/util/Train.py", line 553, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes, False, export_onnx, train_set, save_path=save_path)
+  File "/home/hafsamateen/lib/python3.10/site-packages/ab/nn/util/Train.py", line 315, in train_n_eval
+    self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
+  File "/home/hafsamateen/Project_ResNet/nn-gpt/out/nn/tmp/lr-2b8369beb3159387b057e4e0d6be30d8.py", line 134, in learn
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/_tensor.py", line 630, in backward
+    torch.autograd.backward(
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/autograd/__init__.py", line 364, in backward
+    _engine_run_backward(
+  File "/home/hafsamateen/lib/python3.10/site-packages/torch/autograd/graph.py", line 865, in _engine_run_backward
+    return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 23.52 GiB of which 493.94 MiB is free. Process 374643 has 3.33 GiB memory in use. Process 374685 has 4.87 GiB memory in use. Process 374646 has 8.71 GiB memory in use. Including non-PyTorch memory, this process has 5.59 GiB memory in use. Process 380111 has 392.70 MiB memory in use. Of the allocated memory 5.07 GiB is allocated by PyTorch, and 58.60 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)

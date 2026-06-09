@@ -1,0 +1,5 @@
+architecture: SwinTransformer
+scheduler: MultiStepLR_m5_10_g05
+weight_decay: 0.0
+original_hp: ['attention_dropout', 'dropout', 'lr', 'momentum', 'stochastic_depth_prob']
+added_hp: ['gamma']

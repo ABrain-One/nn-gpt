@@ -1,0 +1,5 @@
+architecture: GoogLeNet
+scheduler: CosineWarmRestarts_T5
+weight_decay: 0.0005
+original_hp: ['dropout', 'dropout_aux', 'lr', 'momentum']
+added_hp: ['T_0', 'eta_min', 'epoch_max']

@@ -1,0 +1,5 @@
+architecture: AlexNet
+scheduler: ExponentialLR_g098
+weight_decay: 0.0
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['gamma']

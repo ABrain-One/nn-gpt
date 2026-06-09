@@ -1,0 +1,5 @@
+architecture: DPN68
+scheduler: MultiStepLR_m5_10_g05
+weight_decay: 0.001
+original_hp: ['lr', 'momentum']
+added_hp: ['gamma']

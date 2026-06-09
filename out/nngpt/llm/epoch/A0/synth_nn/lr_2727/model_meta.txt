@@ -1,0 +1,5 @@
+architecture: GoogLeNet
+scheduler: ReduceLROnPlateau_f03_p3
+weight_decay: 0.0001
+original_hp: ['dropout', 'dropout_aux', 'lr', 'momentum']
+added_hp: ['factor', 'patience']

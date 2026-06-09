@@ -1,0 +1,5 @@
+architecture: ComplexNet
+scheduler: MultiStepLR_m2_4_g01
+weight_decay: 0.0001
+original_hp: ['lr', 'momentum']
+added_hp: ['gamma']

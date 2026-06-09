@@ -1,0 +1,5 @@
+architecture: MaxVit
+scheduler: CosineWarmRestarts_T5
+weight_decay: 0.0005
+original_hp: ['attention_dropout', 'dropout', 'lr', 'momentum', 'stochastic_depth_prob']
+added_hp: ['T_0', 'eta_min', 'epoch_max']

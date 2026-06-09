@@ -1,0 +1,5 @@
+architecture: ICNet
+scheduler: ExponentialLR_g09
+weight_decay: 5e-05
+original_hp: ['lr', 'momentum']
+added_hp: ['gamma']

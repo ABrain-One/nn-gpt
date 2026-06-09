@@ -1,0 +1,5 @@
+architecture: ComplexNet
+scheduler: ExponentialLR_g095
+weight_decay: 5e-05
+original_hp: ['lr', 'momentum']
+added_hp: ['gamma']

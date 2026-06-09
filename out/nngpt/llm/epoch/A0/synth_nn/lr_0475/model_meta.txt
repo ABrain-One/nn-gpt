@@ -1,0 +1,5 @@
+architecture: AlexNet
+scheduler: CyclicLR_tri2
+weight_decay: 0.001
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['base_lr', 'max_lr']

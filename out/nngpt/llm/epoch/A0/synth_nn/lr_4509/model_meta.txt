@@ -1,0 +1,5 @@
+architecture: SqueezeNet-1
+scheduler: OneCycleLR_01
+weight_decay: 0.0
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['max_lr']

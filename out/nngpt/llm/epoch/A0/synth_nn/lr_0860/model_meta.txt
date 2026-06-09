@@ -1,0 +1,5 @@
+architecture: ComplexNet
+scheduler: CosineWarmRestarts_T2
+weight_decay: 0.001
+original_hp: ['lr', 'momentum']
+added_hp: ['T_0', 'eta_min', 'epoch_max']

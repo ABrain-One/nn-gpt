@@ -1,0 +1,5 @@
+architecture: InceptionV3-1
+scheduler: CosineAnnealingLR_T10
+weight_decay: 1e-05
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['T_max', 'eta_min', 'epoch_max']

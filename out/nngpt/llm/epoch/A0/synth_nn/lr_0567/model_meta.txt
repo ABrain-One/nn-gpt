@@ -1,0 +1,5 @@
+architecture: BagNet
+scheduler: ExponentialLR_g09
+weight_decay: 0.005
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['gamma']

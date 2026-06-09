@@ -1,0 +1,5 @@
+architecture: DenseNet
+scheduler: CosineAnnealingLR_T5
+weight_decay: 5e-05
+original_hp: ['dropout', 'lr', 'momentum']
+added_hp: ['T_max', 'eta_min', 'epoch_max']

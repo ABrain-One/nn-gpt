@@ -1,0 +1,5 @@
+architecture: MaxVit
+scheduler: MultiStepLR_m2_4_g01
+weight_decay: 1e-05
+original_hp: ['attention_dropout', 'dropout', 'lr', 'momentum', 'stochastic_depth_prob']
+added_hp: ['gamma']

@@ -1,0 +1,5 @@
+architecture: ConvNeXt
+scheduler: StepLR_s3_g01
+weight_decay: 0.0005
+original_hp: ['lr', 'momentum', 'norm_eps', 'norm_std', 'stochastic_depth_prob']
+added_hp: ['step_size', 'gamma', 'epoch_max']

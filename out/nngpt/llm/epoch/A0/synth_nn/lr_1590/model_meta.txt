@@ -1,0 +1,5 @@
+architecture: DPN68
+scheduler: StepLR_s20_g07
+weight_decay: 0.0
+original_hp: ['lr', 'momentum']
+added_hp: ['step_size', 'gamma', 'epoch_max']

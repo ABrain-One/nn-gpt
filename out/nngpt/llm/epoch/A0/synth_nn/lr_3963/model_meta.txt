@@ -1,0 +1,5 @@
+architecture: RegNet
+scheduler: CyclicLR_tri
+weight_decay: 0.0
+original_hp: ['lr', 'momentum']
+added_hp: ['base_lr', 'max_lr']
