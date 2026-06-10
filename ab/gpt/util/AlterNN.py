@@ -466,17 +466,15 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
                     # Robustness Fix: Common LLM syntax errors
                     llm_code = llm_code.replace("torch.gelu", "torch.nn.functional.gelu")
                     
-                    # IMMEDIATELY assemble the code using the updated Util template
+                    # IMMEDIATELY assemble the code using the updated CaptioningUtil
                     try:
                         if "CrossModalBridge" in llm_code or "Blip2Fast" in llm_code:
                             from ab.gpt.util.CaptioningUtil import assemble_nn_code
-                        else:
-                            from ab.gpt.util.Util import assemble_nn_code
-                        from ab.nn.util.Util import uuid4
-                        assembled_code = assemble_nn_code(llm_code)
-                        assembled_code += f"\n\n# Trial ID: {uuid4(assembled_code)}\n"
-                        llm_code = assembled_code
-                        print(f"[INFO] Assembled full model skeleton for Model_{B_index}")
+                            from ab.nn.util.Util import uuid4
+                            assembled_code = assemble_nn_code(llm_code)
+                            assembled_code += f"\n\n# Trial ID: {uuid4(assembled_code)}\n"
+                            llm_code = assembled_code
+                            print(f"[INFO] Assembled full model skeleton for Model_{B_index}")
                     except Exception as assem_e:
                         print(f"[ERROR] Failed to assemble code: {assem_e}")
 
@@ -509,17 +507,15 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
                 # Robustness Fix: Common LLM syntax errors
                 llm_code = llm_code.replace("torch.gelu", "torch.nn.functional.gelu")
                 
-                # IMMEDIATELY assemble the code using the updated Util template
+                # IMMEDIATELY assemble the code using the updated CaptioningUtil
                 try:
                     if "CrossModalBridge" in llm_code or "Blip2Fast" in llm_code:
                         from ab.gpt.util.CaptioningUtil import assemble_nn_code
-                    else:
-                        from ab.gpt.util.Util import assemble_nn_code
-                    from ab.nn.util.Util import uuid4
-                    assembled_code = assemble_nn_code(llm_code)
-                    assembled_code += f"\n\n# Trial ID: {uuid4(assembled_code)}\n"
-                    llm_code = assembled_code
-                    print(f"[INFO] Assembled full model skeleton for Model_{B_index} via fallback")
+                        from ab.nn.util.Util import uuid4
+                        assembled_code = assemble_nn_code(llm_code)
+                        assembled_code += f"\n\n# Trial ID: {uuid4(assembled_code)}\n"
+                        llm_code = assembled_code
+                        print(f"[INFO] Assembled full model skeleton for Model_{B_index} via fallback")
                 except Exception as assem_e:
                     print(f"[ERROR] Failed to assemble code: {assem_e}")
 
