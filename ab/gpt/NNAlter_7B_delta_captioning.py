@@ -68,10 +68,11 @@ def main():
     # We do this here in the specific configuration script to avoid breaking 
     # the generic AlterNN.py functionality for other students.
     print("Applying captioning-specific skeleton assembly to generated models...")
-    from pathlib import Path
+    from ab.gpt.util.Const import epoch_dir as _epoch_dir_fn, nngpt_dir
     from ab.gpt.util.CaptioningUtil import assemble_nn_code
     
-    base_path = Path("out/nngpt/llm/epoch/")
+    # Use Const.epoch_dir() — always absolute, resolves to project root/out/nngpt/llm/epoch
+    base_path = nngpt_dir / "llm" / "epoch"
     count = 0
     for epoch_dir in base_path.glob("Epoch_*"):
         synth_dir = epoch_dir / "synth_nn"
