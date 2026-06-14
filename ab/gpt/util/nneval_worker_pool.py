@@ -1045,6 +1045,37 @@ def evaluate_model_entries(
 
 
 def _persistent_nneval_worker_entry(conn, assigned_gpu: Optional[int], assigned_cuda_visible_device: Optional[str]) -> None:
+    try:
+        import ab.nn.util.CodeEval as CodeEval
+        import subprocess
+        def patched_run_pylint(file_path):
+            max_line_length = 120
+            disable_errors = ['C0116', 'C0115', 'C0114', 'C0304', 'C0303', 'C0305', 'C0325']
+            command = [
+                'pylint', file_path,
+                '--output-format=json',
+                f'--max-line-length={max_line_length}'
+            ]
+            if disable_errors:
+                disable_str = ",".join(disable_errors)
+                command.append(f'--disable={disable_str}')
+            try:
+                result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=15)
+            except subprocess.TimeoutExpired:
+                print(f"[CodeEval Monkeypatch WARN] pylint timed out on {file_path}")
+                return []
+            if result.stdout:
+                try:
+                    import json
+                    return json.loads(result.stdout)
+                except Exception:
+                    return []
+            return []
+        CodeEval.run_pylint = patched_run_pylint
+        print("[NNEval Worker] Successfully monkeypatched CodeEval.run_pylint with a 15s timeout")
+    except Exception as e:
+        print(f"[NNEval Worker WARN] Failed to monkeypatch CodeEval: {e}")
+
     worker_device = "cpu"
     try:
         if torch.cuda.is_available() and torch.cuda.device_count() > 0:

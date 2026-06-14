@@ -138,6 +138,9 @@ class LLM:
             **deepspeed_specific_prm
         )
         
+        if bnb_config is None and load_in_4bit:
+            bnb_config = quantization_config_4bit
+
         if bnb_config is not None:
             model_kwargs["quantization_config"] = bnb_config
         
