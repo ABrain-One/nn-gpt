@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import torch
 
@@ -21,7 +22,7 @@ def format_prompt_with_supporting_models(prompt_template, para_dict, supporting_
     para_dict['n'] = len(supporting_models) if supporting_models else 0
 
     # Create a formatted string for supporting models
-    if supporting_models:
+    if supporting_models: 
         supporting_models_text = ""
         for i, model in enumerate(supporting_models, 1):
             supporting_models_text += f"\nSupporting Model {i}:\n"
@@ -31,18 +32,31 @@ def format_prompt_with_supporting_models(prompt_template, para_dict, supporting_
     else:
         para_dict['supporting_models_prompt'] = "No supporting models available."
 
+    # Escape curly braces inside any values so .format() doesn't
+    # interpret JSON-encoded dicts (e.g. prm) or code as template variables.
+    safe_para_dict = {}
+    for k, v in para_dict.items():
+        v_str = str(v)
+        if '{' in v_str or '}' in v_str:
+            safe_para_dict[k] = v_str.replace('{', '{{').replace('}', '}}')
+        else:
+            safe_para_dict[k] = v_str
+
     # Format the prompt with all parameters
+    class SafeDict(dict):
+        def __missing__(self, key):
+            return "{" + key + "}"
+
     try:
-        formatted_prompt = prompt_template.format(**para_dict)
-    except KeyError as e:
-        # If there are missing parameters, use a fallback approach
-        print(f"[WARNING] Missing parameter in prompt template: {e}")
+        formatted_prompt = prompt_template.format_map(SafeDict(safe_para_dict))
+    except Exception as e:
+        print(f"[WARNING] Prompt formatting issue: {e}")
         formatted_prompt = prompt_template
-        # Replace available parameters
-        for key, value in para_dict.items():
+        for key, value in safe_para_dict.items():
             formatted_prompt = formatted_prompt.replace(f"{{{key}}}", str(value))
 
     return formatted_prompt
+
 
 def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top_k=50, *args, **kwargs):
     inference_gpt_oss = kwargs.get('inference_gpt_oss', False)
@@ -63,7 +77,7 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
     tokenizer = model_loader.get_tokenizer()
     print(f"Load Model Complete, Start Loop... (Will fetch {n} supporting models per prompt)")
 
-    shutil.rmtree(epoch_dir(), ignore_errors=True)
+    epoch_dir().mkdir(parents=True, exist_ok=True)
     for epoch in range(epochs):
         out_path = epoch_dir(epoch)
 
@@ -84,6 +98,11 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
             addon_data = nn_dataset.data(only_best_accuracy=True, task=prompt_dict[key]['addon_task'])
             for _, row in data.iterrows():
                 para_dict = dict()
+                # Set standard defaults to prevent KeyError in prompt formatting
+                para_dict["lr"] = row.get("lr", 0.0001)
+                para_dict["batch"] = row.get("batch", 32)
+                para_dict["dropout"] = row.get("dropout", 0.1)
+                
                 for it in prompt_dict[key]["input_list"]:
                     para_dict[it['para']] = row[it['value']]
 
@@ -150,7 +169,7 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
                         inputs = tokenizer.pad([{'input_ids': x} for x in batch_ids], padding=True, return_tensors="pt").to(model.device)
                     with torch.no_grad():
                         model.eval()
-                        outputs = model.generate(**inputs, max_new_tokens=8*1024, do_sample=True, temperature=temperature, top_k=top_k, top_p=0.95, num_return_sequences=1, eos_token_id=tokenizer.eos_token_id, pad_token_id=tokenizer.pad_token_id)
+                        outputs = model.generate(**inputs, max_new_tokens=6144, do_sample=True, temperature=temperature, top_k=top_k, top_p=0.95, num_return_sequences=1, eos_token_id=tokenizer.eos_token_id, pad_token_id=tokenizer.pad_token_id)
                     input_len = inputs.input_ids.shape[1]
                     decoded_outputs = []
                     for k in range(outputs.size(0)):
@@ -163,7 +182,7 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
                         print("Response Available!")
                         nn_code = extract_code(out)
                         if nn_code:
-                            model_dir = synth_dir(out_path) / f"B{B_index}"
+                            model_dir = synth_dir(out_path) / f"Blip2Fast-A{epoch}-B{B_index}"
                             code_file = model_dir / new_nn_file
                             df_file = model_dir / 'dataframe.df'
                             print(f"[INFO]Saving code to: {code_file}")
@@ -205,7 +224,7 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
             # tokenizer.eos_token_id is the id of <｜end▁of▁sentence｜>  token
             with torch.no_grad():
                 model.eval()
-                outputs = model.generate(inputs, max_new_tokens=8*1024, do_sample=True, temperature=temperature, top_k=top_k, top_p=0.95, num_return_sequences=1,
+                outputs = model.generate(inputs, max_new_tokens=6144, do_sample=True, temperature=temperature, top_k=top_k, top_p=0.95, num_return_sequences=1,
                                      eos_token_id=tokenizer.eos_token_id)
             out = tokenizer.decode(outputs[0][len(inputs[0]):], skip_special_tokens=True)
             print("Response Available!")
@@ -274,9 +293,27 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
     tokenizer = model_loader.get_tokenizer()
     print(f"Load Model Complete, Start Loop... (Delta mode enabled)")
 
-    shutil.rmtree(epoch_dir(), ignore_errors=True)
+    # Dynamic Auto-Incrementing Epoch Indexing to prevent overwriting
+    import glob
+    from pathlib import Path
+    base_epoch_dir = epoch_dir()
+    base_epoch_dir.mkdir(parents=True, exist_ok=True)
+    existing_epochs = glob.glob(str(base_epoch_dir / "Epoch_*"))
+    max_epoch = -1
+    for d in existing_epochs:
+        try:
+            name = Path(d).name
+            idx = int(name.split("_")[1])
+            if idx > max_epoch:
+                max_epoch = idx
+        except Exception:
+            pass
+    start_epoch = max_epoch + 1
+    print(f"[AUTO] Existing maximum epoch index found: Epoch_{max_epoch}. Next generations will write starting from Epoch_{start_epoch}.")
+
     for epoch in range(epochs):
-        out_path = epoch_dir(epoch)
+        target_epoch = start_epoch + epoch
+        out_path = epoch_dir(target_epoch)
 
         # Generate Prompts
         prompts = []
@@ -333,14 +370,15 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
                     formatted_prompt = format_prompt_with_supporting_models(prompt, para_dict, supporting_models)
                     prompts.append((formatted_prompt, row))
                 else:
-                    # No addon_list, use simple prompt formatting
-                    prompts.append((prompt.format(**para_dict), row))
+                    # Format the prompt safely using the helper to avoid KeyErrors on code brackets
+                    formatted_prompt = format_prompt_with_supporting_models(prompt, para_dict, [])
+                    prompts.append((formatted_prompt, row))
 
         # produce new CV models
         B_index = 0
         for idx, prompt in tqdm(enumerate(prompts), desc="Generate Deltas"):
             prompt, origdf = prompt
-            model_dir = synth_dir(out_path) / f"B{B_index}"
+            model_dir = synth_dir(out_path) / f"Blip2Fast-A{target_epoch}-B{B_index}"
             code_file = model_dir / new_nn_file
             df_file = model_dir / 'dataframe.df'
 
@@ -354,7 +392,7 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
                 model.eval()
                 outputs = model.generate(
                     inputs,
-                    max_new_tokens=64 * 1024,
+                    max_new_tokens=6144,  # DeepSeek-R1 uses ~3-4k tokens for <think> reasoning before code
                     do_sample=True,
                     temperature=temperature,
                     top_k=top_k,
@@ -376,7 +414,7 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
                     if baseline_code:
                         # Validate delta format before attempting to apply
                         if not validate_delta(delta):
-                            print(f"[WARNING] Invalid delta format for model B{B_index}. Trying fallback to extract full code.")
+                            print(f"[WARNING] Invalid delta format for model Model_{B_index}. Trying fallback to extract full code.")
                             delta = None  # Will trigger fallback below
                         else:
                             # Apply delta to baseline to get improved code
@@ -402,27 +440,89 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
                                 origdf.to_pickle(df_file)
                                 B_index += 1
                             else:
-                                print(f"[WARNING] Delta application returned None for model B{B_index}. Trying fallback.")
+                                print(f"[WARNING] Delta application returned None for model Model_{B_index}. Trying fallback.")
                                 delta = None  # Will trigger fallback below
                     else:
-                        print(f"[WARNING] No baseline code found in origdf for model B{B_index}. Trying fallback.")
+                        print(f"[WARNING] No baseline code found in origdf for model Model_{B_index}. Trying fallback.")
                         delta = None  # Will trigger fallback below
                 except ImportError as e:
-                    print(f"[ERROR] Failed to import delta utilities for model B{B_index}: {e}. Trying fallback.")
+                    print(f"[ERROR] Failed to import delta utilities for model Model_{B_index}: {e}. Trying fallback.")
                     delta = None  # Will trigger fallback below
                 except Exception as e:
-                    print(f"[ERROR] Unexpected error applying delta for model B{B_index}: {e}. Trying fallback.")
-                    delta = None  # Will trigger fallback below
+                    print(f"[ERROR] Unexpected error applying delta for model Model_{B_index}: {e}. Trying fallback.")
+                    # Strategy: Prioritize <nn_head> for clean class-only extraction, fallback to <delta>
+                    nn_head_match = re.search(r"<nn_head>(.*?)</nn_head>", out, re.DOTALL)
+                    delta_match = re.search(r"<delta>(.*?)</delta>", out, re.DOTALL)
+                    
+                    if nn_head_match:
+                        llm_code = nn_head_match.group(1).strip()
+                    elif delta_match:
+                        llm_code = delta_match.group(1).strip()
+                    else:
+                        # Fallback to scanning for the class definition directly if tags are missing
+                        class_match = re.search(r"(class CrossModalBridge.*?)(\n\n|\Z)", out, re.DOTALL)
+                        llm_code = class_match.group(1).strip() if class_match else out
+
+                    # Robustness Fix: Common LLM syntax errors
+                    llm_code = llm_code.replace("torch.gelu", "torch.nn.functional.gelu")
+                    
+                    # IMMEDIATELY assemble the code using the updated CaptioningUtil
+                    try:
+                        if "CrossModalBridge" in llm_code or "Blip2Fast" in llm_code:
+                            from ab.gpt.util.CaptioningUtil import assemble_nn_code
+                            from ab.nn.util.Util import uuid4
+                            assembled_code = assemble_nn_code(llm_code)
+                            assembled_code += f"\n\n# Trial ID: {uuid4(assembled_code)}\n"
+                            llm_code = assembled_code
+                            print(f"[INFO] Assembled full model skeleton for Model_{B_index}")
+                    except Exception as assem_e:
+                        print(f"[ERROR] Failed to assemble code: {assem_e}")
+
+                    # Save the assembled code
+                    with open(code_file, "w") as f:
+                        f.write(llm_code)
+                    
+                    create_file(model_dir, new_out_file, out)
+                    if origdf is not None:
+                        origdf.to_pickle(df_file)
+                    B_index += 1
+                    continue
 
             # Fallback: try to extract full code if delta extraction/application failed
+            # Main fallback for extracting the bridge code directly
             if not delta or origdf is None:
-                # Fallback: try to extract full code if delta extraction failed
-                nn_code = extract_code(out)
-                if nn_code:
-                    print(f"[INFO] Delta extraction failed, using extracted code as fallback: {code_file}")
+                # Strategy: Prioritize <nn_head> for clean class-only extraction, fallback to <delta>
+                nn_head_match = re.search(r"<nn_head>(.*?)</nn_head>", out, re.DOTALL)
+                delta_match = re.search(r"<delta>(.*?)</delta>", out, re.DOTALL)
+                
+                if nn_head_match:
+                    llm_code = nn_head_match.group(1).strip()
+                elif delta_match:
+                    llm_code = delta_match.group(1).strip()
+                else:
+                    # Fallback to scanning for the class definition directly if tags are missing
+                    class_match = re.search(r"(class CrossModalBridge.*?)(\n\n|\Z)", out, re.DOTALL)
+                    llm_code = class_match.group(1).strip() if class_match else extract_code(out) or out
+
+                # Robustness Fix: Common LLM syntax errors
+                llm_code = llm_code.replace("torch.gelu", "torch.nn.functional.gelu")
+                
+                # IMMEDIATELY assemble the code using the updated CaptioningUtil
+                try:
+                    if "CrossModalBridge" in llm_code or "Blip2Fast" in llm_code:
+                        from ab.gpt.util.CaptioningUtil import assemble_nn_code
+                        from ab.nn.util.Util import uuid4
+                        assembled_code = assemble_nn_code(llm_code)
+                        assembled_code += f"\n\n# Trial ID: {uuid4(assembled_code)}\n"
+                        llm_code = assembled_code
+                        print(f"[INFO] Assembled full model skeleton for Model_{B_index} via fallback")
+                except Exception as assem_e:
+                    print(f"[ERROR] Failed to assemble code: {assem_e}")
+
+                if llm_code:
                     code_file.parent.mkdir(exist_ok=True, parents=True)
                     with open(code_file, 'w') as file:
-                        file.write(nn_code)
+                        file.write(llm_code)
                     create_file(model_dir, new_out_file, out)
                     if origdf is not None:
                         origdf.to_pickle(df_file)

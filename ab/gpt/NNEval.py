@@ -12,6 +12,7 @@ import pandas as pd
 
 from ab.nn.util.Util import release_memory, uuid4
 from ab.gpt.util.Util import read_py_file_as_string
+import ab.nn.api as nn_dataset
 from ab.gpt.util.Const import epoch_dir, new_nn_file, nngpt_dir, synth_dir, hp_file, NN_TRAIN_EPOCHS
 from ab.gpt.util.Util import verify_nn_code, copy_to_lemur
 from ab.gpt.util.CycleResults import generate_cycle_results, collect_cycle_metrics, save_cycle_results
@@ -91,6 +92,11 @@ def _default_eval_prm(
     neg_to_pos_ratio: float,
     pretrained: float,
     patch_size: float,
+    feature_cache_dir: Optional[str] = None,
+    feature_cache_mode: str = 'read',
+    num_workers: int = 0,
+    pin_memory: bool = False,
+    freeze_gpt2: bool = False,
 ) -> Dict[str, Any]:
     # Build the baseline prm payload before per-model metadata or explicit
     # prm_json overrides are applied.
@@ -115,6 +121,11 @@ def _default_eval_prm(
         "neg_to_pos_ratio": neg_to_pos_ratio,
         "pretrained": pretrained,
         "patch_size": patch_size,
+        "feature_cache_dir": feature_cache_dir,
+        "feature_cache_mode": feature_cache_mode,
+        "num_workers": num_workers,
+        "pin_memory": pin_memory,
+        "freeze_gpt2": freeze_gpt2,
     }
 
 
@@ -317,6 +328,11 @@ def _collect_epoch_requests(
     patch_size: float,
     prm_json: Optional[Dict[str, Any]],
     epoch_limit_minutes: Optional[int],
+    feature_cache_dir: Optional[str],
+    feature_cache_mode: str,
+    num_workers: int,
+    pin_memory: bool,
+    freeze_gpt2: bool,
 ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     requests: List[Dict[str, Any]] = []
     immediate_results: List[Dict[str, Any]] = []
@@ -396,11 +412,34 @@ def _collect_epoch_requests(
                 neg_to_pos_ratio=neg_to_pos_ratio,
                 pretrained=pretrained,
                 patch_size=patch_size,
+                feature_cache_dir=feature_cache_dir,
+                feature_cache_mode=feature_cache_mode,
+                num_workers=num_workers,
+                pin_memory=pin_memory,
+                freeze_gpt2=freeze_gpt2,
             )
             print(f"Training model {model_id} with command-line/default training params {prm}")
 
         prefix_for_db = nn_name_prefix
         orig_pref = None
+        # 1. Try SQL Priority (Professor Requirement)
+        try:
+            original_files = list(model_dir_path.glob("original_*.py"))
+            if original_files:
+                with open(original_files[0], 'r') as f:
+                    b_code = f.read()
+                b_checksum = uuid4(b_code)
+                db_df = nn_dataset.data(nn=b_checksum)
+                if not db_df.empty:
+                    row = db_df.iloc[0]
+                    resolved_task = row.get('task', resolved_task)
+                    resolved_dataset = row.get('dataset', resolved_dataset)
+                    resolved_metric = row.get('metric', resolved_metric)
+                    if isinstance(row.get('prm'), dict): prm.update(row['prm'])
+                    orig_pref = row['nn'].split('-')[0] if 'nn' in row else None
+                    print(f"  [SQL] Found baseline metadata for {b_checksum}")
+        except Exception: pass
+        
         if df_file_path.exists():
             try:
                 origdf = pd.read_pickle(df_file_path)
@@ -498,6 +537,12 @@ def main(
     custom_synth_dir=CUSTOM_SYNTH_DIR,
     cycle=CYCLE,
     use_all_visible_gpus: Optional[bool] = None,
+    feature_cache_dir: Optional[str] = None,
+    feature_cache_mode: str = 'read',
+    num_workers: int = 0,
+    pin_memory: bool = False,
+    freeze_gpt2: bool = False,
+    force_eval: bool = False,
 ):
     base_nngpt_path = nngpt_dir
     if nn_alter_epochs is None:
@@ -564,9 +609,56 @@ def main(
                     patch_size=patch_size,
                     prm_json=prm_json,
                     epoch_limit_minutes=epoch_limit_minutes,
+                    feature_cache_dir=feature_cache_dir,
+                    feature_cache_mode=feature_cache_mode,
+                    num_workers=num_workers,
+                    pin_memory=pin_memory,
+                    freeze_gpt2=freeze_gpt2,
                 )
 
                 if requests:
+                    # --- Lightweight NAS Bridge Contract Check ---
+                    for req in requests:
+                        if req["task"] == 'img-captioning' and req["prm"].get('transform') in ['cached_blip2', 'cached_blip2fast_processor']:
+                            model_id = req["model_id"]
+                            print(f"  [NAS] Checking CrossModalBridge shape contract for {model_id}...")
+                            try:
+                                import torch
+                                import importlib.util
+                                import sys
+
+                                code_file_path = req["code_file"]
+                                module_name = f"nas_check_{model_id}_{uuid4(str(code_file_path))[:8]}"
+                                spec = importlib.util.spec_from_file_location(module_name, str(code_file_path))
+                                mod = importlib.util.module_from_spec(spec)
+                                sys.modules[module_name] = mod
+                                spec.loader.exec_module(mod)
+
+                                # Check only the bridge to save memory/time
+                                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                                bridge = mod.CrossModalBridge(req["prm"]).to(device)
+                                bridge.eval()
+
+                                x = torch.randn(2, 32, 768, device=device)
+                                with torch.no_grad():
+                                    y = bridge(x, None)
+
+                                if not torch.is_tensor(y) or tuple(y.shape) != (2, 32, 768):
+                                    raise RuntimeError(f"Bridge shape invalid: got {tuple(y.shape) if torch.is_tensor(y) else type(y)}")
+
+                                del bridge, x, y
+                                release_memory()
+                                print("  [NAS] Bridge shape check passed.")
+                            except Exception as dry_run_err:
+                                print(f"  [SKIP] Bridge contract failed: {dry_run_err}")
+                                with open(Path(req["model_dir"]) / 'error.txt', 'w+') as f:
+                                    f.write(f"Bridge Contract Failed: {dry_run_err}")
+                                req["skip_nas"] = True
+                                
+                    requests = [r for r in requests if not r.get("skip_nas")]
+
+                    if not requests:
+                        continue
                     NNEvalWorkerPool.prewarm_nneval_workers(
                         use_all_visible_gpus=resolved_use_all_visible_gpus,
                         timeout_seconds=60.0,
@@ -798,6 +890,13 @@ if __name__ == "__main__":
         help='JSON string of hyperparameter overrides, e.g. \'{"lr": 0.017, "batch": 32}\'.',
     )
     # Other NNEval options.
+    parser.add_argument('--num_workers', type=int, default=0, help="Number of workers for DataLoader.")
+    parser.add_argument('--pin_memory', action=argparse.BooleanOptionalAction, default=False, help="Whether to pin memory in DataLoader.")
+    parser.add_argument('--feature_cache_dir', type=str, default=None, help="Directory for feature caching.")
+    parser.add_argument('--feature_cache_mode', type=str, default='read', choices=['read', 'write', 'auto'], help="Feature cache mode.")
+    parser.add_argument('--freeze_gpt2', action=argparse.BooleanOptionalAction, default=False,
+                        help="Whether to freeze the GPT-2 decoder backbone (default: disabled).")
+    parser.add_argument('--force_eval', action='store_true', help="Force re-evaluation of models even if eval_info.json exists.")
     parser.add_argument(
         "--save_to_db",
         action=argparse.BooleanOptionalAction,
@@ -883,4 +982,10 @@ if __name__ == "__main__":
         epoch_limit_minutes=args.epoch_limit_minutes,
         custom_synth_dir=args.custom_synth_dir,
         cycle=args.cycle,
+        feature_cache_dir=args.feature_cache_dir,
+        feature_cache_mode=args.feature_cache_mode,
+        num_workers=args.num_workers,
+        pin_memory=args.pin_memory,
+        freeze_gpt2=args.freeze_gpt2,
+        force_eval=args.force_eval,
     )
