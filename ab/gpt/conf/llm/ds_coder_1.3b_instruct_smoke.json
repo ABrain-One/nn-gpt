@@ -1,0 +1,11 @@
+{
+  "base_model_name": "deepseek-ai/deepseek-coder-1.3b-instruct",
+  "tokenizer_name": "deepseek-ai/deepseek-coder-1.3b-instruct",
+  "num_epochs": 1,
+  "num_test_epochs": 1,
+  "use_deepspeed": false,
+  "token_from_file": false,
+  "only_best_accuracy": false,
+  "context_length": 4096,
+  "max_new_tokens": 1024
+}

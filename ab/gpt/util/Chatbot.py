@@ -50,7 +50,7 @@ def _strip_prompt_prefix(text, prompt):
 
 class ChatBot:
     def __init__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, keep_memory=False,
-                 temperature=1.0, top_k=50, top_p=0.9, system_prompt: str = None):
+                 temperature=1.0, top_k=50, top_p=0.9):
         self.show_additional_info = False
         self.model = model
         self.tokenizer = tokenizer
@@ -58,7 +58,6 @@ class ChatBot:
         self.temperature = temperature
         self.top_k = top_k
         self.top_p = top_p
-        self.system_prompt = system_prompt
         
         # Check if model is ONNX (wrapped or direct ORTModel)
         self.is_onnx = (
@@ -87,31 +86,24 @@ class ChatBot:
         if self.__keep_memory:
             self.__messages = []
 
-    def _build_messages(self, user_content: str) -> list:
-        """Build a messages list with optional system role prepended."""
-        messages = []
-        if self.system_prompt:
-            messages.append({"role": "system", "content": self.system_prompt})
-        messages.append({"role": "user", "content": user_content})
-        return messages
-
-    def _prepare_pipeline_input(self, prompt_text):
+    def _prepare_pipeline_input(self, prompt_text, assistant_prefill=None):
         """Build a pipeline-ready text prompt using chat template when available."""
-        messages = self._build_messages(prompt_text)
+        messages = [{"role": "user", "content": prompt_text}]
         if hasattr(self.tokenizer, 'apply_chat_template'):
-            return self.tokenizer.apply_chat_template(
+            prompt = self.tokenizer.apply_chat_template(
                 messages,
                 tokenize=False,
                 add_generation_prompt=True
             )
-        return prompt_text
+            return prompt + (assistant_prefill or "")
+        return prompt_text + (assistant_prefill or "")
 
-    def _direct_generate_batch(self, prompts, max_new_tokens=None, max_len=None):
+    def _direct_generate_batch(self, prompts, max_new_tokens=None, max_len=None, assistant_prefill=None):
         """Run true batched generation via model.generate and strip prompt prefixes by token length."""
         if hasattr(self.model, "eval"):
             self.model.eval()
 
-        formatted_prompts = [self._prepare_pipeline_input(p) for p in prompts]
+        formatted_prompts = [self._prepare_pipeline_input(p, assistant_prefill=assistant_prefill) for p in prompts]
         tokenizer_max_len = getattr(self.tokenizer, "model_max_length", None)
         if tokenizer_max_len is None or tokenizer_max_len > 10**8:
             tokenizer_max_len = 4096
@@ -127,7 +119,6 @@ class ChatBot:
                 padding=True,
                 truncation=True,
                 max_length=max_input_len,
-                add_special_tokens=False,  # chat template already includes BOS; prevents EOS being appended
             )
         finally:
             self.tokenizer.padding_side = original_padding_side
@@ -152,9 +143,10 @@ class ChatBot:
                 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
         inputs = {k: v.to(device) for k, v in inputs.items()}
-        # With left-padding, all sequences in the batch share the same padded input length.
-        # The generated tokens start at index padded_input_length in each output row.
-        padded_input_length = inputs['input_ids'].shape[1]
+        if 'attention_mask' in inputs:
+            input_lengths = inputs['attention_mask'].sum(dim=1).tolist()
+        else:
+            input_lengths = [inputs['input_ids'].shape[1]] * inputs['input_ids'].shape[0]
 
         with torch.no_grad():
             outputs = self.model.generate(
@@ -171,13 +163,13 @@ class ChatBot:
 
         results = []
         for i in range(outputs.shape[0]):
-            generated_ids = outputs[i][padded_input_length:]
-            generated = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
+            generated_ids = outputs[i][int(input_lengths[i]):]
+            generated = (assistant_prefill or "") + self.tokenizer.decode(generated_ids, skip_special_tokens=True)
             nn = extract_code(generated)
             results.append((nn, extract_hyperparam(generated), extract_transform(generated), generated))
         return results
 
-    def chat(self, prompt: str, max_len=None, max_new_tokens=None, engineer_prompt=True) -> tuple[str, str, str, str]:
+    def chat(self, prompt: str, max_len=None, max_new_tokens=None, engineer_prompt=True, assistant_prefill=None) -> tuple[str, str, str, str]:
         # Set model to eval mode (no-op for ONNX)
         if hasattr(self.model, "eval"):
             self.model.eval()
@@ -186,20 +178,18 @@ class ChatBot:
             prompt += extra_instructions
         
         if self.__keep_memory:
-            if not self.__messages and self.system_prompt:
-                self.__messages.append({"role": "system", "content": self.system_prompt})
             self.__messages.append({"role": "user", "content": prompt})
             in_next = self.__messages
         else:
-            in_next = self._build_messages(prompt)
+            in_next = [{"role": "user", "content": prompt}]
         
         # Use pipeline if available (PyTorch path)
-        if self.__pipeline is not None:
+        if self.__pipeline is not None and assistant_prefill is None:
             try:
                 generation_kwargs = {
                     "max_new_tokens": max_new_tokens,
                     "do_sample": True,
-                    "max_length": max_len,
+                    "max_len": max_len,
                     "temperature": self.temperature,
                     "top_k": self.top_k,
                     "top_p": self.top_p,
@@ -208,12 +198,13 @@ class ChatBot:
                     out_item = self.__pipeline(
                         in_next,
                         return_full_text=False,
+                        prefix=assistant_prefill or "",
                         **generation_kwargs,
                     )[0]
-                    out = _extract_generated_content(out_item)
+                    out = (assistant_prefill or "") + _extract_generated_content(out_item)
                 except TypeError:
                     out_item = self.__pipeline(in_next, **generation_kwargs)[0]
-                    out = _extract_generated_content(out_item)
+                    out = (assistant_prefill or "") + _extract_generated_content(out_item)
                 
                 assert isinstance(out, str)
                 
@@ -227,27 +218,27 @@ class ChatBot:
                 print("[INFO] Falling back to direct generation")
         
         # Direct generation (ONNX or PyTorch fallback)
-        return self._direct_generate(in_next, max_new_tokens, max_len)
+        return self._direct_generate(in_next, max_new_tokens, max_len, assistant_prefill=assistant_prefill)
 
-    def chat_batch(self, prompts, max_len=None, max_new_tokens=None, engineer_prompt=True):
+    def chat_batch(self, prompts, max_len=None, max_new_tokens=None, engineer_prompt=True, assistant_prefill=None):
         """Batch generation for multiple prompts; falls back to per-prompt generation."""
         if not prompts:
             return []
 
         if self.__keep_memory:
-            return [self.chat(p, max_len=max_len, max_new_tokens=max_new_tokens, engineer_prompt=engineer_prompt) for p in prompts]
+            return [self.chat(p, max_len=max_len, max_new_tokens=max_new_tokens, engineer_prompt=engineer_prompt, assistant_prefill=assistant_prefill) for p in prompts]
 
         prepared_prompts = [p + extra_instructions if engineer_prompt else p for p in prompts]
         if self.__pipeline is not None or not self.is_onnx:
             try:
-                return self._direct_generate_batch(prepared_prompts, max_new_tokens=max_new_tokens, max_len=max_len)
+                return self._direct_generate_batch(prepared_prompts, max_new_tokens=max_new_tokens, max_len=max_len, assistant_prefill=assistant_prefill)
             except Exception as e:
                 print(f"[WARN] Direct batch generation failed: {e}")
                 print("[INFO] Falling back to per-prompt generation")
 
-        return [self.chat(p, max_len=max_len, max_new_tokens=max_new_tokens, engineer_prompt=engineer_prompt) for p in prompts]
+        return [self.chat(p, max_len=max_len, max_new_tokens=max_new_tokens, engineer_prompt=engineer_prompt, assistant_prefill=assistant_prefill) for p in prompts]
 
-    def _direct_generate(self, messages, max_new_tokens, max_len):
+    def _direct_generate(self, messages, max_new_tokens, max_len, assistant_prefill=None):
         """Direct model.generate() call without pipeline - works for ONNX and PyTorch"""
         try:
             # Apply chat template to format messages
@@ -260,18 +251,20 @@ class ChatBot:
             else:
                 # Fallback: concatenate messages
                 formatted_prompt = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
+            if assistant_prefill:
+                formatted_prompt += assistant_prefill
             
             # Tokenize input
             inputs = self.tokenizer(
                 formatted_prompt,
                 return_tensors="pt",
                 truncation=True,
-                max_length=max(self.tokenizer.model_max_length - (max_new_tokens or 4096), 128),
-                add_special_tokens=False,  # chat template already includes BOS; prevents EOS being appended
+                max_length=self.tokenizer.model_max_length - (max_new_tokens or 4096)
             )
 
 
             # -- FIX 1: Validate token IDs before GPU move -- 
+
             if 'input_ids' in inputs:
                 input_ids = inputs['input_ids']
                 vocab_size = self.tokenizer.vocab_size
@@ -328,7 +321,7 @@ class ChatBot:
             
             # FIX: Decode only the generated part (skip input prompt)
             generated_ids = outputs[0][input_length:]  # Use input_length, not shape[1]
-            out = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
+            out = (assistant_prefill or "") + self.tokenizer.decode(generated_ids, skip_special_tokens=True)
             
             assert isinstance(out, str)
             

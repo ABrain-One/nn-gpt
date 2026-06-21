@@ -1,0 +1,86 @@
+{
+  "improve_classification_only_imagenette_edit_paper": {
+    "comment": [
+      "Imagenette structured edit generation: improve a valid baseline with a constrained JSON edit"
+    ],
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "imagenette",
+    "addon_task": null,
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "prompt": [
+      "Task: Improve the baseline Imagenette model using a small structured edit.",
+      "",
+      "=== BASELINE MODEL ===",
+      "<hp>{prm}</hp>",
+      "",
+      "<tr>",
+      "{transform_code}",
+      "</tr>",
+      "",
+      "<nn>",
+      "{nn_code}",
+      "</nn>",
+      "",
+      "Current performance: {accuracy}",
+      "Goal: Maximize first-epoch '{metric}' on 'imagenette' for 'img-classification'",
+      "",
+      "=== YOUR TASK ===",
+      "Choose only safe high-level edits that can be deterministically applied to the baseline model.",
+      "Do not write full Python code and do not write a unified diff.",
+      "",
+      "=== ALLOWED EDIT JSON ===",
+      "- mode: \"hp_transform_only\" or \"structured_cifar_edit\"",
+      "- width: \"same\", \"narrow\", or \"wide\"",
+      "- pool: \"keep\" or \"adaptive_avg\"",
+      "- residual_kernel: optional integer 1, 2, or 3",
+      "- classifier_dropout: float between 0.0 and 0.5",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "",
+      "<hp>",
+      "{{\"batch\": 64, \"transform\": \"echo_224\", \"lr\": 0.01, \"momentum\": 0.9}}",
+      "</hp>",
+      "",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])",
+      "</tr>",
+      "",
+      "<edit>",
+      "{{\"mode\":\"structured_cifar_edit\",\"width\":\"wide\",\"pool\":\"adaptive_avg\",\"classifier_dropout\":0.2}}",
+      "</edit>",
+      "",
+      "=== CRITICAL RULES ===",
+      "- Output exactly one JSON object inside <edit>",
+      "- Use only the allowed keys above",
+      "- If no safe architecture change is clear, set mode to \"hp_transform_only\"",
+      "- Do not explain your reasoning"
+    ]
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "improvement_classification_codeonly_analogical": {
+    "type": "change_parameters",
+    "is_generation": false,
+    "task": null,
+    "addon_task": null,
+    "input_list": [
+      {"para": "nn_code", "value": "nn_code"},
+      {"para": "accuracy", "value": "accuracy"},
+      {"para": "epoch", "value": "epoch"},
+      {"para": "dataset", "value": "dataset"},
+      {"para": "task", "value": "task"},
+      {"para": "metric", "value": "metric"},
+      {"para": "metric_code", "value": "metric_code"},
+      {"para": "transform_code", "value": "transform_code"},
+      {"para": "prm", "value": "prm"},
+      {"para": "addon_accuracy", "value": "accuracy_2"},
+      {"para": "addon_epoch", "value": "epoch_2"},
+      {"para": "addon_nn_code", "value": "nn_code_2"},
+      {"para": "addon_transform_code", "value": "transform_code_2"},
+      {"para": "addon_prm", "value": "prm_2"}
+    ],
+    "no_repeat": ["nn"],
+    "keep_same": ["epoch", "metric", "dataset", "task"],
+    "nn_prefixes": [],
+    "num_joint_nns": 2,
+    "improve": true,
+    "prompt": [
+      "You are a machine learning model designer.",
+      "Your task is to generate a LEMUR Dataset neural network model that increases the '{metric}' metric value to at least {addon_accuracy} at training epoch {epoch} on the '{dataset}' dataset for an '{task}' task.",
+      "Use the following reference model, which achieved an accuracy of {accuracy} under identical evaluation conditions, as the baseline for architectural and training hyperparameter inspiration.",
+      "Use this analogical reliability pattern, not a literal copy:",
+      "- define supported_hyperparameters() and keep only needed keys",
+      "- in Net.__init__, use c_in = in_shape[1] and n_cls = out_shape[0]",
+      "- prefer a Conv/BN/ReLU trunk with AdaptiveAvgPool2d((1, 1)) before the classifier",
+      "- keep the classifier shape-safe and avoid hard-coded flatten sizes when possible",
+      "- in train_setup, use CrossEntropyLoss and torch.optim.SGD(self.parameters(), lr=prm['lr'], momentum=prm['momentum'])",
+      "- in learn, use zero_grad -> forward -> loss.backward -> clip_grad_norm_ -> optimizer.step",
+      "Required output contract:",
+      "1. Return exactly three XML tags in this order: <hp>...</hp>, <tr>...</tr>, <nn>...</nn>.",
+      "2. The <hp> tag must contain valid JSON with keys 'batch', 'transform', and every key returned by supported_hyperparameters().",
+      "3. The <tr> tag must contain full transformer code.",
+      "4. The <nn> tag must contain full runnable PyTorch model code with class name Net, and must include supported_hyperparameters(), __init__, forward, train_setup, and learn.",
+      "5. Use full module paths like torch.optim.SGD(...) if needed, and make the classifier shape-safe.",
+      "Baseline hyperparameters and codes:",
+      "<hp>{prm}</hp>",
+      "<tr>{transform_code}</tr>",
+      "<nn>{nn_code}</nn>",
+      "<metric>{metric_code}</metric>",
+      "Output only the three XML tags with their contents. No markdown, no explanations."
+    ],
+    "output": [
+      "<hp>{addon_prm}</hp>",
+      "<tr>{addon_transform_code}</tr>",
+      "<nn>{addon_nn_code}</nn>"
+    ]
+  }
+}

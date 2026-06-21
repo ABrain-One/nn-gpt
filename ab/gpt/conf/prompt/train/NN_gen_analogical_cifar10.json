@@ -1,0 +1,40 @@
+{
+  "improvement_classification_codeonly_analogical_cifar10": {
+    "type": "change_parameters",
+    "is_generation": false,
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "addon_task": null,
+    "input_list": [
+      {"para": "nn_code", "value": "nn_code"},
+      {"para": "accuracy", "value": "accuracy"},
+      {"para": "metric", "value": "metric"},
+      {"para": "prm", "value": "prm"},
+      {"para": "addon_accuracy", "value": "accuracy_2"},
+      {"para": "addon_nn_code", "value": "nn_code_2"},
+      {"para": "addon_transform_code", "value": "transform_code_2"},
+      {"para": "addon_prm", "value": "prm_2"}
+    ],
+    "no_repeat": ["nn"],
+    "keep_same": ["epoch", "metric", "dataset", "task"],
+    "nn_prefixes": [],
+    "num_joint_nns": 2,
+    "improve": true,
+    "prompt": [
+      "Generate a LEMUR CIFAR-10 classifier that improves first-epoch '{metric}' from {accuracy} toward {addon_accuracy}.",
+      "Return training hyperparameters as JSON in <hp>...</hp>, transformer code in <tr>...</tr>, and PyTorch neural network code in <nn>...</nn>.",
+      "Use this analogical reliability pattern, not a literal copy: c_in = in_shape[1], n_cls = out_shape[0], a shape-safe Conv/BN/ReLU trunk, AdaptiveAvgPool2d((1, 1)), CrossEntropyLoss, and torch.optim.SGD(self.parameters(), lr=prm['lr'], momentum=prm['momentum']).",
+      "The <hp> JSON must include 'batch', 'transform', 'lr', and 'momentum'.",
+      "The <nn> code must be complete and runnable, define supported_hyperparameters(), class Net(nn.Module), __init__(self, in_shape, out_shape, prm, device), forward, train_setup, and learn.",
+      "Output only three XML tags in this exact order: <hp>...</hp>, <tr>...</tr>, <nn>...</nn>. No markdown and no explanation.",
+      "Reference:",
+      "<hp>{prm}</hp>",
+      "<nn>{nn_code}</nn>"
+    ],
+    "output": [
+      "<hp>{addon_prm}</hp>",
+      "<tr>{addon_transform_code}</tr>",
+      "<nn>{addon_nn_code}</nn>"
+    ]
+  }
+}

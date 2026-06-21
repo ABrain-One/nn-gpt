@@ -15,7 +15,6 @@ curation_output/
 iterative_pipeline.log
 *.egg-info/
 unsloth_compiled_cache/
-
 # Run artifacts (do not commit)
 **/checkpoint-*
 **/tokenizer/
@@ -35,3 +34,16 @@ slurm_nngpt_kto_*.sh
 nngpt.def
 .claude/
 Experiment_Metrics/
+# Generated cache
+*.pyo
+# Local experiment outputs
+prompts.log
+*.log
+# Scratch/backup artifacts
+*.bak
+ga_fractal_arch/
+stats/*.json
+# Local run artifacts
+cycle_results.json
+eval_info.json
+source_recipe_delta.json
