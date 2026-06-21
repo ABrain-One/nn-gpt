@@ -1,10 +1,6 @@
 import os
 import re
 import ast
-import shutil
-import sys
-from contextlib import contextmanager
-from pathlib import Path
 
 import ab.nn.api as api
 from ab.nn.util.Util import uuid4
@@ -13,7 +9,7 @@ import ab.nn.api as nn_dataset
 
 
 class Eval:
-    def __init__(self, model_source_package: str, task='img-classification', dataset='cifar-10', metric='acc', prm=None, save_to_db=False, prefix=None, save_path=None, use_ast_validation=None):
+    def __init__(self, model_source_package: str, task='img-classification', dataset='cifar-10', metric='acc', prm=None, save_to_db=False, prefix=None, save_path=None, use_ast_validation=None, epoch_limit_minutes=None):
         """
         Evaluates a given model on a specified dataset for classification
         :param model_source_package: The package name of the model to evaluate
@@ -35,6 +31,7 @@ class Eval:
         self.save_to_db = save_to_db
         self.prefix = prefix
         self.save_path = save_path
+        self.epoch_limit_minutes = epoch_limit_minutes
         
         if use_ast_validation is None:
             self.use_ast_validation = prefix is not None and 'delta' in str(prefix).lower()
@@ -87,20 +84,24 @@ class Eval:
         df = nn_dataset.data()
         ids_list = df["nn_id"].unique().tolist() if "nn_id" in df.columns else []
         new_checksum = uuid4(code)
-        if new_checksum not in ids_list:
-            with _isolated_eval_tmp_modules():
-                return api.check_nn(
-                    code,
-                    self.task,
-                    self.dataset,
-                    self.metric,
-                    self.prm,
-                    self.save_to_db,
-                    self.prefix,
-                    self.save_path,
-                )
-        else:
-            raise Exception(f'NN already exists (checksum: {new_checksum}). Skipping API call.')
+        if new_checksum in ids_list:
+            if self.save_to_db:
+                raise Exception(f'NN already exists (checksum: {new_checksum}). Skipping API call.')
+            print(f"[INFO] Duplicate checksum {new_checksum} detected; evaluating without saving to DB.")
+        check_kwargs = {}
+        if self.epoch_limit_minutes is not None:
+            check_kwargs['epoch_limit_minutes'] = self.epoch_limit_minutes
+        return api.check_nn(
+            code,
+            self.task,
+            self.dataset,
+            self.metric,
+            self.prm,
+            self.save_to_db and new_checksum not in ids_list,
+            self.prefix,
+            self.save_path,
+            **check_kwargs,
+        )
 
     def get_args(self):
         return {
@@ -110,39 +111,3 @@ class Eval:
             'metric': self.metric,
             'prm': self.prm,
         }
-
-
-@contextmanager
-def _isolated_eval_tmp_modules():
-    """
-    Give each evaluator process its own temporary Python package root.
-
-    The underlying nn-dataset trainer writes transient modules under
-    ``<ab_root_path>/<out>/nn/tmp``. Real multi-worker NNEval runs would race on
-    that shared location, so we remap only the trainer's ``out`` root per
-    process while the evaluation request is active.
-    """
-    try:
-        import ab.nn.util.Train as train_runtime
-        from ab.nn.util.Const import ab_root_path
-    except Exception:
-        yield
-        return
-
-    original_out = getattr(train_runtime, 'out', None)
-    if not isinstance(original_out, str) or not original_out:
-        yield
-        return
-
-    isolated_out = f"{original_out}_nneval_tmp_pid_{os.getpid()}"
-    isolated_root = Path(ab_root_path) / isolated_out
-    train_runtime.out = isolated_out
-    try:
-        yield
-    finally:
-        train_runtime.out = original_out
-        stale_prefix = f"{isolated_out}."
-        for module_name in tuple(sys.modules):
-            if module_name == isolated_out or module_name.startswith(stale_prefix):
-                sys.modules.pop(module_name, None)
-        shutil.rmtree(isolated_root, ignore_errors=True)

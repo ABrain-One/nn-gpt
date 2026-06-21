@@ -1,11 +1,7 @@
 from os import makedirs
-import inspect
-from pathlib import Path
-from typing import Optional
 
 import torch
 from ab.nn.util.Util import release_memory
-import ab.gpt.util.training_runtime as TrainingRuntime
 from datasets import Dataset
 from peft import (
     LoraConfig,
@@ -143,7 +139,6 @@ class LoRA:
             # Standard PEFT flow for non-Unsloth models
             self.model = prepare_model_for_kbit_training(self.model)
             self.model.gradient_checkpointing_enable()
-            print("[LoRA] Gradient checkpointing enabled")
             self.peft_model = get_peft_model(self.model, self.peft_config)
         
         self.peft_model._hf_peft_config_loaded = True 
@@ -152,17 +147,7 @@ class LoRA:
         print("[LoRA] Trainable parameter summary:")
         print_trainable_parameters(self.peft_model)
 
-    def train(
-        self,
-        dataset: Dataset,
-        tokenizer,
-        output_dir: str,
-        train_on_completions_only=False,
-        response_template=None,
-        resume_from_checkpoint: Optional[str] = None,
-        runtime_state_hooks: Optional[TrainingRuntime.RuntimeStateHooks] = None,
-        checkpoint_label: str = "trainer",
-    ):
+    def train(self, dataset: Dataset, tokenizer, output_dir: str, train_on_completions_only=False, response_template=None):
         """
         Train the model using SFTTrainer.
         
@@ -197,7 +182,13 @@ class LoRA:
                     print(f"Sample (first 500 chars):\n{sample_text[:500]}")
                     
                     # Common patterns for DeepSeek and similar models
-                    possible_templates = ["Assistant:", "assistant:", "<|assistant|>", "### Assistant:"]
+                    possible_templates = [
+                        "<|im_start|>assistant\n",
+                        "Assistant:",
+                        "assistant:",
+                        "<|assistant|>",
+                        "### Assistant:",
+                    ]
                     for template in possible_templates:
                         if template in sample_text:
                             response_template = template
@@ -240,6 +231,14 @@ class LoRA:
                 return_tensors="pt"
             )
 
+        tokenizer_max_len = getattr(self.tokenizer, "model_max_length", None)
+        if tokenizer_max_len is None or tokenizer_max_len > 10**8:
+            tokenizer_max_len = 4096
+        arg_max_len = getattr(self.training_args, "max_seq_length", None) or getattr(self.training_args, "max_length", None)
+        if arg_max_len is None or arg_max_len > 10**8:
+            arg_max_len = tokenizer_max_len
+        effective_max_len = int(min(tokenizer_max_len, arg_max_len, 4096))
+
         # Use SFTTrainer for pre-rendered text, or fallback to Trainer if needed
         # TL;DR: Feed Dataset.from_list([...{"text": ...}...]) to SFTTrainer with dataset_text_field="text"
         # Choose:
@@ -247,17 +246,16 @@ class LoRA:
         #   Precise: DataCollatorForCompletionOnlyLM with response_template + packing=False
         if has_text_field:
             print("[INFO] Using SFTTrainer with pre-rendered text (dataset_text_field='text')")
-            # Packing: enable when NOT using completion-only masking (completion-only requires packing=False)
-            # Simple mode: packing=True (train on full text)
-            # Precise mode: packing=False + DataCollatorForCompletionOnlyLM (train on completions only)
-            use_packing = not train_on_completions_only
+            # Keep packing disabled for this path. Packed / padding-free training has
+            # been unstable here and can blur sample boundaries for long code prompts.
+            use_packing = False
             print(f"[INFO] Packing enabled: {use_packing} ({'Simple mode: full text' if use_packing else 'Precise mode: completions only'})")
             
             # Configure tokenizer for SFT: truncate from left (keep assistant response), pad on right
             # This ensures sequences are truncated correctly when SFTTrainer tokenizes
             self.tokenizer.truncation_side = "left"
             self.tokenizer.padding_side = "right"
-            # self.tokenizer.model_max_length = 4096  # DeepSeek-Coder-7B-Instruct-v1.5 has ~4K context
+            self.tokenizer.model_max_length = effective_max_len
             
             # Suppress sequence length warnings - SFTTrainer will handle truncation correctly
             import warnings
@@ -268,30 +266,34 @@ class LoRA:
             # Convert to SFTConfig if not already, or set attributes directly
             if isinstance(self.training_args, SFTConfig):
                 self.training_args.remove_unused_columns = False  # critical when using raw text
-                self.training_args.packing = use_packing  # Simple: True, Precise: False
-                self.training_args.max_seq_length = 4096  # DeepSeek-Coder-7B-Instruct-v1.5 has ~4K context (4k/4.1k)
+                self.training_args.packing = use_packing
+                self.training_args.padding_free = False
+                self.training_args.max_seq_length = effective_max_len
+                self.training_args.max_length = effective_max_len
                 self.training_args.dataset_text_field = "text"  # Feed Dataset with {"text": ...} format
             else:
                 # If training_args is TrainingArguments, create SFTConfig with all attributes
                 sft_config = SFTConfig(**self.training_args.to_dict())
                 sft_config.remove_unused_columns = False  # critical when using raw text
-                sft_config.packing = use_packing  # Simple: True, Precise: False
-                sft_config.max_seq_length = 8192  # DeepSeek-Coder-7B-Instruct-v1.5 has ~4K context (4k/4.1k)
+                sft_config.packing = use_packing
+                sft_config.padding_free = False
+                sft_config.max_seq_length = effective_max_len
+                sft_config.max_length = effective_max_len
                 sft_config.dataset_text_field = "text"  # Feed Dataset with {"text": ...} format
                 self.training_args = sft_config
             
             # SFTTrainer will handle tokenization and truncation internally
             # Since chat_template already added special tokens, tokenizer will use add_special_tokens=False internally
-            trainer = SFTTrainer(
+            trainer_kwargs = dict(
                 model=self.peft_model,
                 processing_class=self.tokenizer,
                 train_dataset=train_dataset,
                 eval_dataset=eval_dataset,
                 args=self.training_args,
-                #data_collator=collator  # Simple: DataCollatorForLanguageModeling, Precise: DataCollatorForCompletionOnlyLM
-                # packing, max_seq_length, and dataset_text_field are in training_args (SFTConfig)
-                # SFTTrainer will handle truncation based on max_seq_length and tokenizer settings
             )
+            if train_on_completions_only:
+                trainer_kwargs["data_collator"] = collator
+            trainer = SFTTrainer(**trainer_kwargs)
         else:
             print("[WARN] Dataset does not have 'text' field. Using standard Trainer.")
             # Fallback to original Trainer if dataset format is different
@@ -318,34 +320,10 @@ class LoRA:
             print(k, v, v / total)
         do_train = True
 
-        if runtime_state_hooks is not None:
-            # Pipelines opt into runtime state persistence; LoRA only wires the shared contract.
-            TrainingRuntime.restore_or_reset_runtime_state(
-                Path(resume_from_checkpoint).expanduser().resolve() if resume_from_checkpoint else None,
-                runtime_state_hooks,
-            )
-            runtime_callback = TrainingRuntime.build_trainer_checkpoint_callback(runtime_state_hooks)
-            if runtime_callback is not None:
-                trainer.add_callback(runtime_callback)
-
         # starting training
         print("Training...")
         if do_train:
-            if resume_from_checkpoint:
-                # Trainer resume is separate from runtime state restore and remains an explicit one-shot input.
-                resolved_resume_checkpoint = Path(resume_from_checkpoint).expanduser().resolve()
-                if not resolved_resume_checkpoint.exists():
-                    raise FileNotFoundError(
-                        f"{checkpoint_label.capitalize()} resume checkpoint not found: {resolved_resume_checkpoint}"
-                    )
-                train_signature = inspect.signature(trainer.train)
-                if "resume_from_checkpoint" not in train_signature.parameters:
-                    raise RuntimeError(
-                        f"Installed trainer does not support resume_from_checkpoint for {checkpoint_label} resume."
-                    )
-                train_result = trainer.train(resume_from_checkpoint=str(resolved_resume_checkpoint))
-            else:
-                train_result = trainer.train()
+            train_result = trainer.train()
             metrics = train_result.metrics
             trainer.log_metrics(split="train", metrics=metrics)
             trainer.save_metrics(split="train", metrics=metrics)
@@ -359,10 +337,6 @@ class LoRA:
         print("Saving last checkpoint of the model...")
         makedirs(output_dir, exist_ok=True)
         trainer.model.save_pretrained(output_dir, access_token=self.access_token)
-
-        # Always save tokenizer alongside adapter
-        self.tokenizer.save_pretrained(output_dir)
-        print(f"Tokenizer saved to {output_dir}")
 
         # Free memory for merging weights
         # del self.model

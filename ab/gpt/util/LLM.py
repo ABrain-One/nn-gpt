@@ -39,8 +39,7 @@ class LLM:
         
         # ===== Unsloth Fast Path =====
         if use_unsloth:
-            from unsloth import FastLanguageModel
-            self.model, self.tokenizer = FastLanguageModel.from_pretrained(
+            self.model, self.tokenizer = FastModel.from_pretrained(
                 model_name=model_path,
                 dtype = None,
                 max_seq_length=context_length or 4096,
@@ -58,7 +57,6 @@ class LLM:
         # ===== Original HuggingFace Path =====
         # --- Tokenizer ---
         tok_fl_nm = llm_tokenizer_dir(base_path, model_path)
-        
         raw_fl_nm = llm_dir(base_path, model_path)
         tokenizer_exists = exists(tok_fl_nm)
 
@@ -77,6 +75,7 @@ class LLM:
             print("Loading Tokenizer from local files:", tok_fl_nm)
         else:
             print("Downloading Tokenizer...")
+            tok_fl_nm.mkdir(parents=True, exist_ok=True)
             self.tokenizer.save_pretrained(tok_fl_nm, access_token=access_token)
             print("Tokenizer saved to: ", tok_fl_nm)
 
@@ -125,12 +124,21 @@ class LLM:
         elif use_deepspeed:
             # Fallback: if use_deepspeed is True, assume ZeRO-3 might be used
             use_zero3 = True
+
+        max_memory = os.environ.get("AB_GPT_LLM_MAX_MEMORY", max_memory)
+        cuda_device_count = torch.cuda.device_count()
+        if not use_zero3 and cuda_device_count == 0:
+            raise RuntimeError(
+                "No CUDA devices are visible to PyTorch while loading a non-DeepSpeed LLM. "
+                "Refusing to continue because this would create max_memory={} and can be "
+                "misrecorded as a failed experiment arm instead of an infrastructure failure."
+            )
         
         # Build model kwargs (sanitize for ZeRO-3)
         deepspeed_specific_prm = {} if use_zero3 else {"device_map": "auto"}
         model_kwargs = dict(
             trust_remote_code=True,
-            max_memory={i: max_memory for i in range(torch.cuda.device_count())},
+            max_memory={i: max_memory for i in range(cuda_device_count)},
             token=access_token,
             torch_dtype=torch.bfloat16,  # QLoRA compute
             gguf_file=gguf_file,
@@ -166,6 +174,7 @@ class LLM:
         elif exists(raw_fl_nm):
             print(f"Loading Raw Model from local files: '{raw_fl_nm}'")
         else:
+            raw_fl_nm.mkdir(parents=True, exist_ok=True)
             self.model.save_pretrained(raw_fl_nm, access_token=access_token)
             print("Model saved to: ", raw_fl_nm)
 

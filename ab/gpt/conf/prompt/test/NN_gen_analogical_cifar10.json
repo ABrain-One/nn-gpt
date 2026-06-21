@@ -1,0 +1,27 @@
+{
+  "improve_classification_only_analogical_cifar10": {
+    "comment": [],
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "addon_task": null,
+    "input_list": [
+      {"para": "nn_code", "value": "nn_code"},
+      {"para": "accuracy", "value": "accuracy"},
+      {"para": "metric", "value": "metric"},
+      {"para": "prm", "value": "prm"}
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "prompt": [
+      "Provide training hyperparameters as JSON in <hp>...</hp>, transformer code in <tr>...</tr>, and PyTorch neural network code in <nn>...</nn> that maximizes first-epoch '{metric}' on CIFAR-10 image classification.",
+      "Use the reference model and hyperparameters below for inspiration, but change the architecture and/or training choices.",
+      "Use this analogical reliability pattern, not a literal copy: c_in = in_shape[1], n_cls = out_shape[0], a shape-safe Conv/BN/ReLU trunk, AdaptiveAvgPool2d((1, 1)), CrossEntropyLoss, and torch.optim.SGD(self.parameters(), lr=prm['lr'], momentum=prm['momentum']).",
+      "The <hp> JSON must include 'batch', 'transform', 'lr', and 'momentum'.",
+      "The <nn> code must be complete and runnable, define supported_hyperparameters(), class Net(nn.Module), __init__(self, in_shape, out_shape, prm, device), forward, train_setup, and learn.",
+      "Output only three XML tags in this exact order: <hp>...</hp>, <tr>...</tr>, <nn>...</nn>. No markdown and no explanation.",
+      "Reference:",
+      "<hp>{prm}</hp>",
+      "<nn>{nn_code}</nn>"
+    ]
+  }
+}

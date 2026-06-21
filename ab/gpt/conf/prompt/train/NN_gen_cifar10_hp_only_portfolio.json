@@ -1,0 +1,28 @@
+{
+  "improve_classification_only_cifar10_hp_only_portfolio": {
+    "comment": [
+      "Training prompt placeholder for CIFAR-10 hp-only portfolio arm"
+    ],
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "addon_task": null,
+    "input_list": [
+      {"para": "nn_code", "value": "nn_code"},
+      {"para": "accuracy", "value": "accuracy"},
+      {"para": "metric", "value": "metric"},
+      {"para": "transform_code", "value": "transform_code"},
+      {"para": "prm", "value": "prm"}
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "prompt": [
+      "Task: Improve CIFAR-10 performance without changing model architecture.",
+      "<hp>{prm}</hp>",
+      "<tr>{transform_code}</tr>",
+      "<nn>{nn_code}</nn>",
+      "Current performance: {accuracy}",
+      "Output exactly <hp>, <tr>, and <edit> with mode hp_transform_only."
+    ]
+  }
+}

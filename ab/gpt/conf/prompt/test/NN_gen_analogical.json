@@ -1,0 +1,41 @@
+{
+  "improve_classification_only_analogical": {
+    "comment": [],
+    "task": "img-classification",
+    "addon_task": null,
+    "input_list": [
+      {"para": "nn_code", "value": "nn_code"},
+      {"para": "accuracy", "value": "accuracy"},
+      {"para": "epoch", "value": "epoch"},
+      {"para": "dataset", "value": "dataset"},
+      {"para": "task", "value": "task"},
+      {"para": "metric", "value": "metric"},
+      {"para": "metric_code", "value": "metric_code"},
+      {"para": "transform_code", "value": "transform_code"},
+      {"para": "prm", "value": "prm"}
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "prompt": [
+      "Provide training hyperparameters as JSON in <hp>...</hp>, transformer code in <tr>...</tr>, and neural network code in <nn>...</nn> that maximizes '{metric}' after the first epoch on the '{dataset}' dataset for the '{task}' task.",
+      "Use this analogical reliability pattern, not a literal copy:",
+      "- define supported_hyperparameters() and keep only needed keys",
+      "- in Net.__init__, use c_in = in_shape[1] and n_cls = out_shape[0]",
+      "- prefer a Conv/BN/ReLU trunk with AdaptiveAvgPool2d((1, 1)) before the classifier",
+      "- keep the classifier shape-safe and avoid hard-coded flatten sizes when possible",
+      "- in train_setup, use CrossEntropyLoss and torch.optim.SGD(self.parameters(), lr=prm['lr'], momentum=prm['momentum'])",
+      "- in learn, use zero_grad -> forward -> loss.backward -> clip_grad_norm_ -> optimizer.step",
+      "Use common patterns and ideas from the following reference model and training configuration, which achieved '{metric}' value {accuracy} at epoch {epoch} on '{dataset}' for '{task}':",
+      "<hp>{prm}</hp>",
+      "<tr>{transform_code}</tr>",
+      "<metric>{metric_code}</metric>",
+      "<nn>{nn_code}</nn>",
+      "Hard constraints:",
+      "- Output only three XML tags in this exact order: <hp>...</hp>, <tr>...</tr>, <nn>...</nn>.",
+      "- The <hp> JSON must contain 'batch', 'transform', and all keys returned by supported_hyperparameters().",
+      "- The <nn> code must include supported_hyperparameters(), __init__, forward, train_setup, and learn.",
+      "- Use in_shape[1] for input channels and keep the classifier shape-safe.",
+      "- No markdown fences or explanations."
+    ]
+  }
+}
