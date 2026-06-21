@@ -109,8 +109,10 @@ class Net(nn.Module):
             c_in, h_in, w_in = in_shape[0], in_shape[1], in_shape[2]
         self._input_spec = (c_in, h_in, w_in)
         # --- Filled by Generator ---
-        self.backbone_a = TorchVision(?bb_a, in_channels=c_in).to(device)
-        self.backbone_b = TorchVision(?bb_b, in_channels=c_in).to(device)
+        self.backbones = nn.ModuleList([
+            TorchVision(name, in_channels=c_in).to(device)
+            for name in [?BACKBONE_NAMES]
+        ])
 
         self.features = nn.Sequential()
         curr_ch = c_in
@@ -152,6 +154,7 @@ class Net(nn.Module):
 
     def train_setup(self, prm):
         self.to(self.device)
+        self._prm = prm
         self.criterion = nn.CrossEntropyLoss().to(self.device)
         self.optimizer = torch.optim.SGD(
             self.parameters(),
@@ -163,6 +166,7 @@ class Net(nn.Module):
     def learn(self, train_data):
         self.train()
         scaler = self._scaler
+        max_steps = int(self._prm.get('max_steps', 0)) if hasattr(self, '_prm') else 0
         total_loss = 0.0
         total_correct = 0
         total_examples = 0
@@ -179,6 +183,9 @@ class Net(nn.Module):
 
                 if not torch.isfinite(loss):
                     continue
+
+                if max_steps and batch_idx >= max_steps:
+                    break
 
                 batch_size = int(labels.size(0))
                 total_loss += float(loss.detach().item()) * batch_size

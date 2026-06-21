@@ -16,6 +16,7 @@ from ab.gpt.util.Const import epoch_dir, new_nn_file, nngpt_dir, synth_dir, hp_f
 from ab.gpt.util.Util import verify_nn_code, copy_to_lemur
 from ab.gpt.util.CycleResults import generate_cycle_results, collect_cycle_metrics, save_cycle_results
 from ab.gpt.util import nneval_worker_pool as NNEvalWorkerPool
+from ab.gpt.brute.fract.backbone.EvalUtil import _update_model_description
 
 # Default evaluation parameters used by the CLI entrypoint when no per-model
 # metadata is available.
@@ -229,6 +230,11 @@ def _write_success_outputs(spec: Dict[str, Any], result: Dict[str, Any]) -> Dict
         spec["dataset"],
         spec["metric"],
     )
+    if _update_model_description is not None and lemur_prefix and str(lemur_prefix).startswith("FractalFusion"):
+        try:
+            _update_model_description(model_dir_path, spec, result, success=True)
+        except Exception as exc:
+            print(f"Failed to update model description: {exc}")
     return {
         "model_id": spec["model_id"],
         "success": True,
@@ -246,6 +252,12 @@ def _write_failure_outputs(spec: Dict[str, Any], result: Dict[str, Any]) -> Dict
         f"{error_text}\n\n{traceback_text}".strip() + "\n",
         encoding="utf-8",
     )
+    lemur_prefix = spec.get("lemur_prefix")
+    if _update_model_description is not None and lemur_prefix and str(lemur_prefix).startswith("FractalFusion"):
+        try:
+            _update_model_description(model_dir_path, spec, result, success=False)
+        except Exception as exc:
+            print(f"Failed to update model description on failure: {exc}")
     return {
         "model_id": spec["model_id"],
         "success": False,
@@ -317,12 +329,15 @@ def _collect_epoch_requests(
     patch_size: float,
     prm_json: Optional[Dict[str, Any]],
     epoch_limit_minutes: Optional[int],
+    eval_model_prefix: Optional[str] = None,
 ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     requests: List[Dict[str, Any]] = []
     immediate_results: List[Dict[str, Any]] = []
     base_nngpt_path = nngpt_dir
 
     for model_id in sorted(os.listdir(models_base_dir)):
+        if eval_model_prefix and not model_id.startswith(eval_model_prefix):
+            continue
         model_dir_path = models_base_dir / model_id
         if not model_dir_path.is_dir():
             continue
@@ -498,6 +513,7 @@ def main(
     custom_synth_dir=CUSTOM_SYNTH_DIR,
     cycle=CYCLE,
     use_all_visible_gpus: Optional[bool] = None,
+    eval_model_prefix: Optional[str] = None,
 ):
     base_nngpt_path = nngpt_dir
     if nn_alter_epochs is None:
@@ -564,6 +580,7 @@ def main(
                     patch_size=patch_size,
                     prm_json=prm_json,
                     epoch_limit_minutes=epoch_limit_minutes,
+                    eval_model_prefix=eval_model_prefix,
                 )
 
                 if requests:

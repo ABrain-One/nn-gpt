@@ -71,7 +71,11 @@ def llm_tokenizer_dir(base, name):
     return tokenizer_dir(base) / name
 
 def epoch_dir(*args):
-    e_dir = llm_dir(nngpt_dir, 'epoch')
+    override = _os.environ.get("NNGPT_EPOCH_DIR_OVERRIDE")
+    if override:
+        e_dir = Path(override)
+    else:
+        e_dir = llm_dir(nngpt_dir, 'epoch')
     for d in args:
         e_dir = e_dir / f'A{d}'
     return e_dir
