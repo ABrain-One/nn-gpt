@@ -73,6 +73,51 @@ def load_cycles(results_path: Path, cycles_dir: Optional[Path]) -> List[Dict[str
     return [by_cycle[k] for k in sorted(by_cycle)]
 
 
+def wilson_ci(k: int, n: int, z: float = 1.96):
+    """95% Wilson score interval for a proportion k/n → (lo, hi) in [0, 1]."""
+    if n <= 0:
+        return (0.0, 0.0)
+    p = k / n
+    denom = 1.0 + z * z / n
+    center = (p + z * z / (2 * n)) / denom
+    half = (z * ((p * (1 - p) / n + z * z / (4 * n * n)) ** 0.5)) / denom
+    return (max(0.0, center - half), min(1.0, center + half))
+
+
+# Two-sided 95% Student-t critical values by degrees of freedom (→ 1.96 for large df).
+_T95 = {1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365,
+        8: 2.306, 9: 2.262, 10: 2.228, 11: 2.201, 12: 2.179, 13: 2.160, 14: 2.145,
+        15: 2.131, 16: 2.120, 17: 2.110, 18: 2.101, 19: 2.093, 20: 2.086, 21: 2.080,
+        22: 2.074, 23: 2.069, 24: 2.064, 25: 2.060, 26: 2.056, 27: 2.052, 28: 2.048,
+        29: 2.045, 30: 2.042, 40: 2.021, 50: 2.009, 60: 2.000, 80: 1.990, 100: 1.984,
+        120: 1.980}
+
+
+def _t_crit(df: int) -> float:
+    if df <= 0:
+        return 0.0
+    if df in _T95:
+        return _T95[df]
+    if df > 120:
+        return 1.960
+    keys = [k for k in _T95 if k <= df]
+    return _T95[max(keys)] if keys else 12.706
+
+
+def mean_t_ci(values: List[float]):
+    """Sample mean and t-based 95% CI → (mean, lo, hi)."""
+    n = len(values)
+    if n == 0:
+        return (float("nan"), float("nan"), float("nan"))
+    mean = sum(values) / n
+    if n == 1:
+        return (mean, mean, mean)
+    var = sum((v - mean) ** 2 for v in values) / (n - 1)
+    se = (var ** 0.5) / (n ** 0.5)
+    t = _t_crit(n - 1)
+    return (mean, mean - t * se, mean + t * se)
+
+
 def _acc_from_eval_info(payload: Dict[str, Any]) -> Optional[float]:
     """Pull accuracy from a per-model eval_info.json (eval_results may be tuple or dict)."""
     res = payload.get("eval_results")
@@ -128,6 +173,7 @@ def apply_pass_average(cycles: List[Dict[str, Any]], per_model: Dict[int, List[f
         thr = r["effective_threshold"] or run_threshold
         passed = [a for a in accs if a >= thr]
         r["avg"] = (sum(passed) / len(passed)) if passed else float("nan")
+        r["pass_accs"] = passed  # sample for the t-based CI on the mean
 
 
 def _line_plot(xs, ys, title, ylabel, label, color, path, ylim=None) -> Path:
@@ -142,25 +188,59 @@ def _line_plot(xs, ys, title, ylabel, label, color, path, ylim=None) -> Path:
     return path
 
 
+def _ci_plot(xs, ys, lo, hi, title, ylabel, label, color, path, ylim=None) -> Path:
+    """One image, one metric, with 95% CI error bars per point."""
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.errorbar(xs, ys, yerr=[lo, hi], fmt="o-", color=color, ecolor=color,
+                capsize=3, label=label)
+    ax.set_title(title); ax.set_xlabel("Cycle"); ax.set_ylabel(ylabel)
+    ax.grid(True, alpha=0.3); ax.legend(fontsize=10)
+    if ylim is not None:
+        ax.set_ylim(*ylim)
+    fig.tight_layout(); fig.savefig(path, dpi=130); plt.close(fig)
+    return path
+
+
 def plot_separate(cycles: List[Dict[str, Any]], out_dir: Path) -> List[Path]:
-    """One image per metric, each a single-line trend."""
+    """One image per metric. Means get a t-based CI, proportions a Wilson CI."""
     xs = [r["cycle"] for r in cycles]
+
+    # Average accuracy: t-based 95% CI over models that cleared the threshold.
+    avg_y, avg_lo, avg_hi = [], [], []
+    for r in cycles:
+        accs = r.get("pass_accs") or []
+        if len(accs) >= 2:
+            m, lo, hi = mean_t_ci(accs)
+            avg_y.append(m * 100); avg_lo.append((m - lo) * 100); avg_hi.append((hi - m) * 100)
+        else:
+            avg_y.append(r["avg"] * 100); avg_lo.append(0.0); avg_hi.append(0.0)
+
+    # Valid-rate proportions: Wilson 95% CI (k / generated).
+    vt_y, vt_lo, vt_hi, ct_y, ct_lo, ct_hi = [], [], [], [], [], []
+    for r in cycles:
+        n = r["generated"]
+        for k, ys, los, his in ((r["evaluated"], vt_y, vt_lo, vt_hi),
+                                (r["pass_acc"], ct_y, ct_lo, ct_hi)):
+            p = k / n if n else 0.0
+            lo, hi = wilson_ci(k, n)
+            ys.append(p * 100); los.append((p - lo) * 100); his.append((hi - p) * 100)
+
     paths = [
-        _line_plot(xs, [r["avg"] * 100 for r in cycles],
-                   "Average Accuracy per Cycle (models ≥ threshold)", "Accuracy (%)",
-                   "Average accuracy (≥ threshold)", "#ff7f0e",
-                   out_dir / "kto_avg_accuracy.png"),
+        _ci_plot(xs, avg_y, avg_lo, avg_hi,
+                 "Average Accuracy per Cycle (models ≥ threshold) — t 95% CI",
+                 "Accuracy (%)", "Average accuracy (≥ threshold)", "#ff7f0e",
+                 out_dir / "kto_avg_accuracy.png"),
         _line_plot(xs, [r["best"] * 100 for r in cycles],
                    "Best Accuracy per Cycle", "Accuracy (%)", "Best accuracy",
                    "#1f77b4", out_dir / "kto_best_accuracy.png"),
-        _line_plot(xs, [100 * r["evaluated"] / r["generated"] for r in cycles],
-                   "Valid Models per Cycle (compiled+trained)", "% of generated",
-                   "Valid (compiled+trained)", "#17becf",
-                   out_dir / "kto_valid_trained.png", ylim=(0, 100)),
-        _line_plot(xs, [100 * r["pass_acc"] / r["generated"] for r in cycles],
-                   "Valid Models per Cycle (cleared threshold)", "% of generated",
-                   "Cleared threshold", "#9467bd",
-                   out_dir / "kto_valid_cleared_threshold.png", ylim=(0, 100)),
+        _ci_plot(xs, vt_y, vt_lo, vt_hi,
+                 "Valid Generation Rate per Cycle (compiled+trained) — Wilson 95% CI",
+                 "Valid generation rate (%)", "Valid (compiled+trained)", "#17becf",
+                 out_dir / "kto_valid_trained.png", ylim=(0, 100)),
+        _ci_plot(xs, ct_y, ct_lo, ct_hi,
+                 "Cleared-Threshold Rate per Cycle — Wilson 95% CI",
+                 "Cleared-threshold rate (%)", "Cleared threshold", "#9467bd",
+                 out_dir / "kto_valid_cleared_threshold.png", ylim=(0, 100)),
     ]
 
     # Bucket counts: desirable + undesirable (the two requested series).
@@ -232,7 +312,12 @@ def main() -> None:
     print("=" * 64)
     print(f"KTO run: {len(cycles)} cycles ({cycles[0]['cycle']}..{cycles[-1]['cycle']})")
     print(f"  best accuracy this run : {best_overall['best']*100:.2f}%  (cycle {best_overall['cycle']})")
-    print(f"  last-cycle avg accuracy: {cycles[-1]['avg']*100:.2f}%")
+    # Paper-style aggregate: mean over all above-threshold models + t-based 95% CI.
+    pooled = [a for r in cycles for a in (r.get("pass_accs") or [])]
+    if pooled:
+        m, lo, hi = mean_t_ci(pooled)
+        print(f"  Average Accuracy       : {m*100:.2f}%  "
+              f"(95% CI: {lo*100:.2f}% - {hi*100:.2f}%, n={len(pooled)})")
     print(f"  desirable accumulated  : {cycles[-1]['desirable_total']}")
     print("-" * 64)
     for f in figs:
