@@ -1,0 +1,124 @@
+{
+  "curriculum_edge_efficiency_k2": {
+    "type": "curriculum_prompt",
+    "is_generation": true,
+    "selection_mode": "tall",
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "metric": "acc",
+    "nn_prefixes": [],
+    "num_joint_nns": 2,
+    "similarity_mode": "anchor_band_db_minhash",
+    "similarity_band": "high",
+    "anchor_strategy": "auto",
+    "input_list": [
+      {
+        "para": "dataset",
+        "value": "dataset"
+      },
+      {
+        "para": "task",
+        "value": "task"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "epoch",
+        "value": "epoch"
+      },
+      {
+        "para": "acc_1",
+        "value": "acc_1"
+      },
+      {
+        "para": "duration_1",
+        "value": "duration_1"
+      },
+      {
+        "para": "hp_1",
+        "value": "hp_1"
+      },
+      {
+        "para": "tr_1",
+        "value": "tr_1"
+      },
+      {
+        "para": "nn_1",
+        "value": "nn_1"
+      },
+      {
+        "para": "acc_2",
+        "value": "acc_2"
+      },
+      {
+        "para": "duration_2",
+        "value": "duration_2"
+      },
+      {
+        "para": "hp_2",
+        "value": "hp_2"
+      },
+      {
+        "para": "tr_2",
+        "value": "tr_2"
+      },
+      {
+        "para": "nn_2",
+        "value": "nn_2"
+      }
+    ],
+    "prompt": [
+      "Do not use <think> tags.",
+      "Do not reason before generating.",
+      "Your response must begin with <nn> immediately.",
+      "Your first output character must be '<'.",
+      "Do not write explanations.",
+      "Do not write markdown fences.",
+      "Do not write any text before <nn>.",
+      "Do not write any text after </tr>.",
+      "",
+      "Return EXACTLY and ONLY these XML blocks in this exact order:",
+      "<nn>...</nn>",
+      "<hp>...</hp>",
+      "<tr>...</tr>",
+      "",
+      "You are generating one complete evaluator-compatible LEMUR neural network model for dataset='{dataset}', task='{task}', metric='{metric}', epoch={epoch}.",
+      "",
+      "### Reference models with accuracy and training duration (nanoseconds):",
+      "",
+      "Reference A (accuracy={acc_1}, duration={duration_1} ns):",
+      "<hp>{hp_1}</hp>",
+      "<tr>{tr_1}</tr>",
+      "<nn>{nn_1}</nn>",
+      "",
+      "Reference B (accuracy={acc_2}, duration={duration_2} ns):",
+      "<hp>{hp_2}</hp>",
+      "<tr>{tr_2}</tr>",
+      "<nn>{nn_2}</nn>",
+      "",
+      "",
+      "CRITICAL \u2014 TorchVision backbone names:",
+      "If you use a torchvision backbone via the TorchVision(...) wrapper, you MUST use ONLY these exact model name strings (any other name will fail):",
+      "mobilenet_v2, mobilenet_v3_small, mobilenet_v3_large, shufflenet_v2_x0_5, shufflenet_v2_x1_0, shufflenet_v2_x1_5, shufflenet_v2_x2_0, squeezenet1_0, squeezenet1_1, mnasnet0_5, mnasnet0_75, mnasnet1_0, mnasnet1_3, efficientnet_b0, efficientnet_b1, efficientnet_b2, regnet_x_400mf, regnet_x_800mf, regnet_x_1_6gf, regnet_y_400mf, regnet_y_800mf, regnet_y_1_6gf",
+      "Do NOT invent names like 'regnet_y_0_8gf'. The correct small RegNet names use 'mf'/'gf' suffixes exactly as listed above.",
+      "### Your task:",
+      "Generate a NEW model with HIGHER inference efficiency (accuracy / duration) than BOTH references.",
+      "Accuracy may drop at most 1 percentage point below the best reference; computational cost must clearly decrease.",
+      "",
+      "EDGE DEPLOYMENT CONSTRAINTS (mandatory):",
+      "- Total trainable parameters: under 2 million.",
+      "- Prefer depthwise separable convolutions, inverted residuals, or squeeze-and-excitation blocks.",
+      "- Reduce FLOPs compared to both reference models.",
+      "",
+      "The final <nn> code must be a complete runnable LEMUR evaluator-compatible file.",
+      "It must contain imports, supported_hyperparameters(), class Net(nn.Module), train_setup(device), and learn(data, target, device).",
+      "The <hp> block must contain valid JSON.",
+      "The 'transform' value in <hp> must be exactly 'norm_256_flip'.",
+      "supported_hyperparameters() must return exactly these keys: 'batch', 'dropout', 'epoch', 'lr', 'momentum', 'transform'.",
+      "The <tr> block must contain valid Python code."
+    ],
+    "output": []
+  }
+}

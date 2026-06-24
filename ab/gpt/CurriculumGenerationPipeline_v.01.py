@@ -118,6 +118,12 @@ LEVEL_CONFIGS = {
         "jaccard_max": 0.60,
         "description": "Very-low-near references — synthesises from architecturally diverse models",
     },
+    "EDGE": {
+        "band":        "high",
+        "jaccard_min": 0.95,
+        "jaccard_max": 0.98,
+        "description": "Efficiency-ranked references (accuracy/duration) — generates edge-deployable lightweight models",
+    },
 }
 # ── Utility functions ─────────────────────────────────────────────────────────
 
@@ -164,6 +170,7 @@ def build_generation_prompt(dataset: str, level: str, k: int) -> dict:
     # Map level+k to the known-good prompt file
     PROVEN_PROMPTS = {
         ("L1", 2): "Curriculum_L1_high_k2.json",
+        ("EDGE", 2): "Curriculum_edge_efficiency_k2.json",
         ("L2", 2): "Curriculum_L2_medium_k2.json",
         ("L2", 3): "Curriculum_L2_medium_k3.json",
         ("L3", 2): "Curriculum_L3_very_low_near_k2.json",
@@ -231,6 +238,7 @@ def build_generation_prompt(dataset: str, level: str, k: int) -> dict:
 def build_training_prompt(dataset: str, level: str, k: int) -> dict:
     PROVEN_TRAIN_PROMPTS = {
         ("L1", 2): "Curriculum_L1_high_k2_train.json",
+        ("EDGE", 2): "Curriculum_edge_efficiency_k2_train.json",
         ("L2", 2): "Curriculum_L2_medium_k2_train.json",
         ("L2", 3): "Curriculum_L2_medium_k3_train.json",
         ("L3", 2): "Curriculum_L3_very_low_near_k2_train.json",
@@ -576,7 +584,7 @@ def run_branch(dataset: str, level: str, k: int,
 
     if dry_run:
         log("[DRY RUN] Configuration complete — no files written or training started.")
-        script_stem = f"CurriculumGen_{dataset.replace("-", "_")}_{level}_k{k}"
+        script_stem = f"CurriculumGen_{dataset.replace('-', '_')}_{level}_k{k}"
         log(f"[DRY RUN] To run: python -m ab.gpt.{script_stem}")
         return
 

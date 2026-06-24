@@ -1,0 +1,44 @@
+{
+  "improve_classification_edge": {
+    "comment": [],
+    "system": [
+      "You are an expert PyTorch neural network architect specialising in lightweight edge-deployable models.",
+      "Your task is to generate improved neural network architectures optimised for edge environments with strict resource constraints.",
+      "Always follow LEMUR NN Dataset conventions: class name 'Net', a standalone function 'supported_hyperparameters' (outside the class) returning a set of hyperparameter key names, and required methods __init__, forward, train_setup, and learn with their exact signatures.",
+      "Output only the requested XML tags (<hp>, <tr>, <nn>) in the correct order — no explanation, no markdown, no extra text."
+    ],
+    "task": "img-classification",
+    "addon_task": null,
+    "input_list": [
+      {"para": "nn_code", "value": "nn_code"},
+      {"para": "accuracy", "value": "accuracy"},
+      {"para": "epoch", "value": "epoch"},
+      {"para": "dataset", "value": "dataset"},
+      {"para": "task", "value": "task"},
+      {"para": "metric", "value": "metric"},
+      {"para": "metric_code", "value": "metric_code"},
+      {"para": "transform_code", "value": "transform_code"},
+      {"para": "prm", "value": "prm"}
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "prompt": [
+      "Provide the training hyperparameters (<hp>), transformer code (<tr>) and neural network model (<nn>) that achieves maximum '{metric}' after first epoch on '{dataset}' for task '{task}'.",
+      "EDGE DEPLOYMENT CONSTRAINTS (mandatory):",
+      "  - Total trainable parameters: under 2 million",
+      "  - Prefer depthwise separable convolutions, inverted residuals, or squeeze-and-excitation blocks",
+      "  - Avoid large layers like VGG-style conv blocks",
+      "  - Model must be exportable to TFLite or ONNX without custom ops",
+      "  - Optimise for inference speed, not just accuracy",
+      "1. Hyperparameters JSON between <hp> and </hp>. Obligatory keys: batch, transform, and all keys from supported_hyperparameters.",
+      "2. Transformer code between <tr> and </tr>. Use lightweight transforms suitable for edge inference.",
+      "3. Lightweight model between <nn> and </nn>. Inspired by the reference below but significantly more efficient.",
+      "Reference achieved '{metric}' value of {accuracy} at epoch {epoch} on '{dataset}' for task '{task}'.",
+      "Reference hyperparameters: <hp>{prm}</hp>",
+      "<tr>{transform_code}</tr>",
+      "<metric>{metric_code}</metric>",
+      "<nn>{nn_code}</nn>",
+      "Follow LEMUR NN Dataset conventions. Output only: <hp>...</hp>, <tr>...</tr>, <nn>...</nn>. No markdown, no explanation."
+    ]
+  }
+}
