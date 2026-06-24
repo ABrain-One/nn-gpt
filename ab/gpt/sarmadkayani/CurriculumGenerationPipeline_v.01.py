@@ -36,11 +36,12 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from ab.gpt.sarmadkayani import EdgeEfficiencyPrompt  # installs duration-aware packing (thesis)
 
 # ── Project root ─────────────────────────────────────────────────────────────
 # __file__ is at nn-gpt/ab/gpt/CurriculumGenerationPipeline.py
 # parents[2] resolves to the nn-gpt project root
-NNGPT_DIR    = Path(__file__).parents[2].resolve()
+NNGPT_DIR    = Path(__file__).parents[3].resolve()
 OUT_DIR      = NNGPT_DIR / "out"
 
 # ── Base model (original) ────────────────────────────────────
