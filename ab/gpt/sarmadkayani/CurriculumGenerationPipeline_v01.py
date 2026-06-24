@@ -186,7 +186,7 @@ def build_generation_prompt(dataset: str, level: str, k: int) -> dict:
             f"Available: {list(PROVEN_PROMPTS.keys())}"
         )
 
-    prompt_test_dir = NNGPT_DIR / "ab" / "gpt" / "conf" / "prompt" / "test"
+    prompt_test_dir = NNGPT_DIR / "ab" / "gpt" / "sarmadkayani"
     source_path = prompt_test_dir / PROVEN_PROMPTS[key]
 
     if not source_path.exists():
@@ -251,7 +251,7 @@ def build_training_prompt(dataset: str, level: str, k: int) -> dict:
     if key not in PROVEN_TRAIN_PROMPTS:
         raise ValueError(f"No proven training prompt for level={level} k={k}.")
 
-    prompt_train_dir = NNGPT_DIR / "ab" / "gpt" / "conf" / "prompt" / "train"
+    prompt_train_dir = NNGPT_DIR / "ab" / "gpt" / "sarmadkayani"
     source_path = prompt_train_dir / PROVEN_TRAIN_PROMPTS[key]
 
     if not source_path.exists():
