@@ -50,7 +50,7 @@ from pathlib import Path
 from typing import Optional
 
 
-# ── Inline setup helpers (no external model_setup module needed) ──────────────
+# ----- Inline setup helpers (no external model_setup module needed) -----------------------------------
 
 def ensure_nn_dataset() -> None:
     """Upgrade nn-dataset to >=2.2.9 if an older version is installed."""
@@ -122,7 +122,7 @@ def ensure_model(model_dir: Optional[Path] = None) -> Path:
     return target
 
 
-# ── Project root ──────────────────────────────────────────────────────────────
+# ----- Project root----------------------------------------------------------------------------------
 
 NNGPT_DIR = Path(__file__).parents[3].resolve()
 OUT_DIR   = NNGPT_DIR / "out"
@@ -132,7 +132,7 @@ try:
     ensure_nn_dataset()
 except ImportError:
     pass
-# ── Base model (original, never modified) ─────────────────────────────────────
+# ----- Base model (original, never modified) ------------------------------------------------------------------------------------------─
 
 BASE_MODEL_NAME = "open-r1/OlympicCoder-7B"
 
@@ -149,7 +149,7 @@ if _run_cfg_path.exists():
         pass
 BASE_MODEL_PATH = OUT_DIR / "llm" / "open-r1" / "OlympicCoder-7B"
 
-# ── Fixed curriculum sequence ─────────────────────────────────────────────────
+# ----- Fixed curriculum sequence ------------------------------------------------------------------------
 # Order is immutable — each level builds on the merged adapter of all previous.
 # The drift is significant from Medium band to very_low_near band — because (0.65 - 0.85) only 1 anchor group for CIFAR-10.
 CURRICULUM_SEQUENCE = [
@@ -167,7 +167,7 @@ CURRICULUM_SEQUENCE = [
      "description": "Very-low-near, k=4 — maximum reference diversity"},
 ]
 
-# ── Dataset configurations ────────────────────────────────────────────────────
+# ----- Dataset configurations---------------------------------------------------------
 DATASET_CONFIGS = {
     "cifar-10": {
         "task":             "img-classification",
@@ -296,7 +296,7 @@ DATASET_CONFIGS = {
     },
 }
 
-# ── Proven CIFAR-10 prompt files (adapted for other datasets) ─────────────────
+# ----- Proven CIFAR-10 prompt files (adapted for other datasets) ----------------------------------------─
 PROVEN_PROMPTS = {
     ("L1", 2): ("Curriculum_L1_high_k2.json",              "Curriculum_L1_high_k2_train.json"),
     ("L2", 2): ("Curriculum_L2_medium_k2.json",            "Curriculum_L2_medium_k2_train.json"),
@@ -306,7 +306,7 @@ PROVEN_PROMPTS = {
     ("L3", 4): ("Curriculum_L3_very_low_near_k4.json",     "Curriculum_L3_very_low_near_k4_train.json"),
 }
 
-# ── Logging ───────────────────────────────────────────────────────────────────
+# ----- Logging--------------------------------------------------------------------------------------------─
 def log(msg: str, level: str = "INFO") -> None:
     ts = datetime.now().strftime("%H:%M:%S")
     print(f"[{ts}] [{level}] {msg}", flush=True)
@@ -316,7 +316,7 @@ def timestamp() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
-# ── Naming helpers ────────────────────────────────────────────────────────────
+# ----- Naming helpers-----------------------------------------------------------------------------
 def get_step_id(level: str, k: int) -> str:
     """Unique identifier for a curriculum step. Uses hyphens per LEMUR convention."""
     return f"{level.lower()}-k{k}"
@@ -339,7 +339,7 @@ def get_nn_prefix(dataset: str, level: str, k: int) -> str:
     return f"{dataset_safe}_{level.lower()}-k{k}"
 
 
-# ── Progress tracking ─────────────────────────────────────────────────────────
+# ----- Progress tracking-------------------------------------------------------------------─
 def progress_path(dataset: str) -> Path:
     return OUT_DIR / "curriculum" / dataset / "progress.json"
 
@@ -364,7 +364,7 @@ def step_key(level: str, k: int) -> str:
     return f"{level}_k{k}"
 
 
-# ── DB viability check ────────────────────────────────────────────────────────
+# ----- DB viability check-------------------------------------------------------------------
 def check_band_viability(dataset: str, band: str, k: int) -> tuple[bool, int]:
     """
     Check if the LEMUR DB has enough anchor groups for this dataset/band/k.
@@ -429,7 +429,7 @@ def check_band_viability(dataset: str, band: str, k: int) -> tuple[bool, int]:
 
 
 
-# ── Prompt adaptation ─────────────────────────────────────────────────────────
+# ----- Prompt adaptation-------------------------------------------------------------------─
 # Lines in the proven CIFAR-10 prompts that are backbone/architecture-specific
 # and must be REPLACED (not inherited) when adapting to a different dataset.
 _CIFAR10_BACKBONE_LINES = {
@@ -573,7 +573,7 @@ def adapt_prompt(source_cfg: dict, dataset: str, level: str, k: int, is_train: b
     return {conf_id: new_conf}
 
 
-# ── Config file writers ───────────────────────────────────────────────────────
+# ----- Config file writers--------------------------------------------------------------─
 def write_llm_conf(dataset: str, current_model_path: str, dry_run: bool = False) -> str:
     """
     Write LLM configuration JSON for this curriculum step.
@@ -810,7 +810,7 @@ def write_entry_script(dataset: str, level: str, k: int,
     return script_path
 
 
-# ── Merge and clean ───────────────────────────────────────────────────────────
+# ----- Merge and clean------------------------------------------------------------------------─
 def select_best_epoch(tracker_path: Path) -> Optional[tuple[int, float]]:
     """
     Read epoch_tracker.json and return (best_epoch_index, best_score).
@@ -890,7 +890,7 @@ def clean_epoch_dirs(tracker_backup_name: str, dry_run: bool = False) -> None:
         log(f"Removed: {p.name}")
 
 
-# ── Single step runner ────────────────────────────────────────────────────────
+# ----- Single step runner-------------------------------------------------------------------
 def run_step(dataset: str, step: dict, progress: dict,
              resume: bool = False, dry_run: bool = False) -> bool:
     """
@@ -909,7 +909,7 @@ def run_step(dataset: str, step: dict, progress: dict,
     log(f"Starting step: {key}  ({step['description']})")
     log(f"{'='*60}")
 
-    # ── Check if already completed ─────────────────────────────────────────────
+    # ----- Check if already completed--------------------------------------------------------------
     if key in progress.get("completed_steps", []):
         if resume:
             log(f"Step {key} already completed — skipping (--resume)")
@@ -918,7 +918,7 @@ def run_step(dataset: str, step: dict, progress: dict,
             log(f"Step {key} already completed. Use --resume to skip or delete progress.json to restart.")
             return False
 
-    # ── Viability check ────────────────────────────────────────────────────────
+    # ----- Viability check-------------------------------------------------------------------
     cfg = DATASET_CONFIGS.get(dataset, {})
     viable_bands = cfg.get("viable_bands", [])
 
@@ -930,7 +930,7 @@ def run_step(dataset: str, step: dict, progress: dict,
 
     log(f"Band '{band}' is viable for '{dataset}' ✓")
 
-    # ── DB row count check ────────────────────────────────────────────────────
+    # ----- DB row count check---------------------------------------------------------
     log(f"Checking DB viability for {dataset}/{band}/k={k}...")
     is_viable, row_count = check_band_viability(dataset, band, k)
     if not is_viable:
@@ -939,7 +939,7 @@ def run_step(dataset: str, step: dict, progress: dict,
 
     log(f"DB check: {row_count} rows available ✓")
 
-    # ── Write configuration files ──────────────────────────────────────────────
+    # ----- Write configuration files--------------------------------------------------------------─
     llm_conf = write_llm_conf(dataset, progress.get("current_merged_model", ""), dry_run)
     write_prompts(dataset, level, k, dry_run)
     script_path = write_entry_script(dataset, level, k, llm_conf, dry_run)
@@ -947,7 +947,7 @@ def run_step(dataset: str, step: dict, progress: dict,
     dataset_safe = dataset.replace("-", "_")
     script_stem  = f"CurriculumGen_{dataset_safe}_{level}_k{k}"
 
-    # ── Run curriculum fine-tuning ─────────────────────────────────────────────
+    # ----- Run curriculum fine-tuning--------------------------------------------------------------
     log(f"Launching: python -m ab.gpt.{script_stem}")
 
     if dry_run:
@@ -973,7 +973,7 @@ def run_step(dataset: str, step: dict, progress: dict,
 
     log(f"Step {key} training complete in {elapsed:.1f}h ✓")
 
-    # ── Select best epoch ──────────────────────────────────────────────────────
+    # ----- Select best epoch--------------------------------------------------------------
     tracker_path = NNGPT_DIR / "out" / "nngpt" / "epoch_tracker.json"
     best = select_best_epoch(tracker_path)
     if best:
@@ -982,17 +982,17 @@ def run_step(dataset: str, step: dict, progress: dict,
     else:
         log("No successful epochs found — step produced no valid models", "WARN")
 
-    # ── Merge best adapter ─────────────────────────────────────────────────────
+    # ----- Merge best adapter---------------------------------------------------------─
     merge_ok = run_merge(dry_run=False)
     if not merge_ok:
         log(f"Merge failed for step {key}", "ERROR")
         return False
 
-    # ── Back up tracker and clean ──────────────────────────────────────────────
+    # ----- Back up tracker and clean--------------------------------------------------------------─
     tracker_backup = f"epoch_tracker_{key}.json"
     clean_epoch_dirs(tracker_backup, dry_run=False)
 
-    # ── Update progress ────────────────────────────────────────────────────────
+    # ----- Update progress-------------------------------------------------------------------
     merged_model_path = str(NNGPT_DIR / "out" / "llm_to_upload" / "OlympicCoder-7B")
     progress["completed_steps"].append(key)
     progress["current_merged_model"] = merged_model_path
@@ -1009,7 +1009,7 @@ def run_step(dataset: str, step: dict, progress: dict,
     return True
 
 
-# ── Full curriculum runner ────────────────────────────────────────────────────
+# ----- Full curriculum runner---------------------------------------------------------
 def run_curriculum(dataset: str, resume: bool = False, dry_run: bool = False) -> None:
     """
     Run the complete progressive curriculum for a dataset.
@@ -1082,7 +1082,7 @@ def run_curriculum(dataset: str, resume: bool = False, dry_run: bool = False) ->
     print_results(dataset)
 
 
-# ── Single step runner (for cross-dataset experiments) ───────────────────────
+# ----- Single step runner (for cross-dataset experiments) -------------------------------------------------------─
 def run_single_step(dataset: str, level: str, k: int,
                     resume: bool = False, dry_run: bool = False) -> None:
     """Run a single curriculum step — used for cross-dataset ablation experiments."""
@@ -1101,7 +1101,7 @@ def run_single_step(dataset: str, level: str, k: int,
         sys.exit(1)
 
 
-# ── Results display ───────────────────────────────────────────────────────────
+# ----- Results display------------------------------------------------------------------------─
 def print_results(dataset: str) -> None:
     """Print a formatted summary of all completed curriculum steps."""
     progress = load_progress(dataset)
@@ -1139,7 +1139,7 @@ def print_results(dataset: str) -> None:
             log(f"  {t.name}")
 
 
-# ── CLI ───────────────────────────────────────────────────────────────────────
+# ----- CLI------------------------------------------------------------------------------------------------------─
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Automatic progressive curriculum fine-tuning pipeline",
