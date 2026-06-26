@@ -118,6 +118,15 @@ def mean_t_ci(values: List[float]):
     return (mean, mean - t * se, mean + t * se)
 
 
+def _median(values: List[float]) -> float:
+    if not values:
+        return float("nan")
+    s = sorted(values)
+    n = len(s)
+    mid = n // 2
+    return s[mid] if n % 2 else (s[mid - 1] + s[mid]) / 2.0
+
+
 def _acc_from_eval_info(payload: Dict[str, Any]) -> Optional[float]:
     """Pull accuracy from a per-model eval_info.json (eval_results may be tuple or dict)."""
     res = payload.get("eval_results")
@@ -174,6 +183,11 @@ def apply_pass_average(cycles: List[Dict[str, Any]], per_model: Dict[int, List[f
         passed = [a for a in accs if a >= thr]
         r["avg"] = (sum(passed) / len(passed)) if passed else float("nan")
         r["pass_accs"] = passed  # sample for the t-based CI on the mean
+        # Card-style stats over ALL valid (evaluated) models this cycle.
+        r["valid"] = len(accs)
+        r["avg_all"] = sum(accs) / len(accs)
+        r["median"] = _median(accs)
+        r["ge_threshold_pct"] = 100.0 * sum(1 for a in accs if a >= thr) / len(accs)
 
 
 def _line_plot(xs, ys, title, ylabel, label, color, path, ylim=None) -> Path:
@@ -260,9 +274,9 @@ def plot_separate(cycles: List[Dict[str, Any]], out_dir: Path) -> List[Path]:
 
 def save_csv(cycles: List[Dict[str, Any]], out_dir: Path) -> Path:
     path = out_dir / "kto_cycle_summary.csv"
-    cols = ["cycle", "generated", "evaluated", "best", "avg", "new_desirable",
-            "new_undesirable", "low_accuracy", "not_novel", "desirable_total",
-            "undesirable_total", "trained"]
+    cols = ["cycle", "generated", "evaluated", "valid", "best", "avg", "avg_all",
+            "median", "ge_threshold_pct", "new_desirable", "new_undesirable",
+            "low_accuracy", "not_novel", "desirable_total", "undesirable_total", "trained"]
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
@@ -307,17 +321,40 @@ def main() -> None:
     figs = plot_separate(cycles, out_dir)
     csv_path = save_csv(cycles, out_dir)
 
-    # Console summary (handy for the report).
+    # ── Card-style summary (over ALL valid models, matching the HF model card) ──
     best_overall = max(cycles, key=lambda r: r["best"])
+    generated_total = sum(int(r.get("generated", 0)) for r in cycles)
+    all_valid = [a for accs in per_model.values() for a in accs]
+    above = [a for r in cycles for a in (r.get("pass_accs") or [])]
+
     print("=" * 64)
     print(f"KTO run: {len(cycles)} cycles ({cycles[0]['cycle']}..{cycles[-1]['cycle']})")
-    print(f"  best accuracy this run : {best_overall['best']*100:.2f}%  (cycle {best_overall['cycle']})")
-    # Paper-style aggregate: mean over all above-threshold models + t-based 95% CI.
-    pooled = [a for r in cycles for a in (r.get("pass_accs") or [])]
-    if pooled:
-        m, lo, hi = mean_t_ci(pooled)
-        print(f"  Average Accuracy       : {m*100:.2f}%  "
-              f"(95% CI: {lo*100:.2f}% - {hi*100:.2f}%, n={len(pooled)})")
+    if all_valid:
+        n_valid = len(all_valid)
+        denom = generated_total or n_valid
+        m, lo, hi = mean_t_ci(all_valid)
+        ge = 100.0 * sum(1 for a in all_valid if a >= run_threshold) / n_valid
+        card = (f"Valid: {n_valid}/{denom} ({100.0 * n_valid / denom:.1f}%) · "
+                f"Average (all valid): {m*100:.2f}% [95% CI {lo*100:.2f}-{hi*100:.2f}] · "
+                f"Median: {_median(all_valid)*100:.2f}% · "
+                f"Best: {max(all_valid)*100:.2f}% · "
+                f"≥{run_threshold*100:.0f}%: {ge:.2f}%")
+        try:
+            print("  " + card)
+        except UnicodeEncodeError:
+            print("  " + card.encode("ascii", "replace").decode())
+        try:
+            (out_dir / "kto_card_summary.txt").write_text(card + "\n", encoding="utf-8")
+        except Exception:  # noqa: BLE001
+            pass
+    else:
+        print(f"  best accuracy this run : {best_overall['best']*100:.2f}%  "
+              f"(cycle {best_overall['cycle']})")
+        print("  [card block needs per-model eval_info.json — median/all-valid avg/>=thr skipped]")
+    # Above-threshold average (the per-cycle plot's definition), kept for reference.
+    if above:
+        m, lo, hi = mean_t_ci(above)
+        print(f"  Average (>= threshold) : {m*100:.2f}%  (95% CI {lo*100:.2f}-{hi*100:.2f}, n={len(above)})")
     print(f"  desirable accumulated  : {cycles[-1]['desirable_total']}")
     print("-" * 64)
     for f in figs:
