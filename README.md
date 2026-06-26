@@ -119,6 +119,42 @@ python -m ab.stat.export
 
 - **`ab.gpt.NNEval`** – Evaluates the models generated in the previous step.
 
+- **`ab.gpt.NNVariants`** – Takes one or more models, substitutes the loss function and optimizer, and writes each new variant into the standard `synth_nn/B*` layout. Models can come from the LEMUR dataset **by name** (`--nn ResNet AlexNet`) and/or from a **custom folder** of `.py` files not in the DB (`--src_dir ./my_models`, where each file name is the model name); the two base model sources can be combined in one run.
+
+  When `--losses` / `--optimizers` are **not** specified, the **full grid** of all supported losses × optimizers is generated (disallowed pairings are skipped automatically). Use these flags to narrow the grid to specific combinations.
+  ### Available Losses and Optimizers ###
+
+  | Loss | Description |
+  |---|---|
+  | `CrossEntropyLoss` | Standard cross-entropy on raw logits |
+  | `NGL` | Custom loss based on exponential and trigonometric transforms of softmax outputs |
+
+  | Optimizer | Description |
+  |---|---|
+  | `SGD` | Stochastic gradient descent with momentum |
+  | `Adam` | Adaptive moment estimation |
+  | `AdamW` | Adam with decoupled weight decay |
+  | `RMSprop` | Root mean square propagation |
+  | `Adagrad` | Adaptive gradient with per-parameter learning rates |
+  | `Adadelta` | Adaptive delta, no manual learning rate required |
+
+  > `NGL` is restricted to `Adam` and `AdamW` optimizers only; other pairings are skipped automatically.
+
+  New variants are appended after the last existing `B*` folder. Pass `--clean` to wipe and restart at `B0`.
+
+  ```bash
+  python -m ab.gpt.NNVariants --nn ResNet                                        # full grid
+  python -m ab.gpt.NNVariants --nn ResNet AlexNet --losses CrossEntropyLoss --optimizers Adam SGD
+  python -m ab.gpt.NNVariants --src_dir ./my_models                              # custom nets
+  ```
+
+  The reusable transform lives in `ab/gpt/util/VariantGen.py` (`make_variant`, `iter_variants`) and is pure string-in/string-out for import from other pipelines.
+
+  Evaluate the generated variants with the standard **`ab.gpt.NNEval`** — it scans the same `synth_nn/B*` layout. When a `variant_meta.json` is present, `NNEval` encodes the loss/optimizer into the LEMUR row name (e.g. `ResNet-loss_NGL-opt_Adam`) so each variant stays distinguishable:
+  ```bash
+  python -m ab.gpt.NNEval --dataset cifar-10 --nn_train_epochs 5
+  ```
+
 - **`ab.gpt.TuneNNGen*`** – Performs fine-tuning and evaluation of an LLM. For evaluation purposes, the LLM generates neural network models, which are then trained to assess improvements in the LLM’s performance on this task. The -s flag allows skipping model generation for the specified number of epochs.
 
 - **`ab.gpt.AccPredictor`** – Fine-tunes and evaluates a Qwen3-8B accuracy predictor from LEMUR training runs. Given early-epoch accuracies and neural network code, it predicts final `best_accuracy` and `best_epoch`.
