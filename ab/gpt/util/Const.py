@@ -1,10 +1,7 @@
-import os
-from pathlib import Path
-
 from ab.nn.util.Const import base_module, ab_root_path, out_dir
 import json
-
-NN_TRAIN_EPOCHS = 1  # How many epochs to train the altered NN for evaluation
+from pathlib import Path
+NN_TRAIN_EPOCHS = 1# How many epochs to train the altered NN for evaluation
 
 new_nn_file = 'new_nn.py'
 hp_file = 'hp.txt'
@@ -18,9 +15,19 @@ conf_prompt_dir = conf_dir / 'prompt'
 conf_test_dir = conf_prompt_dir / 'test'
 conf_train_dir = conf_prompt_dir / 'train'
 conf_llm_dir = conf_dir / 'llm'
+conf_chat_template_dir = conf_dir / 'chat_template'
 
-_nngpt_dir_override = os.environ.get('AB_GPT_NNGPT_DIR')
-nngpt_dir = Path(_nngpt_dir_override) if _nngpt_dir_override else out_dir / 'nngpt'
+nngpt_dir = out_dir / 'nngpt'
+
+# ── Branch isolation override ─────────────────────────────────────────────────
+# Setting NNGPT_DIR_OVERRIDE env var to redirect all nngpt output to a custom path.
+# Used by CurriculumGenerationPipeline.py to isolate per-dataset/level/k runs.
+import os as _os
+_nngpt_override = _os.environ.get("AB_GPT_NNGPT_DIR") or _os.environ.get("NNGPT_DIR_OVERRIDE")
+if _nngpt_override:
+    nngpt_dir = Path(_nngpt_override)
+    print(f"[Const] nngpt_dir overridden → {nngpt_dir}")
+# ─────────────────────────────────────────────────────────────────────────────
 acgpt_dir = out_dir / 'acgpt'
 nnrag_dir = out_dir / 'rag'
 
@@ -55,7 +62,7 @@ def tokenizer_dir(base):
     return base / 'tokenizer'
 
 nngpt_model = model_dir(out_dir)
-nngpt_upload = nngpt_model / 'upload'
+nngpt_upload = out_dir / 'llm_to_upload'
 llm_tokenizer_out = tokenizer_dir(out_dir)
 
 def llm_dir(base, name):

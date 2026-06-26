@@ -9,10 +9,21 @@ def main():
     parser = argparse.ArgumentParser(description='Run Backbone Tuning.')
     parser.add_argument('--llm_conf', type=str, default='backbone_sft_config.json', help='LLM config file name')
     parser.add_argument('--test_nn', type=int, default=30, help='Number of NNs to generate')
-    parser.add_argument('--num_train_epochs', type=int, default=5, help='Number of LLM fine-tuning epochs')
+    parser.add_argument('--num_train_epochs', type=int, default=1, help='Number of LLM fine-tuning epochs')
     parser.add_argument('--num_cycles', type=int, default=None, help='Number of generate/eval/SFT cycles; defaults to llm config num_epochs')
     parser.add_argument('--nn_train_epochs', type=int, default=1, help='Number of training epochs for generated NNs')
-    parser.add_argument('--sft_nn_prefixes', type=str, default='rl-bb-test1', help='Comma-separated NN prefixes used as SFT training data')
+    parser.add_argument('--sft_max_length', type=int, default=6144, help='Maximum SFT sequence length')
+    parser.add_argument('--sft_batch_size', type=int, default=2, help='Per-device SFT batch size')
+    parser.add_argument('--sft_gradient_accumulation', type=int, default=4, help='SFT gradient accumulation steps')
+    parser.add_argument('--sft_dataset_limit', type=int, default=None, help='Maximum number of SFT training samples; unset uses all available rows')
+    parser.add_argument('--epoch_root', type=str, default=None, help='Output root for A* cycle directories')
+    parser.add_argument('--sft_dataset', type=str, default='cifar-10', help='Dataset used for SFT seed/query data')
+    parser.add_argument(
+        '--sft_nn_prefixes',
+        type=lambda raw: tuple(item.strip() for item in raw.split(',') if item.strip()),
+        default=('rl-bb-test1',),
+        help='Comma-separated NN prefixes used as SFT training data',
+    )
     parser.add_argument('--gen_nn_prefix', type=str, default='rl-bb-test1', help='NN prefix for generated/evaluated models')
     
     args = parser.parse_args()
@@ -20,8 +31,8 @@ def main():
     # Training Arguments
     training_args = SFTConfig(
         output_dir=str(nngpt_dir / 'outputs'),
-        per_device_train_batch_size=2,
-        gradient_accumulation_steps=4,
+        per_device_train_batch_size=args.sft_batch_size,
+        gradient_accumulation_steps=args.sft_gradient_accumulation,
         learning_rate=1e-5,
         num_train_epochs=args.num_train_epochs,
         logging_steps=5,
@@ -29,6 +40,7 @@ def main():
         save_strategy="no",
         report_to="none",
         remove_unused_columns=False,
+        max_length=args.sft_max_length,
         packing_strategy="wrapped",
         padding_free=False,
         gradient_checkpointing=True
@@ -58,10 +70,12 @@ def main():
         llm_conf=args.llm_conf,
         training_args=training_args,
         peft_config=peft_config,
-        # max_prompts=1000,
+        max_prompts=args.sft_dataset_limit,
         use_backbone=True,
         sft_nn_prefixes=args.sft_nn_prefixes,
+        sft_dataset=args.sft_dataset,
         num_cycles=args.num_cycles,
+        epoch_root=args.epoch_root,
         temperature=0.8
     )
 

@@ -31,6 +31,13 @@ def _coerce_float(value: Any) -> Optional[float]:
     return parsed
 
 
+def _coerce_horizon_metric(api_result: dict[str, Any], field_name: str, horizon: str = "1") -> Optional[float]:
+    payload = api_result.get(field_name)
+    if not isinstance(payload, dict):
+        return None
+    return _coerce_float(payload.get(horizon))
+
+
 def _require_float(value: Any, *, field_name: str, line_no: int) -> float:
     parsed = _coerce_float(value)
     if parsed is None:
@@ -345,14 +352,32 @@ def load_reward_log(log_dir: Path | str) -> RewardLogData:
         seed_accuracy_baseline = _coerce_float(
             api_result.get("seed_accuracy_baseline", api_result.get("accuracy_baseline"))
         )
+        horizon1_test_acc = _coerce_horizon_metric(api_result, "formal_horizon_test_acc")
+        horizon1_train_acc = _coerce_horizon_metric(api_result, "formal_horizon_train_acc")
+        horizon1_target_value = _coerce_horizon_metric(api_result, "formal_horizon_scores")
         reward_target_value = _coerce_float(
-            api_result.get(
-                "reward_target_value",
-                api_result.get("frozen_test_acc", api_result.get("test_acc", api_result.get("val_metric"))),
-            )
+            horizon1_target_value
+            if horizon1_target_value is not None
+            else api_result.get(
+                    "reward_target_value",
+                    api_result.get("frozen_test_acc", api_result.get("test_acc", api_result.get("val_metric"))),
+                )
         )
-        frozen_test_acc = _coerce_float(api_result.get("frozen_test_acc", api_result.get("test_acc", api_result.get("val_metric"))))
-        frozen_train_acc = _coerce_float(api_result.get("frozen_train_acc", api_result.get("train_acc")))
+        frozen_test_acc = (
+            horizon1_test_acc
+            if horizon1_test_acc is not None
+            else _coerce_float(api_result.get("frozen_test_acc", api_result.get("test_acc", api_result.get("val_metric"))))
+        )
+        train_acc = (
+            horizon1_train_acc
+            if horizon1_train_acc is not None
+            else _coerce_float(api_result.get("train_acc"))
+        )
+        frozen_train_acc = (
+            horizon1_train_acc
+            if horizon1_train_acc is not None
+            else _coerce_float(api_result.get("frozen_train_acc", api_result.get("train_acc")))
+        )
         error_message = str(api_result.get("error") or "")
         error_stage = str(api_result.get("error_stage") or "")
 
@@ -364,7 +389,7 @@ def load_reward_log(log_dir: Path | str) -> RewardLogData:
         data.backward_ok.append(_bool_or_nan(backward_ok))
         data.loss_drop_ok.append(_bool_or_nan(loss_drop_ok))
         data.timed_out.append(_bool_or_nan(timed_out))
-        data.train_acc.append(_float_or_nan(_coerce_float(api_result.get("train_acc"))))
+        data.train_acc.append(_float_or_nan(train_acc))
         data.frozen_train_acc.append(_float_or_nan(frozen_train_acc))
         data.frozen_test_acc.append(_float_or_nan(frozen_test_acc))
         data.unfrozen_train_acc.append(_float_or_nan(_coerce_float(api_result.get("unfrozen_train_acc"))))
@@ -524,6 +549,25 @@ def _group_progress_series(data: RewardLogData, key: str) -> tuple[list[int], li
         for cycle in cycles
     ]
     return cycles, values
+
+
+def _cycle_cumulative_mean_series(group_ids: Iterable[int], values: Iterable[float]) -> tuple[list[int], list[float]]:
+    grouped: dict[int, list[float]] = {}
+    for group_id, value in zip(group_ids, values):
+        parsed = _coerce_float(value)
+        if parsed is None:
+            continue
+        grouped.setdefault(int(group_id), []).append(parsed)
+    cycles = sorted(grouped)
+    cumulative_sum = 0.0
+    cumulative_count = 0
+    cumulative_values: list[float] = []
+    for cycle in cycles:
+        current_values = grouped[cycle]
+        cumulative_sum += float(sum(current_values))
+        cumulative_count += len(current_values)
+        cumulative_values.append(cumulative_sum / float(cumulative_count))
+    return cycles, cumulative_values
 
 
 def _cycle_xticks(cycles: list[int], *, max_ticks: int = 20) -> list[int]:
@@ -769,8 +813,8 @@ def _plot_dashboard(
     else:
         cycle_summary = _cycle_metric_summary(data.reward_group_id, data.frozen_test_acc)
         cycles = [int(cycle) for cycle in cycle_summary["cycles"]]
-        train_cycles, closed_train = _group_progress_series(data, "closed_mean_train_acc")
-        test_cycles, closed_test = _group_progress_series(data, "closed_mean_test_acc")
+        train_cycles, closed_train = _cycle_cumulative_mean_series(data.reward_group_id, data.frozen_train_acc)
+        test_cycles, closed_test = _cycle_cumulative_mean_series(data.reward_group_id, data.frozen_test_acc)
         if cycles:
             axes[3].errorbar(
                 cycles,
@@ -816,9 +860,9 @@ def _plot_dashboard(
                 zorder=4,
             )
         if train_cycles:
-            axes[3].plot(train_cycles, closed_train, color="#2E7D32", linewidth=1.8, label="Closed Mean Train")
+            axes[3].plot(train_cycles, closed_train, color="#2E7D32", linewidth=1.8, label="Cumulative Mean Train")
         if test_cycles:
-            axes[3].plot(test_cycles, closed_test, color="#1565C0", linewidth=1.8, label="Closed Mean Frozen Test")
+            axes[3].plot(test_cycles, closed_test, color="#1565C0", linewidth=1.8, label="Cumulative Mean Frozen Test")
         cycle_axis = sorted(set(cycles) | set(train_cycles) | set(test_cycles))
         axes[3].set_title("Cycle Actual Metrics")
         axes[3].set_ylabel("Accuracy")

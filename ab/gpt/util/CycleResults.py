@@ -2,11 +2,34 @@ import json
 import os
 
 
-def generate_cycle_results(cycle, models_base_dir, eval_results_list, model_dirs_list, successful_models,
+def _extract_accuracy_from_eval_info(existing_eval_data):
+    if not isinstance(existing_eval_data, dict):
+        return None
+
+    eval_res = existing_eval_data.get('eval_results')
+    accuracy = None
+    if isinstance(eval_res, (tuple, list)) and len(eval_res) >= 2:
+        accuracy = eval_res[1]
+    elif isinstance(eval_res, dict):
+        accuracy = eval_res.get('accuracy', eval_res.get('acc'))
+        if accuracy is None:
+            epochs = eval_res.get('epochs', [])
+            if epochs and isinstance(epochs[0], dict):
+                accuracy = epochs[0].get('accuracy', epochs[0].get('acc'))
+
+    if accuracy is None:
+        return None
+    try:
+        return float(accuracy)
+    except (TypeError, ValueError):
+        return None
+
+
+def generate_cycle_results(cycle, models_base_dir, eval_results_list, model_dirs_list, successful_models, 
                             failed_models, cycle_time_minutes, current_alter_epoch_path):
     """
     Generate cycle-level results JSON with aggregated metrics.
-
+    
     Args:
         cycle: Cycle number (finetuning iteration, separate from epoch)
         models_base_dir: Base directory containing generated models
@@ -16,7 +39,7 @@ def generate_cycle_results(cycle, models_base_dir, eval_results_list, model_dirs
         failed_models: List of failed model directories
         cycle_time_minutes: Total cycle time in minutes
         current_alter_epoch_path: Path to the current epoch directory
-
+    
     Returns:
         Dictionary with cycle results in the specified JSON format
     """
@@ -27,22 +50,22 @@ def generate_cycle_results(cycle, models_base_dir, eval_results_list, model_dirs
     avg_accuracy = sum(accuracies) / len(accuracies) if accuracies else None
     total_attempted = len(model_dirs_list)
     success_rate = models_trained / total_attempted if total_attempted > 0 else 0.0
-
+    
     # Calculate generation metrics
     total_generated = len(model_dirs_list)
     successful = len(successful_models)
     # Novel models are those that were successfully evaluated (not duplicates)
     novel = successful
-
+    
     # Calculate training metrics (set to None - not available from evaluation context)
     training_data_dir = None
     total_examples = None
     new_examples_added = None
     training_time_minutes = None
-
+    
     # Determine success
     success = models_trained > 0
-
+    
     # Build results dictionary
     results = {
         "cycle": cycle,
@@ -66,18 +89,18 @@ def generate_cycle_results(cycle, models_base_dir, eval_results_list, model_dirs
         },
         "cycle_time_minutes": cycle_time_minutes
     }
-
+    
     return results
 
 
 def collect_cycle_metrics(models_base_dir, current_alter_epoch_path):
     """
     Collect metrics from a cycle by scanning model directories and existing eval_info.json files.
-
+    
     Args:
         models_base_dir: Base directory containing generated models
         current_alter_epoch_path: Path to the current epoch directory
-
+    
     Returns:
         Tuple of (eval_results_list, model_dirs_list, successful_models, failed_models)
     """
@@ -86,52 +109,50 @@ def collect_cycle_metrics(models_base_dir, current_alter_epoch_path):
     successful_models = []
     failed_models = []
     existing_eval_files = {}
-
+    
     if not models_base_dir.exists():
         return eval_results_list, model_dirs_list, successful_models, failed_models
-
+    
     for model_id in os.listdir(models_base_dir):
         model_dir_path = models_base_dir / model_id
         if not model_dir_path.is_dir():
             continue
-
+        
         # Track all model directories for generation metrics
         model_dirs_list.append(model_dir_path)
-
+        
         eval_info_path = model_dir_path / 'eval_info.json'
         error_path = model_dir_path / 'error.txt'
-
+        
         # Check for existing evaluation results
         if eval_info_path.exists():
             try:
                 with open(eval_info_path, 'r') as f:
                     existing_eval_data = json.load(f)
                     existing_eval_files[model_id] = existing_eval_data
-                    # If we have existing successful eval, track it
-                    if 'eval_results' in existing_eval_data:
-                        eval_res = existing_eval_data['eval_results']
-                        if isinstance(eval_res, (tuple, list)) and len(eval_res) >= 2:
-                            eval_results_list.append({
-                                'model_id': model_id,
-                                'model_dir': str(model_dir_path),
-                                'accuracy': eval_res[1] if len(eval_res) > 1 else None,
-                                'eval_results': eval_res
-                            })
-                            successful_models.append(model_dir_path)
+                    accuracy = _extract_accuracy_from_eval_info(existing_eval_data)
+                    if accuracy is not None:
+                        eval_results_list.append({
+                            'model_id': model_id,
+                            'model_dir': str(model_dir_path),
+                            'accuracy': accuracy,
+                            'eval_results': existing_eval_data.get('eval_results')
+                        })
+                        successful_models.append(model_dir_path)
             except:
                 pass
-
+        
         # Check for errors
         if error_path.exists() and model_id not in existing_eval_files:
             failed_models.append(model_dir_path)
-
+    
     return eval_results_list, model_dirs_list, successful_models, failed_models
 
 
 def save_cycle_results(cycle_results, output_path):
     """
     Save cycle results to a JSON file.
-
+    
     Args:
         cycle_results: Dictionary with cycle results
         output_path: Path where to save the JSON file

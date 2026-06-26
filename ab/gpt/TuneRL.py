@@ -1,9 +1,11 @@
 import ast
 import csv
 from datetime import timedelta
+import hashlib
 import inspect
 import math
 import os
+import random
 import re
 import signal
 import subprocess
@@ -11,6 +13,7 @@ import sys
 import threading
 import time
 import warnings
+from typing import Tuple, Any, List, Dict, Optional, Set
 
 
 _RL_FILTERED_LOG_PATTERNS = (
@@ -64,6 +67,10 @@ def _install_rl_runtime_noise_filters() -> None:
 _install_rl_runtime_noise_filters()
 
 import torch
+try:
+    import numpy as np
+except Exception:
+    np = None
 from peft import prepare_model_for_kbit_training
 from trl.trainer.grpo_trainer import GRPOTrainer
 from trl.trainer.grpo_config import GRPOConfig
@@ -101,7 +108,6 @@ from dataclasses import dataclass, asdict
 
 from ab.gpt.util.simple_logger import SimpleCodeLogger
 import ab.gpt.util.training_runtime as TrainingRuntime
-from typing import Tuple, Any, List, Dict, Optional, Set
 from collections import Counter, deque
 
 # Open-architecture archives are keyed by canonical graph structure, not prompt labels.
@@ -111,7 +117,9 @@ family_hash_archive_counts = Counter()
 descriptor_archive_counts = Counter()
 backbone_signature_archive_counts = Counter()
 cnn_signature_archive_counts = Counter()
+block_signature_archive_counts = Counter()
 backbone_cnn_pair_archive_counts = Counter()
+backbone_block_pair_archive_counts = Counter()
 family_metric_best: Dict[str, float] = {}
 motif_name_counts = Counter()
 saved_graph_counts = Counter()
@@ -119,6 +127,7 @@ saved_family_hash_counts = Counter()
 saved_backbone_signature_counts = Counter()
 saved_cnn_signature_counts = Counter()
 saved_backbone_cnn_pair_counts = Counter()
+saved_backbone_block_pair_counts = Counter()
 goal_graph_archive_counts: Dict[str, Counter] = {}
 goal_family_hash_archive_counts: Dict[str, Counter] = {}
 saved_goal_family_hash_counts: Dict[str, Counter] = {}
@@ -131,10 +140,11 @@ current_group_reward_target_count_by_backbone = Counter()
 prev_closed_group_mean_reward_target_by_backbone: Dict[str, float] = {}
 best_closed_group_mean_reward_target_by_backbone: Dict[str, float] = {}
 saved_best_reward_target_by_backbone_cnn: Dict[str, float] = {}
+best_quality_acc_by_backbone_block: Dict[str, float] = {}
 
 
 # ===== Configuration Options =====
-base_model = "ABrain/NNGPT-Backbone-deepseek-coder-6.7b-instruct" # 使用新的 Backbone 模型
+base_model = "deepseek-ai/deepseek-coder-6.7b-instruct"
 LOAD_EXISTING_MODEL = False  # Model is already merged
 SAVED_MODEL_PATH = "rl_backbone_model" 
 B_index = 0
@@ -144,10 +154,35 @@ BEST_GROUP_REFRESH_DELTA = 0.0015
 GOAL_REFRESH_DELTA = 0.0015
 NON_IMPROVING_REWARD_CAP = 0.04
 FORMAL_REWARD_TRANSFORM = "norm_128_flip"
+
+
+def _formal_reward_resize(default: int = 128) -> int:
+    match = re.search(r"(?:^|_)norm_(\d+)(?:_|$)", FORMAL_REWARD_TRANSFORM)
+    if not match:
+        return int(default)
+    try:
+        value = int(match.group(1))
+    except (TypeError, ValueError):
+        return int(default)
+    return value if value > 0 else int(default)
+
+
+def _formal_reward_input_shape(batch: int = 1) -> Tuple[int, int, int, int]:
+    resize = _formal_reward_resize()
+    return (int(batch), 3, resize, resize)
+
+
+def _formal_reward_out_shape() -> Tuple[int, ...]:
+    dataset = os.getenv("NNGPT_RL_FORMAL_DATASET", "cifar-10").strip().lower().replace("_", "-")
+    if dataset in {"cifar-100", "cifar100"}:
+        return (100,)
+    return (10,)
+
+
 BACKBONE_BASELINE_MIN_ARCHIVE_SAMPLES = 3
 SAVE_DUPLICATE_BACKBONE_CNN_DELTA = 0.002
-BATCH_ELITE_SOFT_BONUSES = (0.10, 0.07, 0.05, 0.03, 0.02)
-BATCH_ELITE_IMPROVING_BONUSES = (0.18, 0.13, 0.09, 0.06, 0.04)
+BATCH_ELITE_SOFT_BONUSES = (0.02, 0.015, 0.01, 0.005, 0.0)
+BATCH_ELITE_IMPROVING_BONUSES = (0.04, 0.03, 0.02, 0.01, 0.0)
 STRUCTURE_MACRO_BONUS = 0.04
 STRUCTURE_MULTI_STAGE_BONUS = 0.03
 STRUCTURE_MOTIF_BONUS = 0.02
@@ -156,10 +191,18 @@ STRUCTURE_NON_DOMINANT_FAMILY_BONUS = 0.02
 STRUCTURE_ARCHIVE_RARITY_STRONG_BONUS = 0.03
 STRUCTURE_ARCHIVE_RARITY_MEDIUM_BONUS = 0.02
 STRUCTURE_ARCHIVE_RARITY_LIGHT_BONUS = 0.01
-REPEAT_FAMILY_PENALTY = -0.10
+REPEAT_FAMILY_PENALTY = -0.05
 PLAIN_FUSE_PENALTY = -0.10
+PLAIN_DUAL_BACKBONE_FUSE_PENALTY = -0.28
+TARGET_STRUCTURE_DEAD_BLOCK_PENALTY = -0.80
+TARGET_STRUCTURE_DUAL_BACKBONE_PENALTY = -0.60
+TARGET_STRUCTURE_PATH_PENALTY = -0.05
+TARGET_STRUCTURE_PARSE_PENALTY = -0.30
+TARGET_STRUCTURE_PATTERN_MISMATCH_PENALTY = -1.00
+TARGET_STRUCTURE_PENALTY_FLOOR = -1.00
+TARGET_STRUCTURE_MATCH_BONUS = 0.20
 NO_PROGRESS_PENALTY = -0.06
-GOAL_REFRESH_BONUS = 0.30
+GOAL_REFRESH_BONUS = 0.08
 GOAL_MATCH_REWARD_SCALE = 0.12
 TRAINSET_NOVEL_FAMILY_BONUS = 0.04
 TRAINSET_NOVEL_GRAPH_BONUS = 0.02
@@ -191,11 +234,17 @@ STAGE_REFERENCE_MIN_GROUPS = {
 STAGE1_GATE_WINDOW_GENERATIONS = 1600
 STAGE2_GATE_WINDOW_GENERATIONS = 4000
 RECOVERY_GATE_WINDOW_GENERATIONS = 2000
+STAGE1_EXECUTABLE_STABLE_WINDOW_GENERATIONS = 320
+STAGE1_EXECUTABLE_STABLE_MIN_GROUPS = 6
+STAGE1_EXECUTABLE_STABLE_MIN_RATE = 0.95
+STAGE1_TRAINABLE_STABLE_MIN_RATE = 0.30
 STAGE1_PROMOTION_MIN_GROUPS = 20
 STAGE1_GATE_EXECUTABLE_MIN = 96
+STAGE1_GATE_TRAINABLE_MIN = 480
 STAGE1_GATE_DISCOVERY_MIN = 8
 STAGE1_GATE_UNIQUE_DISCOVERY_FAMILIES_MIN = 6
 STAGE1_FORCE_PROMOTION_EXECUTABLE_MIN = 800
+STAGE1_FORCE_PROMOTION_TRAINABLE_MIN = 480
 STAGE1_FORCE_PROMOTION_DISCOVERY_MIN = 8
 STAGE1_FORCE_PROMOTION_UNIQUE_DISCOVERY_FAMILIES_MIN = 6
 STAGE2_GATE_MIN_REWARD_TARGET = 0.90
@@ -213,7 +262,7 @@ TRAINING_CONTEXT_WINDOW = 50
 TRAINING_CONTEXT_MIN_POINTS = 8
 STATIC_STAGE_REWARD_TARGET_METRIC = "stage1_static_score"
 FORMAL_STAGE_REWARD_TARGET_METRIC = FORMAL_MULTI_HORIZON_REWARD_TARGET_METRIC
-FORMAL_SUCCESS_SIGNAL_BONUS = 0.02
+FORMAL_SUCCESS_SIGNAL_BONUS = 0.08
 STAGE1_EXECUTABLE_BONUS = 0.10
 STAGE1_DISCOVERY_FAMILY_BONUS = 0.42
 STAGE1_DISCOVERY_GRAPH_BONUS = 0.20
@@ -245,43 +294,74 @@ STAGE1_ZERO_GOAL_HIT_REWARD_CAP = 1.0
 STAGE1_LOW_GOAL_HIT_REWARD_CAP = 1.0
 STAGE1_PLAIN_PARALLEL_REWARD_CAP = 1.0
 STAGE1_OFF_TARGET_PLAIN_PARALLEL_REWARD_CAP = 1.0
+STAGE1_REPEATED_BLOCK_REWARD_CAP = 0.24
 STAGE23_DESCRIPTOR_BATCH_UNIQUE_BONUS = 0.03
 STAGE23_DESCRIPTOR_ARCHIVE_NOVEL_BONUS = 0.02
 STAGE23_NON_DOMINANT_DESCRIPTOR_BONUS = 0.06
-STAGE23_DESCRIPTOR_BATCH_REPEAT_STEP_PENALTY = -0.05
-STAGE23_DESCRIPTOR_BATCH_REPEAT_MAX_PENALTY = -0.20
-STAGE23_DESCRIPTOR_ARCHIVE_REPEAT_STEP_PENALTY = -0.025
-STAGE23_DESCRIPTOR_ARCHIVE_REPEAT_MAX_PENALTY = -0.14
+STAGE23_DESCRIPTOR_BATCH_REPEAT_STEP_PENALTY = -0.015
+STAGE23_DESCRIPTOR_BATCH_REPEAT_MAX_PENALTY = -0.05
+STAGE23_DESCRIPTOR_ARCHIVE_REPEAT_STEP_PENALTY = -0.006
+STAGE23_DESCRIPTOR_ARCHIVE_REPEAT_MAX_PENALTY = -0.03
+STAGE23_GLOBAL_DESCRIPTOR_ARCHIVE_NOVEL_BONUS = 0.08
+STAGE23_GLOBAL_DESCRIPTOR_ARCHIVE_REPEAT_MAX_PENALTY = -0.025
+STAGE23_GLOBAL_DESCRIPTOR_ARCHIVE_REPEAT_WINDOW = 32
 STAGE23_DOMINANT_DESCRIPTOR_SOFT_SHARE = 0.45
 STAGE23_DOMINANT_DESCRIPTOR_STRONG_SHARE = 0.60
-STAGE23_DOMINANT_DESCRIPTOR_REPEAT_PENALTY = -0.12
-STAGE23_DOMINANT_DESCRIPTOR_REPEAT_STRONG_PENALTY = -0.20
+STAGE23_DOMINANT_DESCRIPTOR_REPEAT_PENALTY = -0.03
+STAGE23_DOMINANT_DESCRIPTOR_REPEAT_STRONG_PENALTY = -0.05
 STAGE23_CNN_BATCH_UNIQUE_BONUS = 0.07
 STAGE23_CNN_ARCHIVE_NOVEL_BONUS = 0.05
-STAGE23_CNN_BATCH_REPEAT_STEP_PENALTY = -0.08
-STAGE23_CNN_BATCH_REPEAT_MAX_PENALTY = -0.30
-STAGE23_CNN_ARCHIVE_REPEAT_STEP_PENALTY = -0.03
-STAGE23_CNN_ARCHIVE_REPEAT_MAX_PENALTY = -0.18
+STAGE23_CNN_BATCH_REPEAT_STEP_PENALTY = -0.02
+STAGE23_CNN_BATCH_REPEAT_MAX_PENALTY = -0.07
+STAGE23_CNN_ARCHIVE_REPEAT_STEP_PENALTY = -0.008
+STAGE23_CNN_ARCHIVE_REPEAT_MAX_PENALTY = -0.04
+STAGE23_GLOBAL_CNN_ARCHIVE_NOVEL_BONUS = 0.12
+STAGE23_GLOBAL_CNN_ARCHIVE_REPEAT_MAX_PENALTY = -0.06
+STAGE23_GLOBAL_CNN_ARCHIVE_REPEAT_WINDOW = 32
+STAGE23_BLOCK_BATCH_UNIQUE_BONUS = 0.06
+STAGE23_BLOCK_BATCH_REPEAT_STEP_PENALTY = -0.015
+STAGE23_BLOCK_BATCH_REPEAT_MAX_PENALTY = -0.05
+STAGE23_BLOCK_ARCHIVE_NOVEL_BONUS = 0.08
+STAGE23_BLOCK_ARCHIVE_REPEAT_MAX_PENALTY = -0.08
+STAGE23_BLOCK_ARCHIVE_REPEAT_WINDOW = 16
+STAGE23_REPEATED_BLOCK_REWARD_CAP = 2.0
+STAGE23_POSITIVE_NOVELTY_ACC_THRESHOLD = 0.90
+STAGE23_EARLY_LOCAL_COMPETITION_GENERATIONS = 240
+STAGE23_EARLY_CELL_REPEAT_REWARD_CAP = 0.0
+STAGE23_NEW_CELL_BONUS = 0.04
+STAGE23_CELL_IMPROVEMENT_DELTA = 0.003
+STAGE23_CELL_IMPROVEMENT_BONUS = 0.08
+STAGE23_DUPLICATE_LOW_ACC_THRESHOLD = 0.92
+STAGE23_DUPLICATE_LOW_ACC_REWARD_CAP = 0.03
+STAGE23_HIGH_ACC_BONUS_THRESHOLD = 0.92
+STAGE23_HIGH_ACC_BONUS = 0.08
+STAGE23_HIGH_ACC_STRONG_THRESHOLD = 0.925
+STAGE23_HIGH_ACC_STRONG_BONUS = 0.12
+STAGE23_HIGH_ACC_ELITE_THRESHOLD = 0.93
+STAGE23_HIGH_ACC_ELITE_BONUS = 0.18
 STAGE23_NON_DOMINANT_CNN_BONUS = 0.08
 STAGE23_DOMINANT_CNN_SOFT_SHARE = 0.45
 STAGE23_DOMINANT_CNN_STRONG_SHARE = 0.65
-STAGE23_DOMINANT_CNN_REPEAT_PENALTY = -0.16
-STAGE23_DOMINANT_CNN_REPEAT_STRONG_PENALTY = -0.24
+STAGE23_DOMINANT_CNN_REPEAT_PENALTY = -0.04
+STAGE23_DOMINANT_CNN_REPEAT_STRONG_PENALTY = -0.06
+STAGE23_GLOBAL_CNN_REPEAT_PENALTY = -0.08
+STAGE23_GLOBAL_CNN_REPEAT_STRONG_PENALTY = -0.12
+STAGE23_DEAD_BLOCK_PENALTY = -0.04
 STAGE23_STRUCTURE_ARCHIVE_RARITY_CAP = 0.03
 STAGE2_DENSE_SCALE = 0.50
-STAGE2_PREV_GROUP_SCALE = 0.70
-STAGE2_BEST_GROUP_SCALE = 0.70
+STAGE2_PREV_GROUP_SCALE = 0.20
+STAGE2_BEST_GROUP_SCALE = 0.20
 STAGE2_GLOBAL_BASELINE_BLEND = 0.20
-STAGE2_BACKBONE_PREV_GROUP_SCALE = 0.95
-STAGE2_BACKBONE_BEST_GROUP_SCALE = 0.95
+STAGE2_BACKBONE_PREV_GROUP_SCALE = 0.25
+STAGE2_BACKBONE_BEST_GROUP_SCALE = 0.25
 STAGE2_GOAL_BEST_SCALE = 0.70
 STAGE2_GOAL_MATCH_SCALE = 0.85
 STAGE2_STRUCTURE_SCALE = 1.40
 STAGE2_REPEAT_FAMILY_SCALE = 1.10
 STAGE2_PLAIN_FUSE_SCALE = 1.10
 STAGE2_NO_PROGRESS_SCALE = 0.50
-STAGE2_NON_IMPROVING_CAP = 0.10
-STAGE2_DESCRIPTOR_NON_IMPROVING_CAP = 0.03
+STAGE2_NON_IMPROVING_CAP = 2.0
+STAGE2_DESCRIPTOR_NON_IMPROVING_CAP = 2.0
 STAGE3_DENSE_SCALE = 0.70
 STAGE3_PREV_GROUP_SCALE = 1.10
 STAGE3_BEST_GROUP_SCALE = 1.10
@@ -294,8 +374,8 @@ STAGE3_STRUCTURE_SCALE = 0.85
 STAGE3_REPEAT_FAMILY_SCALE = 1.00
 STAGE3_PLAIN_FUSE_SCALE = 1.00
 STAGE3_NO_PROGRESS_SCALE = 1.15
-STAGE3_NON_IMPROVING_CAP = NON_IMPROVING_REWARD_CAP
-STAGE3_DESCRIPTOR_NON_IMPROVING_CAP = 0.00
+STAGE3_NON_IMPROVING_CAP = 2.0
+STAGE3_DESCRIPTOR_NON_IMPROVING_CAP = 2.0
 RL_STAGE_KL_COEF = 0.005
 reward_batch_index = 0
 current_group_id = 0
@@ -418,6 +498,69 @@ def _backbone_cnn_pair_key(backbone_signature: str, cnn_signature: str) -> str:
     return f"{str(backbone_signature or 'unknown_backbone_pair')}::{str(cnn_signature or 'incomplete_cnn')}"
 
 
+def _backbone_block_pair_key(backbone_signature: str, block_signature: str) -> str:
+    return f"{str(backbone_signature or 'unknown_backbone_pair')}::{str(block_signature or 'incomplete_block')}"
+
+
+def _block_signature_from_code(block_code: str) -> str:
+    source = textwrap.dedent(str(block_code or "")).strip()
+    if not source:
+        return "incomplete_block"
+    try:
+        tree = ast.parse(source)
+        payload = ast.dump(tree, annotate_fields=True, include_attributes=False)
+    except Exception:
+        payload = "\n".join(line.strip() for line in source.splitlines() if line.strip())
+    return hashlib.sha1(payload.encode("utf-8")).hexdigest()
+
+
+def _block_contributes_to_forward(init_code: str, forward_code: str) -> bool:
+    init_source = str(init_code or "")
+    forward_source = str(forward_code or "")
+    block_tokens = ("drop_conv3x3_block", "FractalUnit", "FractalBlock")
+    if not any(token in init_source or token in forward_source for token in block_tokens):
+        return False
+    if "drop_conv3x3_block" in forward_source:
+        return True
+    if any(token in init_source for token in block_tokens) and "self.features" in init_source and "self.features" in forward_source:
+        return True
+
+    referenced_attrs = set(re.findall(r"self\.([A-Za-z_][A-Za-z0-9_]*)", forward_source))
+    for line in init_source.splitlines():
+        if not any(token in line for token in block_tokens):
+            continue
+        match = re.search(r"self\.([A-Za-z_][A-Za-z0-9_]*)", line)
+        if match and match.group(1) in referenced_attrs:
+            return True
+    return False
+
+
+def _block_truly_contributes_to_forward(init_code: str, forward_code: str, graph_info) -> bool:
+    if graph_info is not None and getattr(graph_info, "parse_ok", False):
+        return int(getattr(graph_info, "fractal_calls", 0) or 0) > 0
+    return _block_contributes_to_forward(init_code, forward_code)
+
+
+def _is_plain_dual_backbone_concat(forward_code: str) -> bool:
+    source = str(forward_code or "")
+    if not ("self.backbone_a" in source and "self.backbone_b" in source):
+        return False
+    if "torch.cat" not in source or "adaptive_pool_flatten" not in source:
+        return False
+    structural_tokens = (
+        "_feature_to_input_image",
+        "self.features",
+        "self.stem",
+        "self.project",
+        "self.bridge",
+        "self.adapter",
+        "self.fuse",
+        "self.fractal",
+        "drop_conv3x3_block",
+    )
+    return not any(token in source for token in structural_tokens)
+
+
 def _result_backbone_signature(res: Dict[str, Any]) -> str:
     signature = str(res.get("backbone_signature") or "").strip()
     if signature:
@@ -434,6 +577,25 @@ def _result_cnn_signature(res: Dict[str, Any], graph_info) -> str:
         if signature:
             return signature
     return "incomplete_cnn"
+
+
+def _result_block_signature(res: Dict[str, Any], completion: str = "") -> str:
+    if res and res.get("block_contributes_to_forward") is False:
+        return "incomplete_block"
+    signature = str(res.get("block_signature") or "").strip()
+    if signature:
+        return signature
+    block_code, init_code, forward_code = extract_completion_blocks(str(completion or ""))
+    graph_info = res.get("graph_info") if isinstance(res, dict) else None
+    if graph_info is None and block_code and init_code and forward_code:
+        graph_info = extract_graph_info(
+            init_code,
+            forward_code,
+            legacy_patterns=SFTUtil.legacy_patterns,
+        )
+    if not _block_truly_contributes_to_forward(init_code, forward_code, graph_info):
+        return "incomplete_block"
+    return _block_signature_from_code(block_code)
 
 
 def capture_reward_runtime_state() -> Dict[str, Any]:
@@ -612,6 +774,101 @@ def env_float(name: str, default: float) -> float:
     return float(value)
 
 
+def resolve_rl_seed() -> int:
+    return env_int("NNGPT_RL_SEED", 42)
+
+
+def apply_rl_seed(seed: Optional[int] = None, *, log_prefix: str = "[RL]") -> int:
+    resolved_seed = int(resolve_rl_seed() if seed is None else seed)
+    os.environ.setdefault("PYTHONHASHSEED", str(resolved_seed))
+    random.seed(resolved_seed)
+    if np is not None:
+        np.random.seed(resolved_seed)
+    torch.manual_seed(resolved_seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(resolved_seed)
+    try:
+        from transformers import set_seed
+
+        set_seed(resolved_seed)
+    except Exception as exc:
+        print(f"{log_prefix} transformers.set_seed unavailable: {type(exc).__name__}: {exc}")
+    print(f"{log_prefix} Seed: {resolved_seed}")
+    return resolved_seed
+
+
+REWARD_VARIANT_ENV = "NNGPT_RL_REWARD_VARIANT"
+REWARD_VARIANT_FULL = "full"
+REWARD_VARIANT_FULL_REWARD = "full_reward"
+REWARD_VARIANT_NO_DIVERSITY_BONUS = "no_diversity_bonus"
+REWARD_VARIANT_NO_REPEAT_PENALTY = "no_repeat_penalty"
+REWARD_VARIANT_NO_STRUCTURAL_NOVELTY = "no_structural_novelty"
+REWARD_VARIANT_STRONG_REPEAT_PENALTY = "strong_repeat_penalty"
+REWARD_VARIANTS = {
+    REWARD_VARIANT_FULL,
+    REWARD_VARIANT_FULL_REWARD,
+    REWARD_VARIANT_NO_DIVERSITY_BONUS,
+    REWARD_VARIANT_NO_REPEAT_PENALTY,
+    REWARD_VARIANT_NO_STRUCTURAL_NOVELTY,
+    REWARD_VARIANT_STRONG_REPEAT_PENALTY,
+}
+
+
+def resolve_reward_variant() -> str:
+    raw_value = os.getenv(REWARD_VARIANT_ENV, REWARD_VARIANT_FULL).strip().lower().replace("-", "_")
+    if raw_value in {"", "default", "baseline"}:
+        return REWARD_VARIANT_FULL
+    if raw_value not in REWARD_VARIANTS:
+        raise ValueError(
+            f"Invalid {REWARD_VARIANT_ENV}={raw_value!r}; "
+            f"expected one of {sorted(REWARD_VARIANTS)}"
+        )
+    return raw_value
+
+
+def _reward_variant_is_no_structural_novelty() -> bool:
+    return resolve_reward_variant() == REWARD_VARIANT_NO_STRUCTURAL_NOVELTY
+
+
+def _reward_variant_is_full_reward() -> bool:
+    return resolve_reward_variant() in {REWARD_VARIANT_FULL, REWARD_VARIANT_FULL_REWARD}
+
+
+def _reward_variant_is_no_diversity_bonus() -> bool:
+    return resolve_reward_variant() == REWARD_VARIANT_NO_DIVERSITY_BONUS
+
+
+def _reward_variant_is_no_repeat_penalty() -> bool:
+    return resolve_reward_variant() == REWARD_VARIANT_NO_REPEAT_PENALTY
+
+
+def _reward_variant_is_strong_repeat_penalty() -> bool:
+    return resolve_reward_variant() == REWARD_VARIANT_STRONG_REPEAT_PENALTY
+
+
+def _without_positive_bonus(value: float) -> float:
+    return min(float(value or 0.0), 0.0)
+
+
+def _remove_positive_structural_novelty_components(
+    components: Dict[str, float],
+) -> Tuple[Dict[str, float], Dict[str, Any]]:
+    adjusted: Dict[str, float] = {}
+    removed_positive: Dict[str, float] = {}
+    original: Dict[str, float] = {}
+    for key, value in components.items():
+        original_value = float(value or 0.0)
+        adjusted_value = _without_positive_bonus(original_value)
+        original[key] = original_value
+        adjusted[key] = adjusted_value
+        if adjusted_value != original_value:
+            removed_positive[key] = original_value - adjusted_value
+    return adjusted, {
+        "original_components": original,
+        "removed_positive_bonus": removed_positive,
+    }
+
+
 def _stage1_only_enabled() -> bool:
     return env_flag("NNGPT_RL_STAGE1_ONLY", False)
 
@@ -743,6 +1000,11 @@ def _build_rl_grpo_config(
     }
     if "gradient_checkpointing_kwargs" in config_signature.parameters:
         config_kwargs["gradient_checkpointing_kwargs"] = {"use_reentrant": False}
+    seed = resolve_rl_seed()
+    if "seed" in config_signature.parameters:
+        config_kwargs["seed"] = seed
+    if "data_seed" in config_signature.parameters:
+        config_kwargs["data_seed"] = seed
     explicit_kl_coef = env_float("NNGPT_RL_KL_COEF", RL_STAGE_KL_COEF)
     if "beta" in config_signature.parameters:
         config_kwargs["beta"] = explicit_kl_coef
@@ -1732,13 +1994,51 @@ def _stage1_gate_ready() -> bool:
     if current_entry_group_count < STAGE1_PROMOTION_MIN_GROUPS:
         return False
     executable_count = sum(1 for item in recent_generations if bool(item.get("executable_candidate")))
+    trainable_count = sum(
+        1
+        for item in recent_generations
+        if bool(item.get("trained_step_ok") or item.get("backward_ok"))
+    )
     discovery_rows = [item for item in recent_generations if bool(item.get("discovery_candidate"))]
     unique_discovery_families = len(_family_hash_set(discovery_rows, key="family_hash"))
     return bool(
         executable_count >= STAGE1_GATE_EXECUTABLE_MIN
+        and trainable_count >= STAGE1_GATE_TRAINABLE_MIN
         and len(discovery_rows) >= STAGE1_GATE_DISCOVERY_MIN
         and unique_discovery_families >= STAGE1_GATE_UNIQUE_DISCOVERY_FAMILIES_MIN
     )
+
+
+def _stage1_trainable_stable_ready() -> Optional[Dict[str, Any]]:
+    recent_generations = _recent_stage_generation_window(
+        STAGE1_STRUCTURE_EXPLORE,
+        STAGE1_EXECUTABLE_STABLE_WINDOW_GENERATIONS,
+    )
+    current_entry_group_count = len(_recent_stage_group_window(STAGE1_STRUCTURE_EXPLORE, MAX_STAGE_GROUP_HISTORY))
+    if current_entry_group_count < STAGE1_EXECUTABLE_STABLE_MIN_GROUPS:
+        return None
+    if len(recent_generations) < STAGE1_EXECUTABLE_STABLE_WINDOW_GENERATIONS:
+        return None
+    recent_executable_count = sum(1 for item in recent_generations if bool(item.get("executable_candidate")))
+    recent_executable_rate = recent_executable_count / float(len(recent_generations))
+    recent_trainable_count = sum(
+        1
+        for item in recent_generations
+        if bool(item.get("trained_step_ok") or item.get("backward_ok"))
+    )
+    recent_trainable_rate = recent_trainable_count / float(len(recent_generations))
+    if recent_executable_rate < STAGE1_EXECUTABLE_STABLE_MIN_RATE:
+        return None
+    if recent_trainable_rate < STAGE1_TRAINABLE_STABLE_MIN_RATE:
+        return None
+    return {
+        "stage_group_count": current_entry_group_count,
+        "recent_generation_count": len(recent_generations),
+        "recent_executable_count": recent_executable_count,
+        "recent_executable_rate": recent_executable_rate,
+        "recent_trainable_count": recent_trainable_count,
+        "recent_trainable_rate": recent_trainable_rate,
+    }
 
 
 def _stage1_force_promotion_ready() -> Optional[Dict[str, int]]:
@@ -1749,10 +2049,17 @@ def _stage1_force_promotion_ready() -> Optional[Dict[str, int]]:
     if current_entry_group_count < STAGE1_PROMOTION_MIN_GROUPS:
         return None
     recent_executable_count = sum(1 for item in recent_generations if bool(item.get("executable_candidate")))
+    recent_trainable_count = sum(
+        1
+        for item in recent_generations
+        if bool(item.get("trained_step_ok") or item.get("backward_ok"))
+    )
     discovery_rows = [item for item in recent_generations if bool(item.get("discovery_candidate"))]
     recent_discovery_count = len(discovery_rows)
     recent_unique_discovery_families = len(_family_hash_set(discovery_rows, key="family_hash"))
     if recent_executable_count < STAGE1_FORCE_PROMOTION_EXECUTABLE_MIN:
+        return None
+    if recent_trainable_count < STAGE1_FORCE_PROMOTION_TRAINABLE_MIN:
         return None
     if recent_discovery_count < STAGE1_FORCE_PROMOTION_DISCOVERY_MIN:
         return None
@@ -1762,6 +2069,7 @@ def _stage1_force_promotion_ready() -> Optional[Dict[str, int]]:
         "stage_group_count": current_entry_group_count,
         "recent_generation_count": len(recent_generations),
         "recent_executable_count": recent_executable_count,
+        "recent_trainable_count": recent_trainable_count,
         "recent_discovery_count": recent_discovery_count,
         "recent_unique_discovery_families": recent_unique_discovery_families,
     }
@@ -1808,6 +2116,11 @@ def _stage_gate_snapshot() -> Dict[str, Any]:
         "stage_index": RL_STAGE_TO_INDEX.get(stage_name, 0),
         "recent_generation_count": len(recent_generations),
         "recent_executable_count": sum(1 for item in recent_generations if bool(item.get("executable_candidate"))),
+        "recent_trainable_count": sum(
+            1
+            for item in recent_generations
+            if bool(item.get("trained_step_ok") or item.get("backward_ok"))
+        ),
         "recent_discovery_count": len(discovery_rows),
         "recent_unique_discovery_families": len(_family_hash_set(discovery_rows, key="family_hash")),
         "recent_formal_success_count": len(formal_rows),
@@ -1909,6 +2222,23 @@ def _resolve_resume_checkpoint_dir() -> Optional[Path]:
     if resume_stage:
         return _stage_checkpoint_dir(resume_stage)
     return None
+
+
+def apply_resume_stage_override(requested_stage: str, *, log_prefix: str) -> bool:
+    global current_stage_name
+
+    requested_stage = str(requested_stage or "").strip()
+    if not requested_stage:
+        return False
+    current_state_stage = str(current_stage_name)
+    if current_state_stage == requested_stage:
+        return False
+    print(
+        f"{log_prefix} Resume stage override "
+        f"checkpoint_stage={current_state_stage} requested_stage={requested_stage}"
+    )
+    current_stage_name = requested_stage
+    return True
 
 
 def _load_json_if_exists(path: Path) -> Optional[Dict[str, Any]]:
@@ -2384,6 +2714,295 @@ def extract_prompt_goal_tags(prompt_text: str) -> List[str]:
     return [tag.strip() for tag in match.group(1).split(",") if tag.strip()]
 
 
+def extract_prompt_target_pattern(prompt_text: str) -> str:
+    if not prompt_text:
+        return ""
+    match = re.search(
+        r"(?:^|\n)\s*(?:-\s*)?Target pattern:\s*`?([A-Za-z0-9_-]+)`?",
+        prompt_text,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return ""
+    return match.group(1).strip()
+
+
+def _compact_graph_expr(graph_expr: str) -> str:
+    return re.sub(r"\s+", "", str(graph_expr or ""))
+
+
+def _graph_has_block_before_backbone(graph_expr: str) -> bool:
+    compact = _compact_graph_expr(graph_expr)
+    return bool(
+        re.search(
+            r"Backbone\[[^\]]+\]\(_feature_to_input_image\((?:Sequential\[Block\]|Block|Fractal)",
+            compact,
+        )
+    )
+
+
+def _graph_has_backbone_before_block(graph_expr: str) -> bool:
+    compact = _compact_graph_expr(graph_expr)
+    return bool(
+        re.search(
+            r"(?:Sequential\[Block\]|Block|Fractal)\(_feature_to_input_image\(Backbone\[[^\]]+\]",
+            compact,
+        )
+    )
+
+
+def build_actual_structure_signature(
+    graph_info,
+    *,
+    block_contributes_to_forward: bool,
+    block_signature: str = "",
+) -> str:
+    if graph_info is None or not getattr(graph_info, "parse_ok", False):
+        return "incomplete|block_unknown|bb0|d0|incomplete"
+    block_state = "block_live" if block_contributes_to_forward else "block_dead"
+    block_key = str(block_signature or "").strip() if block_contributes_to_forward else "incomplete_block"
+    if not block_key:
+        block_key = "unknown_block"
+    return "|".join(
+        [
+            str(getattr(graph_info, "family_id", "") or "UnknownFamily"),
+            str(getattr(graph_info, "descriptor_key", "") or "unknown_descriptor"),
+            f"bb{int(getattr(graph_info, 'backbone_calls', 0) or 0)}",
+            block_state,
+            str(getattr(graph_info, "family_hash", "") or "unknown_family_hash")[:12],
+            str(getattr(graph_info, "cnn_signature", "") or "unknown_cnn")[:12],
+            str(block_key)[:12],
+        ]
+    )
+
+
+def detect_target_structure(
+    *,
+    prompt_target_pattern: str,
+    graph_info,
+    block_contributes_to_forward: bool,
+    block_signature: str = "",
+) -> Dict[str, Any]:
+    prompt_target_pattern = str(prompt_target_pattern or "").strip()
+    normalized_target = normalize_pattern_name(prompt_target_pattern) if prompt_target_pattern else ""
+    declared_pattern = str(getattr(graph_info, "pattern_name", "") or "") if graph_info is not None else ""
+    actual_pattern = str(getattr(graph_info, "suggested_pattern_name", "") or "") if graph_info is not None else ""
+    actual_block_live = bool(block_contributes_to_forward)
+    if graph_info is not None and getattr(graph_info, "parse_ok", False):
+        actual_block_live = int(getattr(graph_info, "fractal_calls", 0) or 0) > 0
+    actual_signature = build_actual_structure_signature(
+        graph_info,
+        block_contributes_to_forward=actual_block_live,
+        block_signature=block_signature,
+    )
+    result = {
+        "prompt_target_pattern": prompt_target_pattern,
+        "normalized_prompt_target_pattern": normalized_target,
+        "declared_pattern": declared_pattern,
+        "actual_pattern": actual_pattern,
+        "declared_pattern_matches_prompt": (
+            bool(normalized_target)
+            and normalize_pattern_name(declared_pattern) == normalized_target
+        ),
+        "actual_structure_signature": actual_signature,
+        "target_structure_key": f"{normalized_target or 'open'}::{actual_signature}",
+        "target_structure_match": True,
+        "target_structure_mismatch_reasons": [],
+        "actual_backbone_calls": int(getattr(graph_info, "backbone_calls", 0) or 0) if graph_info is not None else 0,
+        "actual_block_live": actual_block_live,
+        "actual_block_before_backbone": False,
+        "actual_backbone_before_block": False,
+    }
+    if not normalized_target:
+        return result
+    if graph_info is None or not getattr(graph_info, "parse_ok", False):
+        result["target_structure_match"] = False
+        result["target_structure_mismatch_reasons"] = ["graph_parse_failed"]
+        return result
+
+    graph_expr = str(getattr(graph_info, "graph_expr", "") or "")
+    block_before_backbone = _graph_has_block_before_backbone(graph_expr)
+    backbone_before_block = _graph_has_backbone_before_block(graph_expr)
+    result["actual_block_before_backbone"] = block_before_backbone
+    result["actual_backbone_before_block"] = backbone_before_block
+
+    reasons: List[str] = []
+    declared_matches_prompt = bool(result["declared_pattern_matches_prompt"])
+    if not declared_matches_prompt:
+        reasons.append("declared_pattern_mismatch")
+    target_needs_parallel_triple = normalized_target == "Parallel_Triple"
+    target_needs_block = "Fractal" in normalized_target or target_needs_parallel_triple
+    target_needs_dual_backbone = (
+        "DualBackbone" in normalized_target
+        or "_to_B" in normalized_target
+        or "_plus_B" in normalized_target
+        or normalized_target.endswith("_plus_A")
+        or target_needs_parallel_triple
+    )
+    if target_needs_block and not actual_block_live:
+        if target_needs_parallel_triple:
+            reasons.append("target_parallel_triple_but_block_dead")
+        else:
+            reasons.append("target_fractal_but_block_dead")
+    if target_needs_dual_backbone and int(getattr(graph_info, "backbone_calls", 0) or 0) < 2:
+        if target_needs_parallel_triple:
+            reasons.append("target_parallel_triple_uses_less_than_two_backbones")
+        else:
+            reasons.append("target_dual_but_forward_uses_less_than_two_backbones")
+    result["target_structure_match"] = not reasons
+    result["target_structure_mismatch_reasons"] = reasons
+    return result
+
+
+def _target_structure_penalty(reasons: List[str]) -> float:
+    reason_set = set(str(reason) for reason in (reasons or []))
+    penalty = 0.0
+    if "graph_parse_failed" in reason_set:
+        penalty += TARGET_STRUCTURE_PARSE_PENALTY
+    if "declared_pattern_mismatch" in reason_set:
+        penalty += TARGET_STRUCTURE_PATTERN_MISMATCH_PENALTY
+    if "target_fractal_but_block_dead" in reason_set or "target_parallel_triple_but_block_dead" in reason_set:
+        penalty += TARGET_STRUCTURE_DEAD_BLOCK_PENALTY
+    if (
+        "target_dual_but_forward_uses_less_than_two_backbones" in reason_set
+        or "target_parallel_triple_uses_less_than_two_backbones" in reason_set
+    ):
+        penalty += TARGET_STRUCTURE_DUAL_BACKBONE_PENALTY
+    if any(
+        reason in reason_set
+        for reason in (
+            "fractal_not_before_backbone",
+            "missing_backbone_to_fractal_path",
+            "missing_fractal_to_backbone_path",
+            "missing_backbone_to_fractal_branch",
+        )
+    ):
+        penalty += TARGET_STRUCTURE_PATH_PENALTY
+    return max(TARGET_STRUCTURE_PENALTY_FLOOR, penalty)
+
+
+def _apply_target_structure_reward_adjustment(
+    pattern_detection: Dict[str, Any],
+    r_structure_group: float,
+    r_structure_archive: float,
+) -> Tuple[float, float, float, float]:
+    if bool(pattern_detection.get("target_structure_match", True)):
+        return r_structure_group, r_structure_archive, 0.0, 0.0
+    suppressed_positive = max(0.0, float(r_structure_group or 0.0)) + max(
+        0.0,
+        float(r_structure_archive or 0.0),
+    )
+    return (
+        min(0.0, float(r_structure_group or 0.0)),
+        min(0.0, float(r_structure_archive or 0.0)),
+        _target_structure_penalty(
+            list(pattern_detection.get("target_structure_mismatch_reasons") or [])
+        ),
+        suppressed_positive,
+    )
+
+
+def _apply_target_structure_final_clamp(
+    pattern_detection: Dict[str, Any],
+    reward_value: float,
+    r_target_structure_penalty: float,
+) -> float:
+    if bool(pattern_detection.get("target_structure_match", True)):
+        return reward_value
+    penalty = float(r_target_structure_penalty or 0.0)
+    if penalty == 0.0:
+        penalty = _target_structure_penalty(
+            list(pattern_detection.get("target_structure_mismatch_reasons") or [])
+        )
+    return min(float(reward_value), penalty, 0.0)
+
+
+def _apply_target_structure_reward_gate(res: Dict[str, Any], reward_value: float) -> float:
+    return _apply_target_structure_final_clamp(
+        res,
+        reward_value,
+        float(res.get("r_target_structure_penalty", 0.0) or 0.0),
+    )
+
+
+def _is_target_parallel_triple_block_dead(
+    pattern_detection: Dict[str, Any],
+    block_contributes_to_forward: bool,
+) -> bool:
+    if bool(block_contributes_to_forward):
+        return False
+    if pattern_detection.get("normalized_prompt_target_pattern") != "Parallel_Triple":
+        return False
+    if pattern_detection.get("target_structure_match") is not False:
+        return False
+    return "target_parallel_triple_but_block_dead" in set(
+        str(reason)
+        for reason in list(pattern_detection.get("target_structure_mismatch_reasons") or [])
+    )
+
+
+def _stage23_local_competition_reward(
+    total_reward: float,
+    *,
+    generation_total: int,
+    target_ok: bool,
+    has_formal_epoch: bool,
+    formal_success_candidate: bool,
+    quality_acc_value: Optional[float],
+    cell_archive_freq: int,
+    batch_same_cell_count: int,
+    cell_best_quality_acc: Optional[float],
+    disable_diversity_bonus: bool = False,
+    disable_repeat_penalty: bool = False,
+) -> float:
+    if (
+        not target_ok
+        or not has_formal_epoch
+        or not formal_success_candidate
+        or quality_acc_value is None
+    ):
+        return float(total_reward)
+
+    reward_value = float(total_reward)
+    quality_value = float(quality_acc_value)
+    cell_is_unique_new = bool(cell_archive_freq <= 0 and batch_same_cell_count <= 1)
+    cell_improved = bool(
+        cell_archive_freq > 0
+        and cell_best_quality_acc is not None
+        and quality_value >= float(cell_best_quality_acc) + STAGE23_CELL_IMPROVEMENT_DELTA
+    )
+
+    if cell_is_unique_new and not disable_diversity_bonus:
+        reward_value += STAGE23_NEW_CELL_BONUS
+    elif cell_improved and not disable_diversity_bonus:
+        reward_value += STAGE23_CELL_IMPROVEMENT_BONUS
+    elif (not disable_repeat_penalty) and int(generation_total or 0) < STAGE23_EARLY_LOCAL_COMPETITION_GENERATIONS:
+        reward_value = min(reward_value, STAGE23_EARLY_CELL_REPEAT_REWARD_CAP)
+    elif (not disable_repeat_penalty) and quality_value < STAGE23_DUPLICATE_LOW_ACC_THRESHOLD:
+        reward_value = min(reward_value, STAGE23_DUPLICATE_LOW_ACC_REWARD_CAP)
+
+    if quality_value >= STAGE23_HIGH_ACC_ELITE_THRESHOLD:
+        reward_value += STAGE23_HIGH_ACC_ELITE_BONUS
+    elif quality_value >= STAGE23_HIGH_ACC_STRONG_THRESHOLD:
+        reward_value += STAGE23_HIGH_ACC_STRONG_BONUS
+    elif quality_value >= STAGE23_HIGH_ACC_BONUS_THRESHOLD:
+        reward_value += STAGE23_HIGH_ACC_BONUS
+
+    return _clip(reward_value, -2.0, 2.0)
+
+
+def _stage23_gate_positive_novelty_by_quality(
+    quality_acc_value: Optional[float],
+    components: Dict[str, float],
+) -> Dict[str, float]:
+    if quality_acc_value is not None and float(quality_acc_value) >= STAGE23_POSITIVE_NOVELTY_ACC_THRESHOLD:
+        return dict(components)
+    return {
+        key: min(float(value or 0.0), 0.0)
+        for key, value in components.items()
+    }
+
+
 def prompt_goal_satisfied(graph_info, tag: str) -> bool:
     if not graph_info or not graph_info.parse_ok:
         return False
@@ -2404,8 +3023,12 @@ def prompt_goal_satisfied(graph_info, tag: str) -> bool:
     return False
 
 
-def primary_goal_key(prompt_goal_tags: List[str]) -> str:
-    return "__".join(prompt_goal_tags or ["open"])
+def primary_goal_key(prompt_goal_tags: List[str], prompt_target_pattern: str = "") -> str:
+    tags = [str(tag).strip() for tag in (prompt_goal_tags or []) if str(tag).strip()]
+    if tags:
+        return "__".join(tags)
+    normalized_target = normalize_pattern_name(prompt_target_pattern) if prompt_target_pattern else ""
+    return normalized_target or "open"
 
 
 def goal_family_save_cap(graph_info) -> int:
@@ -2490,6 +3113,23 @@ def _entry_cnn_signature(entry: Dict[str, Any]) -> str:
     return "incomplete_cnn"
 
 
+def _entry_block_signature(entry: Dict[str, Any]) -> str:
+    signature = str(entry.get("block_signature") or "").strip()
+    if signature:
+        return signature
+    block_code, init_code, forward_code = extract_completion_blocks(str(entry.get("completion") or ""))
+    graph_info = entry.get("graph_info")
+    if graph_info is None and block_code and init_code and forward_code:
+        graph_info = extract_graph_info(
+            init_code,
+            forward_code,
+            legacy_patterns=SFTUtil.legacy_patterns,
+        )
+    if not _block_truly_contributes_to_forward(init_code, forward_code, graph_info):
+        return "incomplete_block"
+    return _block_signature_from_code(block_code)
+
+
 def reconstruct_code(
     completion: str,
     *,
@@ -2503,7 +3143,7 @@ def reconstruct_code(
     if pattern_name_override:
         init_code = ensure_pattern_name(init_code, pattern_name_override)
 
-    code = SFTUtil.open_discovery_skeleton_code
+    code = SFTUtil.skeleton_code
     sig_block = "def drop_conv3x3_block(in_channels, out_channels, stride=1, padding=1, bias=False, dropout_prob=0.0):"
     code = code.replace(sig_block, textwrap.dedent(block_code))
 
@@ -2526,7 +3166,7 @@ def _compute_build_partial_reward(res: Dict[str, Any]) -> float:
 
     if error_stage == "cpu_prevalidate":
         if "must call self.infer_dimensions_dynamically" in error_str:
-            build_partial = 0.00
+            return -0.12
         elif "infer_dimensions_dynamically() takes 2 positional arguments but 3 were given" in error_str:
             build_partial = -0.04
         elif "has no attribute '_input_spec'" in error_lower:
@@ -2616,33 +3256,36 @@ def _is_minimal_backbone_classifier_template(init_code: str) -> bool:
 
 
 def _stage1_validity_scale(res: Dict[str, Any]) -> float:
-    if bool(res.get("loss_drop_ok")):
+    if bool(
+        res.get("built_ok")
+        and res.get("forward_shape_ok")
+        and (
+            res.get("backward_ok")
+            or res.get("trained_step_ok")
+            or _has_completed_formal_epoch(res)
+        )
+    ):
         return 1.0
-    if bool(res.get("backward_ok")):
-        return 0.85
+    if bool(res.get("backward_ok") or res.get("trained_step_ok") or _has_completed_formal_epoch(res)):
+        return 0.45
     if bool(res.get("forward_shape_ok")):
-        return 0.55
+        return 0.15
     return 0.0
 
 
 def _stage1_validity_reward(res: Dict[str, Any], graph_info) -> float:
     if not graph_info or not graph_info.parse_ok:
-        return -0.25
+        return -0.85
     if not res.get("built_ok"):
         build_partial = float(res.get("r_build_partial", 0.0) or 0.0)
-        return min(-0.25, -0.50 + build_partial)
+        return min(-0.35, -0.55 + build_partial)
     if not res.get("forward_ok"):
-        return -0.18
+        return -0.40
     if not res.get("forward_shape_ok"):
-        return -0.08
-    if not res.get("backward_ok"):
-        return -0.02
-    if not res.get("loss_drop_ok"):
-        loss_drop = _optional_float(res.get("loss_drop"))
-        if loss_drop is None:
-            return 0.02
-        return _clip(0.01 + 0.25 * float(loss_drop), -0.01, 0.05)
-    return STAGE1_EXECUTABLE_BONUS
+        return -0.30
+    if not _stage1_trainability_ok(res, graph_info):
+        return -0.04
+    return max(STAGE1_EXECUTABLE_BONUS, 0.12)
 
 
 def _template_penalty(
@@ -2760,6 +3403,7 @@ def _discovery_failure_result(
         "r_structure_group": 0.0,
         "r_structure_archive": 0.0,
         "r_descriptor_diversity": 0.0,
+        "r_block_diversity": 0.0,
         "r_batch_elite": 0.0,
         "r_repeat_family": 0.0,
         "r_plain_fuse_penalty": 0.0,
@@ -2787,6 +3431,7 @@ def _discovery_failure_result(
             "r_structure_group": 0.0,
             "r_structure_archive": 0.0,
             "r_descriptor_diversity": 0.0,
+            "r_block_diversity": 0.0,
             "r_batch_elite": 0.0,
             "r_repeat_family": 0.0,
             "r_plain_fuse_penalty": 0.0,
@@ -2815,14 +3460,7 @@ def _discovery_failure_result(
 
 
 def _is_trainable_candidate(res: Dict[str, Any], graph_info) -> bool:
-    return bool(
-        graph_info
-        and graph_info.parse_ok
-        and res.get("built_ok")
-        and res.get("forward_shape_ok")
-        and res.get("backward_ok")
-        and res.get("loss_drop_ok")
-    )
+    return _stage1_trainability_ok(res, graph_info)
 
 
 def _has_completed_formal_epoch(res: Dict[str, Any]) -> bool:
@@ -2855,6 +3493,20 @@ def _stage2_target_qualified_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, 
     return qualified_rows
 
 
+def _stage1_trainability_ok(res: Dict[str, Any], graph_info) -> bool:
+    return bool(
+        graph_info
+        and graph_info.parse_ok
+        and res.get("built_ok")
+        and res.get("forward_shape_ok")
+        and (
+            res.get("backward_ok")
+            or res.get("trained_step_ok")
+            or _has_completed_formal_epoch(res)
+        )
+    )
+
+
 def _apply_trainability_clamp(res: Dict[str, Any], reward_value: float, graph_info) -> float:
     parse_ok = bool(graph_info and graph_info.parse_ok)
     if not parse_ok:
@@ -2870,11 +3522,22 @@ def _apply_trainability_clamp(res: Dict[str, Any], reward_value: float, graph_in
         loss_drop = _optional_float(res.get("loss_drop"))
         partial_progress = _clip(0.25 * float(loss_drop or 0.0), -0.04, 0.04)
         return min(reward_value, -0.12 + partial_progress)
-    if not res.get("loss_drop_ok"):
-        loss_drop = _optional_float(res.get("loss_drop"))
-        if loss_drop is None:
-            return min(reward_value, -0.02)
-        return min(reward_value, _clip(-0.02 + 0.20 * float(loss_drop), -0.08, 0.04))
+    return reward_value
+
+
+def _apply_stage1_trainability_clamp(res: Dict[str, Any], reward_value: float, graph_info) -> float:
+    parse_ok = bool(graph_info and graph_info.parse_ok)
+    if not parse_ok:
+        return min(reward_value, -0.85)
+    if not res.get("built_ok"):
+        build_partial = float(res.get("r_build_partial", 0.0) or 0.0)
+        return min(reward_value, -0.70 + build_partial)
+    if not res.get("forward_ok"):
+        return min(reward_value, -0.40)
+    if not res.get("forward_shape_ok"):
+        return min(reward_value, -0.30)
+    if not _stage1_trainability_ok(res, graph_info):
+        return min(reward_value, -0.04)
     return reward_value
 
 
@@ -3006,19 +3669,30 @@ def _recompute_discovery_reward(
         + float(res.get("r_structure_archive", 0.0) or 0.0)
         + float(res.get("r_descriptor_diversity", 0.0) or 0.0)
         + float(res.get("r_cnn_diversity", 0.0) or 0.0)
+        + float(res.get("r_block_diversity", 0.0) or 0.0)
         + float(res.get("r_batch_elite", 0.0) or 0.0)
         + float(res.get("r_repeat_family", 0.0) or 0.0)
         + float(res.get("r_plain_fuse_penalty", 0.0) or 0.0)
+        + float(res.get("r_target_structure_penalty", 0.0) or 0.0)
         + float(res.get("r_template_penalty", 0.0) or 0.0)
         + float(res.get("r_history_context", 0.0) or 0.0)
         + float(res.get("r_no_progress_penalty", 0.0) or 0.0)
     )
     r_tiebreak = float(res.get("r_goal_match", 0.0) or 0.0)
     total_reward = _clip(r_primary + r_tiebreak, -2.0, 2.0)
-    if stage_name in {STAGE1_STRUCTURE_EXPLORE, STAGE2_FORMAL_EXPLORE}:
+    if stage_name == STAGE1_STRUCTURE_EXPLORE:
+        total_reward = _apply_stage1_trainability_clamp(res, total_reward, graph_info)
+    elif stage_name == STAGE2_FORMAL_EXPLORE:
+        if _reward_variant_is_strong_repeat_penalty() and _is_strong_repeat_without_refresh(res):
+            total_reward = min(total_reward, 0.0)
+            res["strong_repeat_penalty_applied"] = True
         total_reward = _apply_executability_clamp(res, total_reward, graph_info)
     else:
+        if _reward_variant_is_strong_repeat_penalty() and _is_strong_repeat_without_refresh(res):
+            total_reward = min(total_reward, 0.0)
+            res["strong_repeat_penalty_applied"] = True
         total_reward = _apply_trainability_clamp(res, total_reward, graph_info)
+    total_reward = _apply_target_structure_reward_gate(res, total_reward)
     return total_reward, r_primary, r_tiebreak
 
 
@@ -3105,12 +3779,19 @@ def base_discovery_reward_fn(
     batch_descriptor_keys: List[str] = None,
     batch_backbone_signatures: List[str] = None,
     batch_cnn_signatures: List[str] = None,
+    batch_block_signatures: List[str] = None,
+    batch_backbone_block_signatures: List[str] = None,
     prompt_goal_tags: List[str] = None,
+    prompt_target_pattern: str = "",
     archive_snapshot_family_counts: Optional[Dict[str, int]] = None,
     archive_snapshot_descriptor_counts: Optional[Dict[str, int]] = None,
     archive_snapshot_backbone_signature_counts: Optional[Dict[str, int]] = None,
     archive_snapshot_cnn_signature_counts: Optional[Dict[str, int]] = None,
+    archive_snapshot_graph_counts: Optional[Dict[str, int]] = None,
+    archive_snapshot_block_signature_counts: Optional[Dict[str, int]] = None,
     archive_snapshot_backbone_cnn_pair_counts: Optional[Dict[str, int]] = None,
+    archive_snapshot_backbone_block_pair_counts: Optional[Dict[str, int]] = None,
+    archive_snapshot_backbone_block_best_quality: Optional[Dict[str, float]] = None,
     group_baseline_train_acc: Optional[float] = None,
     group_baseline_reward_target_acc: Optional[float] = None,
     reward_batch_index: Optional[int] = None,
@@ -3119,6 +3800,7 @@ def base_discovery_reward_fn(
     completion_index: Optional[int] = None,
     batch_last_item: bool = False,
 ) -> Dict[str, Any]:
+    reward_variant = resolve_reward_variant()
     stage_name = str(current_stage_name)
     stage_profile = _stage_reward_profile(stage_name)
     stage_reward_metric = _stage_reward_target_metric(stage_name)
@@ -3131,6 +3813,7 @@ def base_discovery_reward_fn(
         'epoch': 1,
     }
     block_code, init_code, forward_code = extract_completion_blocks(completion)
+    plain_dual_backbone_concat = _is_plain_dual_backbone_concat(forward_code)
     backbone_model_names = _extract_backbone_model_names(init_code)
     if not block_code or not init_code or not forward_code:
         return _discovery_failure_result(
@@ -3153,9 +3836,24 @@ def base_discovery_reward_fn(
         forward_code,
         legacy_patterns=SFTUtil.legacy_patterns,
     )
-    effective_pattern_name = (
-        graph_info.pattern_name if graph_info.has_custom_pattern_name else graph_info.suggested_pattern_name
+    block_contributes_to_forward = _block_truly_contributes_to_forward(
+        init_code,
+        forward_code,
+        graph_info,
     )
+    block_signature = (
+        _block_signature_from_code(block_code)
+        if block_contributes_to_forward
+        else "incomplete_block"
+    )
+    prompt_target_pattern = str(prompt_target_pattern or "").strip()
+    pattern_detection = detect_target_structure(
+        prompt_target_pattern=prompt_target_pattern,
+        graph_info=graph_info,
+        block_contributes_to_forward=block_contributes_to_forward,
+        block_signature=block_signature,
+    )
+    effective_pattern_name = graph_info.suggested_pattern_name
     pattern_override = graph_info.suggested_pattern_name if not graph_info.has_custom_pattern_name else ""
 
     final_code = reconstruct_code(completion, pattern_name_override=pattern_override)
@@ -3170,17 +3868,19 @@ def base_discovery_reward_fn(
     if precomputed_eval_result is not None:
         res = dict(precomputed_eval_result)
     else:
+        formal_input_shape = _formal_reward_input_shape()
+        formal_out_shape = _formal_reward_out_shape()
         res = evaluate_code_and_reward(
             final_code,
-            in_shape=(1, 3, 224, 224),
-            out_shape=(10,),
+            in_shape=formal_input_shape,
+            out_shape=formal_out_shape,
             prm=prm,
             device="cuda" if torch.cuda.is_available() else "cpu",
             seed_accuracy_baseline=seed_accuracy_baseline,
             cfg=build_stage_eval_cfg(
                 stage_name=stage_name,
-                in_shape=(1, 3, 224, 224),
-                out_shape=(10,),
+                in_shape=formal_input_shape,
+                out_shape=formal_out_shape,
                 prm=prm,
                 device="cuda" if torch.cuda.is_available() else "cpu",
             ),
@@ -3196,6 +3896,7 @@ def base_discovery_reward_fn(
     cnn_signature = str(getattr(graph_info, "cnn_signature", "") or "incomplete_cnn")
     cnn_expr = str(getattr(graph_info, "cnn_expr", "") or "IncompleteCNN")
     backbone_cnn_pair_key = _backbone_cnn_pair_key(backbone_signature, cnn_signature)
+    backbone_block_pair_key = _backbone_block_pair_key(backbone_signature, block_signature)
 
     training_context = summarize_stage_training_context(stage_name)
     shallow_one_shot = is_shallow_one_shot_fuse(graph_info)
@@ -3221,6 +3922,19 @@ def base_discovery_reward_fn(
         if graph_info.parse_ok
         else 0
     )
+    batch_same_block_count = (
+        batch_block_signatures.count(block_signature)
+        if batch_block_signatures and block_signature and block_signature != "incomplete_block"
+        else 0
+    )
+    batch_same_backbone_block_count = (
+        batch_backbone_block_signatures.count(backbone_block_pair_key)
+        if batch_backbone_block_signatures
+        and graph_info.parse_ok
+        and block_signature
+        and block_signature != "incomplete_block"
+        else 0
+    )
     archive_snapshot_family_freq = int((archive_snapshot_family_counts or {}).get(graph_info.family_hash, 0)) if graph_info.parse_ok else 0
     archive_snapshot_descriptor_freq = (
         int((archive_snapshot_descriptor_counts or {}).get(graph_info.descriptor_key, 0))
@@ -3237,10 +3951,28 @@ def base_discovery_reward_fn(
         if graph_info.parse_ok
         else 0
     )
+    archive_snapshot_graph_freq = (
+        int((archive_snapshot_graph_counts or {}).get(graph_info.graph_hash, 0))
+        if graph_info.parse_ok
+        else 0
+    )
+    archive_snapshot_block_freq = (
+        int((archive_snapshot_block_signature_counts or {}).get(block_signature, 0))
+        if graph_info.parse_ok and block_signature and block_signature != "incomplete_block"
+        else 0
+    )
     archive_snapshot_backbone_cnn_freq = (
         int((archive_snapshot_backbone_cnn_pair_counts or {}).get(backbone_cnn_pair_key, 0))
         if graph_info.parse_ok
         else 0
+    )
+    archive_snapshot_backbone_block_freq = (
+        int((archive_snapshot_backbone_block_pair_counts or {}).get(backbone_block_pair_key, 0))
+        if graph_info.parse_ok and block_signature and block_signature != "incomplete_block"
+        else 0
+    )
+    cell_best_quality_acc = _optional_float(
+        (archive_snapshot_backbone_block_best_quality or {}).get(backbone_block_pair_key)
     )
     global_group_baseline_reward_target_acc = (
         group_baseline_reward_target_acc
@@ -3291,7 +4023,10 @@ def base_discovery_reward_fn(
     reward_target_value = _result_reward_target_value(res)
     if reward_target_value is None and stage_name != STAGE1_STRUCTURE_EXPLORE:
         reward_target_value = frozen_test_acc
-    goal_key = primary_goal_key(prompt_goal_tags or [])
+    quality_acc_value = _optional_float(frozen_test_acc)
+    if quality_acc_value is None:
+        quality_acc_value = _optional_float(reward_target_value)
+    goal_key = primary_goal_key(prompt_goal_tags or [], prompt_target_pattern)
     best_reward_target_for_goal = best_reward_target_by_goal.get(goal_key)
     group_train_acc_gain = None
     group_train_acc_improved = False
@@ -3313,11 +4048,19 @@ def base_discovery_reward_fn(
     r_batch_elite = 0.0
     r_repeat_family = 0.0
     r_plain_fuse_penalty = 0.0
+    r_target_structure_penalty = 0.0
+    target_structure_positive_suppressed = 0.0
+    target_block_dead_accuracy_components_suppressed = False
+    target_block_dead_accuracy_suppressed_total = 0.0
     r_template_penalty = 0.0
     r_history_context = 0.0
     r_no_progress_penalty = 0.0
     r_descriptor_diversity = 0.0
     r_cnn_diversity = 0.0
+    r_block_diversity = 0.0
+    global_descriptor_archive_reward = 0.0
+    global_cnn_archive_reward = 0.0
+    block_archive_reward = 0.0
     r_formal_success_signal = 0.0
     stage1_validity_scale = 0.0
     dominant_family_repeat = False
@@ -3326,6 +4069,13 @@ def base_discovery_reward_fn(
     plain_parallel_repeat = False
     descriptor_reward_cap_applied = False
     cnn_reward_cap_applied = False
+    block_reward_cap_applied = False
+    strong_repeat_penalty_applied = False
+    repeated_graph_without_refresh = False
+    strong_repeat_reasons: List[str] = []
+    reward_variant_adjustment: Dict[str, Any] = {}
+    no_diversity_bonus_variant = reward_variant == REWARD_VARIANT_NO_DIVERSITY_BONUS
+    no_repeat_penalty_variant = reward_variant == REWARD_VARIANT_NO_REPEAT_PENALTY
     executable_candidate = _is_executable_candidate(res, graph_info)
     formal_success_candidate = _is_trainable_candidate(res, graph_info)
     has_formal_epoch = _has_completed_formal_epoch(res)
@@ -3371,8 +4121,9 @@ def base_discovery_reward_fn(
             and not discovery_candidate
         ):
             dominant_family_repeat = True
-            r_repeat_family = REPEAT_FAMILY_PENALTY
-        if graph_info.is_plain_parallel_triple:
+            if not no_repeat_penalty_variant:
+                r_repeat_family = REPEAT_FAMILY_PENALTY
+        if graph_info.is_plain_parallel_triple or plain_dual_backbone_concat:
             plain_parallel_repeat = True
             if stage_name == STAGE1_STRUCTURE_EXPLORE:
                 if goal_tag_hit_rate < STAGE1_DISCOVERY_MIN_GOAL_HIT_RATE:
@@ -3380,8 +4131,10 @@ def base_discovery_reward_fn(
                 else:
                     r_plain_fuse_penalty = min(r_plain_fuse_penalty, STAGE1_PLAIN_PARALLEL_WARMUP_PENALTY)
             elif (not group_warmup) and not discovery_candidate:
-                r_plain_fuse_penalty = PLAIN_FUSE_PENALTY
-
+                r_plain_fuse_penalty = min(
+                    r_plain_fuse_penalty,
+                    PLAIN_DUAL_BACKBONE_FUSE_PENALTY if plain_dual_backbone_concat else PLAIN_FUSE_PENALTY,
+                )
     if stage_name == STAGE1_STRUCTURE_EXPLORE:
         reward_target_value = None
         stage1_validity_scale = _stage1_validity_scale(res)
@@ -3391,7 +4144,7 @@ def base_discovery_reward_fn(
             shallow_one_shot=shallow_one_shot,
             minimal_init_template=minimal_init_template,
         )
-        if executable_candidate:
+        if formal_success_candidate:
             novelty_scale = max(0.35, float(stage1_validity_scale))
             goal_alignment_scale = float(goal_tag_hit_rate or 0.0)
             r_structure_group *= (
@@ -3402,7 +4155,7 @@ def base_discovery_reward_fn(
                 STAGE1_STRUCTURE_ARCHIVE_SCALE
                 * float(stage1_validity_scale)
             )
-            if batch_same_descriptor_count == 1:
+            if batch_same_descriptor_count == 1 and not no_diversity_bonus_variant:
                 r_structure_group += (
                     STAGE1_DESCRIPTOR_BATCH_UNIQUE_BONUS
                     * novelty_scale
@@ -3414,21 +4167,24 @@ def base_discovery_reward_fn(
                     STAGE1_DESCRIPTOR_BATCH_REPEAT_MAX_PENALTY,
                     STAGE1_DESCRIPTOR_BATCH_REPEAT_STEP_PENALTY * float(batch_same_descriptor_count - 2),
                 )
-                r_no_progress_penalty += descriptor_batch_repeat_penalty
+                if not no_repeat_penalty_variant:
+                    r_no_progress_penalty += descriptor_batch_repeat_penalty
                 if batch_same_graph_count > 2:
                     graph_batch_repeat_penalty = max(
                         STAGE1_GRAPH_BATCH_REPEAT_MAX_PENALTY,
                         STAGE1_GRAPH_BATCH_REPEAT_STEP_PENALTY * float(batch_same_graph_count - 2),
                     )
-                    r_no_progress_penalty += graph_batch_repeat_penalty
-            if archive_snapshot_descriptor_freq <= 0:
+                    if not no_repeat_penalty_variant:
+                        r_no_progress_penalty += graph_batch_repeat_penalty
+            if archive_snapshot_descriptor_freq <= 0 and not no_diversity_bonus_variant:
                 r_structure_archive += STAGE1_DESCRIPTOR_ARCHIVE_NOVEL_BONUS * novelty_scale
             elif archive_snapshot_descriptor_freq > 3:
                 descriptor_archive_repeat_penalty = max(
                     STAGE1_DESCRIPTOR_ARCHIVE_REPEAT_MAX_PENALTY,
                     STAGE1_DESCRIPTOR_ARCHIVE_REPEAT_STEP_PENALTY * float(archive_snapshot_descriptor_freq - 3),
                 )
-                r_no_progress_penalty += descriptor_archive_repeat_penalty
+                if not no_repeat_penalty_variant:
+                    r_no_progress_penalty += descriptor_archive_repeat_penalty
             if discovery_candidate and goal_alignment_scale >= STAGE1_DISCOVERY_MIN_GOAL_HIT_RATE:
                 r_goal_best = (
                     STAGE1_DISCOVERY_FAMILY_BONUS
@@ -3453,13 +4209,15 @@ def base_discovery_reward_fn(
                     STAGE1_ARCHIVE_REPEAT_MAX_PENALTY,
                     STAGE1_ARCHIVE_REPEAT_STEP_PENALTY * float(archive_snapshot_family_freq),
                 )
-                r_no_progress_penalty += archive_repeat_penalty
+                if not no_repeat_penalty_variant:
+                    r_no_progress_penalty += archive_repeat_penalty
             if batch_same_family_count >= 3:
                 batch_repeat_penalty = max(
                     STAGE1_BATCH_REPEAT_MAX_PENALTY,
                     STAGE1_BATCH_REPEAT_STEP_PENALTY * float(batch_same_family_count - 2),
                 )
-                r_no_progress_penalty += batch_repeat_penalty
+                if not no_repeat_penalty_variant:
+                    r_no_progress_penalty += batch_repeat_penalty
             r_goal_match = STAGE1_GOAL_MATCH_SCALE * goal_tag_hit_rate * novelty_scale
             r_repeat_family = _clip(r_repeat_family, STAGE1_DOMINANT_FAMILY_PENALTY, 0.0)
             r_plain_fuse_penalty = _clip(r_plain_fuse_penalty, STAGE1_PLAIN_PARALLEL_PENALTY, 0.0)
@@ -3477,7 +4235,7 @@ def base_discovery_reward_fn(
                     reward_target_value = min(float(reward_target_value), STAGE1_ZERO_GOAL_HIT_REWARD_CAP)
                 elif goal_alignment_scale < 0.5:
                     reward_target_value = min(float(reward_target_value), STAGE1_LOW_GOAL_HIT_REWARD_CAP)
-            if graph_info.is_plain_parallel_triple:
+            if graph_info.is_plain_parallel_triple or plain_dual_backbone_concat:
                 reward_target_value = min(float(reward_target_value), STAGE1_PLAIN_PARALLEL_REWARD_CAP)
                 if goal_alignment_scale < STAGE1_DISCOVERY_MIN_GOAL_HIT_RATE:
                     reward_target_value = min(float(reward_target_value), STAGE1_OFF_TARGET_PLAIN_PARALLEL_REWARD_CAP)
@@ -3489,12 +4247,22 @@ def base_discovery_reward_fn(
             if (
                 (not discovery_candidate and archive_snapshot_family_freq > 5)
                 or shallow_pattern_repeat
-                or dominant_family_repeat
+                or (dominant_family_repeat and not no_repeat_penalty_variant)
                 or minimal_init_template
             ):
                 reward_target_value = min(float(reward_target_value), 0.26)
                 if minimal_init_template:
                     reward_target_value = min(float(reward_target_value), 0.18)
+            stage1_repeated_block = bool(
+                executable_candidate
+                and block_signature
+                and block_signature != "incomplete_block"
+                and not discovery_candidate
+                and (archive_snapshot_block_freq > 0 or batch_same_block_count >= 3)
+            )
+            if stage1_repeated_block and not no_repeat_penalty_variant:
+                reward_target_value = min(float(reward_target_value), STAGE1_REPEATED_BLOCK_REWARD_CAP)
+                block_reward_cap_applied = True
         r_history_context = _history_context_reward(
             stage_name=stage_name,
             training_context=training_context,
@@ -3503,7 +4271,7 @@ def base_discovery_reward_fn(
             discovery_candidate=discovery_candidate,
             novel_vs_trainset_family=novel_vs_trainset_family,
             novel_vs_trainset_graph=novel_vs_trainset_graph,
-            dominant_family_repeat=dominant_family_repeat,
+            dominant_family_repeat=dominant_family_repeat and not no_repeat_penalty_variant,
             dominant_descriptor_repeat=False,
             shallow_one_shot=shallow_one_shot,
             plain_parallel_repeat=plain_parallel_repeat,
@@ -3514,6 +4282,27 @@ def base_discovery_reward_fn(
         if (reward_target_value is not None) and (effective_group_baseline_reward_target_acc is not None) and (not group_warmup):
             group_reward_target_gain = float(reward_target_value - effective_group_baseline_reward_target_acc)
             group_reward_target_improved = bool(group_reward_target_gain >= GROUP_IMPROVEMENT_DELTA)
+        if reward_variant == REWARD_VARIANT_NO_STRUCTURAL_NOVELTY:
+            adjusted_components, reward_variant_adjustment = _remove_positive_structural_novelty_components(
+                {
+                    "r_trainset_novelty": r_trainset_novelty,
+                    "r_structure_group": r_structure_group,
+                    "r_structure_archive": r_structure_archive,
+                }
+            )
+            r_trainset_novelty = adjusted_components["r_trainset_novelty"]
+            r_structure_group = adjusted_components["r_structure_group"]
+            r_structure_archive = adjusted_components["r_structure_archive"]
+        (
+            r_structure_group,
+            r_structure_archive,
+            r_target_structure_penalty,
+            target_structure_positive_suppressed,
+        ) = _apply_target_structure_reward_adjustment(
+            pattern_detection,
+            r_structure_group,
+            r_structure_archive,
+        )
         r_primary = (
             r_dense
             + r_goal_best
@@ -3521,13 +4310,16 @@ def base_discovery_reward_fn(
             + r_structure_archive
             + r_repeat_family
             + r_plain_fuse_penalty
+            + r_target_structure_penalty
             + r_template_penalty
             + r_history_context
             + r_no_progress_penalty
         )
         r_tiebreak = r_goal_match
         total_reward = _clip(r_primary + r_tiebreak, -2.0, 2.0)
-        total_reward = _apply_executability_clamp(res, total_reward, graph_info)
+        if block_reward_cap_applied:
+            total_reward = min(total_reward, STAGE1_REPEATED_BLOCK_REWARD_CAP)
+        total_reward = _apply_stage1_trainability_clamp(res, total_reward, graph_info)
     else:
         if (train_acc is not None) and (group_baseline_train_acc is not None) and (not group_warmup):
             group_train_acc_gain = float(train_acc - group_baseline_train_acc)
@@ -3542,14 +4334,19 @@ def base_discovery_reward_fn(
         if has_formal_epoch and reward_target_value is not None:
             train_acc_value = float(train_acc or 0.0)
             reward_target_float = float(reward_target_value)
-            quality_diversity_eligible = bool(formal_success_candidate)
+            quality_diversity_eligible = bool(
+                formal_success_candidate
+                and pattern_detection.get("target_structure_match") is not False
+            )
             r_dense = stage_profile["dense_scale"] * _clip(
-                0.03 + 0.20 * reward_target_float + 0.04 * max(0.0, train_acc_value - 0.50),
+                0.03 + 0.28 * reward_target_float + 0.04 * max(0.0, train_acc_value - 0.50),
                 0.02,
-                0.22,
+                0.35,
             )
             if formal_success_candidate:
                 r_formal_success_signal = FORMAL_SUCCESS_SIGNAL_BONUS
+                if pattern_detection.get("target_structure_match") is not False:
+                    r_formal_success_signal += TARGET_STRUCTURE_MATCH_BONUS
             if (not group_warmup) and (group_baseline_train_acc is not None):
                 prev_target_train_acc = float(group_baseline_train_acc) + GROUP_IMPROVEMENT_DELTA
             if (not group_warmup) and (best_closed_group_mean_train_acc is not None):
@@ -3638,25 +4435,42 @@ def base_discovery_reward_fn(
             )
         descriptor_progress_refresh = formal_progress_refresh
         if executable_candidate and graph_info.parse_ok and graph_info.descriptor_key:
-            if quality_diversity_eligible and batch_same_descriptor_count == 1:
+            if quality_diversity_eligible and batch_same_descriptor_count == 1 and not no_diversity_bonus_variant:
                 r_descriptor_diversity += STAGE23_DESCRIPTOR_BATCH_UNIQUE_BONUS
             elif batch_same_descriptor_count > 1:
-                r_descriptor_diversity += max(
-                    STAGE23_DESCRIPTOR_BATCH_REPEAT_MAX_PENALTY,
-                    STAGE23_DESCRIPTOR_BATCH_REPEAT_STEP_PENALTY * float(batch_same_descriptor_count - 1),
-                )
+                if not no_repeat_penalty_variant:
+                    r_descriptor_diversity += max(
+                        STAGE23_DESCRIPTOR_BATCH_REPEAT_MAX_PENALTY,
+                        STAGE23_DESCRIPTOR_BATCH_REPEAT_STEP_PENALTY * float(batch_same_descriptor_count - 1),
+                    )
 
-            if quality_diversity_eligible and archive_snapshot_descriptor_freq <= 0:
+            if quality_diversity_eligible and archive_snapshot_descriptor_freq <= 0 and not no_diversity_bonus_variant:
                 r_descriptor_diversity += STAGE23_DESCRIPTOR_ARCHIVE_NOVEL_BONUS
             elif archive_snapshot_descriptor_freq > 1:
-                r_descriptor_diversity += max(
-                    STAGE23_DESCRIPTOR_ARCHIVE_REPEAT_MAX_PENALTY,
-                    STAGE23_DESCRIPTOR_ARCHIVE_REPEAT_STEP_PENALTY * float(archive_snapshot_descriptor_freq - 1),
-                )
+                if not no_repeat_penalty_variant:
+                    r_descriptor_diversity += max(
+                        STAGE23_DESCRIPTOR_ARCHIVE_REPEAT_MAX_PENALTY,
+                        STAGE23_DESCRIPTOR_ARCHIVE_REPEAT_STEP_PENALTY * float(archive_snapshot_descriptor_freq - 1),
+                    )
+            if quality_diversity_eligible and not no_diversity_bonus_variant:
+                if archive_snapshot_descriptor_freq <= 0:
+                    global_descriptor_archive_reward = STAGE23_GLOBAL_DESCRIPTOR_ARCHIVE_NOVEL_BONUS
+                elif not no_repeat_penalty_variant:
+                    global_descriptor_archive_reward = max(
+                        STAGE23_GLOBAL_DESCRIPTOR_ARCHIVE_REPEAT_MAX_PENALTY,
+                        STAGE23_GLOBAL_DESCRIPTOR_ARCHIVE_REPEAT_MAX_PENALTY
+                        * min(
+                            1.0,
+                            float(archive_snapshot_descriptor_freq)
+                            / float(STAGE23_GLOBAL_DESCRIPTOR_ARCHIVE_REPEAT_WINDOW),
+                        ),
+                    )
+                r_descriptor_diversity += global_descriptor_archive_reward
 
             if (
                 (not group_warmup)
                 and quality_diversity_eligible
+                and not no_diversity_bonus_variant
                 and dominant_descriptor_key
                 and graph_info.descriptor_key != dominant_descriptor_key
                 and float(dominant_descriptor_share or 0.0) >= STAGE23_DOMINANT_DESCRIPTOR_SOFT_SHARE
@@ -3670,31 +4484,64 @@ def base_discovery_reward_fn(
                 and not descriptor_progress_refresh
             ):
                 dominant_descriptor_repeat = True
-                if float(dominant_descriptor_share or 0.0) >= STAGE23_DOMINANT_DESCRIPTOR_STRONG_SHARE:
-                    r_descriptor_diversity += STAGE23_DOMINANT_DESCRIPTOR_REPEAT_STRONG_PENALTY
-                else:
-                    r_descriptor_diversity += STAGE23_DOMINANT_DESCRIPTOR_REPEAT_PENALTY
+                if not no_repeat_penalty_variant:
+                    if float(dominant_descriptor_share or 0.0) >= STAGE23_DOMINANT_DESCRIPTOR_STRONG_SHARE:
+                        r_descriptor_diversity += STAGE23_DOMINANT_DESCRIPTOR_REPEAT_STRONG_PENALTY
+                    else:
+                        r_descriptor_diversity += STAGE23_DOMINANT_DESCRIPTOR_REPEAT_PENALTY
 
         if executable_candidate and graph_info.parse_ok and cnn_signature:
-            if quality_diversity_eligible and batch_same_backbone_cnn_count == 1:
+            if quality_diversity_eligible and batch_same_backbone_cnn_count == 1 and not no_diversity_bonus_variant:
                 r_cnn_diversity += STAGE23_CNN_BATCH_UNIQUE_BONUS
             elif batch_same_backbone_cnn_count > 1:
-                r_cnn_diversity += max(
-                    STAGE23_CNN_BATCH_REPEAT_MAX_PENALTY,
-                    STAGE23_CNN_BATCH_REPEAT_STEP_PENALTY * float(batch_same_backbone_cnn_count - 1),
-                )
+                if not no_repeat_penalty_variant:
+                    r_cnn_diversity += max(
+                        STAGE23_CNN_BATCH_REPEAT_MAX_PENALTY,
+                        STAGE23_CNN_BATCH_REPEAT_STEP_PENALTY * float(batch_same_backbone_cnn_count - 1),
+                    )
 
-            if quality_diversity_eligible and archive_snapshot_backbone_cnn_freq <= 0:
+            if quality_diversity_eligible and archive_snapshot_backbone_cnn_freq <= 0 and not no_diversity_bonus_variant:
                 r_cnn_diversity += STAGE23_CNN_ARCHIVE_NOVEL_BONUS
             elif archive_snapshot_backbone_cnn_freq > 1:
-                r_cnn_diversity += max(
-                    STAGE23_CNN_ARCHIVE_REPEAT_MAX_PENALTY,
-                    STAGE23_CNN_ARCHIVE_REPEAT_STEP_PENALTY * float(archive_snapshot_backbone_cnn_freq - 1),
-                )
+                if not no_repeat_penalty_variant:
+                    r_cnn_diversity += max(
+                        STAGE23_CNN_ARCHIVE_REPEAT_MAX_PENALTY,
+                        STAGE23_CNN_ARCHIVE_REPEAT_STEP_PENALTY * float(archive_snapshot_backbone_cnn_freq - 1),
+                    )
+            if quality_diversity_eligible and not no_diversity_bonus_variant:
+                if archive_snapshot_cnn_freq <= 0:
+                    global_cnn_archive_reward = STAGE23_GLOBAL_CNN_ARCHIVE_NOVEL_BONUS
+                elif not no_repeat_penalty_variant:
+                    global_cnn_archive_reward = max(
+                        STAGE23_GLOBAL_CNN_ARCHIVE_REPEAT_MAX_PENALTY,
+                        STAGE23_GLOBAL_CNN_ARCHIVE_REPEAT_MAX_PENALTY
+                        * min(
+                            1.0,
+                            float(archive_snapshot_cnn_freq)
+                            / float(STAGE23_GLOBAL_CNN_ARCHIVE_REPEAT_WINDOW),
+                        ),
+                    )
+                r_cnn_diversity += global_cnn_archive_reward
 
             if (
                 (not group_warmup)
                 and quality_diversity_eligible
+                and dominant_cnn_signature
+                and cnn_signature == dominant_cnn_signature
+                and float(dominant_cnn_share or 0.0) >= STAGE23_DOMINANT_CNN_SOFT_SHARE
+                and not descriptor_progress_refresh
+            ):
+                dominant_cnn_repeat = True
+                if not no_repeat_penalty_variant:
+                    if float(dominant_cnn_share or 0.0) >= STAGE23_DOMINANT_CNN_STRONG_SHARE:
+                        r_cnn_diversity += STAGE23_GLOBAL_CNN_REPEAT_STRONG_PENALTY
+                    else:
+                        r_cnn_diversity += STAGE23_GLOBAL_CNN_REPEAT_PENALTY
+
+            if (
+                (not group_warmup)
+                and quality_diversity_eligible
+                and not no_diversity_bonus_variant
                 and archive_snapshot_backbone_freq >= BACKBONE_BASELINE_MIN_ARCHIVE_SAMPLES
                 and dominant_backbone_cnn_signature
                 and cnn_signature != dominant_backbone_cnn_signature
@@ -3710,10 +4557,49 @@ def base_discovery_reward_fn(
                 and not descriptor_progress_refresh
             ):
                 dominant_cnn_repeat = True
-                if float(dominant_backbone_cnn_share or 0.0) >= STAGE23_DOMINANT_CNN_STRONG_SHARE:
-                    r_cnn_diversity += STAGE23_DOMINANT_CNN_REPEAT_STRONG_PENALTY
-                else:
-                    r_cnn_diversity += STAGE23_DOMINANT_CNN_REPEAT_PENALTY
+                if not no_repeat_penalty_variant:
+                    if float(dominant_backbone_cnn_share or 0.0) >= STAGE23_DOMINANT_CNN_STRONG_SHARE:
+                        r_cnn_diversity += STAGE23_DOMINANT_CNN_REPEAT_STRONG_PENALTY
+                    else:
+                        r_cnn_diversity += STAGE23_DOMINANT_CNN_REPEAT_PENALTY
+
+        if (
+            executable_candidate
+            and graph_info.parse_ok
+            and quality_diversity_eligible
+            and block_code
+            and not block_contributes_to_forward
+        ):
+            r_block_diversity += STAGE23_DEAD_BLOCK_PENALTY
+
+        if (
+            executable_candidate
+            and graph_info.parse_ok
+            and quality_diversity_eligible
+            and block_signature
+            and block_signature != "incomplete_block"
+        ):
+            if batch_same_block_count == 1 and not no_diversity_bonus_variant:
+                r_block_diversity += STAGE23_BLOCK_BATCH_UNIQUE_BONUS
+            elif batch_same_block_count > 1:
+                if not no_repeat_penalty_variant:
+                    r_block_diversity += max(
+                        STAGE23_BLOCK_BATCH_REPEAT_MAX_PENALTY,
+                        STAGE23_BLOCK_BATCH_REPEAT_STEP_PENALTY * float(batch_same_block_count - 1),
+                    )
+            if archive_snapshot_block_freq <= 0 and not no_diversity_bonus_variant:
+                block_archive_reward = STAGE23_BLOCK_ARCHIVE_NOVEL_BONUS
+            elif not no_repeat_penalty_variant:
+                block_archive_reward = max(
+                    STAGE23_BLOCK_ARCHIVE_REPEAT_MAX_PENALTY,
+                    STAGE23_BLOCK_ARCHIVE_REPEAT_MAX_PENALTY
+                    * min(
+                        1.0,
+                        float(archive_snapshot_block_freq)
+                        / float(STAGE23_BLOCK_ARCHIVE_REPEAT_WINDOW),
+                    ),
+                )
+            r_block_diversity += block_archive_reward
 
         r_goal_match = stage_profile["goal_match_scale"] * GOAL_MATCH_REWARD_SCALE * goal_tag_hit_rate
         r_template_penalty = _template_penalty(
@@ -3741,6 +4627,84 @@ def base_discovery_reward_fn(
         r_repeat_family *= stage_profile["repeat_family_scale"]
         r_plain_fuse_penalty *= stage_profile["plain_fuse_scale"]
 
+        if reward_variant == REWARD_VARIANT_NO_STRUCTURAL_NOVELTY:
+            adjusted_components, reward_variant_adjustment = _remove_positive_structural_novelty_components(
+                {
+                    "r_trainset_novelty": r_trainset_novelty,
+                    "r_structure_group": r_structure_group,
+                    "r_structure_archive": r_structure_archive,
+                    "r_descriptor_diversity": r_descriptor_diversity,
+                    "r_cnn_diversity": r_cnn_diversity,
+                    "r_block_diversity": r_block_diversity,
+                    "global_descriptor_archive_reward": global_descriptor_archive_reward,
+                    "global_cnn_archive_reward": global_cnn_archive_reward,
+                    "block_archive_reward": block_archive_reward,
+                }
+            )
+            r_trainset_novelty = adjusted_components["r_trainset_novelty"]
+            r_structure_group = adjusted_components["r_structure_group"]
+            r_structure_archive = adjusted_components["r_structure_archive"]
+            r_descriptor_diversity = adjusted_components["r_descriptor_diversity"]
+            r_cnn_diversity = adjusted_components["r_cnn_diversity"]
+            r_block_diversity = adjusted_components["r_block_diversity"]
+            global_descriptor_archive_reward = adjusted_components["global_descriptor_archive_reward"]
+            global_cnn_archive_reward = adjusted_components["global_cnn_archive_reward"]
+            block_archive_reward = adjusted_components["block_archive_reward"]
+
+        (
+            r_structure_group,
+            r_structure_archive,
+            r_target_structure_penalty,
+            target_structure_positive_suppressed,
+        ) = _apply_target_structure_reward_adjustment(
+            pattern_detection,
+            r_structure_group,
+            r_structure_archive,
+        )
+        gated_novelty_components = _stage23_gate_positive_novelty_by_quality(
+            quality_acc_value,
+            {
+                "r_structure_group": r_structure_group,
+                "r_structure_archive": r_structure_archive,
+                "r_descriptor_diversity": r_descriptor_diversity,
+                "r_cnn_diversity": r_cnn_diversity,
+                "r_block_diversity": r_block_diversity,
+            },
+        )
+        r_structure_group = gated_novelty_components["r_structure_group"]
+        r_structure_archive = gated_novelty_components["r_structure_archive"]
+        r_descriptor_diversity = gated_novelty_components["r_descriptor_diversity"]
+        r_cnn_diversity = gated_novelty_components["r_cnn_diversity"]
+        r_block_diversity = gated_novelty_components["r_block_diversity"]
+        if _is_target_parallel_triple_block_dead(pattern_detection, block_contributes_to_forward):
+            target_block_dead_accuracy_components_suppressed = True
+            target_block_dead_accuracy_suppressed_total = sum(
+                max(0.0, float(component or 0.0))
+                for component in (
+                    r_dense,
+                    r_formal_success_signal,
+                    r_prev_group,
+                    r_best_group,
+                    r_prev_backbone_group,
+                    r_best_backbone_group,
+                    r_goal_best,
+                    r_generalization,
+                    r_batch_elite,
+                )
+            )
+            r_dense = 0.0
+            r_formal_success_signal = 0.0
+            r_prev_group = 0.0
+            r_best_group = 0.0
+            r_prev_backbone_group = 0.0
+            r_best_backbone_group = 0.0
+            r_goal_best = 0.0
+            r_generalization = 0.0
+            r_batch_elite = 0.0
+            beat_prev_target = False
+            beat_best_target = False
+            beat_prev_backbone_target = False
+            beat_best_backbone_target = False
         r_primary = (
             r_dense
             + r_formal_success_signal
@@ -3754,9 +4718,11 @@ def base_discovery_reward_fn(
             + r_structure_archive
             + r_descriptor_diversity
             + r_cnn_diversity
+            + r_block_diversity
             + r_batch_elite
             + r_repeat_family
             + r_plain_fuse_penalty
+            + r_target_structure_penalty
             + r_template_penalty
             + r_history_context
             + r_no_progress_penalty
@@ -3775,12 +4741,56 @@ def base_discovery_reward_fn(
         )
         if has_formal_epoch and effective_prev_target_reward_target_acc is not None and not effective_beat_prev_target:
             total_reward = min(total_reward, stage_profile["non_improving_cap"])
-        if has_formal_epoch and dominant_descriptor_repeat:
+        if has_formal_epoch and dominant_descriptor_repeat and not no_repeat_penalty_variant:
             total_reward = min(total_reward, stage_profile["descriptor_non_improving_cap"])
             descriptor_reward_cap_applied = True
-        if has_formal_epoch and dominant_cnn_repeat:
+        if has_formal_epoch and dominant_cnn_repeat and not no_repeat_penalty_variant:
             total_reward = min(total_reward, stage_profile["descriptor_non_improving_cap"])
             cnn_reward_cap_applied = True
+        block_repeat_quality_refresh = bool(r_goal_best > 0.0 or beat_best_backbone_target or beat_best_target)
+        repeated_block_without_refresh = bool(
+            has_formal_epoch
+            and formal_success_candidate
+            and block_signature
+            and block_signature != "incomplete_block"
+            and (archive_snapshot_block_freq > 0 or batch_same_block_count > 1)
+            and not block_repeat_quality_refresh
+        )
+        repeated_graph_without_refresh = bool(
+            has_formal_epoch
+            and formal_success_candidate
+            and graph_info.parse_ok
+            and graph_info.graph_hash
+            and (archive_snapshot_graph_freq > 0 or batch_same_graph_count > 1)
+            and not block_repeat_quality_refresh
+        )
+        if repeated_block_without_refresh and not no_repeat_penalty_variant:
+            total_reward = min(total_reward, STAGE23_REPEATED_BLOCK_REWARD_CAP)
+            block_reward_cap_applied = True
+        if dominant_descriptor_repeat:
+            strong_repeat_reasons.append("descriptor")
+        if dominant_cnn_repeat:
+            strong_repeat_reasons.append("backbone_cnn")
+        if repeated_block_without_refresh:
+            strong_repeat_reasons.append("block")
+        if repeated_graph_without_refresh:
+            strong_repeat_reasons.append("graph")
+        if reward_variant == REWARD_VARIANT_STRONG_REPEAT_PENALTY and strong_repeat_reasons:
+            total_reward = min(total_reward, 0.0)
+            strong_repeat_penalty_applied = True
+        total_reward = _stage23_local_competition_reward(
+            total_reward,
+            generation_total=_current_generation_total(),
+            target_ok=pattern_detection.get("target_structure_match") is not False,
+            has_formal_epoch=has_formal_epoch,
+            formal_success_candidate=formal_success_candidate,
+            quality_acc_value=quality_acc_value,
+            cell_archive_freq=archive_snapshot_backbone_block_freq,
+            batch_same_cell_count=batch_same_backbone_block_count,
+            cell_best_quality_acc=cell_best_quality_acc,
+            disable_diversity_bonus=no_diversity_bonus_variant,
+            disable_repeat_penalty=no_repeat_penalty_variant,
+        )
         total_reward = _apply_executability_clamp(res, total_reward, graph_info)
 
     reward_target_value_for_payload = reward_target_value
@@ -3791,6 +4801,11 @@ def base_discovery_reward_fn(
         warmup_dense_reward = _compute_warmup_dense_reward(reward_target_value)
         total_reward = float(warmup_dense_reward or 0.0)
         total_reward = _apply_executability_clamp(res, total_reward, graph_info)
+    total_reward = _apply_target_structure_final_clamp(
+        pattern_detection,
+        total_reward,
+        r_target_structure_penalty,
+    )
 
     res['reward'] = total_reward
     res['test_acc'] = test_acc
@@ -3839,10 +4854,15 @@ def base_discovery_reward_fn(
     res['r_structure_archive'] = r_structure_archive
     res['r_descriptor_diversity'] = r_descriptor_diversity
     res['r_cnn_diversity'] = r_cnn_diversity
+    res['r_block_diversity'] = r_block_diversity
     res['r_formal_success_signal'] = r_formal_success_signal
     res['r_batch_elite'] = r_batch_elite
     res['r_repeat_family'] = r_repeat_family
     res['r_plain_fuse_penalty'] = r_plain_fuse_penalty
+    res['r_target_structure_penalty'] = r_target_structure_penalty
+    res['target_structure_positive_suppressed'] = target_structure_positive_suppressed
+    res['target_block_dead_accuracy_components_suppressed'] = target_block_dead_accuracy_components_suppressed
+    res['target_block_dead_accuracy_suppressed_total'] = target_block_dead_accuracy_suppressed_total
     res['r_template_penalty'] = r_template_penalty
     res['r_history_context'] = r_history_context
     res['r_no_progress_penalty'] = r_no_progress_penalty
@@ -3869,11 +4889,22 @@ def base_discovery_reward_fn(
     res['backbone_signature'] = backbone_signature
     res['cnn_signature'] = cnn_signature
     res['cnn_expr'] = cnn_expr
+    res['block_signature'] = block_signature
+    res['block_contributes_to_forward'] = block_contributes_to_forward
+    res['backbone_block_pair_key'] = backbone_block_pair_key
+    res['plain_dual_backbone_concat'] = plain_dual_backbone_concat
     res['archive_snapshot_backbone_freq'] = archive_snapshot_backbone_freq
     res['archive_snapshot_cnn_freq'] = archive_snapshot_cnn_freq
+    res['archive_snapshot_graph_freq'] = archive_snapshot_graph_freq
+    res['archive_snapshot_block_freq'] = archive_snapshot_block_freq
     res['archive_snapshot_backbone_cnn_freq'] = archive_snapshot_backbone_cnn_freq
+    res['archive_snapshot_backbone_block_freq'] = archive_snapshot_backbone_block_freq
+    res['cell_best_quality_acc'] = cell_best_quality_acc
+    res['batch_same_graph_count'] = batch_same_graph_count
     res['batch_same_backbone_count'] = batch_same_backbone_count
     res['batch_same_backbone_cnn_count'] = batch_same_backbone_cnn_count
+    res['batch_same_block_count'] = batch_same_block_count
+    res['batch_same_backbone_block_count'] = batch_same_backbone_block_count
     res['descriptor_key'] = graph_info.descriptor_key
     res['dominant_descriptor_key'] = dominant_descriptor_key
     res['dominant_descriptor_share'] = dominant_descriptor_share
@@ -3882,10 +4913,23 @@ def base_discovery_reward_fn(
     res['unique_descriptor_count'] = len(descriptor_archive_counts)
     res['dominant_descriptor_repeat'] = dominant_descriptor_repeat
     res['dominant_cnn_repeat'] = dominant_cnn_repeat
+    res['global_descriptor_archive_reward'] = global_descriptor_archive_reward
+    res['global_cnn_archive_reward'] = global_cnn_archive_reward
+    res['block_archive_reward'] = block_archive_reward
     res['descriptor_reward_cap_applied'] = descriptor_reward_cap_applied
     res['cnn_reward_cap_applied'] = cnn_reward_cap_applied
+    res['block_reward_cap_applied'] = block_reward_cap_applied
+    res['reward_variant'] = reward_variant
+    res['reward_variant_adjustment'] = reward_variant_adjustment
+    res['repeated_graph_without_refresh'] = repeated_graph_without_refresh
+    res['strong_repeat_penalty_applied'] = strong_repeat_penalty_applied
+    res['strong_repeat_penalty_reasons'] = list(dict.fromkeys(strong_repeat_reasons))
     res['history_exploration_pressure'] = float(training_context.get('exploration_pressure') or 0.0)
     res['minimal_init_template'] = minimal_init_template
+    res.update(pattern_detection)
+    res['declared_pattern_name'] = pattern_detection["declared_pattern"]
+    res['actual_pattern_name'] = pattern_detection["actual_pattern"]
+    res['target_pattern_match'] = pattern_detection["target_structure_match"]
     res['graph_expr'] = graph_info.graph_expr
     res['pattern_name'] = effective_pattern_name
     res['suggested_pattern_name'] = graph_info.suggested_pattern_name
@@ -3906,9 +4950,14 @@ def base_discovery_reward_fn(
         'r_structure_archive': r_structure_archive,
         'r_descriptor_diversity': r_descriptor_diversity,
         'r_cnn_diversity': r_cnn_diversity,
+        'r_block_diversity': r_block_diversity,
         'r_batch_elite': r_batch_elite,
         'r_repeat_family': r_repeat_family,
         'r_plain_fuse_penalty': r_plain_fuse_penalty,
+        'r_target_structure_penalty': r_target_structure_penalty,
+        'target_structure_positive_suppressed': target_structure_positive_suppressed,
+        'target_block_dead_accuracy_components_suppressed': target_block_dead_accuracy_components_suppressed,
+        'target_block_dead_accuracy_suppressed_total': target_block_dead_accuracy_suppressed_total,
         'r_template_penalty': r_template_penalty,
         'r_history_context': r_history_context,
         'r_no_progress_penalty': r_no_progress_penalty,
@@ -3950,11 +4999,17 @@ def base_discovery_reward_fn(
         'batch_same_descriptor_count': batch_same_descriptor_count,
         'batch_same_backbone_count': batch_same_backbone_count,
         'batch_same_backbone_cnn_count': batch_same_backbone_cnn_count,
+        'batch_same_block_count': batch_same_block_count,
+        'batch_same_backbone_block_count': batch_same_backbone_block_count,
         'archive_snapshot_family_freq': archive_snapshot_family_freq,
         'archive_snapshot_descriptor_freq': archive_snapshot_descriptor_freq,
         'archive_snapshot_backbone_freq': archive_snapshot_backbone_freq,
         'archive_snapshot_cnn_freq': archive_snapshot_cnn_freq,
+        'archive_snapshot_graph_freq': archive_snapshot_graph_freq,
+        'archive_snapshot_block_freq': archive_snapshot_block_freq,
         'archive_snapshot_backbone_cnn_freq': archive_snapshot_backbone_cnn_freq,
+        'archive_snapshot_backbone_block_freq': archive_snapshot_backbone_block_freq,
+        'cell_best_quality_acc': cell_best_quality_acc,
         'macro_structure_ok': passes_macro_structure_gate(graph_info),
         'is_multi_stage_architecture': is_multi_stage_architecture(graph_info),
         'is_shallow_one_shot_fuse': shallow_one_shot,
@@ -3963,6 +5018,10 @@ def base_discovery_reward_fn(
         'backbone_signature': backbone_signature,
         'cnn_signature': cnn_signature,
         'cnn_expr': cnn_expr,
+        'block_signature': block_signature,
+        'block_contributes_to_forward': block_contributes_to_forward,
+        'backbone_block_pair_key': backbone_block_pair_key,
+        'plain_dual_backbone_concat': plain_dual_backbone_concat,
         'descriptor_key': graph_info.descriptor_key,
         'dominant_descriptor_key': dominant_descriptor_key,
         'dominant_descriptor_share': dominant_descriptor_share,
@@ -3971,8 +5030,17 @@ def base_discovery_reward_fn(
         'unique_descriptor_count': len(descriptor_archive_counts),
         'dominant_descriptor_repeat': dominant_descriptor_repeat,
         'dominant_cnn_repeat': dominant_cnn_repeat,
+        'global_descriptor_archive_reward': global_descriptor_archive_reward,
+        'global_cnn_archive_reward': global_cnn_archive_reward,
+        'block_archive_reward': block_archive_reward,
         'descriptor_reward_cap_applied': descriptor_reward_cap_applied,
         'cnn_reward_cap_applied': cnn_reward_cap_applied,
+        'block_reward_cap_applied': block_reward_cap_applied,
+        'reward_variant': reward_variant,
+        'reward_variant_adjustment': reward_variant_adjustment,
+        'repeated_graph_without_refresh': repeated_graph_without_refresh,
+        'strong_repeat_penalty_applied': strong_repeat_penalty_applied,
+        'strong_repeat_penalty_reasons': list(dict.fromkeys(strong_repeat_reasons)),
         'history_exploration_pressure': float(training_context.get('exploration_pressure') or 0.0),
         'minimal_init_template': minimal_init_template,
         'depth': graph_info.depth,
@@ -4012,12 +5080,19 @@ def reward_fn(
     batch_descriptor_keys: List[str] = None,
     batch_backbone_signatures: List[str] = None,
     batch_cnn_signatures: List[str] = None,
+    batch_block_signatures: List[str] = None,
+    batch_backbone_block_signatures: List[str] = None,
     prompt_goal_tags: List[str] = None,
+    prompt_target_pattern: str = "",
     archive_snapshot_family_counts: Optional[Dict[str, int]] = None,
     archive_snapshot_descriptor_counts: Optional[Dict[str, int]] = None,
     archive_snapshot_backbone_signature_counts: Optional[Dict[str, int]] = None,
     archive_snapshot_cnn_signature_counts: Optional[Dict[str, int]] = None,
+    archive_snapshot_graph_counts: Optional[Dict[str, int]] = None,
+    archive_snapshot_block_signature_counts: Optional[Dict[str, int]] = None,
     archive_snapshot_backbone_cnn_pair_counts: Optional[Dict[str, int]] = None,
+    archive_snapshot_backbone_block_pair_counts: Optional[Dict[str, int]] = None,
+    archive_snapshot_backbone_block_best_quality: Optional[Dict[str, float]] = None,
     group_baseline_train_acc: Optional[float] = None,
     group_baseline_reward_target_acc: Optional[float] = None,
     reward_batch_index: Optional[int] = None,
@@ -4037,12 +5112,19 @@ def reward_fn(
         batch_descriptor_keys=batch_descriptor_keys,
         batch_backbone_signatures=batch_backbone_signatures,
         batch_cnn_signatures=batch_cnn_signatures,
+        batch_block_signatures=batch_block_signatures,
+        batch_backbone_block_signatures=batch_backbone_block_signatures,
         prompt_goal_tags=prompt_goal_tags,
+        prompt_target_pattern=prompt_target_pattern,
         archive_snapshot_family_counts=archive_snapshot_family_counts,
         archive_snapshot_descriptor_counts=archive_snapshot_descriptor_counts,
         archive_snapshot_backbone_signature_counts=archive_snapshot_backbone_signature_counts,
         archive_snapshot_cnn_signature_counts=archive_snapshot_cnn_signature_counts,
+        archive_snapshot_graph_counts=archive_snapshot_graph_counts,
+        archive_snapshot_block_signature_counts=archive_snapshot_block_signature_counts,
         archive_snapshot_backbone_cnn_pair_counts=archive_snapshot_backbone_cnn_pair_counts,
+        archive_snapshot_backbone_block_pair_counts=archive_snapshot_backbone_block_pair_counts,
+        archive_snapshot_backbone_block_best_quality=archive_snapshot_backbone_block_best_quality,
         group_baseline_train_acc=group_baseline_train_acc,
         group_baseline_reward_target_acc=group_baseline_reward_target_acc,
         reward_batch_index=reward_batch_index,
@@ -4058,6 +5140,7 @@ def _apply_batch_elite_bonuses(scored_results: List[Dict[str, Any]], group_conte
         return
 
     eligible: List[Tuple[float, Dict[str, Any]]] = []
+    no_repeat_penalty_variant = _reward_variant_is_no_repeat_penalty()
 
     for item in scored_results:
         res = item["result"]
@@ -4068,6 +5151,21 @@ def _apply_batch_elite_bonuses(scored_results: List[Dict[str, Any]], group_conte
         if not _has_completed_formal_epoch(res):
             continue
         if reward_target_value is None:
+            continue
+        if res.get("target_structure_match") is False:
+            continue
+        if (not no_repeat_penalty_variant) and _is_repeated_block_without_refresh(res):
+            continue
+        improved = bool(res.get("group_reward_target_improved") or res.get("backbone_reward_target_improved"))
+        if (
+            (not no_repeat_penalty_variant)
+            and (res.get("dominant_descriptor_repeat") or res.get("dominant_cnn_repeat"))
+            and not improved
+        ):
+            continue
+        if res.get("plain_dual_backbone_concat") and not improved:
+            continue
+        if _reward_variant_is_strong_repeat_penalty() and _is_strong_repeat_without_refresh(res):
             continue
         eligible.append((float(reward_target_value), item))
 
@@ -4092,14 +5190,21 @@ def _apply_batch_elite_bonuses(scored_results: List[Dict[str, Any]], group_conte
         )
         res = item["result"]
         graph_info = item["graph_info"]
-        if float(res.get("r_no_progress_penalty", 0.0) or 0.0) < 0.0:
+        old_reward = float(res.get("reward", -2.0))
+        old_discovery_reward, _, _ = _recompute_discovery_reward(res, graph_info)
+        postprocess_delta = old_reward - float(old_discovery_reward)
+        if (
+            (no_repeat_penalty_variant or not _is_repeated_block_without_refresh(res))
+            and not (_reward_variant_is_strong_repeat_penalty() and _is_strong_repeat_without_refresh(res))
+            and float(res.get("r_no_progress_penalty", 0.0) or 0.0) < 0.0
+        ):
             res["r_no_progress_penalty"] = 0.0
         res["r_batch_elite"] = bonus
         res["batch_elite_rank"] = rank + 1
         res["batch_elite_tier"] = tier
         res["batch_elite_threshold_passed"] = threshold_passed
         total_reward, r_primary, r_tiebreak = _recompute_discovery_reward(res, graph_info)
-        res["reward"] = total_reward
+        res["reward"] = _clip(float(total_reward) + postprocess_delta, -2.0, 2.0)
         open_discovery = res.setdefault("open_discovery", {})
         open_discovery["r_batch_elite"] = bonus
         open_discovery["r_primary"] = r_primary
@@ -4107,7 +5212,7 @@ def _apply_batch_elite_bonuses(scored_results: List[Dict[str, Any]], group_conte
         open_discovery["batch_elite_rank"] = rank + 1
         open_discovery["batch_elite_tier"] = tier
         open_discovery["batch_elite_threshold_passed"] = threshold_passed
-        item["score"] = float(total_reward)
+        item["score"] = float(res["reward"])
         elite_summaries.append(
             f"#{rank + 1} target={reward_target_float:.4f} tier={tier} bonus={bonus:.3f} "
             f"struct={float(res.get('r_structure_group', 0.0) or 0.0) + float(res.get('r_structure_archive', 0.0) or 0.0):.3f}"
@@ -4117,6 +5222,58 @@ def _apply_batch_elite_bonuses(scored_results: List[Dict[str, Any]], group_conte
             f"[Reward Batch Elite] reward_batch_index={group_context['reward_batch_index']} "
             + "; ".join(elite_summaries)
         )
+
+
+def _is_repeated_block_without_refresh(res: Dict[str, Any]) -> bool:
+    block_signature = str(res.get("block_signature") or "")
+    if not block_signature or block_signature == "incomplete_block":
+        return False
+    if _has_block_repeat_quality_refresh(res):
+        return False
+    archive_freq = int(res.get("archive_snapshot_block_freq", 0) or 0)
+    batch_count = int(res.get("batch_same_block_count", 0) or 0)
+    return archive_freq > 0 or batch_count > 1
+
+
+def _is_repeated_graph_without_refresh(res: Dict[str, Any]) -> bool:
+    if bool(res.get("repeated_graph_without_refresh")):
+        return True
+    graph_hash = str(res.get("graph_hash") or "")
+    if not graph_hash:
+        return False
+    if _has_block_repeat_quality_refresh(res):
+        return False
+    archive_freq = int(res.get("archive_snapshot_graph_freq", 0) or 0)
+    batch_count = int(res.get("batch_same_graph_count", 0) or 0)
+    return archive_freq > 0 or batch_count > 1
+
+
+def _is_strong_repeat_without_refresh(res: Dict[str, Any]) -> bool:
+    if not _has_completed_formal_epoch(res):
+        return False
+    if not bool(res.get("formal_success_candidate")):
+        return False
+    if _has_block_repeat_quality_refresh(res):
+        return False
+    return bool(
+        res.get("dominant_descriptor_repeat")
+        or res.get("dominant_cnn_repeat")
+        or _is_repeated_block_without_refresh(res)
+        or _is_repeated_graph_without_refresh(res)
+    )
+
+
+def _has_block_repeat_quality_refresh(res: Dict[str, Any]) -> bool:
+    if float(res.get("r_goal_best", 0.0) or 0.0) > 0.0:
+        return True
+    reward_target_value = _optional_float(res.get("reward_target_value"))
+    if reward_target_value is None:
+        return False
+    best_targets = (
+        _optional_float(res.get("backbone_best_target_reward_target_acc")),
+        _optional_float(res.get("best_target_reward_target_acc")),
+    )
+    return any(target is not None and reward_target_value >= target for target in best_targets)
 
 def _reward_failure_result(
     *,
@@ -4159,6 +5316,7 @@ def _prepare_local_reward_entries(
     batch_graph_infos: List[Any] = []
     batch_backbone_model_names: List[List[str]] = []
     batch_prompt_goal_tags = [extract_prompt_goal_tags(prompt) for prompt in prompts]
+    batch_prompt_target_patterns = [extract_prompt_target_pattern(prompt) for prompt in prompts]
 
     for i, completion in enumerate(completions):
         _, init_code, forward_code = extract_completion_blocks(completion)
@@ -4192,7 +5350,8 @@ def _prepare_local_reward_entries(
                     else "incomplete_cnn"
                 ),
                 "prompt_goal_tags": batch_prompt_goal_tags[i],
-                "goal_key": primary_goal_key(batch_prompt_goal_tags[i]),
+                "prompt_target_pattern": batch_prompt_target_patterns[i],
+                "goal_key": primary_goal_key(batch_prompt_goal_tags[i], batch_prompt_target_patterns[i]),
                 "seed_accuracy_baseline": seed_accuracy_baselines[i],
                 "precomputed_eval_result": None,
             }
@@ -4271,10 +5430,12 @@ def _build_batched_eval_specs(
         if not final_code:
             continue
 
+        formal_input_shape = _formal_reward_input_shape()
+        formal_out_shape = _formal_reward_out_shape()
         spec = {
             "code": final_code,
-            "in_shape": (1, 3, 224, 224),
-            "out_shape": (10,),
+            "in_shape": formal_input_shape,
+            "out_shape": formal_out_shape,
             "prm": {
                 "lr": 0.01,
                 "batch": 64,
@@ -4290,15 +5451,17 @@ def _build_batched_eval_specs(
             "batch_last_item": False,
         }
         if callable(eval_cfg_builder):
-            spec["cfg"] = _invoke_eval_cfg_builder(
+            spec_cfg = _invoke_eval_cfg_builder(
                 eval_cfg_builder,
                 stage_name=str(group_context.get("current_stage_name") or current_stage_name),
-                in_shape=(1, 3, 224, 224),
-                out_shape=(10,),
+                in_shape=formal_input_shape,
+                out_shape=formal_out_shape,
                 prm=spec["prm"],
                 cfg=None,
                 device=spec["device"],
             )
+            spec["cfg"] = spec_cfg
+            spec["out_shape"] = (int(getattr(spec_cfg, "n_classes", spec["out_shape"][0])),)
 
         batched_eval_entries.append(entry)
         batched_eval_specs.append(spec)
@@ -4433,7 +5596,11 @@ def _score_reward_entries(
     archive_snapshot_descriptor_counts = dict(descriptor_archive_counts)
     archive_snapshot_backbone_signature_counts = dict(backbone_signature_archive_counts)
     archive_snapshot_cnn_signature_counts = dict(cnn_signature_archive_counts)
+    archive_snapshot_graph_counts = dict(graph_archive_counts)
+    archive_snapshot_block_signature_counts = dict(block_signature_archive_counts)
     archive_snapshot_backbone_cnn_pair_counts = dict(backbone_cnn_pair_archive_counts)
+    archive_snapshot_backbone_block_pair_counts = dict(backbone_block_pair_archive_counts)
+    archive_snapshot_backbone_block_best_quality = dict(best_quality_acc_by_backbone_block)
     batch_graph_hashes = [
         entry["graph_info"].graph_hash if entry.get("graph_info") and entry["graph_info"].parse_ok else "incomplete"
         for entry in entries
@@ -4454,6 +5621,14 @@ def _score_reward_entries(
         _entry_cnn_signature(entry)
         for entry in entries
     ]
+    batch_block_signatures = [
+        _entry_block_signature(entry)
+        for entry in entries
+    ]
+    batch_backbone_block_signatures = [
+        _backbone_block_pair_key(backbone_signature, block_signature)
+        for backbone_signature, block_signature in zip(batch_backbone_signatures, batch_block_signatures)
+    ]
     scored_results: List[Dict[str, Any]] = []
 
     for position, entry in enumerate(entries):
@@ -4471,12 +5646,19 @@ def _score_reward_entries(
                 batch_descriptor_keys=batch_descriptor_keys,
                 batch_backbone_signatures=batch_backbone_signatures,
                 batch_cnn_signatures=batch_cnn_signatures,
+                batch_block_signatures=batch_block_signatures,
+                batch_backbone_block_signatures=batch_backbone_block_signatures,
                 prompt_goal_tags=entry.get("prompt_goal_tags"),
+                prompt_target_pattern=entry.get("prompt_target_pattern", ""),
                 archive_snapshot_family_counts=archive_snapshot_family_counts,
                 archive_snapshot_descriptor_counts=archive_snapshot_descriptor_counts,
                 archive_snapshot_backbone_signature_counts=archive_snapshot_backbone_signature_counts,
                 archive_snapshot_cnn_signature_counts=archive_snapshot_cnn_signature_counts,
+                archive_snapshot_graph_counts=archive_snapshot_graph_counts,
+                archive_snapshot_block_signature_counts=archive_snapshot_block_signature_counts,
                 archive_snapshot_backbone_cnn_pair_counts=archive_snapshot_backbone_cnn_pair_counts,
+                archive_snapshot_backbone_block_pair_counts=archive_snapshot_backbone_block_pair_counts,
+                archive_snapshot_backbone_block_best_quality=archive_snapshot_backbone_block_best_quality,
                 group_baseline_train_acc=group_context["group_baseline_train_acc"],
                 group_baseline_reward_target_acc=group_context["group_baseline_reward_target_acc"],
                 reward_batch_index=group_context["reward_batch_index"],
@@ -4543,11 +5725,16 @@ def _finalize_scored_results(scored_results: List[Dict[str, Any]]) -> None:
         sig = res.get("signature", "unknown")
         backbone_signature = _result_backbone_signature(res)
         cnn_signature = _result_cnn_signature(res, graph_info)
+        block_signature = _result_block_signature(res, completion)
         backbone_cnn_pair_key = _backbone_cnn_pair_key(backbone_signature, cnn_signature)
+        backbone_block_pair_key = _backbone_block_pair_key(backbone_signature, block_signature)
 
         is_executable = _is_executable_candidate(res, graph_info)
         is_trainable = _is_trainable_candidate(res, graph_info)
         reward_target_value = _result_reward_target_value(res)
+        quality_acc_value = _optional_float(res.get("frozen_test_acc"))
+        if quality_acc_value is None:
+            quality_acc_value = _optional_float(reward_target_value)
         if reward_target_value is not None:
             current_batch_results.append(res)
         if is_executable:
@@ -4563,8 +5750,17 @@ def _finalize_scored_results(scored_results: List[Dict[str, Any]]) -> None:
                 backbone_signature_archive_counts[backbone_signature] += 1
             if cnn_signature:
                 cnn_signature_archive_counts[cnn_signature] += 1
+            if block_signature and block_signature != "incomplete_block":
+                block_signature_archive_counts[block_signature] += 1
             if backbone_signature and cnn_signature:
                 backbone_cnn_pair_archive_counts[backbone_cnn_pair_key] += 1
+            if backbone_signature and block_signature and block_signature != "incomplete_block":
+                backbone_block_pair_archive_counts[backbone_block_pair_key] += 1
+                if is_trainable and quality_acc_value is not None:
+                    best_quality_acc_by_backbone_block[backbone_block_pair_key] = max(
+                        float(best_quality_acc_by_backbone_block.get(backbone_block_pair_key, float("-inf"))),
+                        float(quality_acc_value),
+                    )
             motif_name_counts[res.get("pattern_name", graph_info.suggested_pattern_name)] += 1
             get_goal_counter(goal_graph_archive_counts, goal_key)[graph_info.graph_hash] += 1
             get_goal_counter(goal_family_hash_archive_counts, goal_key)[graph_info.family_hash] += 1
@@ -4634,6 +5830,8 @@ def _finalize_scored_results(scored_results: List[Dict[str, Any]]) -> None:
                     float(saved_best_reward_target_by_backbone_cnn.get(backbone_cnn_pair_key, float("-inf"))),
                     float(reward_target_value if reward_target_value is not None else float("-inf")),
                 )
+            if backbone_signature and block_signature and block_signature != "incomplete_block":
+                saved_backbone_block_pair_counts[backbone_block_pair_key] += 1
             get_goal_counter(saved_goal_family_hash_counts, goal_key)[graph_info.family_hash] += 1
             B_index += 1
         elif (
@@ -4662,7 +5860,9 @@ def _finalize_scored_results(scored_results: List[Dict[str, Any]]) -> None:
                 "descriptor_key": str(res.get("descriptor_key") or getattr(graph_info, "descriptor_key", "") or ""),
                 "backbone_signature": backbone_signature,
                 "cnn_signature": cnn_signature,
+                "block_signature": block_signature,
                 "backbone_cnn_pair_key": backbone_cnn_pair_key,
+                "backbone_block_pair_key": backbone_block_pair_key,
                 "reward": score,
                 "reward_target_metric": str(res.get("reward_target_metric") or ""),
                 "reward_target_value": reward_target_value,
@@ -4709,7 +5909,9 @@ def _print_discovery_metrics() -> None:
     unique_descriptors = len(descriptor_archive_counts)
     unique_backbones = len(backbone_signature_archive_counts)
     unique_cnns = len(cnn_signature_archive_counts)
+    unique_blocks = len(block_signature_archive_counts)
     unique_backbone_cnn_pairs = len(backbone_cnn_pair_archive_counts)
+    unique_backbone_block_pairs = len(backbone_block_pair_archive_counts)
 
     if total_valid > 0:
         most_common_count = family_hash_archive_counts.most_common(1)[0][1]
@@ -4727,7 +5929,8 @@ def _print_discovery_metrics() -> None:
     print(
         f"\n[Discovery Metrics] Unique Graphs: {unique_count}, "
         f"Families: {unique_families}, Skeletons: {unique_skeletons}, Descriptors: {unique_descriptors}, "
-        f"Backbone Buckets: {unique_backbones}, CNN Signatures: {unique_cnns}, Backbone+CNN Pairs: {unique_backbone_cnn_pairs}, "
+        f"Backbone Buckets: {unique_backbones}, CNN Signatures: {unique_cnns}, Block Signatures: {unique_blocks}, "
+        f"Backbone+CNN Pairs: {unique_backbone_cnn_pairs}, Backbone+Block Cells: {unique_backbone_block_pairs}, "
         f"Dominant Family Share: {dominant_share:.2%}, Entropy: {entropy:.2f}"
     )
     print(f"[Graph Archive] Top 5 Exact Graphs: {dict(graph_archive_counts.most_common(5))}")
@@ -4736,7 +5939,9 @@ def _print_discovery_metrics() -> None:
     print(f"[Descriptor Archive] Top 5: {dict(descriptor_archive_counts.most_common(5))}")
     print(f"[Backbone Archive] Top 5: {dict(backbone_signature_archive_counts.most_common(5))}")
     print(f"[CNN Archive] Top 5: {dict(cnn_signature_archive_counts.most_common(5))}")
+    print(f"[Block Archive] Top 5: {dict(block_signature_archive_counts.most_common(5))}")
     print(f"[Backbone+CNN Archive] Top 5: {dict(backbone_cnn_pair_archive_counts.most_common(5))}")
+    print(f"[Backbone+Block Archive] Top 5: {dict(backbone_block_pair_archive_counts.most_common(5))}")
     print(f"[Motif Names] Top 5: {dict(motif_name_counts.most_common(5))}")
     goal_summary = {
         goal_key: len(counter)
@@ -4947,13 +6152,14 @@ def load_rl_dataset(tokenizer):
             })
 
     rl_dataset = Dataset.from_list(prompts)
-    return rl_dataset.shuffle(seed=42)
+    return rl_dataset.shuffle(seed=resolve_rl_seed())
 
 def main():
     global active_rl_model
     global active_rl_tokenizer
     global current_stage_name
 
+    apply_rl_seed()
     torch.cuda.empty_cache()
     resume_checkpoint_dir = _resolve_resume_checkpoint_dir()
     resume_manifest = None
@@ -4970,13 +6176,7 @@ def main():
             legacy_state_filenames=("reward_state.json",),
         )
         if resume_stage_override:
-            current_state_stage = str(current_stage_name)
-            if current_state_stage != resume_stage_override:
-                print(
-                    "[RL] Resume stage override "
-                    f"checkpoint_stage={current_state_stage} requested_stage={resume_stage_override}"
-                )
-                current_stage_name = resume_stage_override
+            apply_resume_stage_override(resume_stage_override, log_prefix="[RL]")
         print(
             "[RL] Resuming from checkpoint "
             f"dir={resume_checkpoint_dir} stage={current_stage_name} "
@@ -4990,6 +6190,8 @@ def main():
             _reward_runtime_hooks(),
             legacy_state_filenames=("reward_state.json",),
         )
+        if resume_stage_override:
+            apply_resume_stage_override(resume_stage_override, log_prefix="[RL]")
     precision = best_mixed_precision()
     runtime = get_distributed_runtime_info()
     runtime_settings = resolve_rl_runtime_settings(runtime)

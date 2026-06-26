@@ -1,46 +1,79 @@
 import json
 import os
+import re
 import shutil
 import random
 import inspect
+import subprocess
 import sys
 import tempfile
 import time
+import traceback
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from torch.utils.data import Dataset as TorchDataset
 from ab.gpt.util.Const import conf_dir
 
+try:
+    import faulthandler
+
+    faulthandler.enable(all_threads=True)
+except Exception:
+    pass
+
 
 # ── SFT runtime configuration ─────────────────────────────────────────────
-SFT_BASE_MODEL_ID = "ABrain/NNGPT-Backbone-deepseek-coder-6.7b-instruct"
+SFT_BASE_MODEL_ID = "deepseek-ai/deepseek-coder-6.7b-instruct"
 SFT_INIT_ADAPTER = ""
 SFT_LOAD_INITIAL_ADAPTER = False
+SFT_INITIAL_ADAPTER_MODE = "trainable"
+SFT_INITIAL_ADAPTER_DTYPE = "fp32"
 SFT_SAVE_RL_MODEL = False
 SFT_MODEL_OUT = "rl_backbone_model_sft"
 SFT_LOG_DIR = "rl_output/sft"
 SFT_EPOCH_ROOT = "out/nngpt/llm/epoch_sft"
 SFT_TRAINER_OUT = "grpo_backbone_outputs/sft"
-SFT_TEMPERATURE = 1.1
+SFT_TEMPERATURE = 0.8
+SFT_TOP_P = 0.95
+SFT_TOP_K = 50
 SFT_NUM_GENERATIONS = 8
 SFT_GRAD_ACCUM = 8
-SFT_MAX_COMPLETION_LENGTH = 1536
+SFT_MAX_PROMPT_LENGTH = 3500
+SFT_MAX_COMPLETION_LENGTH = 1200
+SFT_GENERATION_BATCH_SIZE = 8
+SFT_MAX_STEPS = 125
 SFT_DATASET_LIMIT = 500
-SFT_FEEDBACK_CHAR_BUDGET = 1200
+SFT_FEEDBACK_CHAR_BUDGET = 0
 SFT_LR = 5e-5
 SFT_NUM_EPOCHS = 5
-SFT_KL_COEF = 5e-4
+SFT_SAVE_STEPS = 25
+SFT_KL_COEF = 0.04
 SFT_LORA_R = 16
 SFT_LORA_ALPHA = 32
 SFT_LORA_DROPOUT = 0.05
+SFT_RL_NN_PREFIXES = ("rl-bb-test1",)
+SFT_RL_PROMPT_MODE = "sft_aligned"
+SFT_RL_RESUME_STAGE = "stage2_formal_explore"
+SFT_FORMAL_REWARD_EPOCHS = "1"
 SFT_DEEPSPEED_DEFAULT_CONFIG = str(conf_dir / "DeepSpeedSftGrpo.json")
 SFT_MODE_DEFAULT = "auto"
+SFT_REWARD_EXCLUDE_TRAIN_GPU = False
+SFT_COMPACT_AFTER_MODEL_LOAD = False
+SFT_COMPACT_FLOAT_PARAMS = False
+SFT_LENGTH_SOFT_TOKEN_LIMIT = 850
+SFT_LENGTH_HARD_TOKEN_LIMIT = 1000
+SFT_LENGTH_FAILURE_TOKEN_LIMIT = 1200
+SFT_LENGTH_SOFT_PENALTY = 0.05
+SFT_LENGTH_HARD_EXTRA_PENALTY = 0.20
+SFT_REPEAT_LINE_PENALTY = 0.03
+SFT_REPEAT_LINE_MAX_PENALTY = 0.15
+SFT_RUNTIME_SOURCE_INFO: Dict[str, str] = {}
 
 # CIFAR-10 reward evaluation via nn-dataset / NNEval-aligned formal acc.
 SFT_EVAL_IMAGE_SIZE = 128
 SFT_EVAL_BATCH_SIZE = 64
-SFT_EVAL_TRAIN_SUBSET = 256
-SFT_EVAL_VAL_SUBSET = 128
+SFT_EVAL_TRAIN_SUBSET = 0
+SFT_EVAL_VAL_SUBSET = 0
 SFT_EVAL_TRAIN_EPOCHS = 1
 SFT_EVAL_VAL_BATCHES = 2
 SFT_EVAL_FULL_TEST_ACC = True
@@ -49,21 +82,22 @@ SFT_EVAL_LIMIT_SECONDS = 900
 SFT_EVAL_FORMAL_EPOCH_LIMIT_MINUTES = 30
 SFT_EVAL_DATA_ROOT = "data_v2"
 SFT_EVAL_DOWNLOAD = True
+SFT_EVAL_SPLIT_PROTOCOL = "trainvaltest"
+SFT_EVAL_SPLIT_SEED = 42
+SFT_EVAL_SPLIT_ROLE = "reward_eval"
 SFT_VAL_METRIC_BASELINE = 0.10
-
-# Local desktop cache roots.
-# Keep this block on the local machine if you want Hugging Face downloads/cache on
-# the mounted disk. On the server, if the model is already placed under
-# `out/llm/ABrain/NNGPT-Backbone-deepseek-coder-6.7b-instruct`, you can comment
-# out this whole block and the script will still load from `out/llm` first.
-# SFT_HF_HOME = "/media/xi/Data/hf-cache"
-# SFT_HF_HUB_CACHE = "/media/xi/Data/hf-cache/hub"
-# SFT_TRANSFORMERS_CACHE = "/media/xi/Data/hf-cache/transformers"
-
-# os.environ["HF_HOME"] = SFT_HF_HOME
-# os.environ["HF_HUB_CACHE"] = SFT_HF_HUB_CACHE
-# os.environ["HUGGINGFACE_HUB_CACHE"] = SFT_HF_HUB_CACHE
-# os.environ["TRANSFORMERS_CACHE"] = SFT_TRANSFORMERS_CACHE
+SFT_FORMAL_DATASET_CLASS_COUNTS = {
+    "cifar-10": 10,
+    "cifar-100": 100,
+    "imagenette": 10,
+}
+SFT_FORMAL_DATASET_ALIASES = {
+    "cifar10": "cifar-10",
+    "cifar-10": "cifar-10",
+    "cifar100": "cifar-100",
+    "cifar-100": "cifar-100",
+    "imagenette": "imagenette",
+}
 
 import ab.gpt.TuneRL as TuneRL
 from ab.gpt.rl_pipeline.completion import (
@@ -86,6 +120,129 @@ _TRAIN_GPU_TOKENS_ENV = "NNGPT_TRAIN_GPU_TOKENS"
 _AUX_GPU_TOKENS_ENV = "NNGPT_AUX_GPU_TOKENS"
 _REWARD_GPU_TOKENS_ENV = "NNGPT_REWARD_GPU_TOKENS"
 
+
+def normalize_sft_formal_dataset(dataset: str | None = None) -> str:
+    raw = str(dataset or os.getenv("NNGPT_RL_FORMAL_DATASET", "cifar-10")).strip().lower()
+    if raw not in SFT_FORMAL_DATASET_ALIASES:
+        allowed = ", ".join(sorted(SFT_FORMAL_DATASET_CLASS_COUNTS))
+        raise ValueError(f"Unsupported NNGPT_RL_FORMAL_DATASET={raw!r}; expected one of: {allowed}")
+    return SFT_FORMAL_DATASET_ALIASES[raw]
+
+
+def resolve_sft_formal_dataset() -> str:
+    return normalize_sft_formal_dataset()
+
+
+def resolve_sft_formal_n_classes(dataset: str | None = None) -> int:
+    return int(SFT_FORMAL_DATASET_CLASS_COUNTS[normalize_sft_formal_dataset(dataset)])
+
+
+def resolve_sft_formal_out_shape(dataset: str | None = None) -> tuple[int, ...]:
+    return (resolve_sft_formal_n_classes(dataset),)
+
+
+def _normalize_sft_eval_split_protocol(_split_protocol: str | None = None) -> str:
+    return "trainvaltest"
+
+
+def _describe_sft_eval_split(formal_dataset: str, split_protocol: str) -> tuple[str, str, str]:
+    dataset = normalize_sft_formal_dataset(formal_dataset)
+    _normalize_sft_eval_split_protocol(split_protocol)
+    if dataset == "cifar-10":
+        return "cifar10-train[45k]", "cifar10-train[5k]", "cifar10-test[10k]"
+    if dataset == "cifar-100":
+        return "cifar100-train[45k]", "cifar100-train[5k]", "cifar100-test[10k]"
+    if dataset == "imagenette":
+        return "imagenette-train[7500]", "imagenette-train[1969]", "imagenette-test[3925]"
+    raise ValueError(f"Unsupported formal dataset: {formal_dataset!r}")
+
+
+def _stage1_fixed_failure_reward(res: Dict[str, Any], meta: Dict[str, Any], graph_info) -> Optional[float]:
+    if str(res.get("current_stage_name") or "") != TuneRL.STAGE1_STRUCTURE_EXPLORE:
+        return None
+    if TuneRL._is_trainable_candidate(res, graph_info):
+        return None
+
+    if (
+        not meta.get("xml_tag_exact")
+        or int(meta.get("xml_tag_count", 0) or 0) < 3
+        or int(meta.get("class_count", 0) or 0) > 0
+        or int(meta.get("import_count", 0) or 0) > 0
+        or int(meta.get("bad_signature_count", 0) or 0) > 0
+        or not meta.get("dual_backbone_ok")
+        or not res.get("built_ok")
+    ):
+        return -3.0
+    if not res.get("forward_ok") or not res.get("forward_shape_ok"):
+        return -1.0
+    return -0.25
+
+
+def _estimate_completion_tokens(completion: str) -> tuple[int, str]:
+    tokenizer = getattr(TuneRL, "active_rl_tokenizer", None)
+    if tokenizer is not None:
+        try:
+            tokenized = tokenizer(completion, add_special_tokens=False)
+            return int(len(tokenized.input_ids)), "tokenizer"
+        except Exception:
+            pass
+    return int(max(1, round(len(completion) / 2.4))), "char_estimate"
+
+
+def _count_repeated_code_lines(completion: str) -> tuple[int, int]:
+    counts: Dict[str, int] = {}
+    for raw_line in completion.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("<") or len(line) < 12:
+            continue
+        line = re.sub(r"\s+", " ", line)
+        counts[line] = counts.get(line, 0) + 1
+    repeated_groups = sum(1 for value in counts.values() if value >= 3)
+    repeated_excess = sum(value - 2 for value in counts.values() if value >= 3)
+    return repeated_groups, repeated_excess
+
+
+def _completion_compactness_penalty(completion: str, meta: Dict[str, Any]) -> Dict[str, Any]:
+    token_count, token_count_source = _estimate_completion_tokens(completion)
+    soft_limit = max(1, _env_int("NNGPT_SFT_LENGTH_SOFT_TOKEN_LIMIT", SFT_LENGTH_SOFT_TOKEN_LIMIT))
+    hard_limit = max(soft_limit + 1, _env_int("NNGPT_SFT_LENGTH_HARD_TOKEN_LIMIT", SFT_LENGTH_HARD_TOKEN_LIMIT))
+    failure_limit = max(hard_limit + 1, _env_int("NNGPT_SFT_LENGTH_FAILURE_TOKEN_LIMIT", SFT_LENGTH_FAILURE_TOKEN_LIMIT))
+    soft_penalty = max(0.0, _env_float("NNGPT_SFT_LENGTH_SOFT_PENALTY", SFT_LENGTH_SOFT_PENALTY))
+    hard_extra_penalty = max(
+        0.0,
+        _env_float("NNGPT_SFT_LENGTH_HARD_EXTRA_PENALTY", SFT_LENGTH_HARD_EXTRA_PENALTY),
+    )
+    repeat_unit = max(0.0, _env_float("NNGPT_SFT_REPEAT_LINE_PENALTY", SFT_REPEAT_LINE_PENALTY))
+    repeat_cap = max(0.0, _env_float("NNGPT_SFT_REPEAT_LINE_MAX_PENALTY", SFT_REPEAT_LINE_MAX_PENALTY))
+
+    length_penalty = 0.0
+    if token_count > soft_limit:
+        if token_count <= hard_limit:
+            length_penalty = -soft_penalty * ((token_count - soft_limit) / float(hard_limit - soft_limit))
+        else:
+            hard_span = max(1, failure_limit - hard_limit)
+            length_penalty = -soft_penalty - hard_extra_penalty * min(
+                1.0,
+                (token_count - hard_limit) / float(hard_span),
+            )
+
+    repeated_groups, repeated_excess = _count_repeated_code_lines(completion)
+    repeated_line_penalty = -min(repeat_cap, repeat_unit * repeated_excess)
+    xml_incomplete_length_cap = bool(token_count > failure_limit and not meta.get("xml_tag_exact"))
+    return {
+        "completion_token_count": token_count,
+        "completion_token_count_source": token_count_source,
+        "completion_length_soft_limit": soft_limit,
+        "completion_length_hard_limit": hard_limit,
+        "completion_length_failure_limit": failure_limit,
+        "repeated_line_groups": repeated_groups,
+        "repeated_line_excess": repeated_excess,
+        "r_length_compactness": length_penalty,
+        "r_repeated_line_penalty": repeated_line_penalty,
+        "xml_incomplete_length_cap": xml_incomplete_length_cap,
+    }
+
+
 def raw_reward_fn(
     completion: str,
     *,
@@ -97,12 +254,19 @@ def raw_reward_fn(
     batch_descriptor_keys: List[str] = None,
     batch_backbone_signatures: List[str] = None,
     batch_cnn_signatures: List[str] = None,
+    batch_block_signatures: List[str] = None,
+    batch_backbone_block_signatures: List[str] = None,
     prompt_goal_tags: List[str] = None,
+    prompt_target_pattern: str = "",
     archive_snapshot_family_counts: Dict[str, int] = None,
     archive_snapshot_descriptor_counts: Dict[str, int] = None,
     archive_snapshot_backbone_signature_counts: Dict[str, int] = None,
     archive_snapshot_cnn_signature_counts: Dict[str, int] = None,
+    archive_snapshot_graph_counts: Dict[str, int] = None,
+    archive_snapshot_block_signature_counts: Dict[str, int] = None,
     archive_snapshot_backbone_cnn_pair_counts: Dict[str, int] = None,
+    archive_snapshot_backbone_block_pair_counts: Dict[str, int] = None,
+    archive_snapshot_backbone_block_best_quality: Dict[str, float] = None,
     group_baseline_train_acc: float | None = None,
     group_baseline_reward_target_acc: float | None = None,
     reward_batch_index: int | None = None,
@@ -121,12 +285,19 @@ def raw_reward_fn(
         batch_descriptor_keys=batch_descriptor_keys,
         batch_backbone_signatures=batch_backbone_signatures,
         batch_cnn_signatures=batch_cnn_signatures,
+        batch_block_signatures=batch_block_signatures,
+        batch_backbone_block_signatures=batch_backbone_block_signatures,
         prompt_goal_tags=prompt_goal_tags,
+        prompt_target_pattern=prompt_target_pattern,
         archive_snapshot_family_counts=archive_snapshot_family_counts,
         archive_snapshot_descriptor_counts=archive_snapshot_descriptor_counts,
         archive_snapshot_backbone_signature_counts=archive_snapshot_backbone_signature_counts,
         archive_snapshot_cnn_signature_counts=archive_snapshot_cnn_signature_counts,
+        archive_snapshot_graph_counts=archive_snapshot_graph_counts,
+        archive_snapshot_block_signature_counts=archive_snapshot_block_signature_counts,
         archive_snapshot_backbone_cnn_pair_counts=archive_snapshot_backbone_cnn_pair_counts,
+        archive_snapshot_backbone_block_pair_counts=archive_snapshot_backbone_block_pair_counts,
+        archive_snapshot_backbone_block_best_quality=archive_snapshot_backbone_block_best_quality,
         group_baseline_train_acc=group_baseline_train_acc,
         group_baseline_reward_target_acc=group_baseline_reward_target_acc,
         reward_batch_index=reward_batch_index,
@@ -154,6 +325,16 @@ def raw_reward_fn(
     if not meta.get("exact_forward_signature"):
         raw_delta -= 0.60
 
+    terminal_penalty = 0.0
+    if meta.get("trailing_after_forward"):
+        terminal_penalty -= 0.20
+        if int(meta.get("trailing_after_forward_chars", 0) or 0) > 300:
+            terminal_penalty -= 0.10
+    jupyter_artifact_count = int(meta.get("jupyter_artifact_count", 0) or 0)
+    if jupyter_artifact_count:
+        terminal_penalty -= 0.25 * min(jupyter_artifact_count, 2)
+    raw_delta += terminal_penalty
+
     if meta.get("dual_backbone_ok"):
         raw_delta += 0.45
     else:
@@ -161,6 +342,16 @@ def raw_reward_fn(
             raw_delta -= 1.75
         if not meta.get("dual_backbone_forward_ok"):
             raw_delta -= 1.75
+
+    shape_contract_delta = 0.0
+    if str(res.get("current_stage_name") or TuneRL.current_stage_name) != TuneRL.STAGE1_STRUCTURE_EXPLORE:
+        if res.get("built_ok") and res.get("forward_ok") and res.get("forward_shape_ok"):
+            shape_contract_delta = 0.12
+        elif res.get("built_ok") and res.get("forward_ok"):
+            shape_contract_delta = -0.12
+        elif res.get("built_ok"):
+            shape_contract_delta = -0.08
+    raw_delta += shape_contract_delta
 
     res["reward"] = TuneRL._apply_trainability_clamp(
         res,
@@ -188,12 +379,43 @@ def raw_reward_fn(
 
     if not meta.get("dual_backbone_ok"):
         res["reward"] = min(float(res["reward"]), -3.5)
-    elif group_warmup and TuneRL._is_trainable_candidate(res, graph_info):
-        res["reward"] = float(res.get("warmup_dense_reward") or 0.0)
+    elif group_warmup:
+        if TuneRL._is_trainable_candidate(res, graph_info):
+            res["reward"] = float(res.get("warmup_dense_reward") or 0.0)
+        else:
+            res["reward"] = -float(res.get("warmup_dense_reward") or 0.18)
+
+    fixed_failure_reward = _stage1_fixed_failure_reward(res, meta, graph_info)
+    if fixed_failure_reward is not None:
+        res["reward"] = fixed_failure_reward
+        res["stage1_fixed_failure_reward"] = True
+    elif str(res.get("current_stage_name") or "") == TuneRL.STAGE1_STRUCTURE_EXPLORE:
+        if TuneRL._is_trainable_candidate(res, graph_info):
+            trainability_bonus = 0.10
+            res["reward"] = float(res["reward"]) + trainability_bonus
+            res["stage1_trainability_bonus"] = trainability_bonus
+
+    compactness = _completion_compactness_penalty(completion, meta)
+    res.update(compactness)
+    res["reward"] = (
+        float(res.get("reward", -2.0))
+        + float(compactness["r_length_compactness"])
+        + float(compactness["r_repeated_line_penalty"])
+    )
+    if compactness["xml_incomplete_length_cap"]:
+        res["reward"] = min(float(res["reward"]), -0.8)
+    if TuneRL._reward_variant_is_strong_repeat_penalty() and bool(res.get("strong_repeat_penalty_applied")):
+        res["reward"] = min(float(res["reward"]), 0.0)
+    res["reward"] = TuneRL._apply_target_structure_reward_gate(
+        res,
+        float(res.get("reward", -2.0)),
+    )
 
     res["raw_extraction"] = {
         **meta,
         "raw_delta": raw_delta,
+        "shape_contract_delta": shape_contract_delta,
+        "terminal_penalty": terminal_penalty,
     }
     res.setdefault("backbone_model_names", list(meta.get("backbone_model_names", [])))
     return res
@@ -214,6 +436,14 @@ def _repo_model_dir(model_id: str) -> Path:
 
 def _repo_tokenizer_dir(model_id: str) -> Path:
     return Path("out/tokenizer") / model_id
+
+
+def resolve_sft_base_model_id() -> str:
+    return _env_str("NNGPT_SFT_BASE_MODEL_ID", SFT_BASE_MODEL_ID)
+
+
+def resolve_sft_tokenizer_id() -> str:
+    return _env_str("NNGPT_SFT_TOKENIZER_ID", "")
 
 
 def _has_model_files(model_dir: Path) -> bool:
@@ -247,20 +477,46 @@ def _has_tokenizer_files(tokenizer_dir: Path) -> bool:
 
 
 def resolve_sft_model_sources() -> tuple[str, str, str]:
-    repo_model_dir = _repo_model_dir(SFT_BASE_MODEL_ID)
-    repo_tokenizer_dir = _repo_tokenizer_dir(SFT_BASE_MODEL_ID)
+    base_model_id = resolve_sft_base_model_id()
+    tokenizer_id = resolve_sft_tokenizer_id()
+    base_model_path = Path(base_model_id).expanduser()
+    if base_model_path.is_dir():
+        if not _has_model_files(base_model_path):
+            raise RuntimeError(f"Configured SFT base model path has no model files: {base_model_path}")
+        if tokenizer_id:
+            tokenizer_path = Path(tokenizer_id).expanduser()
+            if tokenizer_path.is_dir():
+                if not _has_tokenizer_files(tokenizer_path):
+                    raise RuntimeError(f"Configured SFT tokenizer path has no tokenizer files: {tokenizer_path}")
+                return str(base_model_path), str(tokenizer_path), "explicit-path+explicit-tokenizer-path"
+            return str(base_model_path), tokenizer_id, "explicit-path+explicit-tokenizer-id"
+        if _has_tokenizer_files(base_model_path):
+            return str(base_model_path), str(base_model_path), "explicit-path"
+        out_llm_root = Path("out/llm").resolve()
+        try:
+            relative_model_id = str(base_model_path.resolve().relative_to(out_llm_root))
+        except ValueError:
+            relative_model_id = ""
+        if relative_model_id:
+            repo_tokenizer_dir = _repo_tokenizer_dir(relative_model_id)
+            if _has_tokenizer_files(repo_tokenizer_dir):
+                return str(base_model_path), str(repo_tokenizer_dir), "explicit-path+out/tokenizer"
+        raise RuntimeError(f"Configured SFT base model path has no tokenizer files: {base_model_path}")
+
+    repo_model_dir = _repo_model_dir(base_model_id)
+    repo_tokenizer_dir = _repo_tokenizer_dir(base_model_id)
 
     if _has_model_files(repo_model_dir):
         if _has_tokenizer_files(repo_model_dir):
             return str(repo_model_dir), str(repo_model_dir), "out/llm"
         if _has_tokenizer_files(repo_tokenizer_dir):
             return str(repo_model_dir), str(repo_tokenizer_dir), "out/llm+out/tokenizer"
-        return str(repo_model_dir), SFT_BASE_MODEL_ID, "out/llm+model-id-tokenizer"
+        return str(repo_model_dir), base_model_id, "out/llm+model-id-tokenizer"
 
     if _has_tokenizer_files(repo_tokenizer_dir):
-        return SFT_BASE_MODEL_ID, str(repo_tokenizer_dir), "model-id+out/tokenizer"
+        return base_model_id, str(repo_tokenizer_dir), "model-id+out/tokenizer"
 
-    return SFT_BASE_MODEL_ID, SFT_BASE_MODEL_ID, "model-id-download"
+    return base_model_id, base_model_id, "model-id-download"
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -284,6 +540,13 @@ def _env_int(name: str, default: int) -> int:
     return int(raw)
 
 
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return float(default)
+    return float(raw)
+
+
 def _env_optional_int(name: str) -> int | None:
     raw = os.getenv(name)
     if raw is None or raw == "":
@@ -296,6 +559,10 @@ def _env_optional_json(name: str) -> Any | None:
     if raw is None or raw == "":
         return None
     return json.loads(raw)
+
+
+def resolve_sft_rl_seed() -> int:
+    return TuneRL.resolve_rl_seed()
 
 
 def _set_optional_grpo_config(
@@ -316,11 +583,108 @@ def resolve_sft_init_adapter() -> str:
 
 
 def resolve_sft_load_initial_adapter() -> bool:
-    return _env_flag("NNGPT_SFT_LOAD_INITIAL_ADAPTER", SFT_LOAD_INITIAL_ADAPTER)
+    raw = os.getenv("NNGPT_SFT_LOAD_INITIAL_ADAPTER")
+    if raw is not None and raw != "":
+        return _env_flag("NNGPT_SFT_LOAD_INITIAL_ADAPTER", SFT_LOAD_INITIAL_ADAPTER)
+    return bool(SFT_LOAD_INITIAL_ADAPTER or resolve_sft_init_adapter().strip())
+
+
+def resolve_sft_initial_adapter_mode() -> str:
+    mode = _env_str("NNGPT_SFT_INITIAL_ADAPTER_MODE", SFT_INITIAL_ADAPTER_MODE).strip().lower()
+    aliases = {
+        "train": "trainable",
+        "trainable": "trainable",
+        "peft": "trainable",
+        "peft_unmerged": "trainable",
+        "unmerged": "trainable",
+        "merge": "merge",
+        "merged": "merge",
+        "merge_and_unload": "merge",
+    }
+    if mode not in aliases:
+        raise ValueError("NNGPT_SFT_INITIAL_ADAPTER_MODE must be one of: trainable, merge")
+    return aliases[mode]
+
+
+def resolve_sft_initial_adapter_dtype_label() -> str:
+    raw = _env_str("NNGPT_SFT_INITIAL_ADAPTER_DTYPE", SFT_INITIAL_ADAPTER_DTYPE).strip().lower()
+    aliases = {
+        "": "fp32",
+        "float32": "fp32",
+        "fp32": "fp32",
+        "full": "fp32",
+        "float16": "fp16",
+        "fp16": "fp16",
+        "half": "fp16",
+        "bfloat16": "bf16",
+        "bf16": "bf16",
+        "mixed": "precision",
+        "precision": "precision",
+        "auto": "precision",
+    }
+    if raw not in aliases:
+        raise ValueError("NNGPT_SFT_INITIAL_ADAPTER_DTYPE must be one of: fp32, fp16, bf16, precision")
+    return aliases[raw]
+
+
+def resolve_sft_initial_adapter_dtype(label: str, precision: Dict[str, Any]) -> Any:
+    import torch
+
+    if label == "precision":
+        return precision["torch_dtype"]
+    if label == "fp32":
+        return torch.float32
+    if label == "fp16":
+        return torch.float16
+    if label == "bf16":
+        if torch.cuda.is_available() and not torch.cuda.is_bf16_supported():
+            raise RuntimeError("NNGPT_SFT_INITIAL_ADAPTER_DTYPE=bf16 requested, but CUDA bf16 is not supported.")
+        return torch.bfloat16
+    raise ValueError(f"Unsupported SFT initial adapter dtype label: {label}")
+
+
+def resolve_sft_rl_nn_prefixes() -> tuple[str, ...]:
+    raw = os.getenv("NNGPT_SFT_RL_NN_PREFIXES", "").strip()
+    if not raw:
+        return tuple(SFT_RL_NN_PREFIXES)
+    prefixes = tuple(item.strip() for item in raw.split(",") if item.strip())
+    if not prefixes:
+        raise ValueError("NNGPT_SFT_RL_NN_PREFIXES must contain at least one prefix")
+    return prefixes
+
+
+def resolve_sft_rl_prompt_mode() -> str:
+    mode = _env_str("NNGPT_SFT_RL_PROMPT_MODE", SFT_RL_PROMPT_MODE).strip().lower()
+    aliases = {
+        "sft": "sft_aligned",
+        "sft-aligned": "sft_aligned",
+        "sft_aligned": "sft_aligned",
+        "goal": "goal_profiles",
+        "goal-profile": "goal_profiles",
+        "goal_profiles": "goal_profiles",
+        "open_discovery": "goal_profiles",
+    }
+    if mode not in aliases:
+        raise ValueError(
+            "NNGPT_SFT_RL_PROMPT_MODE must be one of: sft_aligned, goal_profiles"
+        )
+    return aliases[mode]
 
 
 def resolve_sft_save_rl_model() -> bool:
     return _env_flag("NNGPT_SFT_SAVE_RL_MODEL", SFT_SAVE_RL_MODEL)
+
+
+def resolve_sft_temperature() -> float:
+    return _env_float("NNGPT_SFT_TEMPERATURE", SFT_TEMPERATURE)
+
+
+def resolve_sft_top_p() -> float:
+    return _env_float("NNGPT_SFT_TOP_P", SFT_TOP_P)
+
+
+def resolve_sft_top_k() -> int:
+    return _env_int("NNGPT_SFT_TOP_K", SFT_TOP_K)
 
 
 def resolve_sft_model_out() -> str:
@@ -344,7 +708,7 @@ def resolve_sft_num_epochs() -> int:
 
 
 def resolve_sft_save_steps() -> int:
-    return max(1, _env_int("NNGPT_SFT_SAVE_STEPS", 5))
+    return max(1, _env_int("NNGPT_SFT_SAVE_STEPS", SFT_SAVE_STEPS))
 
 
 def resolve_sft_save_total_limit() -> int:
@@ -381,6 +745,179 @@ def _runtime_is_main_process(runtime: Dict[str, Any]) -> bool:
     return int(runtime.get("rank", 0)) == 0
 
 
+def _run_git_command(*args: str) -> str:
+    try:
+        proc = subprocess.run(
+            ["git", *args],
+            cwd=Path(__file__).resolve().parents[2],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except Exception:
+        return ""
+    return proc.stdout.strip()
+
+
+def _sft_git_metadata() -> Dict[str, Any]:
+    return {
+        "commit": _run_git_command("rev-parse", "HEAD"),
+        "commit_short": _run_git_command("rev-parse", "--short", "HEAD"),
+        "commit_subject": _run_git_command("log", "-1", "--pretty=%s"),
+        "branch": _run_git_command("branch", "--show-current"),
+        "dirty": bool(_run_git_command("status", "--porcelain")),
+    }
+
+
+def _selected_env(names: List[str]) -> Dict[str, str]:
+    return {name: os.environ[name] for name in names if os.getenv(name) not in (None, "")}
+
+
+def _write_sft_run_config(
+    *,
+    runtime: Dict[str, Any],
+    runtime_settings: Dict[str, Any],
+    generation_kwargs: Dict[str, Any],
+    resume_spec: Dict[str, Any],
+    gpu_role_plan: Optional[Dict[str, Any]],
+    reward_worker_plan: Dict[str, Any],
+    use_deepspeed: bool,
+    deepspeed_config_path: Optional[str],
+    restored_runtime_state_path: Optional[Any],
+) -> None:
+    source_info = dict(SFT_RUNTIME_SOURCE_INFO)
+    reward_env_names = [
+        TuneRL.REWARD_VARIANT_ENV,
+        "NNGPT_RL_FORMAL_REWARD_EPOCHS",
+        "NNGPT_RL_FORMAL_DATASET",
+        "NNGPT_RL_RESUME_STAGE",
+        "NNGPT_RL_STAGE1_ONLY",
+        "NNGPT_RL_SEED",
+        "NNGPT_RL_KL_COEF",
+        "NNGPT_RL_FORMAL_EVAL_LIMIT_SECONDS",
+        "NNGPT_RL_FORMAL_EPOCH_LIMIT_MINUTES",
+    ]
+    sampling_env_names = [
+        "NNGPT_SFT_TEMPERATURE",
+        "NNGPT_SFT_TOP_P",
+        "NNGPT_SFT_TOP_K",
+        "NNGPT_SFT_NUM_GENERATIONS",
+        "NNGPT_SFT_MAX_STEPS",
+        "NNGPT_SFT_GENERATION_BATCH_SIZE",
+        "NNGPT_SFT_STEPS_PER_GENERATION",
+        "NNGPT_SFT_MAX_PROMPT_LENGTH",
+        "NNGPT_SFT_MAX_COMPLETION_LENGTH",
+        "NNGPT_SFT_GENERATION_KWARGS_JSON",
+        "NNGPT_SFT_STOP_AFTER_FORWARD_XML",
+    ]
+    adapter_env_names = [
+        "NNGPT_SFT_BASE_MODEL_ID",
+        "NNGPT_SFT_TOKENIZER_ID",
+        "NNGPT_SFT_LOAD_INITIAL_ADAPTER",
+        "NNGPT_SFT_INITIAL_ADAPTER_MODE",
+        "NNGPT_SFT_INITIAL_ADAPTER_DTYPE",
+        "NNGPT_SFT_INIT_ADAPTER",
+        "NNGPT_SFT_RESUME_TRAINER_CHECKPOINT",
+        "NNGPT_SFT_RESUME_STAGE_CHECKPOINT",
+    ]
+    archive_env_names = [
+        "NNGPT_SFT_LOG_DIR",
+        "NNGPT_SFT_MODEL_OUT",
+        "NNGPT_SFT_TRAINER_OUT",
+        "NNGPT_SFT_EPOCH_ROOT",
+        "NNGPT_SFT_APPEND_LOGS",
+    ]
+    split_protocol = SFT_EVAL_SPLIT_PROTOCOL
+    split_seed = _env_int("NNGPT_SFT_EVAL_SPLIT_SEED", SFT_EVAL_SPLIT_SEED)
+    eval_split_role = _env_str("NNGPT_SFT_EVAL_SPLIT_ROLE", SFT_EVAL_SPLIT_ROLE)
+    formal_dataset = resolve_sft_formal_dataset()
+    formal_out_shape = resolve_sft_formal_out_shape(formal_dataset)
+    train_set_label, reward_eval_label, heldout_test_label = _describe_sft_eval_split(
+        formal_dataset,
+        split_protocol,
+    )
+    payload = {
+        "phase": "four_pattern_reward_ablation",
+        "created_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "git": _sft_git_metadata(),
+        "model_source": source_info.get("model_source", TuneRL.base_model),
+        "tokenizer_source": source_info.get("tokenizer_source", getattr(TuneRL, "tokenizer_source", TuneRL.base_model)),
+        "source_mode": source_info.get("source_mode", ""),
+        "reward": {
+            "variant": TuneRL.resolve_reward_variant(),
+            "env": _selected_env(reward_env_names),
+            "formal_epochs": os.getenv("NNGPT_RL_FORMAL_REWARD_EPOCHS", SFT_FORMAL_REWARD_EPOCHS),
+        },
+        "init": {
+            "load_initial_adapter": resolve_sft_load_initial_adapter(),
+            "initial_adapter_mode": resolve_sft_initial_adapter_mode(),
+            "initial_adapter_dtype": resolve_sft_initial_adapter_dtype_label(),
+            "init_adapter": resolve_sft_init_adapter(),
+            "resume": resume_spec,
+            "restored_runtime_state_path": str(restored_runtime_state_path) if restored_runtime_state_path else None,
+            "adapter_env": _selected_env(adapter_env_names),
+        },
+        "sampling": {
+            "seed": resolve_sft_rl_seed(),
+            "temperature": resolve_sft_temperature(),
+            "top_p": resolve_sft_top_p(),
+            "top_k": resolve_sft_top_k(),
+            "runtime_settings": runtime_settings,
+            "generation_kwargs": generation_kwargs,
+            "env": _selected_env(sampling_env_names),
+        },
+        "prompt": {
+            "nn_prefixes": list(resolve_sft_rl_nn_prefixes()),
+            "prompt_mode": resolve_sft_rl_prompt_mode(),
+            "feedback_char_budget": _env_int("NNGPT_SFT_FEEDBACK_CHAR_BUDGET", SFT_FEEDBACK_CHAR_BUDGET),
+        },
+        "archive": {
+            "fresh": not bool(resume_spec.get("active")),
+            "append_logs": _env_flag("NNGPT_SFT_APPEND_LOGS", False),
+            "log_dir": resolve_sft_log_dir(),
+            "model_out": resolve_sft_model_out(),
+            "trainer_out": resolve_sft_trainer_out(),
+            "epoch_root": resolve_sft_epoch_root(),
+            "env": _selected_env(archive_env_names),
+        },
+        "evaluator": {
+            "dataset": formal_dataset,
+            "out_shape": list(formal_out_shape),
+            "n_classes": int(formal_out_shape[0]),
+            "transform": SFT_EVAL_TRANSFORM,
+            "resize": SFT_EVAL_IMAGE_SIZE,
+            "batch": SFT_EVAL_BATCH_SIZE,
+            "split_protocol": split_protocol,
+            "split_seed": split_seed,
+            "eval_split_role": eval_split_role,
+            "train_subset_size": SFT_EVAL_TRAIN_SUBSET,
+            "val_subset_size": SFT_EVAL_VAL_SUBSET,
+            "train_set": train_set_label,
+            "reward_eval_set": reward_eval_label,
+            "heldout_test_set": heldout_test_label,
+            "train_epochs": SFT_EVAL_TRAIN_EPOCHS,
+            "formal_epochs": os.getenv("NNGPT_RL_FORMAL_REWARD_EPOCHS", SFT_FORMAL_REWARD_EPOCHS),
+            "full_test_acc": SFT_EVAL_FULL_TEST_ACC,
+            "run_unfrozen": SFT_EVAL_RUN_UNFROZEN,
+            "worker_eval_limit_seconds": SFT_EVAL_LIMIT_SECONDS,
+            "formal_epoch_limit_minutes": SFT_EVAL_FORMAL_EPOCH_LIMIT_MINUTES,
+            "data_root": SFT_EVAL_DATA_ROOT,
+            "download": SFT_EVAL_DOWNLOAD,
+        },
+        "runtime": {
+            "distributed": runtime,
+            "gpu_role_plan": gpu_role_plan,
+            "reward_worker_plan": reward_worker_plan,
+            "use_deepspeed": use_deepspeed,
+            "deepspeed_config_path": deepspeed_config_path,
+        },
+    }
+    log_dir = Path(resolve_sft_log_dir())
+    log_dir.mkdir(parents=True, exist_ok=True)
+    with open(log_dir / "run_config.json", "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2, ensure_ascii=False, sort_keys=True)
+
+
 def _resolved_visible_cuda_device_tokens(visible_cuda_devices: int) -> List[str]:
     raw = os.environ.get("CUDA_VISIBLE_DEVICES")
     if raw is not None:
@@ -405,7 +942,39 @@ def _resolve_sft_mode(visible_gpu_tokens: List[str]) -> Dict[str, str]:
     }
 
 
-def _configure_sft_gpu_role_env(visible_cuda_devices: int) -> Dict[str, List[str] | str]:
+def resolve_sft_reward_exclude_train_gpu() -> bool:
+    if "NNGPT_SFT_REWARD_EXCLUDE_TRAIN_GPU" not in os.environ and "NNGPT_RL_REWARD_EXCLUDE_TRAIN_GPU" in os.environ:
+        return _env_flag("NNGPT_RL_REWARD_EXCLUDE_TRAIN_GPU", SFT_REWARD_EXCLUDE_TRAIN_GPU)
+    return _env_flag("NNGPT_SFT_REWARD_EXCLUDE_TRAIN_GPU", SFT_REWARD_EXCLUDE_TRAIN_GPU)
+
+
+def resolve_sft_compact_after_model_load() -> bool:
+    return _env_flag("NNGPT_SFT_COMPACT_AFTER_MODEL_LOAD", SFT_COMPACT_AFTER_MODEL_LOAD)
+
+
+def resolve_sft_compact_float_params() -> bool:
+    return _env_flag("NNGPT_SFT_COMPACT_FLOAT_PARAMS", SFT_COMPACT_FLOAT_PARAMS)
+
+
+def _sft_reward_gpu_tokens_for_plan(
+    *,
+    resolved_mode: str,
+    visible_gpu_tokens: List[str],
+    train_gpu_tokens: List[str],
+    default_reward_gpu_tokens: List[str],
+) -> List[str]:
+    if resolved_mode != "split" or not resolve_sft_reward_exclude_train_gpu():
+        return list(default_reward_gpu_tokens)
+    reward_gpu_tokens = [token for token in visible_gpu_tokens if token not in set(train_gpu_tokens)]
+    if not reward_gpu_tokens:
+        raise RuntimeError(
+            "NNGPT_SFT_REWARD_EXCLUDE_TRAIN_GPU=1 requires at least one non-training GPU "
+            f"in split mode; visible_gpu_tokens={visible_gpu_tokens} train_gpu_tokens={train_gpu_tokens}"
+        )
+    return reward_gpu_tokens
+
+
+def _configure_sft_gpu_role_env(visible_cuda_devices: int) -> Dict[str, Any]:
     visible_gpu_tokens = _resolved_visible_cuda_device_tokens(visible_cuda_devices)
     role_plan = TrainingRuntime.resolve_role_plan(
         visible_gpu_tokens=visible_gpu_tokens,
@@ -413,7 +982,12 @@ def _configure_sft_gpu_role_env(visible_cuda_devices: int) -> Dict[str, List[str
         default_mode=SFT_MODE_DEFAULT,
     )
     train_gpu_tokens = list(role_plan.train_gpu_tokens)
-    reward_gpu_tokens = list(role_plan.aux_gpu_tokens)
+    reward_gpu_tokens = _sft_reward_gpu_tokens_for_plan(
+        resolved_mode=str(role_plan.resolved_mode),
+        visible_gpu_tokens=list(role_plan.visible_gpu_tokens),
+        train_gpu_tokens=train_gpu_tokens,
+        default_reward_gpu_tokens=list(role_plan.aux_gpu_tokens),
+    )
     if train_gpu_tokens:
         os.environ[_TRAIN_GPU_TOKENS_ENV] = ",".join(train_gpu_tokens)
     else:
@@ -430,6 +1004,7 @@ def _configure_sft_gpu_role_env(visible_cuda_devices: int) -> Dict[str, List[str
         "visible_gpu_tokens": list(role_plan.visible_gpu_tokens),
         "train_gpu_tokens": list(train_gpu_tokens),
         "reward_gpu_tokens": list(reward_gpu_tokens),
+        "reward_exclude_train_gpu": resolve_sft_reward_exclude_train_gpu(),
     }
 
 
@@ -565,6 +1140,10 @@ def resolve_sft_runtime_settings(runtime: Dict[str, Any]) -> Dict[str, int]:
             SFT_DATASET_LIMIT,
         ),
         "grad_accum": grad_accum,
+        "max_prompt_length": _env_int(
+            "NNGPT_SFT_MAX_PROMPT_LENGTH",
+            SFT_MAX_PROMPT_LENGTH,
+        ),
         "max_completion_length": _env_int(
             "NNGPT_SFT_MAX_COMPLETION_LENGTH",
             SFT_MAX_COMPLETION_LENGTH,
@@ -575,9 +1154,9 @@ def resolve_sft_runtime_settings(runtime: Dict[str, Any]) -> Dict[str, int]:
         "effective_global_num_generations": generation_plan["effective_global_num_generations"],
         "global_num_generations_adapted": generation_plan["global_num_generations_adapted"],
         "valid_generation_values": generation_plan["valid_generation_values"],
-        "generation_batch_size": _env_optional_int("NNGPT_SFT_GENERATION_BATCH_SIZE"),
+        "generation_batch_size": _env_int("NNGPT_SFT_GENERATION_BATCH_SIZE", SFT_GENERATION_BATCH_SIZE),
         "steps_per_generation": _env_optional_int("NNGPT_SFT_STEPS_PER_GENERATION"),
-        "max_steps": _env_optional_int("NNGPT_SFT_MAX_STEPS"),
+        "max_steps": _env_int("NNGPT_SFT_MAX_STEPS", SFT_MAX_STEPS),
     }
 
 
@@ -741,7 +1320,13 @@ def _validate_configured_gpu_role_tokens(runtime: Dict[str, Any]) -> Dict[str, A
     train_tokens = _configured_device_tokens(_TRAIN_GPU_TOKENS_ENV)
     reward_tokens = _configured_device_tokens(_REWARD_GPU_TOKENS_ENV)
     expected_train_tokens = visible_tokens[:1]
-    expected_reward_tokens = list(visible_tokens) if resolved_mode == "split" else list(expected_train_tokens)
+    default_reward_tokens = list(visible_tokens) if resolved_mode == "split" else list(expected_train_tokens)
+    expected_reward_tokens = _sft_reward_gpu_tokens_for_plan(
+        resolved_mode=resolved_mode,
+        visible_gpu_tokens=visible_tokens,
+        train_gpu_tokens=expected_train_tokens,
+        default_reward_gpu_tokens=default_reward_tokens,
+    )
     if train_tokens != expected_train_tokens:
         raise RuntimeError(
             "Invalid configured training GPU tokens for SFT mode: "
@@ -758,6 +1343,7 @@ def _validate_configured_gpu_role_tokens(runtime: Dict[str, Any]) -> Dict[str, A
         "visible_tokens": visible_tokens,
         "train_tokens": train_tokens,
         "reward_tokens": reward_tokens,
+        "reward_exclude_train_gpu": resolve_sft_reward_exclude_train_gpu(),
     }
 
 
@@ -795,7 +1381,7 @@ def evaluate_code_and_reward_cifar(
     *,
     stage_name=None,
     in_shape=(1, 3, 256, 256),
-    out_shape=(10,),
+    out_shape=None,
     prm=None,
     device: str = "cpu",
     val_metric_baseline=None,
@@ -827,11 +1413,12 @@ def evaluate_code_and_reward_cifar(
             cfg=cfg,
             device=eval_device,
         )
+        effective_out_shape = (int(cfg.n_classes),)
 
         return RewardUtil.evaluate_code_and_reward(
             code,
             in_shape=in_shape,
-            out_shape=out_shape,
+            out_shape=effective_out_shape,
             prm=prm,
             device=eval_device,
             val_metric_baseline=val_metric_baseline,
@@ -849,7 +1436,7 @@ def build_sft_reward_eval_cfg(
     *,
     stage_name=None,
     in_shape=(1, 3, 256, 256),
-    out_shape=(10,),
+    out_shape=None,
     prm=None,
     cfg=None,
     device=None,
@@ -871,20 +1458,25 @@ def build_sft_reward_eval_cfg(
     }
     prm = {**defaults, **prm}
     effective_stage_name = str(stage_name or TuneRL.current_stage_name)
+    formal_dataset = normalize_sft_formal_dataset(getattr(cfg, "formal_dataset", None))
+    effective_out_shape = resolve_sft_formal_out_shape(formal_dataset) if out_shape is None else tuple(out_shape)
+    if tuple(effective_out_shape) == (10,) and formal_dataset != "cifar-10":
+        effective_out_shape = resolve_sft_formal_out_shape(formal_dataset)
 
     if cfg is None:
         cfg = TuneRL.build_stage_eval_cfg(
             stage_name=effective_stage_name,
             in_shape=tuple(in_shape),
-            out_shape=tuple(out_shape),
+            out_shape=tuple(effective_out_shape),
             prm=prm,
             device=eval_device,
         )
 
+    effective_n_classes = resolve_sft_formal_n_classes(formal_dataset)
     return RewardUtil.EvalConfig(
         device=eval_device,
         input_shape=tuple(getattr(cfg, "input_shape", in_shape)),
-        n_classes=int(getattr(cfg, "n_classes", out_shape[0])),
+        n_classes=effective_n_classes,
         train_epochs=int(prm.get("epoch", getattr(cfg, "train_epochs", SFT_EVAL_TRAIN_EPOCHS)) or SFT_EVAL_TRAIN_EPOCHS),
         train_steps=getattr(cfg, "train_steps", None),
         max_val_batches=SFT_EVAL_VAL_BATCHES,
@@ -893,6 +1485,9 @@ def build_sft_reward_eval_cfg(
         val_subset_size=SFT_EVAL_VAL_SUBSET,
         data_root=SFT_EVAL_DATA_ROOT,
         download=SFT_EVAL_DOWNLOAD,
+        split_protocol=SFT_EVAL_SPLIT_PROTOCOL,
+        split_seed=_env_int("NNGPT_SFT_EVAL_SPLIT_SEED", SFT_EVAL_SPLIT_SEED),
+        eval_split_role=_env_str("NNGPT_SFT_EVAL_SPLIT_ROLE", SFT_EVAL_SPLIT_ROLE),
         measure_latency=getattr(cfg, "measure_latency", True),
         kl_div=getattr(cfg, "kl_div", None),
         critic_fn=getattr(cfg, "critic_fn", None),
@@ -905,7 +1500,7 @@ def build_sft_reward_eval_cfg(
         formal_nn_eval=getattr(cfg, "formal_nn_eval", False),
         static_only=getattr(cfg, "static_only", False),
         formal_task=getattr(cfg, "formal_task", "img-classification"),
-        formal_dataset=getattr(cfg, "formal_dataset", "cifar-10"),
+        formal_dataset=formal_dataset,
         formal_metric=getattr(cfg, "formal_metric", "acc"),
         formal_epoch_limit_minutes=getattr(
             cfg,
@@ -923,25 +1518,33 @@ def _is_trainable_architecture(res: Dict[str, Any], graph_info) -> bool:
         and res.get("built_ok")
         and res.get("forward_shape_ok")
         and res.get("backward_ok")
-        and res.get("loss_drop_ok")
     )
 
 
 def _reapply_trainability_clamp(res: Dict[str, Any], reward_value: float, graph_info) -> float:
     discovery_meta = res.get("open_discovery", {})
     parse_ok = bool(getattr(graph_info, "parse_ok", False) or discovery_meta.get("parse_ok", False))
+    stage_name = str(res.get("current_stage_name") or TuneRL.current_stage_name)
+    if (
+        stage_name == TuneRL.STAGE1_STRUCTURE_EXPLORE
+        and bool(res.get("static_only") or res.get("stage_uses_static_only"))
+    ):
+        reward_value = TuneRL._apply_executability_clamp(res, reward_value, graph_info)
+        if bool(res.get("forward_shape_ok")):
+            return max(reward_value, 0.05)
+        return reward_value
 
     if not parse_ok:
         reward_value = min(reward_value, -0.25)
     if not res.get("built_ok"):
         build_partial = float(res.get("r_build_partial", 0.0))
         reward_value = min(reward_value, -0.8 + build_partial)
+    elif not res.get("forward_ok"):
+        reward_value = min(reward_value, -0.40)
     elif not res.get("forward_shape_ok"):
-        reward_value = min(reward_value, -0.50)
+        reward_value = min(reward_value, -0.30)
     elif not res.get("backward_ok"):
         reward_value = min(reward_value, -0.10)
-    elif not res.get("loss_drop_ok"):
-        reward_value = min(reward_value, 0.0)
     return reward_value
 
 
@@ -956,12 +1559,19 @@ def sft_reward_fn(
     batch_descriptor_keys: List[str] = None,
     batch_backbone_signatures: List[str] = None,
     batch_cnn_signatures: List[str] = None,
+    batch_block_signatures: List[str] = None,
+    batch_backbone_block_signatures: List[str] = None,
     prompt_goal_tags: List[str] = None,
+    prompt_target_pattern: str = "",
     archive_snapshot_family_counts: Dict[str, int] = None,
     archive_snapshot_descriptor_counts: Dict[str, int] = None,
     archive_snapshot_backbone_signature_counts: Dict[str, int] = None,
     archive_snapshot_cnn_signature_counts: Dict[str, int] = None,
+    archive_snapshot_graph_counts: Dict[str, int] = None,
+    archive_snapshot_block_signature_counts: Dict[str, int] = None,
     archive_snapshot_backbone_cnn_pair_counts: Dict[str, int] = None,
+    archive_snapshot_backbone_block_pair_counts: Dict[str, int] = None,
+    archive_snapshot_backbone_block_best_quality: Dict[str, float] = None,
     group_baseline_train_acc: float | None = None,
     group_baseline_reward_target_acc: float | None = None,
     reward_batch_index: int | None = None,
@@ -980,12 +1590,19 @@ def sft_reward_fn(
         batch_descriptor_keys=batch_descriptor_keys,
         batch_backbone_signatures=batch_backbone_signatures,
         batch_cnn_signatures=batch_cnn_signatures,
+        batch_block_signatures=batch_block_signatures,
+        batch_backbone_block_signatures=batch_backbone_block_signatures,
         prompt_goal_tags=prompt_goal_tags,
+        prompt_target_pattern=prompt_target_pattern,
         archive_snapshot_family_counts=archive_snapshot_family_counts,
         archive_snapshot_descriptor_counts=archive_snapshot_descriptor_counts,
         archive_snapshot_backbone_signature_counts=archive_snapshot_backbone_signature_counts,
         archive_snapshot_cnn_signature_counts=archive_snapshot_cnn_signature_counts,
+        archive_snapshot_graph_counts=archive_snapshot_graph_counts,
+        archive_snapshot_block_signature_counts=archive_snapshot_block_signature_counts,
         archive_snapshot_backbone_cnn_pair_counts=archive_snapshot_backbone_cnn_pair_counts,
+        archive_snapshot_backbone_block_pair_counts=archive_snapshot_backbone_block_pair_counts,
+        archive_snapshot_backbone_block_best_quality=archive_snapshot_backbone_block_best_quality,
         group_baseline_train_acc=group_baseline_train_acc,
         group_baseline_reward_target_acc=group_baseline_reward_target_acc,
         reward_batch_index=reward_batch_index,
@@ -996,7 +1613,7 @@ def sft_reward_fn(
     )
     res["reward"] = _reapply_trainability_clamp(res, float(res.get("reward", -2.0)), graph_info)
     res["anti_collapse"] = {
-        "goal_key": TuneRL.primary_goal_key(prompt_goal_tags),
+        "goal_key": TuneRL.primary_goal_key(prompt_goal_tags, prompt_target_pattern),
         "trainable_ok": _is_trainable_architecture(res, graph_info),
         "anti_collapse_delta": 0.0,
     }
@@ -1007,7 +1624,15 @@ SFT_DISCOVERY_PROMPT_TEMPLATE = SFTUtil.open_discovery_rl_prompt_template
 
 
 class DynamicSFTPromptDataset(TorchDataset):
-    column_names = ["prompt", "accuracy", "goal_name", "target_tags", "goal_profile_id"]
+    column_names = [
+        "prompt",
+        "accuracy",
+        "goal_name",
+        "target_tags",
+        "goal_profile_id",
+        "target_pattern",
+        "prompt_mode",
+    ]
 
     def __init__(
         self,
@@ -1039,38 +1664,52 @@ class DynamicSFTPromptDataset(TorchDataset):
         )
 
     def _render_prompt(self, row: Dict[str, Any]) -> str:
-        profile = SFTUtil.open_discovery_goal_profiles[int(row["goal_profile_id"])]
-        target_pattern = SFTUtil.goal_profile_target_pattern(profile)
-        module_hints = (
-            "self.backbone_a",
-            "self.backbone_b",
-            *profile["module_hints"],
-        )
-        user_prompt = SFT_DISCOVERY_PROMPT_TEMPLATE.format(
-            accuracy=row["accuracy"],
-            skeleton_code=SFTUtil.open_discovery_skeleton_code,
-            available_backbones=", ".join(SFTUtil.available_backbones),
-            legacy_patterns=", ".join(SFTUtil.legacy_patterns),
-            goal_name=profile["name"],
-            target_tags=", ".join(profile["tags"]),
-            target_pattern=target_pattern,
-            design_brief=profile["brief"],
-            tag_realization=profile.get("realization", profile["brief"]),
-            goal_tag_parser_cues=SFTUtil.goal_tag_parser_cues(profile["tags"]),
-            module_hints=", ".join(module_hints),
-            block_signature=self.block_signature,
-            init_signature=self.init_signature,
-            forward_signature=self.forward_signature,
-        )
-        feedback_text = TuneRL.render_prompt_feedback_text(
-            feedback_char_budget=SFT_FEEDBACK_CHAR_BUDGET,
-        )
-        feedback_section = "\n\n### Current Optimization Feedback\n" + feedback_text.strip() + "\n"
-        marker = "### Output Requirement (STRICT)"
-        if marker in user_prompt:
-            user_prompt = user_prompt.replace(marker, feedback_section + "\n" + marker, 1)
+        prompt_mode = str(row.get("prompt_mode") or "goal_profiles")
+        if prompt_mode == "sft_aligned":
+            user_prompt = SFTUtil.format_backbone_prompt(
+                accuracy=row["accuracy"],
+                target_pattern=str(row["target_pattern"]),
+            )
         else:
-            user_prompt = user_prompt + feedback_section
+            profile = SFTUtil.open_discovery_goal_profiles[int(row["goal_profile_id"])]
+            target_pattern = SFTUtil.goal_profile_target_pattern(profile)
+            module_hints = (
+                "self.backbone_a",
+                "self.backbone_b",
+                *profile["module_hints"],
+            )
+            user_prompt = SFT_DISCOVERY_PROMPT_TEMPLATE.format(
+                accuracy=row["accuracy"],
+                skeleton_code=SFTUtil.open_discovery_skeleton_code,
+                available_backbones=", ".join(SFTUtil.available_backbones),
+                legacy_patterns=", ".join(SFTUtil.legacy_patterns),
+                goal_name=profile["name"],
+                target_tags=", ".join(profile["tags"]),
+                target_pattern=target_pattern,
+                design_brief=profile["brief"],
+                tag_realization=profile.get("realization", profile["brief"]),
+                goal_tag_parser_cues=SFTUtil.goal_tag_parser_cues(profile["tags"]),
+                module_hints=", ".join(module_hints),
+                block_signature=self.block_signature,
+                init_signature=self.init_signature,
+                forward_signature=self.forward_signature,
+            )
+        feedback_char_budget = _env_int("NNGPT_SFT_FEEDBACK_CHAR_BUDGET", SFT_FEEDBACK_CHAR_BUDGET)
+        if feedback_char_budget > 0:
+            feedback_text = TuneRL.render_prompt_feedback_text(
+                feedback_char_budget=feedback_char_budget,
+            )
+            feedback_section = "\n\n### Current Optimization Feedback\n" + feedback_text.strip() + "\n"
+            contract_heading = "\n### Completion Contract\n"
+            if contract_heading not in user_prompt:
+                contract_heading = "\n### Contract\n"
+            if contract_heading not in user_prompt:
+                raise RuntimeError("SFT RL prompt template is missing a contract heading")
+            user_prompt = user_prompt.replace(
+                contract_heading,
+                feedback_section + contract_heading,
+                1,
+            )
         messages = [{"role": "user", "content": user_prompt}]
         return self.tokenizer.apply_chat_template(
             messages,
@@ -1086,35 +1725,62 @@ class DynamicSFTPromptDataset(TorchDataset):
             "goal_name": row["goal_name"],
             "target_tags": row["target_tags"],
             "goal_profile_id": row["goal_profile_id"],
+            "target_pattern": row["target_pattern"],
+            "prompt_mode": row["prompt_mode"],
         }
 
 
 def load_rl_dataset_sft(tokenizer) -> TuneRL.Dataset:
     """Load SFT-aligned RL prompts while rendering feedback lazily at access time."""
     runtime_settings = resolve_sft_runtime_settings(RewardUtil.get_distributed_runtime_info())
-    data = TuneRL.api.data(task="img-classification", nn_prefixes=("rl-bb-test1",))
+    nn_prefixes = resolve_sft_rl_nn_prefixes()
+    prompt_mode = resolve_sft_rl_prompt_mode()
+    data = TuneRL.api.data(task="img-classification", nn_prefixes=nn_prefixes)
     if data.empty:
-        print("No 'rl-bb-test1' data found, falling back to all img-classification")
-        data = TuneRL.api.data(only_best_accuracy=True, task="img-classification", dataset="cifar-10")
+        raise RuntimeError(f"No data found for SFT RL prefixes {nn_prefixes}; sync the dataset prefix before training.")
 
-    print(f"Loaded {len(data)} examples for SFT RL")
+    print(f"Loaded {len(data)} examples for SFT RL prefixes={nn_prefixes} prompt_mode={prompt_mode}")
     TuneRL.bootstrap_trainset_reference_library(data)
 
     rows: List[Dict[str, Any]] = []
 
-    for _, row in data.iterrows():
-        accuracy = TuneRL._coerce_accuracy_baseline(row.get("accuracy"), context="seed row accuracy")
-        for profile_id, profile in enumerate(SFTUtil.open_discovery_goal_profiles):
+    if prompt_mode == "sft_aligned":
+        for row_index, row in data.iterrows():
+            full_code = row.get("nn_code")
+            target_pattern = SFTUtil.extract_target_pattern_from_code(full_code) if isinstance(full_code, str) else None
+            if not target_pattern:
+                print(f"Skipping row {row_index} due to missing target_pattern")
+                continue
+            accuracy = TuneRL._coerce_accuracy_baseline(row.get("accuracy"), context="seed row accuracy")
             rows.append(
                 {
                     "accuracy": accuracy,
-                    "goal_name": profile["name"],
-                    "target_tags": ", ".join(profile["tags"]),
-                    "goal_profile_id": profile_id,
+                    "goal_name": str(target_pattern),
+                    "target_tags": "",
+                    "goal_profile_id": -1,
+                    "target_pattern": str(target_pattern),
+                    "prompt_mode": "sft_aligned",
                 }
             )
+    else:
+        for _, row in data.iterrows():
+            accuracy = TuneRL._coerce_accuracy_baseline(row.get("accuracy"), context="seed row accuracy")
+            for profile_id, profile in enumerate(SFTUtil.open_discovery_goal_profiles):
+                rows.append(
+                    {
+                        "accuracy": accuracy,
+                        "goal_name": profile["name"],
+                        "target_tags": ", ".join(profile["tags"]),
+                        "goal_profile_id": profile_id,
+                        "target_pattern": SFTUtil.goal_profile_target_pattern(profile),
+                        "prompt_mode": "goal_profiles",
+                    }
+                )
 
-    random.Random(42).shuffle(rows)
+    if not rows:
+        raise RuntimeError(f"No SFT RL prompt rows built for prefixes={nn_prefixes} prompt_mode={prompt_mode}")
+
+    random.Random(resolve_sft_rl_seed()).shuffle(rows)
     if len(rows) > runtime_settings["dataset_limit"]:
         rows = rows[:runtime_settings["dataset_limit"]]
     return DynamicSFTPromptDataset(
@@ -1133,17 +1799,43 @@ def sft_run_epoch_dir(*args) -> Path:
     return epoch_dir
 
 
+def _resolve_sft_generation_kwargs(tokenizer) -> Dict[str, Any]:
+    kwargs = dict(_env_optional_json("NNGPT_SFT_GENERATION_KWARGS_JSON") or {})
+    eos_token_id = getattr(tokenizer, "eos_token_id", None)
+    if eos_token_id is not None:
+        kwargs.setdefault("eos_token_id", eos_token_id)
+        kwargs.setdefault("pad_token_id", eos_token_id)
+    kwargs.setdefault("use_cache", True)
+    if _env_flag("NNGPT_SFT_STOP_AFTER_FORWARD_XML", True):
+        kwargs.setdefault("stop_strings", ["</forward>"])
+    return kwargs
+
+
+def _attach_sft_generate_tokenizer(model, tokenizer) -> None:
+    original_generate = model.generate
+
+    def generate(*args, **kwargs):
+        generation_config = kwargs.get("generation_config")
+        if generation_config is not None and getattr(generation_config, "stop_strings", None):
+            kwargs["tokenizer"] = tokenizer
+        return original_generate(*args, **kwargs)
+
+    model.generate = generate
+
+
 def _build_sft_grpo_config(
     *,
     precision: Dict[str, Any],
     use_deepspeed: bool,
     deepspeed_config_path: str | None,
     runtime_settings: Dict[str, int],
+    generation_kwargs: Dict[str, Any],
 ) -> Any:
     signature_parameters = _sft_grpo_signature_parameters()
     config_kwargs: Dict[str, Any] = {
-        "temperature": SFT_TEMPERATURE,
-        "learning_rate": SFT_LR,
+        "temperature": resolve_sft_temperature(),
+        "learning_rate": TuneRL.env_float("NNGPT_RL_LR", SFT_LR),
+        "max_prompt_length": runtime_settings["max_prompt_length"],
         "max_completion_length": runtime_settings["max_completion_length"],
         "per_device_train_batch_size": 1,
         "gradient_accumulation_steps": runtime_settings["grad_accum"],
@@ -1160,6 +1852,11 @@ def _build_sft_grpo_config(
     }
     if "gradient_checkpointing_kwargs" in signature_parameters:
         config_kwargs["gradient_checkpointing_kwargs"] = {"use_reentrant": False}
+    seed = resolve_sft_rl_seed()
+    if "seed" in signature_parameters:
+        config_kwargs["seed"] = seed
+    if "data_seed" in signature_parameters:
+        config_kwargs["data_seed"] = seed
     if "save_strategy" in signature_parameters:
         config_kwargs["save_strategy"] = "steps"
     if "save_steps" in signature_parameters:
@@ -1183,6 +1880,18 @@ def _build_sft_grpo_config(
         signature_parameters,
         "max_steps",
         runtime_settings.get("max_steps"),
+    )
+    _set_optional_grpo_config(
+        config_kwargs,
+        signature_parameters,
+        "top_p",
+        resolve_sft_top_p(),
+    )
+    _set_optional_grpo_config(
+        config_kwargs,
+        signature_parameters,
+        "top_k",
+        resolve_sft_top_k(),
     )
     use_vllm = _env_flag("NNGPT_SFT_USE_VLLM", False)
     if use_vllm:
@@ -1220,7 +1929,7 @@ def _build_sft_grpo_config(
         config_kwargs,
         signature_parameters,
         "generation_kwargs",
-        _env_optional_json("NNGPT_SFT_GENERATION_KWARGS_JSON"),
+        generation_kwargs,
     )
     explicit_kl_coef = TuneRL.env_float("NNGPT_RL_KL_COEF", SFT_KL_COEF)
     if "beta" in signature_parameters:
@@ -1238,13 +1947,14 @@ def _build_sft_grpo_config(
     return TuneRL.GRPOConfig(**config_kwargs)
 
 
-def run_sft_training():
+def run_sft_training(*, gpu_role_plan: Optional[Dict[str, Any]] = None):
     import torch
 
     if not torch.cuda.is_available():
         raise RuntimeError("SFT RL requires CUDA for GRPO training, but no CUDA device is available")
     resume_spec = _resolve_sft_resume_spec()
     load_initial_adapter = resolve_sft_load_initial_adapter()
+    initial_adapter_mode = resolve_sft_initial_adapter_mode()
     init_adapter_path = resolve_sft_init_adapter()
     save_rl_model = resolve_sft_save_rl_model()
     model_out_path = resolve_sft_model_out()
@@ -1285,27 +1995,31 @@ def run_sft_training():
     stage_checkpoint_dir = resume_spec["stage_checkpoint_dir"]
     stage_adapter_dir = resume_spec["stage_adapter_dir"]
     resume_state_dir = trainer_checkpoint if trainer_checkpoint is not None else stage_checkpoint_dir
-    resume_stage_override = os.getenv("NNGPT_RL_RESUME_STAGE", "").strip()
+    resume_stage_override = _env_str("NNGPT_RL_RESUME_STAGE", SFT_RL_RESUME_STAGE).strip()
     # Restore pipeline runtime bookkeeping the same way for trainer and stage checkpoints.
     restored_runtime_state_path = TrainingRuntime.restore_or_reset_runtime_state(
         resume_state_dir,
         _sft_runtime_state_hooks(),
         legacy_state_filenames=("reward_state.json",),
     )
-    if resume_state_dir is not None and resume_stage_override:
-        current_state_stage = str(TuneRL.current_stage_name)
-        if current_state_stage != resume_stage_override:
-            print(
-                "[SFT RL] Resume stage override "
-                f"checkpoint_stage={current_state_stage} requested_stage={resume_stage_override}"
-            )
-            TuneRL.current_stage_name = resume_stage_override
+    if resume_stage_override:
+        TuneRL.apply_resume_stage_override(resume_stage_override, log_prefix="[SFT RL]")
     precision = TuneRL.best_mixed_precision()
+    tokenizer_source = getattr(TuneRL, "tokenizer_source", TuneRL.base_model)
+    if tokenizer_source != TuneRL.base_model:
+        print(f"Using RL tokenizer: {tokenizer_source}")
+    tokenizer = TrainerRuntime.load_tokenizer(tokenizer_source)
+    generation_kwargs = _resolve_sft_generation_kwargs(tokenizer)
+    initial_adapter_dtype_label = resolve_sft_initial_adapter_dtype_label()
+    if load_initial_adapter and initial_adapter_mode != "trainable" and initial_adapter_dtype_label != "fp32":
+        raise ValueError("NNGPT_SFT_INITIAL_ADAPTER_DTYPE only applies to trainable initial adapters.")
+    initial_adapter_dtype = resolve_sft_initial_adapter_dtype(initial_adapter_dtype_label, precision)
     grpo_config = _build_sft_grpo_config(
         precision=precision,
         use_deepspeed=use_deepspeed,
         deepspeed_config_path=deepspeed_config_path,
         runtime_settings=runtime_settings,
+        generation_kwargs=generation_kwargs,
     )
     hf_deepspeed_config = _maybe_init_hf_deepspeed_config(deepspeed_config_path) if use_deepspeed else None
     if not trainer_checkpoint_supported:
@@ -1332,10 +2046,16 @@ def run_sft_training():
     print(f"[SFT RL] Fixed training device: {train_device}")
     print(f"[SFT RL] Visible CUDA devices: {visible_cuda_devices}")
     print(f"[SFT RL] Mixed precision: {precision['label']} (torch_dtype={precision['torch_dtype']})")
+    if load_initial_adapter and initial_adapter_mode == "trainable":
+        print(
+            "[SFT RL] Initial adapter dtype: "
+            f"{initial_adapter_dtype_label} (torch_dtype={initial_adapter_dtype})"
+        )
     print(f"[SFT RL] Current stage: {TuneRL.current_stage_name}")
     print(
         "[SFT RL] Runtime limits: "
         f"dataset_limit={runtime_settings['dataset_limit']} "
+        f"max_prompt_length={runtime_settings['max_prompt_length']} "
         f"max_completion_length={runtime_settings['max_completion_length']} "
         f"grad_accum={runtime_settings['grad_accum']} "
         f"effective_train_batch_size={runtime_settings['effective_train_batch_size']} "
@@ -1351,6 +2071,7 @@ def run_sft_training():
         f"use_vllm={_env_flag('NNGPT_SFT_USE_VLLM', False)} "
         f"vllm_mode={_env_str('NNGPT_SFT_VLLM_MODE', 'colocate') if _env_flag('NNGPT_SFT_USE_VLLM', False) else None}"
     )
+    print(f"[SFT RL] Generation kwargs: {generation_kwargs}")
     if runtime_settings["global_num_generations_adapted"]:
         print(
             "[SFT RL] Generation plan adapted "
@@ -1379,13 +2100,23 @@ def run_sft_training():
         f"requested_mode={mode_validation['requested_mode']} "
         f"resolved_mode={mode_validation['resolved_mode']} "
         f"train_tokens={mode_validation['train_tokens']} "
-        f"reward_tokens={mode_validation['reward_tokens']}"
+        f"reward_tokens={mode_validation['reward_tokens']} "
+        f"reward_exclude_train_gpu={mode_validation['reward_exclude_train_gpu']}"
     )
+    if _runtime_is_main_process(runtime):
+        _write_sft_run_config(
+            runtime=runtime,
+            runtime_settings=runtime_settings,
+            generation_kwargs=generation_kwargs,
+            resume_spec=resume_spec,
+            gpu_role_plan=gpu_role_plan,
+            reward_worker_plan=reward_worker_plan,
+            use_deepspeed=use_deepspeed,
+            deepspeed_config_path=deepspeed_config_path,
+            restored_runtime_state_path=restored_runtime_state_path,
+        )
+        print(f"[SFT RL] Run config: {Path(resolve_sft_log_dir()) / 'run_config.json'}")
     _print_runtime_cache_roots()
-    tokenizer_source = getattr(TuneRL, "tokenizer_source", TuneRL.base_model)
-    if tokenizer_source != TuneRL.base_model:
-        print(f"Using RL tokenizer: {tokenizer_source}")
-    tokenizer = TrainerRuntime.load_tokenizer(tokenizer_source)
 
     rl_dataset = TuneRL.load_rl_dataset(tokenizer)
     if len(rl_dataset) > runtime_settings["dataset_limit"]:
@@ -1397,49 +2128,110 @@ def run_sft_training():
         train_device=train_device,
         use_deepspeed=use_deepspeed,
     )
+    if resolve_sft_compact_after_model_load():
+        TrainerRuntime.compact_cuda_cache(log_prefix="[SFT RL]", stage="after_base_model_load")
     _ = hf_deepspeed_config
 
-    model = TrainerRuntime.maybe_merge_initial_adapter(
-        model,
-        enabled=load_initial_adapter,
-        adapter_path=init_adapter_path,
-        label="SFT",
-        empty_adapter_message="SFT_INIT_ADAPTER is empty, but SFT_LOAD_INITIAL_ADAPTER is True.",
-        missing_adapter_message=f"Initial adapter not found: {init_adapter_path}",
-        load_message=f"Loading initial SFT adapter from {init_adapter_path}...",
-    )
+    if load_initial_adapter and initial_adapter_mode == "merge" and stage_adapter_dir is None:
+        model = TrainerRuntime.maybe_merge_initial_adapter(
+            model,
+            enabled=True,
+            adapter_path=init_adapter_path,
+            label="SFT",
+            empty_adapter_message="SFT_INIT_ADAPTER is empty, but SFT_LOAD_INITIAL_ADAPTER is True.",
+            missing_adapter_message=f"Initial adapter not found: {init_adapter_path}",
+            load_message=f"Loading initial SFT adapter from {init_adapter_path} for merge...",
+        )
 
     model = TuneRL.prepare_model_for_kbit_training(model)
     TuneRL.align_generation_head_dtype(model, precision["torch_dtype"])
+    if resolve_sft_compact_float_params():
+        model = TrainerRuntime.cast_non_lora_float_parameter_dtype(
+            model,
+            dtype=precision["torch_dtype"],
+            label="[SFT RL] Prepared model",
+        )
+    if resolve_sft_compact_after_model_load():
+        TrainerRuntime.compact_cuda_cache(log_prefix="[SFT RL]", stage="after_prepare_kbit")
 
-    peft_config = TrainerRuntime.build_lora_config(
-        r=SFT_LORA_R,
-        alpha=SFT_LORA_ALPHA,
-        dropout=SFT_LORA_DROPOUT,
-    )
-    model = TrainerRuntime.attach_or_resume_lora(
-        model,
-        peft_config=peft_config,
-        stage_adapter_dir=stage_adapter_dir,
-        log_prefix="[SFT RL]",
-        missing_adapter_message=f"Missing adapter directory under SFT stage checkpoint: {stage_adapter_dir}",
-    )
+    if trainer_checkpoint is not None:
+        model = TrainerRuntime.load_trainable_initial_adapter(
+            model,
+            enabled=True,
+            adapter_path=str(trainer_checkpoint),
+            label="trainer checkpoint",
+            empty_adapter_message="SFT trainer checkpoint is empty.",
+            missing_adapter_message=f"Missing SFT trainer checkpoint adapter: {trainer_checkpoint}",
+            load_message=f"Loading trainable SFT trainer checkpoint adapter from {trainer_checkpoint}...",
+        )
+    elif stage_adapter_dir is not None:
+        peft_config = TrainerRuntime.build_lora_config(
+            r=SFT_LORA_R,
+            alpha=SFT_LORA_ALPHA,
+            dropout=SFT_LORA_DROPOUT,
+        )
+        model = TrainerRuntime.attach_or_resume_lora(
+            model,
+            peft_config=peft_config,
+            stage_adapter_dir=stage_adapter_dir,
+            log_prefix="[SFT RL]",
+            missing_adapter_message=f"Missing adapter directory under SFT stage checkpoint: {stage_adapter_dir}",
+        )
+    elif load_initial_adapter and initial_adapter_mode == "trainable":
+        model = TrainerRuntime.load_trainable_initial_adapter(
+            model,
+            enabled=True,
+            adapter_path=init_adapter_path,
+            label="SFT",
+            adapter_dtype=initial_adapter_dtype,
+            empty_adapter_message="SFT_INIT_ADAPTER is empty, but SFT_LOAD_INITIAL_ADAPTER is True.",
+            missing_adapter_message=f"Initial adapter not found: {init_adapter_path}",
+            load_message=f"Loading trainable initial SFT adapter from {init_adapter_path}...",
+        )
+    else:
+        peft_config = TrainerRuntime.build_lora_config(
+            r=SFT_LORA_R,
+            alpha=SFT_LORA_ALPHA,
+            dropout=SFT_LORA_DROPOUT,
+        )
+        model = TrainerRuntime.attach_or_resume_lora(
+            model,
+            peft_config=peft_config,
+            stage_adapter_dir=None,
+            log_prefix="[SFT RL]",
+            missing_adapter_message=f"Missing adapter directory under SFT stage checkpoint: {stage_adapter_dir}",
+        )
     TuneRL.align_generation_head_dtype(model, precision["torch_dtype"])
+    if resolve_sft_compact_float_params():
+        model = TrainerRuntime.cast_non_lora_float_parameter_dtype(
+            model,
+            dtype=precision["torch_dtype"],
+            label="[SFT RL] PEFT model",
+        )
+    if resolve_sft_compact_after_model_load():
+        TrainerRuntime.compact_cuda_cache(log_prefix="[SFT RL]", stage="after_adapter_load")
 
     TrainerRuntime.enable_non_reentrant_gradient_checkpointing(
         model,
         log_prefix="[SFT RL]",
     )
+    if resolve_sft_compact_after_model_load():
+        TrainerRuntime.compact_cuda_cache(log_prefix="[SFT RL]", stage="after_gradient_checkpointing")
     model.print_trainable_parameters()
     TuneRL.active_rl_model = model
     TuneRL.active_rl_tokenizer = tokenizer
 
-    trainer = TuneRL.GRPOTrainer(
-        model=model,
-        train_dataset=rl_dataset,
-        reward_funcs=TuneRL.compute_reward,
-        args=grpo_config,
-    )
+    trainer_kwargs = {
+        "model": model,
+        "train_dataset": rl_dataset,
+        "reward_funcs": TuneRL.compute_reward,
+        "args": grpo_config,
+    }
+    if "processing_class" in inspect.signature(TuneRL.GRPOTrainer.__init__).parameters:
+        trainer_kwargs["processing_class"] = tokenizer
+    trainer = TuneRL.GRPOTrainer(**trainer_kwargs)
+    _attach_sft_generate_tokenizer(model, tokenizer)
+    print("[SFT RL] Stop-string generation tokenizer attached")
     trainer_gc_patch_stats = TrainerRuntime.enforce_non_reentrant_gradient_checkpointing(trainer.model)
     print(
         "[SFT RL] Trainer gradient checkpointing enforcement: "
@@ -1455,6 +2247,8 @@ def run_sft_training():
             trainer.add_callback(runtime_callback)
     warmup_diagnostics = RewardUtil.prewarm_eval_workers(timeout_seconds=60.0, require_gpu=True)
     _validate_gpu_reward_worker_bindings(warmup_diagnostics)
+    if resolve_sft_compact_after_model_load():
+        TrainerRuntime.compact_cuda_cache(log_prefix="[SFT RL]", stage="before_grpo_train")
     TuneRL.register_stage_checkpoint_signal_handlers()
 
     print("Starting GRPO training for Backbone Search...")
@@ -1489,7 +2283,13 @@ def run_sft_training():
 
 def patch_sft_runtime() -> tuple[str, str, str]:
     """Patch TuneRL to use the SFT runtime and CIFAR-aware reward."""
+    global SFT_RUNTIME_SOURCE_INFO
     model_source, tokenizer_source, source_mode = resolve_sft_model_sources()
+    SFT_RUNTIME_SOURCE_INFO = {
+        "model_source": model_source,
+        "tokenizer_source": tokenizer_source,
+        "source_mode": source_mode,
+    }
     load_initial_adapter = resolve_sft_load_initial_adapter()
     init_adapter_path = resolve_sft_init_adapter()
     TuneRL.base_model = model_source
@@ -1560,13 +2360,15 @@ def bootstrap_sft_runtime() -> None:
 def main() -> None:
     import torch
 
+    TuneRL.apply_rl_seed(log_prefix="[SFT RL]")
     resume_spec = _resolve_sft_resume_spec()
-    gpu_role_plan: Dict[str, List[str] | str] = {
+    gpu_role_plan: Dict[str, Any] = {
         "requested_mode": "auto",
         "resolved_mode": "single",
         "visible_gpu_tokens": [],
         "train_gpu_tokens": [],
         "reward_gpu_tokens": [],
+        "reward_exclude_train_gpu": False,
     }
     if torch.cuda.is_available():
         gpu_role_plan = _configure_sft_gpu_role_env(int(torch.cuda.device_count()))
@@ -1576,21 +2378,27 @@ def main() -> None:
             f"resolved_mode={gpu_role_plan['resolved_mode']} "
             f"visible_gpu_tokens={gpu_role_plan['visible_gpu_tokens']} "
             f"train_gpu_tokens={gpu_role_plan['train_gpu_tokens']} "
-            f"reward_gpu_tokens={gpu_role_plan['reward_gpu_tokens']}"
+            f"reward_gpu_tokens={gpu_role_plan['reward_gpu_tokens']} "
+            f"reward_exclude_train_gpu={gpu_role_plan['reward_exclude_train_gpu']}"
         )
     _maybe_relaunch_sft_with_visible_gpu_workers()
     _validate_sft_visible_worker_count(RewardUtil.get_distributed_runtime_info())
     model_source, tokenizer_source, source_mode = patch_sft_runtime()
     bootstrap_sft_runtime()
 
-    print(f"[SFT RL] Base model id: {SFT_BASE_MODEL_ID}")
+    print(f"[SFT RL] Base model id: {resolve_sft_base_model_id()}")
     print(f"[SFT RL] Base model source ({source_mode}): {model_source}")
     if tokenizer_source != model_source:
         print(f"[SFT RL] Tokenizer source: {tokenizer_source}")
     print(f"[SFT RL] Resume mode: {resume_spec['mode']}")
     print(f"[SFT RL] Load init adapter: {resolve_sft_load_initial_adapter()}")
+    print(f"[SFT RL] Initial adapter mode: {resolve_sft_initial_adapter_mode()}")
+    print(f"[SFT RL] Reward excludes train GPU: {resolve_sft_reward_exclude_train_gpu()}")
+    print(f"[SFT RL] Compact after model load: {resolve_sft_compact_after_model_load()}")
+    print(f"[SFT RL] Compact float params: {resolve_sft_compact_float_params()}")
     if resolve_sft_load_initial_adapter():
         print(f"[SFT RL] Init adapter path: {resolve_sft_init_adapter()}")
+        print(f"[SFT RL] Initial adapter dtype request: {resolve_sft_initial_adapter_dtype_label()}")
     if resume_spec["trainer_checkpoint"] is not None:
         print(f"[SFT RL] Resume trainer checkpoint: {resume_spec['trainer_checkpoint']}")
     if resume_spec["stage_checkpoint_dir"] is not None:
@@ -1600,20 +2408,46 @@ def main() -> None:
     print(f"[SFT RL] Model out: {resolve_sft_model_out()}")
     print(f"[SFT RL] Stage1 only: {TuneRL.env_flag('NNGPT_RL_STAGE1_ONLY', False)}")
     print(f"[SFT RL] Num epochs: {resolve_sft_num_epochs()}")
-    print(f"[SFT RL] Temperature: {SFT_TEMPERATURE}")
+    print(f"[SFT RL] Temperature: {resolve_sft_temperature()}")
+    print(f"[SFT RL] Top-p: {resolve_sft_top_p()}")
+    print(f"[SFT RL] Top-k: {resolve_sft_top_k()}")
+    print(f"[SFT RL] Seed: {resolve_sft_rl_seed()}")
     print(f"[SFT RL] KL coef: {TuneRL.env_float('NNGPT_RL_KL_COEF', SFT_KL_COEF):.6f}")
+    formal_dataset = resolve_sft_formal_dataset()
+    formal_out_shape = resolve_sft_formal_out_shape(formal_dataset)
+    train_set_label, reward_eval_label, heldout_test_label = _describe_sft_eval_split(
+        formal_dataset,
+        SFT_EVAL_SPLIT_PROTOCOL,
+    )
     print(
-        f"[SFT RL] Eval plan: stage1=static_only(no-check_nn), stage2/3=nn-dataset-formal(cifar-10), "
+        f"[SFT RL] Eval plan: stage1=static_only(no-check_nn), stage2/3=nn-dataset-formal({formal_dataset}), "
+        f"out_shape={formal_out_shape}, n_classes={formal_out_shape[0]}, "
         f"transform={SFT_EVAL_TRANSFORM}, resize={SFT_EVAL_IMAGE_SIZE}, batch={SFT_EVAL_BATCH_SIZE}, "
-        f"train_set=full, test_set=full, train_epochs={SFT_EVAL_TRAIN_EPOCHS}, "
+        f"split={SFT_EVAL_SPLIT_PROTOCOL}, "
+        f"split_seed={_env_int('NNGPT_SFT_EVAL_SPLIT_SEED', SFT_EVAL_SPLIT_SEED)}, "
+        f"eval_split_role={_env_str('NNGPT_SFT_EVAL_SPLIT_ROLE', SFT_EVAL_SPLIT_ROLE)}, "
+        f"train_set={train_set_label}, "
+        f"reward_eval_set={reward_eval_label}, heldout_test_set={heldout_test_label}, train_epochs={SFT_EVAL_TRAIN_EPOCHS}, "
         f"freeze_only_backbone_eval=True, formal_epoch_limit_minutes={SFT_EVAL_FORMAL_EPOCH_LIMIT_MINUTES}, "
         f"worker_eval_limit_seconds={SFT_EVAL_LIMIT_SECONDS}, "
         f"baseline={SFT_VAL_METRIC_BASELINE:.2f}"
     )
     print(f"[SFT RL] Save RL adapter: {resolve_sft_save_rl_model()}")
 
-    run_sft_training()
+    run_sft_training(gpu_role_plan=gpu_role_plan)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BaseException:
+        traceback.print_exc()
+        try:
+            import ab.gpt.TuneRL as _TuneRL
+
+            logger = getattr(_TuneRL, "code_logger", None)
+            if logger is not None:
+                logger.log_to_file("[SFT RL] Fatal exception:\n" + traceback.format_exc())
+        except Exception:
+            pass
+        raise

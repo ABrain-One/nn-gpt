@@ -1,0 +1,42 @@
+import os
+from ab.gpt.util.Const import ab_root_path
+
+REPO_ROOT = ab_root_path
+
+os.environ.setdefault(
+    'AB_GPT_NNGPT_DIR',
+    str(REPO_ROOT / 'out' / 'benchmarks' / 'tunenngen_cifar10_focus' / 'analogical_delta_run_8_fair'),
+)
+os.environ.setdefault('PYTORCH_CUDA_ALLOC_CONF', 'expandable_segments:True')
+os.environ.setdefault('TOKENIZERS_PARALLELISM', 'false')
+
+import ab.gpt.analog.TuneNNGenAnalog as TuneNNGen
+
+
+def main():
+    TuneNNGen.main(
+        llm_conf='ds_coder_7b_olympic_cifar10_smoke.json',
+        llm_tune_conf='analog/NN_gen_analogical_cifar10_delta.json',
+        nn_gen_conf='analog/NN_gen_analogical_cifar10_delta.json',
+        nn_gen_conf_id='improve_classification_only_analogical_cifar10_delta',
+        num_train_epochs=1,
+        test_nn=8,
+        nn_train_epochs=1,
+        max_prompts=16,
+        max_new_tokens=1536,
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=2,
+        learning_rate=5e-6,
+        logging_steps=5,
+        temperature=0.6,
+        top_k=50,
+        top_p=0.9,
+        prompt_batch=1,
+        save_llm_output=True,
+        nn_name_prefix='delta',
+        eval_save_to_db=False,
+    )
+
+
+if __name__ == '__main__':
+    main()

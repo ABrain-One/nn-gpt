@@ -11,6 +11,9 @@ REQUIRED_BACKBONE_NAMES = ("backbone_a", "backbone_b")
 BLOCK_SIGNATURE = "def drop_conv3x3_block(in_channels, out_channels, stride=1, padding=1, bias=False, dropout_prob=0.0):"
 INIT_SIGNATURE = "def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:"
 FORWARD_SIGNATURE = "def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:"
+FORWARD_SIGNATURE_ALIASES = (
+    "def forward(self, x: torch.Tensor, is_probing: bool=False) -> torch.Tensor:",
+)
 
 _BLOCKED_ATTRS = {
     "device",
@@ -105,27 +108,20 @@ def _scan_raw_attrs(*texts: str) -> List[str]:
     return _dedupe_keep_order(attrs)
 
 
-def _prepare_completion_for_xml(completion: str) -> str:
-    stripped = _strip_outer_code_fences(completion or "").lstrip()
-    if "<block>" not in stripped and "</block>" in stripped and "<init>" in stripped:
-        return stripped
-    if "<block>" not in stripped and "</block>" not in stripped and "<init>" in stripped:
-        init_pos = stripped.find("<init>")
-        pre_init = stripped[:init_pos].strip()
-        rest = stripped[init_pos:]
-        if pre_init:
-            return f"<block>\n{BLOCK_SIGNATURE}\n{pre_init}\n</block>\n{rest}"
-        return (
-            f"<block>\n{BLOCK_SIGNATURE}\n"
-            "    return nn.Sequential(nn.Conv2d(in_channels, out_channels, 3, stride, padding, bias=bias))\n"
-            f"</block>\n{rest}"
-        )
-    return stripped
-
-
-def _normalize_required_function(code: str, fn_name: str, signature: str) -> str:
+def _accept_exact_function(
+    code: str,
+    signature: str,
+    *,
+    aliases: Sequence[str] = (),
+) -> str:
     code = _strip_outer_code_fences(code)
-    if not code:
+    code = textwrap.dedent(code).strip()
+    if code.startswith(signature):
+        return code
+    for alias in aliases:
+        if code.startswith(alias):
+            return signature + code[len(alias):]
+    if not code.startswith(signature):
         return ""
     code = textwrap.dedent(code).strip()
     if not code:
@@ -242,6 +238,11 @@ def _build_extraction_meta(
 ) -> Dict[str, object]:
     xml_tag_count = sum(bool(code) for code in (block_code, init_code, forward_code))
     xml_counts = {tag: _count_xml_tags(candidate, tag) for tag in ("block", "init", "forward")}
+    forward_close_match = re.search(r"</forward>", candidate, re.IGNORECASE)
+    trailing_after_forward = ""
+    if forward_close_match:
+        trailing_after_forward = candidate[forward_close_match.end():].strip()
+    jupyter_artifact_count = len(re.findall(r"<jupyter_[^>]*>", candidate, re.IGNORECASE))
     class_count = len(re.findall(r"^\s*class\s+\w+", candidate, re.MULTILINE))
     import_count = len(re.findall(r"^\s*(?:from|import)\s+\w+", candidate, re.MULTILINE))
     bad_signature_count = len(re.findall(r"\)\s*-\s*:", candidate))
@@ -260,7 +261,8 @@ def _build_extraction_meta(
     exact_signatures = {
         "block": block_code.startswith(BLOCK_SIGNATURE),
         "init": init_code.startswith(INIT_SIGNATURE),
-        "forward": forward_code.startswith(FORWARD_SIGNATURE),
+        "forward": forward_code.startswith(FORWARD_SIGNATURE)
+        or any(forward_code.startswith(alias) for alias in FORWARD_SIGNATURE_ALIASES),
     }
 
     quality_score = 0
@@ -279,6 +281,9 @@ def _build_extraction_meta(
         "class_count": class_count,
         "import_count": import_count,
         "bad_signature_count": bad_signature_count,
+        "trailing_after_forward": bool(trailing_after_forward),
+        "trailing_after_forward_chars": len(trailing_after_forward),
+        "jupyter_artifact_count": jupyter_artifact_count,
         "structural_attr_detected": structural_attr_detected,
         "quality_score": quality_score,
         "exact_block_signature": exact_signatures["block"],
@@ -303,11 +308,29 @@ def extract_completion_payload_tolerant(completion: str) -> Tuple[Tuple[str, str
             dict(cached["meta"]),
         )
 
-    candidate = _prepare_completion_for_xml(completion or "")
-    block_code = _normalize_block_code(_extract_xml_tag(candidate, "block"))
-    init_code = _normalize_init_code(_extract_xml_tag(candidate, "init"))
-    forward_code = _normalize_forward_code(_extract_xml_tag(candidate, "forward"))
-    meta = _build_extraction_meta(completion or "", candidate, block_code, init_code, forward_code)
+    candidate = _strip_outer_code_fences(completion or "").lstrip()
+    raw_block_code = _extract_xml_tag(candidate, "block")
+    raw_init_code = _extract_xml_tag(candidate, "init")
+    raw_forward_code = _extract_xml_tag(candidate, "forward")
+    meta = _build_extraction_meta(
+        completion or "",
+        candidate,
+        raw_block_code,
+        raw_init_code,
+        raw_forward_code,
+    )
+    if meta.get("xml_tag_exact"):
+        block_code = _accept_exact_function(raw_block_code, BLOCK_SIGNATURE)
+        init_code = _accept_exact_function(raw_init_code, INIT_SIGNATURE)
+        forward_code = _accept_exact_function(
+            raw_forward_code,
+            FORWARD_SIGNATURE,
+            aliases=FORWARD_SIGNATURE_ALIASES,
+        )
+    else:
+        block_code = ""
+        init_code = ""
+        forward_code = ""
 
     _EXTRACTION_META_CACHE[cache_key] = {
         "block_code": block_code,

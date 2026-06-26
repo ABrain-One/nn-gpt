@@ -1,6 +1,6 @@
 # ab/gpt/util/LLM.py
 from ab.nn.util.Const import out_dir
-from ab.gpt.util.Const import llm_dir, llm_tokenizer_dir
+from ab.gpt.util.Const import conf_chat_template_dir, llm_dir, llm_tokenizer_dir
 from ab.gpt.util.LLMUtil import quantization_config_4bit
 from ab.gpt.util.Util import exists
 
@@ -8,6 +8,7 @@ import os
 import json
 import tempfile
 import shutil
+from pathlib import Path
 import torch
 import torch.cuda
 from transformers import (
@@ -33,13 +34,16 @@ class LLM:
                  gguf_file=None,
                  training_args=None,
                  use_unsloth=False,
-                 load_in_4bit=True):
+                 load_in_4bit=True,
+                 chat_template_path=None):
         self.context_length = context_length
         self._use_unsloth = use_unsloth
+        self.chat_template_path = chat_template_path
         
         # ===== Unsloth Fast Path =====
         if use_unsloth:
-            self.model, self.tokenizer = FastModel.from_pretrained(
+            from unsloth import FastLanguageModel
+            self.model, self.tokenizer = FastLanguageModel.from_pretrained(
                 model_name=model_path,
                 dtype = None,
                 max_seq_length=context_length or 4096,
@@ -51,12 +55,14 @@ class LLM:
             if self.tokenizer.pad_token_id is None:
                 self.tokenizer.pad_token = self.tokenizer.eos_token
             self.tokenizer.padding_side = "right"
+            self._apply_chat_template_override()
             print(f"[Unsloth] Loaded {model_path}, 4bit={load_in_4bit}")
             return
         
         # ===== Original HuggingFace Path =====
         # --- Tokenizer ---
         tok_fl_nm = llm_tokenizer_dir(base_path, model_path)
+        
         raw_fl_nm = llm_dir(base_path, model_path)
         tokenizer_exists = exists(tok_fl_nm)
 
@@ -70,12 +76,12 @@ class LLM:
             # This is safer for LLaMA-like models (e.g., DeepSeek-Coder)
             self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "right"
+        self._apply_chat_template_override()
 
         if tokenizer_exists:
             print("Loading Tokenizer from local files:", tok_fl_nm)
         else:
             print("Downloading Tokenizer...")
-            tok_fl_nm.mkdir(parents=True, exist_ok=True)
             self.tokenizer.save_pretrained(tok_fl_nm, access_token=access_token)
             print("Tokenizer saved to: ", tok_fl_nm)
 
@@ -124,21 +130,12 @@ class LLM:
         elif use_deepspeed:
             # Fallback: if use_deepspeed is True, assume ZeRO-3 might be used
             use_zero3 = True
-
-        max_memory = os.environ.get("AB_GPT_LLM_MAX_MEMORY", max_memory)
-        cuda_device_count = torch.cuda.device_count()
-        if not use_zero3 and cuda_device_count == 0:
-            raise RuntimeError(
-                "No CUDA devices are visible to PyTorch while loading a non-DeepSpeed LLM. "
-                "Refusing to continue because this would create max_memory={} and can be "
-                "misrecorded as a failed experiment arm instead of an infrastructure failure."
-            )
         
         # Build model kwargs (sanitize for ZeRO-3)
         deepspeed_specific_prm = {} if use_zero3 else {"device_map": "auto"}
         model_kwargs = dict(
             trust_remote_code=True,
-            max_memory={i: max_memory for i in range(cuda_device_count)},
+            max_memory={i: max_memory for i in range(torch.cuda.device_count())},
             token=access_token,
             torch_dtype=torch.bfloat16,  # QLoRA compute
             gguf_file=gguf_file,
@@ -174,9 +171,19 @@ class LLM:
         elif exists(raw_fl_nm):
             print(f"Loading Raw Model from local files: '{raw_fl_nm}'")
         else:
-            raw_fl_nm.mkdir(parents=True, exist_ok=True)
             self.model.save_pretrained(raw_fl_nm, access_token=access_token)
             print("Model saved to: ", raw_fl_nm)
+
+    def _apply_chat_template_override(self) -> None:
+        if not self.chat_template_path:
+            return
+        template_path = Path(str(self.chat_template_path)).expanduser()
+        if not template_path.is_absolute():
+            template_path = conf_chat_template_dir / template_path
+        if not template_path.exists():
+            raise FileNotFoundError(f"chat_template_path not found: {template_path}")
+        self.tokenizer.chat_template = template_path.read_text(encoding="utf-8")
+        print(f"[LLM] Applied chat template override: {template_path}")
 
     def get_model(self) -> PreTrainedModel:
         return self.model

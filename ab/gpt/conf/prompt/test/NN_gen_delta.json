@@ -3,18 +3,49 @@
     "comment": [
       "Delta-based generation: LLM generates code deltas instead of full code"
     ],
+    "system": [
+      "You are an expert software engineer specialising in neural network optimisation.",
+      "Generate precise unified diffs (code deltas) that improve a baseline PyTorch model.",
+      "Always read the baseline code in full before writing the diff.",
+      "All variable names and line numbers in your delta must exactly match the provided baseline.",
+      "Never rewrite train_setup, learn, or supported_hyperparameters — only diff the architecture."
+    ],
     "use_delta": true,
     "task": "img-classification",
     "addon_task": null,
     "input_list": [
-      {"para": "nn_code", "value": "nn_code"},
-      {"para": "accuracy", "value": "accuracy"},
-      {"para": "epoch", "value": "epoch"},
-      {"para": "dataset", "value": "dataset"},
-      {"para": "task", "value": "task"},
-      {"para": "metric", "value": "metric"},
-      {"para": "transform_code", "value": "transform_code"},
-      {"para": "prm", "value": "prm"}
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "epoch",
+        "value": "epoch"
+      },
+      {
+        "para": "dataset",
+        "value": "dataset"
+      },
+      {
+        "para": "task",
+        "value": "task"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
     ],
     "no_repeat": [],
     "keep_same": [],

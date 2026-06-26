@@ -1,14 +1,31 @@
 {
   "improve_classification_only": {
     "task": "img-classification",
+    "system": [
+      "You are an expert in computer vision data augmentation and image preprocessing pipelines.",
+      "Generate high-performance torchvision transform functions that maximise model accuracy.",
+      "Always respond with a single <tr>...</tr> block containing complete, executable Python — no other output."
+    ],
     "addon_task": null,
     "input_list": [
-      {"para": "accuracy", "value": "accuracy"},
-      {"para": "transform_code", "value": "transform_code"}
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      }
     ],
     "addon_list": [
-      {"para": "addon_accuracy", "value": "accuracy"},
-      {"para": "addon_transform_code", "value": "transform_code"}
+      {
+        "para": "addon_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "addon_transform_code",
+        "value": "transform_code"
+      }
     ],
     "no_repeat": [],
     "keep_same": [],

@@ -24,6 +24,13 @@ try:
 except Exception:
     _HAS_DATASKETCH = False
 
+try:
+    from ab.gpt.util.DeltaUtil import apply_delta, validate_delta
+    from ab.gpt.util.Util import extract_delta
+    _HAS_DELTA = True
+except Exception:
+    _HAS_DELTA = False
+
 FENCE_PY = re.compile(r"```python\s*(.*?)```", re.S | re.M)
 FENCE_ANY = re.compile(r"```\s*(.*?)```", re.S | re.M)
 TOKEN_RE = re.compile(r"[A-Za-z_]\w*|[^\s]")
@@ -552,9 +559,11 @@ def main(
     force_valid_structure: bool = True,
     prompt_template: str = "unique_rag_test_rules.json",
     samples_per_prompt: int = 5,
+    use_delta: bool = False,
 ):
     """
     Generate NNEval-compatible PyTorch models using a finetuned LLM.
+    When use_delta=True, prefix_code is disabled to allow delta format output.
     
     Args:
         data_dir: Folder with NN_Rag_gen_test.jsonl (default: conf_test_dir/NN_Rag_gen_test.jsonl)
@@ -579,10 +588,15 @@ def main(
         force_valid_structure: Use prefix_code to enforce NNEval structure (default: True)
         prompt_template: Prompt template config file in conf/prompt/test/ (default: unique_rag_test_rules.json)
         samples_per_prompt: How many architectures to generate per prompt (default: 5)
+        use_delta: Enable delta mode - extract deltas from output and apply to baseline (default: False)
     """
     # Set device if not provided
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # Delta mode: disable prefix_code to allow delta format output
+    if use_delta:
+        force_valid_structure = False
 
     # Load prompt template from config (test dir holds your JSON prompt file)
     prompt_config_path = conf_test_dir / prompt_template
@@ -855,7 +869,37 @@ def main(
                             prefix_code=prefix_code,
                         )
 
-                        code = extract_python_block(raw)
+                        # Delta mode: extract and apply delta to baseline
+                        if use_delta and _HAS_DELTA:
+                            delta = extract_delta(raw)
+                            if delta and validate_delta(delta):
+                                # Get baseline code from row (if available)
+                                baseline_code = item.get("baseline_code", "")
+                                if not baseline_code:
+                                    # Try to extract from assistant message (for training data format)
+                                    for m in messages:
+                                        if m["role"] == "assistant":
+                                            baseline_code = extract_python_block(m["content"])
+                                            break
+                                
+                                if baseline_code:
+                                    applied_code = apply_delta(baseline_code, delta)
+                                    if applied_code:
+                                        code = applied_code
+                                        print(f"[DELTA] gidx={global_idx}: Successfully applied delta")
+                                    else:
+                                        # Fallback to full code extraction
+                                        code = extract_python_block(raw)
+                                        print(f"[DELTA] gidx={global_idx}: Delta apply failed, using extracted code")
+                                else:
+                                    code = extract_python_block(raw)
+                                    print(f"[DELTA] gidx={global_idx}: No baseline, using extracted code")
+                            else:
+                                code = extract_python_block(raw)
+                                if use_delta:
+                                    print(f"[DELTA] gidx={global_idx}: No valid delta found, using extracted code")
+                        else:
+                            code = extract_python_block(raw)
 
                         # 1) Validate code structure
                         is_valid, error_msg = validate_code_for_nneval(code)

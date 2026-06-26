@@ -219,8 +219,12 @@ def _extract_attr_types(init_code: str) -> Dict[str, str]:
     if fn is None:
         return attr_types
 
+    local_module_types: Dict[str, str] = {}
     for node in ast.walk(fn):
         if not isinstance(node, ast.Assign):
+            continue
+        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) and isinstance(node.value, ast.Call):
+            local_module_types[node.targets[0].id] = _canonical_ctor_from_call(node.value)
             continue
         if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Attribute):
             continue
@@ -255,6 +259,31 @@ def _extract_attr_types(init_code: str) -> Dict[str, str]:
             role = _infer_attr_role(attr_name)
             if role:
                 attr_types[attr_name] = role
+
+    for node in ast.walk(fn):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if not (
+            isinstance(func, ast.Attribute)
+            and func.attr == "add_module"
+            and isinstance(func.value, ast.Attribute)
+            and isinstance(func.value.value, ast.Name)
+            and func.value.value.id == "self"
+        ):
+            continue
+        attr_name = func.value.attr
+        module_arg = node.args[1] if len(node.args) >= 2 else None
+        if isinstance(module_arg, ast.Call):
+            module_label = _canonical_ctor_from_call(module_arg, attr_name=attr_name)
+        elif isinstance(module_arg, ast.Name):
+            module_label = local_module_types.get(module_arg.id, "")
+        else:
+            module_label = ""
+        if not module_label:
+            continue
+        if "Fractal" in module_label or "drop_conv3x3_block" in module_label:
+            attr_types[attr_name] = f"Fractal[{module_label}]"
 
     return attr_types
 

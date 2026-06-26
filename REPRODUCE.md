@@ -54,14 +54,29 @@ export AB_NN_DATASET_ROOT=${NN_DATASET_ROOT}
 
 ## Repository structure
 
-- `nn-gpt/ab/gpt/`: TuneNNGen candidate-generation pipeline, arms, prompt configs, and launchers.
-- `nn-gpt/ab/gpt/util/Tune.py`: Core arm dispatch for `hp_default`, `baseline_edit`, `hp_transfer`, `analogical_edit`, and `hp_copy`.
-- `nn-gpt/ab/gpt/util/Util.py`: Shared extraction utilities including `extract_edit`.
-- `nn-gpt/ab/gpt/util/EditUtil.py`: Edit prompt construction and LLM response parsing helpers.
-- `nn-gpt/ab/gpt/conf/prompt/`: Frozen JSON prompt configs used by the paper experiments.
+- `nn-gpt/ab/gpt/`: Existing public TuneNNGen entrypoints and upstream-compatible utilities.
+- `nn-gpt/ab/gpt/analog/`: Isolated paper experiment runners and analog-specific pipeline code.
+- `nn-gpt/ab/gpt/analog/TuneAnalog.py`: Source-guided arm dispatch for `hp_default`, `baseline_edit`, `hp_transfer`, `analogical_edit`, and `hp_copy`.
+- `nn-gpt/ab/gpt/analog/TuneNNGenAnalog.py`: CLI-compatible analog experiment entrypoint used by the commands below.
+- `nn-gpt/ab/gpt/conf/prompt/test/analog/`: Test prompt configs for the source-guided paper experiments.
+- `nn-gpt/ab/gpt/conf/prompt/train/analog/`: Training prompt configs for the source-guided paper experiments.
+- `nn-gpt/ab/gpt/conf/prompt/test/` and `nn-gpt/ab/gpt/conf/prompt/train/`: Existing flat prompt configs retained for old entrypoints.
+- `nn-gpt/ab/gpt/util/EditUtil.py`: Additive edit prompt construction and LLM response parsing helpers.
 - `nn-gpt/results_registry/`: Curated CSV/JSON result registries used to generate paper tables.
 - `nn-dataset/ab/nn/util/`: Training and evaluation harness, including `Train.py`, `CodeEval.py`, and `Const.py`.
 - `nn-dataset/ab/nn/transform/`: Dataset transform implementations such as `echo_224`, `echo_28`, and `norm_299_flip`.
+
+## Running existing baseline functionality
+
+The existing public entrypoints remain in their original locations and continue to resolve flat prompt configs such as `NN_gen.json`.
+
+```bash
+${VENV}/bin/python -m ab.gpt.TuneNNGen --help
+${VENV}/bin/python -m ab.gpt.TuneNNGen_delta --help
+${VENV}/bin/python ab/gpt/NNEval.py --help
+```
+
+The analog experiments below intentionally use `ab.gpt.analog.TuneNNGenAnalog` and prompt config names under `analog/` so the paper-specific runs do not override those baseline entrypoints.
 
 ## Running the main experiments
 
@@ -107,7 +122,7 @@ run_one_arm() {
   export AB_GPT_CANDIDATE_SEED_OFFSET="$seed_offset"
   export AB_GPT_GEOMETRY_GUARD="$geometry_guard"
 
-  ${VENV}/bin/python -m ab.gpt.TuneNNGen \
+  ${VENV}/bin/python -m ab.gpt.analog.TuneNNGenAnalog \
     --llm_conf "$llm_conf" \
     --llm_tune_conf "$prompt_conf" \
     --nn_gen_conf "$prompt_conf" \
@@ -144,11 +159,11 @@ run_row() {
   local analogical_key="${12}"
 
   run_one_arm "$suite" "$slug" "$llm_conf" "$target_id" "$source_id" "$repeat_n" "$seed_offset" "$geometry_guard" \
-    hp_default NN_gen_frozen_image_starter.json "improve_classification_only_${slug}_frozen_hp_default" 1024
+    hp_default analog/NN_gen_frozen_image_starter.json "improve_classification_only_${slug}_frozen_hp_default" 1024
   run_one_arm "$suite" "$slug" "$llm_conf" "$target_id" "$source_id" "$repeat_n" "$seed_offset" "$geometry_guard" \
     baseline_edit "$baseline_conf" "$baseline_key" 1536
   run_one_arm "$suite" "$slug" "$llm_conf" "$target_id" "$source_id" "$repeat_n" "$seed_offset" "$geometry_guard" \
-    hp_transfer NN_gen_frozen_image_starter.json "improve_classification_only_${slug}_frozen_hp_transfer" 1536
+    hp_transfer analog/NN_gen_frozen_image_starter.json "improve_classification_only_${slug}_frozen_hp_transfer" 1536
   run_one_arm "$suite" "$slug" "$llm_conf" "$target_id" "$source_id" "$repeat_n" "$seed_offset" "$geometry_guard" \
     analogical_edit "$analogical_conf" "$analogical_key" 2048
 }
@@ -158,35 +173,35 @@ run_row() {
 
 ```bash
 # ds67b archbest
-run_row cifar10_clean_archbest_ds67b_n32 cifar10 ds_coder_6.7b_instruct_smoke.json ed1246fb7fb1bb50c9127eebcb6e05d2 ed44f284382e3593f982eeaa71996065 32 7500 1 NN_gen_cifar10_edit_paper.json improve_classification_only_cifar10_edit_paper NN_gen_analogical_cifar10_edit_paper.json improve_classification_only_analogical_cifar10_edit_paper
+run_row cifar10_clean_archbest_ds67b_n32 cifar10 ds_coder_6.7b_instruct_smoke.json ed1246fb7fb1bb50c9127eebcb6e05d2 ed44f284382e3593f982eeaa71996065 32 7500 1 analog/NN_gen_cifar10_edit_paper.json improve_classification_only_cifar10_edit_paper analog/NN_gen_analogical_cifar10_edit_paper.json improve_classification_only_analogical_cifar10_edit_paper
 
 # ds67b highsource
-run_row cifar10_clean_highsource_ds67b_n32 cifar10 ds_coder_6.7b_instruct_smoke.json ed1246fb7fb1bb50c9127eebcb6e05d2 f6923a5f94145abd0a362581ae0012e9 32 6200 1 NN_gen_cifar10_edit_paper.json improve_classification_only_cifar10_edit_paper NN_gen_analogical_cifar10_edit_paper.json improve_classification_only_analogical_cifar10_edit_paper
+run_row cifar10_clean_highsource_ds67b_n32 cifar10 ds_coder_6.7b_instruct_smoke.json ed1246fb7fb1bb50c9127eebcb6e05d2 f6923a5f94145abd0a362581ae0012e9 32 6200 1 analog/NN_gen_cifar10_edit_paper.json improve_classification_only_cifar10_edit_paper analog/NN_gen_analogical_cifar10_edit_paper.json improve_classification_only_analogical_cifar10_edit_paper
 
 # qwen25coder7b archbest
-run_row cifar10_clean_archbest_qwen25coder7b_n32 cifar10 qwen2_5_coder_7b_instruct_smoke.json ed1246fb7fb1bb50c9127eebcb6e05d2 ed44f284382e3593f982eeaa71996065 32 7200 1 NN_gen_cifar10_edit_paper.json improve_classification_only_cifar10_edit_paper NN_gen_analogical_cifar10_edit_paper.json improve_classification_only_analogical_cifar10_edit_paper
+run_row cifar10_clean_archbest_qwen25coder7b_n32 cifar10 qwen2_5_coder_7b_instruct_smoke.json ed1246fb7fb1bb50c9127eebcb6e05d2 ed44f284382e3593f982eeaa71996065 32 7200 1 analog/NN_gen_cifar10_edit_paper.json improve_classification_only_cifar10_edit_paper analog/NN_gen_analogical_cifar10_edit_paper.json improve_classification_only_analogical_cifar10_edit_paper
 
 # qwen25coder7b highsource
-run_row cifar10_clean_highsource_qwen25coder7b_n32 cifar10 qwen2_5_coder_7b_instruct_smoke.json ed1246fb7fb1bb50c9127eebcb6e05d2 f6923a5f94145abd0a362581ae0012e9 32 7100 1 NN_gen_cifar10_edit_paper.json improve_classification_only_cifar10_edit_paper NN_gen_analogical_cifar10_edit_paper.json improve_classification_only_analogical_cifar10_edit_paper
+run_row cifar10_clean_highsource_qwen25coder7b_n32 cifar10 qwen2_5_coder_7b_instruct_smoke.json ed1246fb7fb1bb50c9127eebcb6e05d2 f6923a5f94145abd0a362581ae0012e9 32 7100 1 analog/NN_gen_cifar10_edit_paper.json improve_classification_only_cifar10_edit_paper analog/NN_gen_analogical_cifar10_edit_paper.json improve_classification_only_analogical_cifar10_edit_paper
 
 # olympic7b archbest
-run_row cifar10_clean_archbest_olympic7b_n32 cifar10 ds_coder_7b_olympic_cifar10_smoke.json ed1246fb7fb1bb50c9127eebcb6e05d2 ed44f284382e3593f982eeaa71996065 32 7400 1 NN_gen_cifar10_edit_paper.json improve_classification_only_cifar10_edit_paper NN_gen_analogical_cifar10_edit_paper.json improve_classification_only_analogical_cifar10_edit_paper
+run_row cifar10_clean_archbest_olympic7b_n32 cifar10 ds_coder_7b_olympic_cifar10_smoke.json ed1246fb7fb1bb50c9127eebcb6e05d2 ed44f284382e3593f982eeaa71996065 32 7400 1 analog/NN_gen_cifar10_edit_paper.json improve_classification_only_cifar10_edit_paper analog/NN_gen_analogical_cifar10_edit_paper.json improve_classification_only_analogical_cifar10_edit_paper
 
 # olympic7b highsource
-run_row cifar10_clean_highsource_olympic7b_n32 cifar10 ds_coder_7b_olympic_cifar10_smoke.json ed1246fb7fb1bb50c9127eebcb6e05d2 f6923a5f94145abd0a362581ae0012e9 32 7300 1 NN_gen_cifar10_edit_paper.json improve_classification_only_cifar10_edit_paper NN_gen_analogical_cifar10_edit_paper.json improve_classification_only_analogical_cifar10_edit_paper
+run_row cifar10_clean_highsource_olympic7b_n32 cifar10 ds_coder_7b_olympic_cifar10_smoke.json ed1246fb7fb1bb50c9127eebcb6e05d2 f6923a5f94145abd0a362581ae0012e9 32 7300 1 analog/NN_gen_cifar10_edit_paper.json improve_classification_only_cifar10_edit_paper analog/NN_gen_analogical_cifar10_edit_paper.json improve_classification_only_analogical_cifar10_edit_paper
 ```
 
 ### SVHN AlexNet main N=32 (Tables 4 and 5)
 
 ```bash
 # ds67b
-run_row svhn_hpschema_alexnet_n32_ds67b svhn ds_coder_6.7b_instruct_smoke.json 82f102e1bd4884ac574a1543d9eac6fb 9da54aec32cd2aebd2374d086521e20f 32 10300 0 NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
+run_row svhn_hpschema_alexnet_n32_ds67b svhn ds_coder_6.7b_instruct_smoke.json 82f102e1bd4884ac574a1543d9eac6fb 9da54aec32cd2aebd2374d086521e20f 32 10300 0 analog/NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper analog/NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
 
 # qwen25coder7b
-run_row svhn_hpschema_alexnet_n32_qwen25coder7b svhn qwen2_5_coder_7b_instruct_smoke.json 82f102e1bd4884ac574a1543d9eac6fb 9da54aec32cd2aebd2374d086521e20f 32 10400 0 NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
+run_row svhn_hpschema_alexnet_n32_qwen25coder7b svhn qwen2_5_coder_7b_instruct_smoke.json 82f102e1bd4884ac574a1543d9eac6fb 9da54aec32cd2aebd2374d086521e20f 32 10400 0 analog/NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper analog/NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
 
 # olympic7b
-run_row svhn_hpschema_alexnet_n32_olympic7b svhn ds_coder_7b_olympic_cifar10_smoke.json 82f102e1bd4884ac574a1543d9eac6fb 9da54aec32cd2aebd2374d086521e20f 32 10500 0 NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
+run_row svhn_hpschema_alexnet_n32_olympic7b svhn ds_coder_7b_olympic_cifar10_smoke.json 82f102e1bd4884ac574a1543d9eac6fb 9da54aec32cd2aebd2374d086521e20f 32 10500 0 analog/NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper analog/NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
 ```
 
 ### hp_copy ablation (Table 14)
@@ -206,10 +221,10 @@ run_hp_copy() {
   export AB_GPT_CANDIDATE_SEED_OFFSET=0
   export AB_GPT_GEOMETRY_GUARD="$geometry_guard"
 
-  ${VENV}/bin/python -m ab.gpt.TuneNNGen \
+  ${VENV}/bin/python -m ab.gpt.analog.TuneNNGenAnalog \
     --llm_conf ds_coder_6.7b_instruct_smoke.json \
-    --llm_tune_conf NN_gen_frozen_image_starter.json \
-    --nn_gen_conf NN_gen_frozen_image_starter.json \
+    --llm_tune_conf analog/NN_gen_frozen_image_starter.json \
+    --nn_gen_conf analog/NN_gen_frozen_image_starter.json \
     --nn_gen_conf_id "improve_classification_only_${slug}_frozen_hp_copy" \
     --num_train_epochs 1 \
     --test_nn 1 \
@@ -245,35 +260,35 @@ run_hp_copy hp_copy_imagenette_alexnet imagenette bb88d97f5db9a331051f1695a5d81d
 
 ```bash
 # BagNet across three LLMs
-run_row svhn_hpschema_bagnet_ds67b_n8 svhn ds_coder_6.7b_instruct_smoke.json 039b97c112dad21861b5c89b44c9bb8e 94eade47ad96eedb4109c74cd939800f 8 15300 0 NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
-run_row svhn_hpschema_bagnet_qwen25coder7b_n8 svhn qwen2_5_coder_7b_instruct_smoke.json 039b97c112dad21861b5c89b44c9bb8e 94eade47ad96eedb4109c74cd939800f 8 15400 0 NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
-run_row svhn_hpschema_bagnet_olympic7b_n8 svhn ds_coder_7b_olympic_cifar10_smoke.json 039b97c112dad21861b5c89b44c9bb8e 94eade47ad96eedb4109c74cd939800f 8 15500 0 NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
+run_row svhn_hpschema_bagnet_ds67b_n8 svhn ds_coder_6.7b_instruct_smoke.json 039b97c112dad21861b5c89b44c9bb8e 94eade47ad96eedb4109c74cd939800f 8 15300 0 analog/NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper analog/NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
+run_row svhn_hpschema_bagnet_qwen25coder7b_n8 svhn qwen2_5_coder_7b_instruct_smoke.json 039b97c112dad21861b5c89b44c9bb8e 94eade47ad96eedb4109c74cd939800f 8 15400 0 analog/NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper analog/NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
+run_row svhn_hpschema_bagnet_olympic7b_n8 svhn ds_coder_7b_olympic_cifar10_smoke.json 039b97c112dad21861b5c89b44c9bb8e 94eade47ad96eedb4109c74cd939800f 8 15500 0 analog/NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper analog/NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
 
 # AirNext across three LLMs
-run_row svhn_hpschema_airnext_ds67b_n8 svhn ds_coder_6.7b_instruct_smoke.json 28df9f99ef7a99c438773e9b42f582c2 05e1773a0b197bf63c5788302d6052d8 8 15600 0 NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
-run_row svhn_hpschema_airnext_qwen25coder7b_n8 svhn qwen2_5_coder_7b_instruct_smoke.json 28df9f99ef7a99c438773e9b42f582c2 05e1773a0b197bf63c5788302d6052d8 8 15700 0 NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
-run_row svhn_hpschema_airnext_olympic7b_n8 svhn ds_coder_7b_olympic_cifar10_smoke.json 28df9f99ef7a99c438773e9b42f582c2 05e1773a0b197bf63c5788302d6052d8 8 15800 0 NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
+run_row svhn_hpschema_airnext_ds67b_n8 svhn ds_coder_6.7b_instruct_smoke.json 28df9f99ef7a99c438773e9b42f582c2 05e1773a0b197bf63c5788302d6052d8 8 15600 0 analog/NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper analog/NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
+run_row svhn_hpschema_airnext_qwen25coder7b_n8 svhn qwen2_5_coder_7b_instruct_smoke.json 28df9f99ef7a99c438773e9b42f582c2 05e1773a0b197bf63c5788302d6052d8 8 15700 0 analog/NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper analog/NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
+run_row svhn_hpschema_airnext_olympic7b_n8 svhn ds_coder_7b_olympic_cifar10_smoke.json 28df9f99ef7a99c438773e9b42f582c2 05e1773a0b197bf63c5788302d6052d8 8 15800 0 analog/NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper analog/NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
 
 # DPN68 across three LLMs
-run_row svhn_hpschema_dpn68_ds67b_n8 svhn ds_coder_6.7b_instruct_smoke.json 48ebb84d913cc8ffad0b9379f25006bc d7e91737df547831f65a082b391c28d1 8 15900 0 NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
-run_row svhn_hpschema_dpn68_qwen25coder7b_n8 svhn qwen2_5_coder_7b_instruct_smoke.json 48ebb84d913cc8ffad0b9379f25006bc d7e91737df547831f65a082b391c28d1 8 16000 0 NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
-run_row svhn_hpschema_dpn68_olympic7b_n8 svhn ds_coder_7b_olympic_cifar10_smoke.json 48ebb84d913cc8ffad0b9379f25006bc d7e91737df547831f65a082b391c28d1 8 16100 0 NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
+run_row svhn_hpschema_dpn68_ds67b_n8 svhn ds_coder_6.7b_instruct_smoke.json 48ebb84d913cc8ffad0b9379f25006bc d7e91737df547831f65a082b391c28d1 8 15900 0 analog/NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper analog/NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
+run_row svhn_hpschema_dpn68_qwen25coder7b_n8 svhn qwen2_5_coder_7b_instruct_smoke.json 48ebb84d913cc8ffad0b9379f25006bc d7e91737df547831f65a082b391c28d1 8 16000 0 analog/NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper analog/NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
+run_row svhn_hpschema_dpn68_olympic7b_n8 svhn ds_coder_7b_olympic_cifar10_smoke.json 48ebb84d913cc8ffad0b9379f25006bc d7e91737df547831f65a082b391c28d1 8 16100 0 analog/NN_gen_svhn_edit_paper.json improve_classification_only_svhn_edit_paper analog/NN_gen_analogical_svhn_edit_paper.json improve_classification_only_analogical_svhn_edit_paper
 ```
 
 ### AlexNet cross-dataset probes (Table 10)
 
 ```bash
 # Imagenette ds13b
-run_row imagenette_hpschema_alexnet_n8_ds13b imagenette ds_coder_1.3b_instruct_smoke.json bb88d97f5db9a331051f1695a5d81d1d 61897b06c8dabb270284572c01d2b229 8 11200 0 NN_gen_imagenette_edit_paper.json improve_classification_only_imagenette_edit_paper NN_gen_analogical_imagenette_edit_paper.json improve_classification_only_analogical_imagenette_edit_paper
+run_row imagenette_hpschema_alexnet_n8_ds13b imagenette ds_coder_1.3b_instruct_smoke.json bb88d97f5db9a331051f1695a5d81d1d 61897b06c8dabb270284572c01d2b229 8 11200 0 analog/NN_gen_imagenette_edit_paper.json improve_classification_only_imagenette_edit_paper analog/NN_gen_analogical_imagenette_edit_paper.json improve_classification_only_analogical_imagenette_edit_paper
 
 # Imagenette ds67b
-run_row imagenette_hpschema_alexnet_n8_ds67b imagenette ds_coder_6.7b_instruct_smoke.json bb88d97f5db9a331051f1695a5d81d1d 61897b06c8dabb270284572c01d2b229 8 11300 0 NN_gen_imagenette_edit_paper.json improve_classification_only_imagenette_edit_paper NN_gen_analogical_imagenette_edit_paper.json improve_classification_only_analogical_imagenette_edit_paper
+run_row imagenette_hpschema_alexnet_n8_ds67b imagenette ds_coder_6.7b_instruct_smoke.json bb88d97f5db9a331051f1695a5d81d1d 61897b06c8dabb270284572c01d2b229 8 11300 0 analog/NN_gen_imagenette_edit_paper.json improve_classification_only_imagenette_edit_paper analog/NN_gen_analogical_imagenette_edit_paper.json improve_classification_only_analogical_imagenette_edit_paper
 
 # Imagenette olympic7b
-run_row imagenette_hpschema_alexnet_n8_olympic7b imagenette ds_coder_7b_olympic_cifar10_smoke.json bb88d97f5db9a331051f1695a5d81d1d 61897b06c8dabb270284572c01d2b229 8 11500 0 NN_gen_imagenette_edit_paper.json improve_classification_only_imagenette_edit_paper NN_gen_analogical_imagenette_edit_paper.json improve_classification_only_analogical_imagenette_edit_paper
+run_row imagenette_hpschema_alexnet_n8_olympic7b imagenette ds_coder_7b_olympic_cifar10_smoke.json bb88d97f5db9a331051f1695a5d81d1d 61897b06c8dabb270284572c01d2b229 8 11500 0 analog/NN_gen_imagenette_edit_paper.json improve_classification_only_imagenette_edit_paper analog/NN_gen_analogical_imagenette_edit_paper.json improve_classification_only_analogical_imagenette_edit_paper
 
 # CelebA-Gender ds67b
-run_row celebagender_geomguard_v2_alexnet_ds67b_n8 celebagender ds_coder_6.7b_instruct_smoke.json cb3b158684048414d60999434f84cec5 eb8e2a71de857766413f04c3f81f0a26 8 14300 1 NN_gen_celebagender_edit_paper.json improve_classification_only_celebagender_edit_paper NN_gen_analogical_celebagender_edit_paper.json improve_classification_only_analogical_celebagender_edit_paper
+run_row celebagender_geomguard_v2_alexnet_ds67b_n8 celebagender ds_coder_6.7b_instruct_smoke.json cb3b158684048414d60999434f84cec5 eb8e2a71de857766413f04c3f81f0a26 8 14300 1 analog/NN_gen_celebagender_edit_paper.json improve_classification_only_celebagender_edit_paper analog/NN_gen_analogical_celebagender_edit_paper.json improve_classification_only_analogical_celebagender_edit_paper
 ```
 
 ## Reading results
@@ -314,21 +329,27 @@ CSV column names in `results_registry/acc_gap_advantage_pairs_20260606.csv`: `da
 | hp_copy SVHN AlexNet | hp_copy | 0.1959 |
 | hp_copy Imagenette AlexNet | hp_copy | 0.2892 |
 
-## Smoke tests performed for this PR preparation
+## Local checks performed after analog isolation
 
-The following smoke tests were run against the code in this PR using the environment described above.
+These checks were run after moving the experiment scripts into `ab/gpt/analog/` and moving prompt configs into `ab/gpt/conf/prompt/{train,test}/analog/`.
 
-| Smoke test | Result |
+| Check | Result |
 |---|---|
-| `hp_copy` SVHN AlexNet, N=1, one epoch | pass, accuracy 0.1958743085433313 |
-| `hp_transfer` CIFAR-10 archbest, N=1, one epoch | pass, accuracy 0.4109 |
-| `hp_default` CIFAR-10 archbest, N=1, one epoch | pass, accuracy 0.1530 |
-| `baseline_edit` CIFAR-10 archbest, N=1, one epoch | pass, accuracy 0.1946 |
-| `analogical_edit` CIFAR-10 archbest, N=1, one epoch | pass, accuracy 0.3938 |
-| `hp_copy` Imagenette AlexNet, N=1, one epoch, seed offset 0 | pass, accuracy 0.289171974522293 |
+| `python -m compileall ab/gpt/analog ab/gpt/util/EditUtil.py ab/gpt/util/Mergedecision.py ab/nn/util/CodeEval.py ab/nn/util/Train.py ab/nn/transform/echo_224.py ab/nn/transform/echo_28.py` | pass |
+| `python ab/gpt/NNEval.py --help` | pass |
+| `python -m ab.gpt.TuneNNGen --help` | pass |
+| `python -m ab.gpt.TuneNNGen_delta --help` | pass |
+| `python -m ab.gpt.analog.TuneNNGenAnalog --help` | pass |
+| `python -m ab.gpt.analog.TuneNNGen_7B_code_olympic_analogical_smoke --help` | pass |
+| JSON validation for every file under `ab/gpt/conf/` | pass |
+| Existing flat prompt lookup and new `analog/` prompt lookup | pass |
 
-The `hp_transfer` smoke also wrote `source_recipe_delta.json` beside the generated candidate.
+Full `python -m compileall ab/gpt ab/nn` was also attempted. It fails on pre-existing template/generated files outside the analog PR path, including `ab/gpt/brute/fract/backbone/FractalFusion_template.py` (`$$`) and `ab/gpt/brute/fract/pure/Fractal_template.py` (`N = ?1`). The analog package and additive helper files compile successfully.
+
+`pytest -q` was attempted and fails during collection because `test/test_pipeline.py` imports `ab.gpt.util.prompt.NNGenPromptPrun`, which is absent from `origin/main`. `python -m unittest discover -v` was attempted and fails on existing `ab.gpt.brute.ast.mutator` package imports that expect a top-level `mutator` module.
+
+The full one-epoch generation/evaluation commands were not rerun after the isolation refactor because the local environment lacks `deepspeed` and the commands require GPU/model/dataset execution. The expected-output values above are the logged paper values from `results_registry/`.
 
 ## Reproducibility note
 
-PyTorch deterministic mode is not used; exact bitwise replay is not claimed. Reproducibility is defined at the protocol level: the same frozen prompts, same source/target IDs, same candidate budget, same LLM, same seed offset, and same validation settings should produce results within normal stochastic variation of the reported values. The `results_registry/` directory contains the logged outputs used to generate the paper tables; fresh runs should be checked through their run-local `cycle_results.json` and `eval_info.json` files before being merged into the curated registry.
+PyTorch deterministic mode is not used; exact bitwise replay is not claimed. Reproducibility is defined at the protocol level: the same frozen prompts, same source/target IDs, same candidate budget, same LLM, same seed offset, and same validation settings should produce results within normal stochastic variation of the reported values. Analog experiment output paths are configured with `AB_GPT_NNGPT_DIR`, which is resolved through `ab.gpt.util.Const` relative to the repository/output root conventions; dataset support scripts use `AB_NN_DATASET_ROOT` or the sibling `nn-dataset` path derived from `ab_root_path`. The `results_registry/` directory contains the logged outputs used to generate the paper tables; fresh runs should be checked through their run-local `cycle_results.json` and `eval_info.json` files before being merged into the curated registry.

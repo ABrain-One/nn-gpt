@@ -92,6 +92,7 @@ pip install --no-cache-dir git+https://github.com/ABrain-One/nn-dataset --extra-
 ```
 Installing the stable version:
 ```bash
+rm -rf db
 pip uninstall -y nn-dataset 
 pip install nn-dataset --extra-index-url https://download.pytorch.org/whl/cu130
 ```

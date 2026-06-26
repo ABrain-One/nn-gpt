@@ -25,7 +25,7 @@ def alter(epochs, test_conf, llm_name, gguf_file=None):
     PURE_DIR = Path(__file__).resolve().parent
     TEMPLATE_PATH = PURE_DIR / "Fractal_template.py"
     template = TEMPLATE_PATH.read_text()
-  # -------- ELEMENT LIST ( $$ ) --------
+  # -------- ELEMENT LIST (_BRANCH_1) --------
     element_list = [
         'nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=stride, padding=padding, bias=bias)',
         'nn.MaxPool2d(kernel_size=3, stride=2)',
@@ -34,9 +34,9 @@ def alter(epochs, test_conf, llm_name, gguf_file=None):
         'nn.Dropout2d(p=dropout_prob) if dropout_prob > 0 else nn.Identity()',
     ]
 
-    element_list_str = "['Conv2d', 'MaxPool2d', 'BatchNorm2d', 'ReLU', 'Dropout2d']"
+
     
-    # -------- ELEMENT LIST ( $ ) --------
+    # -------- ELEMENT LIST (_BRANCH_2) --------
     element_list_1 = [
         'nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=stride, padding=padding, bias=bias)',
         'nn.MaxPool2d(kernel_size=3, stride=2)',
@@ -47,7 +47,7 @@ def alter(epochs, test_conf, llm_name, gguf_file=None):
         'nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=stride, padding=padding, bias=bias)',
         'nn.Dropout2d(p=dropout_prob) if dropout_prob > 0 else nn.Identity()',
         'nn.MaxPool2d(kernel_size=3, stride=2)',
-        'nn.MaxUnpool2d(kernel_size=3, stride=2, padding=padding)',
+        'PoolUnpool(kernel_size=3, stride=2)',
     ]
 
     # -------- GENERATION --------
@@ -58,20 +58,20 @@ def alter(epochs, test_conf, llm_name, gguf_file=None):
         out_path = epoch_dir(epoch)
         out_path.mkdir(parents=True, exist_ok=True)
 
-        # ---- $$ LOOP ----
+        # ---- _BRANCH_1 LOOP ----
         for r in range(2, 6):
             for perm in itertools.product(element_list, repeat=r):
                 element_code = ",\n        ".join(perm)
 
                 for N in range(1, 6):
-                    for num_columns in range(1, 8):
+                    for num_columns in range(1, 6):  # [BUG 6 FIX] was range(1, 8)
 
                         # ---- _SEC_ LOOP (1→4) ----
                         for k_at in range(1, 5):
                             for perm_at in itertools.product(element_list_secondcolumn, repeat=k_at):
                                 element_at_code = ",\n        ".join(perm_at)
 
-                                # ---- $ LOOP (0→2) ----
+                                # ---- _BRANCH_2 LOOP (0→2) ----
                                 for k1 in range(0, 3):
                                     if k1 == 0:
                                         element1_perms = [()]
@@ -89,10 +89,9 @@ def alter(epochs, test_conf, llm_name, gguf_file=None):
 
                                         nn_code = (
                                             template
-                                            .replace("$$", element_code)
-                                            .replace("$", element1_code)
+                                            .replace("_BRANCH_1", element_code)
+                                            .replace("_BRANCH_2", element1_code)
                                             .replace("_SEC_", element_at_code)
-                                            .replace("??", element_list_str)
                                             .replace("?1", str(N))
                                             .replace("?2", str(num_columns))
                                         )

@@ -1,6 +1,12 @@
 {
   "improve_classification_only": {
     "comment": [],
+    "system": [
+      "You are an expert PyTorch neural network architect.",
+      "Your task is to generate improved neural network architectures, training hyperparameters, and data transforms that maximise performance on computer vision tasks.",
+      "Always follow LEMUR NN Dataset conventions: class name 'Net', a standalone function 'supported_hyperparameters' (outside the class) returning a set of hyperparameter key names, and required methods __init__, forward, train_setup, and learn with their exact signatures.",
+      "Output only the requested XML tags (<hp>, <tr>, <nn>) in the correct order — no explanation, no markdown, no extra text."
+    ],
     "task": "img-classification",
     "addon_task": null,
     "input_list": [
@@ -44,7 +50,7 @@
     "no_repeat": [],
     "keep_same": [],
     "prompt": [
-            "Provide the training hyperparameters (as a JSON object between XML tags <hp> and </hp>), corresponding transformer code (as a Python code between XML tags <tr> and </tr>) and neural network model (as a Python code between XML tags <nn> and </nn>) that achieves a maximum value for the metric '{metric}' after first epoch of training on the '{dataset}' dataset for the task '{task}'.",
+      "Provide the training hyperparameters (as a JSON object between XML tags <hp> and </hp>), corresponding transformer code (as a Python code between XML tags <tr> and </tr>) and neural network model (as a Python code between XML tags <nn> and </nn>) that achieves a maximum value for the metric '{metric}' after first epoch of training on the '{dataset}' dataset for the task '{task}'.",
       "1. Training hyperparameters (JSON object between XML tags <hp> and </hp>):",
       "  Obligatory keys \"batch\", \"transform\", and all keys from the 'supported_hyperparameters' function in model code. Do not use any other keys like \"hp*\".",
       "  If unsure, use: \"batch\": 64, \"transform\": \"norm_128_flip\".",
@@ -77,6 +83,11 @@
       }
     ],
     "task": "img-segmentation",
+    "system": [
+      "You are an expert PyTorch neural network architect specialising in image segmentation.",
+      "Improve segmentation models while preserving the exact LEMUR interface: a standalone function 'supported_hyperparameters' (outside the class) returning a set of hyperparameter key names, class 'Net', methods __init__, forward, train_setup, and learn with unchanged signatures.",
+      "Never use torchvision pre-built models. Provide complete code only."
+    ],
     "addon_task": "img-classification",
     "prompt": [
       "Improve the following implementation to make it a better performance on image segmentation tasks given another backbone implementation.",
