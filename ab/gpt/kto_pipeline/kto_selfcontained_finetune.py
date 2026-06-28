@@ -64,6 +64,7 @@ class SelfContainedKTOPipeline:
         models_per_cycle: int = 30,
         accuracy_threshold: float = 0.50,
         novelty_check: bool = True,
+        eval_skip: bool = True,
         undesirable_ratio: float = 1.0,
         max_undesirable_total: int = 1000,
         min_train_examples: int = 10,
@@ -126,6 +127,7 @@ class SelfContainedKTOPipeline:
         self.models_per_cycle = models_per_cycle
         self.accuracy_threshold = accuracy_threshold
         self.novelty_check = novelty_check
+        self.eval_skip = eval_skip
         self.undesirable_ratio = undesirable_ratio
         self.max_undesirable_total = max_undesirable_total
         self.min_train_examples = min_train_examples
@@ -411,8 +413,9 @@ class SelfContainedKTOPipeline:
         point spending GPU on duplicates that won't enter training. Flagged records
         get new_nn.py moved aside (so NNEval ignores them) and are counted as
         not_novel_skipped in bucketing. Idempotent across resumes via the moved file.
+        Disabled by eval_skip=False (e.g. benchmark runs that must evaluate ALL).
         """
-        if not self.novelty_check:
+        if not self.novelty_check or not self.eval_skip:
             return 0
         n = 0
         for rec in generation_records:
@@ -851,6 +854,10 @@ def main() -> None:
                              "(ABrain's first-epoch ceiling is ~0.68; keep this well below it)")
     parser.add_argument("--novelty_check", action="store_true", default=True)
     parser.add_argument("--no_novelty_check", dest="novelty_check", action="store_false")
+    parser.add_argument("--eval_skip", dest="eval_skip", action="store_true", default=True,
+                        help="Skip eval of duplicate (non-novel) generations to save GPU")
+    parser.add_argument("--no_eval_skip", dest="eval_skip", action="store_false",
+                        help="Evaluate ALL generations; novelty stays a reported metric only")
     parser.add_argument("--undesirable_ratio", type=float, default=1.0)
     parser.add_argument("--max_undesirable_total", type=int, default=1000)
     parser.add_argument("--min_train_examples", type=int, default=10)
@@ -910,6 +917,7 @@ def main() -> None:
         models_per_cycle=args.models_per_cycle,
         accuracy_threshold=args.accuracy_threshold,
         novelty_check=args.novelty_check,
+        eval_skip=args.eval_skip,
         undesirable_ratio=args.undesirable_ratio,
         max_undesirable_total=args.max_undesirable_total,
         min_train_examples=args.min_train_examples,

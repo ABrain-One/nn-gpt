@@ -334,11 +334,17 @@ def main() -> None:
         denom = generated_total or n_valid
         m, lo, hi = mean_t_ci(all_valid)
         ge = 100.0 * sum(1 for a in all_valid if a >= run_threshold) / n_valid
+        # Novelty as a pure metric: structurally distinct vs duplicate generations.
+        uniq = sum(int(r.get("new_desirable", 0)) for r in cycles)
+        dup = sum(int(r.get("not_novel", 0)) for r in cycles)
+        checked = uniq + dup
+        uniq_str = (f" · Unique: {uniq}/{checked} ({100.0 * uniq / checked:.1f}%)"
+                    if checked else "")
         card = (f"Valid: {n_valid}/{denom} ({100.0 * n_valid / denom:.1f}%) · "
                 f"Average (all valid): {m*100:.2f}% [95% CI {lo*100:.2f}-{hi*100:.2f}] · "
                 f"Median: {_median(all_valid)*100:.2f}% · "
                 f"Best: {max(all_valid)*100:.2f}% · "
-                f"≥{run_threshold*100:.0f}%: {ge:.2f}%")
+                f"≥{run_threshold*100:.0f}%: {ge:.2f}%" + uniq_str)
         try:
             print("  " + card)
         except UnicodeEncodeError:
