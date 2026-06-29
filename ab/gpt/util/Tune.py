@@ -851,45 +851,45 @@ def tune(
 
     chat_bot = ChatBot(model, tokenizer, temperature=temperature, top_k=top_k, top_p=top_p)
 
-    state = {
-        "experiment_id": nn_name_prefix or "exp_default",
-        "nn_name_prefix": nn_name_prefix,
-        "current_epoch": 0,
-        "llm_tune_epochs": llm_tune_epochs,
-        "skip_epoch": skip_epoch,
-        "next_action": "generate",
-        "status": "pending",
+    state = AgentState(
+        experiment_id=nn_name_prefix or "exp_default",
+        nn_name_prefix=nn_name_prefix,
+        current_epoch=0,
+        llm_tune_epochs=llm_tune_epochs,
+        skip_epoch=skip_epoch,
+        next_action="generate",
+        status="pending",
 
-        "model": model,
-        "tokenizer": tokenizer,
-        "model_loader": model_loader,
-        "lora_tuner": lora_tuner,
-        "chat_bot": chat_bot,
+        model=model,
+        tokenizer=tokenizer,
+        model_loader=model_loader,
+        lora_tuner=lora_tuner,
+        chat_bot=chat_bot,
 
-        "prompt_dict": prompt_dict,
-        "conf_keys": conf_keys,
-        "test_nn": test_nn,
-        "nn_train_epochs": nn_train_epochs,
-        "max_new_tokens": max_new_tokens,
-        "save_llm_output": save_llm_output,
-        "prompt_batch": prompt_batch,
+        prompt_dict=prompt_dict,
+        conf_keys=conf_keys,
+        test_nn=test_nn,
+        nn_train_epochs=nn_train_epochs,
+        max_new_tokens=max_new_tokens,
+        save_llm_output=save_llm_output,
+        prompt_batch=prompt_batch,
 
-        "context_length": context_length,
-        "use_unsloth": use_unsloth,
-        "unsloth_max_input_length": unsloth_max_input_length,
-        "train_config_path": train_config_path,
-        "only_best_accuracy": only_best_accuracy,
-        "base_model_name": base_model_name,
-        "trans_mode": trans_mode,
-        "max_prompts": max_prompts,
+        context_length=context_length,
+        use_unsloth=use_unsloth,
+        unsloth_max_input_length=unsloth_max_input_length,
+        train_config_path=train_config_path,
+        only_best_accuracy=only_best_accuracy,
+        base_model_name=base_model_name,
+        trans_mode=trans_mode,
+        max_prompts=max_prompts,
 
-        "temperature": temperature,
-        "top_k": top_k,
-        "top_p": top_p,
+        temperature=temperature,
+        top_k=top_k,
+        top_p=top_p,
 
-        "use_predictor": use_predictor,
-        "use_backbone": use_backbone,
-    }
+        use_predictor=use_predictor,
+        use_backbone=use_backbone,
+    )
 
     shutil.rmtree(epoch_dir(), ignore_errors=True)
 

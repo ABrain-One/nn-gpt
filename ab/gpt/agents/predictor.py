@@ -16,7 +16,7 @@ def predictor_node(state: AgentState) -> Dict[str, Any]:
     print("[PREDICTOR] Running...")
 
     try:
-        from ab.gpt.util.AccPredictor import predict_best_accuracy
+        from ab.gpt.AccPredictor import predict_best_accuracy
 
         nn_code     = state.get("nn_code")
         epoch_1_acc = state.get("epoch_1_accuracy")
@@ -25,12 +25,9 @@ def predictor_node(state: AgentState) -> Dict[str, Any]:
         if nn_code and epoch_1_acc is not None and epoch_2_acc is not None:
             pred_acc, pred_epoch = predict_best_accuracy(
                 nn_code=nn_code,
-                prm=state.get("prm", {}),
                 task=state.get("task", ""),
                 dataset=state.get("dataset", ""),
                 metric=state.get("metric", ""),
-                transform_code=state.get("transform_code", ""),
-                nn=state.get("nn", ""),
                 epoch_1_accuracy=epoch_1_acc,
                 epoch_2_accuracy=epoch_2_acc,
             )
