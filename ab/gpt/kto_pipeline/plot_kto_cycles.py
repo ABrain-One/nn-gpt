@@ -190,18 +190,6 @@ def apply_pass_average(cycles: List[Dict[str, Any]], per_model: Dict[int, List[f
         r["ge_threshold_pct"] = 100.0 * sum(1 for a in accs if a >= thr) / len(accs)
 
 
-def _line_plot(xs, ys, title, ylabel, label, color, path, ylim=None) -> Path:
-    """One image, one plotted line (single legend entry)."""
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(xs, ys, "o-", color=color, label=label)
-    ax.set_title(title); ax.set_xlabel("Cycle"); ax.set_ylabel(ylabel)
-    ax.grid(True, alpha=0.3); ax.legend(fontsize=10)
-    if ylim is not None:
-        ax.set_ylim(*ylim)
-    fig.tight_layout(); fig.savefig(path, dpi=130); plt.close(fig)
-    return path
-
-
 def _ci_plot(xs, ys, lo, hi, title, ylabel, label, color, path, ylim=None) -> Path:
     """One image, one metric, with 95% CI error bars per point."""
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -215,11 +203,13 @@ def _ci_plot(xs, ys, lo, hi, title, ylabel, label, color, path, ylim=None) -> Pa
     return path
 
 
-def plot_separate(cycles: List[Dict[str, Any]], out_dir: Path) -> List[Path]:
-    """One image per metric. Means get a t-based CI, proportions a Wilson CI."""
+def plot_separate(cycles: List[Dict[str, Any]], out_dir: Path,
+                  run_threshold: float = 0.40) -> List[Path]:
+    """Per-cycle plots: combined avg+best accuracy (with #evaluated), valid count,
+    Wilson-CI rates, and bucketing counts."""
     xs = [r["cycle"] for r in cycles]
 
-    # Average accuracy: t-based 95% CI over models that cleared the threshold.
+    # ── Combined accuracy: average (t-CI) + best, with #models-evaluated bars ──
     avg_y, avg_lo, avg_hi = [], [], []
     for r in cycles:
         accs = r.get("pass_accs") or []
@@ -228,8 +218,41 @@ def plot_separate(cycles: List[Dict[str, Any]], out_dir: Path) -> List[Path]:
             avg_y.append(m * 100); avg_lo.append((m - lo) * 100); avg_hi.append((hi - m) * 100)
         else:
             avg_y.append(r["avg"] * 100); avg_lo.append(0.0); avg_hi.append(0.0)
+    best_y = [r["best"] * 100 for r in cycles]
+    evaluated = [int(r["evaluated"]) for r in cycles]
 
-    # Valid-rate proportions: Wilson 95% CI (k / generated).
+    fig, ax = plt.subplots(figsize=(11, 5.5))
+    ax2 = ax.twinx()
+    ax2.bar(xs, evaluated, width=0.6, color="#b0b0b0", alpha=0.35,
+            label="Models evaluated", zorder=1)
+    ax2.set_ylabel("Models evaluated / cycle")
+    ax.errorbar(xs, avg_y, yerr=[avg_lo, avg_hi], fmt="o-", color="#ff7f0e",
+                ecolor="#ff7f0e", capsize=3, label="Average (≥ threshold)", zorder=3)
+    ax.plot(xs, best_y, "s-", color="#1f77b4", label="Best", zorder=3)
+    ax.set_xlabel("Cycle"); ax.set_ylabel("Accuracy (%)")
+    ax.set_title("Accuracy per Cycle — average (95% CI) & best, with #evaluated")
+    ax.grid(True, alpha=0.3)
+    ax.set_zorder(ax2.get_zorder() + 1); ax.patch.set_visible(False)  # lines over bars
+    h1, l1 = ax.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax.legend(h1 + h2, l1 + l2, fontsize=9, loc="best")
+    acc_path = out_dir / "kto_accuracy.png"
+    fig.tight_layout(); fig.savefig(acc_path, dpi=130); plt.close(fig)
+
+    # ── Valid count: compiled + >=threshold models per cycle (novelty-agnostic) ──
+    counts = [int(r["pass_acc"]) for r in cycles]
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.bar(xs, counts, width=0.6, color="#2ca02c",
+           label=f"Valid (compiled + ≥{run_threshold*100:.0f}%)")
+    for x, c in zip(xs, counts):
+        ax.text(x, c, str(c), ha="center", va="bottom", fontsize=8)
+    ax.set_title(f"Valid Models per Cycle (compiled + ≥{run_threshold*100:.0f}%, novelty-agnostic)")
+    ax.set_xlabel("Cycle"); ax.set_ylabel("Count")
+    ax.grid(True, alpha=0.3, axis="y"); ax.legend(fontsize=10)
+    vcount_path = out_dir / "kto_valid_count.png"
+    fig.tight_layout(); fig.savefig(vcount_path, dpi=130); plt.close(fig)
+
+    # ── Wilson-CI rate plots (kept) ──
     vt_y, vt_lo, vt_hi, ct_y, ct_lo, ct_hi = [], [], [], [], [], []
     for r in cycles:
         n = r["generated"]
@@ -240,13 +263,8 @@ def plot_separate(cycles: List[Dict[str, Any]], out_dir: Path) -> List[Path]:
             ys.append(p * 100); los.append((p - lo) * 100); his.append((hi - p) * 100)
 
     paths = [
-        _ci_plot(xs, avg_y, avg_lo, avg_hi,
-                 "Average Accuracy per Cycle (models ≥ threshold) — t 95% CI",
-                 "Accuracy (%)", "Average accuracy (≥ threshold)", "#ff7f0e",
-                 out_dir / "kto_avg_accuracy.png"),
-        _line_plot(xs, [r["best"] * 100 for r in cycles],
-                   "Best Accuracy per Cycle", "Accuracy (%)", "Best accuracy",
-                   "#1f77b4", out_dir / "kto_best_accuracy.png"),
+        acc_path,
+        vcount_path,
         _ci_plot(xs, vt_y, vt_lo, vt_hi,
                  "Valid Generation Rate per Cycle (compiled+trained) — Wilson 95% CI",
                  "Valid generation rate (%)", "Valid (compiled+trained)", "#17becf",
@@ -318,7 +336,7 @@ def main() -> None:
         print("[plot][warn] no per-model eval_info.json found — 'avg' uses the stored "
               "metric (above-threshold only if produced by the updated pipeline).")
 
-    figs = plot_separate(cycles, out_dir)
+    figs = plot_separate(cycles, out_dir, run_threshold)
     csv_path = save_csv(cycles, out_dir)
 
     # ── Card-style summary (over ALL valid models, matching the HF model card) ──
