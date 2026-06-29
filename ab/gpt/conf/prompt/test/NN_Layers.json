@@ -6,7 +6,18 @@
       "Dropout layers are not permitted.",
       "The resulting model must have significantly different convolutional structure from the original."
     ],
-    "input_list": [{"para": "nn_code", "value": "nn_code"}],
+    "system": [
+      "You are an expert PyTorch neural network architect.",
+      "Redesign CNN architectures using modern building blocks: depthwise separable convolutions, attention mechanisms, residual connections, advanced activations (SiLU, GELU).",
+      "No Dropout. Use only BatchNorm2d for normalisation. Hyperparameters limited to lr and momentum.",
+      "Return only complete, runnable Python code — no extra text."
+    ],
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      }
+    ],
     "addon_list": [],
     "task": "img-classification",
     "addon_task": null,
@@ -39,7 +50,6 @@
       "```\n{nn_code}\n```"
     ]
   },
-
   "improvement_segmentation_codeonly": {
     "comment": [
       "This prompt enforces major architectural changes to CNN segmentation models (like UNet).",
@@ -47,7 +57,18 @@
       "Dropout layers are not allowed.",
       "It encourages the use of advanced convolutions, attention mechanisms, and architectural diversity."
     ],
-    "input_list": [{"para": "nn_code", "value": "nn_code"}],
+    "system": [
+      "You are an expert PyTorch neural network architect specialising in image segmentation.",
+      "Redesign CNN-based encoder-decoder segmentation models using modern building blocks.",
+      "No Dropout. Use only BatchNorm2d for normalisation. Hyperparameters limited to lr and momentum.",
+      "Return only complete, runnable Python code — no extra text."
+    ],
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      }
+    ],
     "addon_list": [],
     "task": "img-segmentation",
     "addon_task": null,

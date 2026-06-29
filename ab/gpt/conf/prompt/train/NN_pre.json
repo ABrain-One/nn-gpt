@@ -1,55 +1,97 @@
 {
-    "predict_metrics": {
-        "comment": [
-            "Predicts best validation accuracy and epoch for deep learning models",
-            "Uses model code, hyperparameters, and early training metrics"
-        ],
-        "input_list": [
-            {"para": "model_code", "value": "nn_code"},
-            {"para": "hyperparameters", "value": "prm"},
-            {"para": "epoch_1_accuracy", "value": "epoch_1_accuracy"},
-            {"para": "epoch_2_accuracy", "value": "epoch_2_accuracy"},
-            {"para": "dataset", "value": "dataset"},
-            {"para": "task_type", "value": "task"},
-            {"para": "transform_code", "value": "transform_code"},
-            {"para": "metric_code", "value": "metric_code"},
-
-            {"para": "best_accuracy", "value": "best_accuracy"}
-        ],
-        "addon_list": [
-            {"para": "best_accuracy", "value": "best_accuracy"},
-            {"para": "best_epoch", "value": "best_epoch"}
-        ],
-        "type": "prediction",
-        "is_generation": false,
-        "task": "prediction",
-        "addon_task": null,
-        "no_repeat": ["model_code"],
-        "keep_same": ["task_type"],
-        "prompt": [
-            "Predict optimal validation metrics (best accuracy and epoch) for the given deep learning model, given model code, dataset, hyperparameters, and early training metrics.",
-            "",
-            "Given inputs:",
-            "1. Model implementation code:\n<model_code>\n{model_code}\n</model_code>",
-            "2. Hyperparameters: <hyperparameters>{hyperparameters}</hyperparameters> (note: each row has different hyperparameters, so analyze these values carefully for your prediction)",
-            "3. Validation accuracy:",
-            "   - Epoch 1: <epoch_1_accuracy>{epoch_1_accuracy}</epoch_1_accuracy>",
-            "   - Epoch 2: <epoch_2_accuracy>{epoch_2_accuracy}</epoch_2_accuracy>",
-            "4. Dataset: <dataset>{dataset}</dataset>",
-            "5. Task type: <task_type>{task_type}</task_type>",
-            "6. Data transformations: <transform_code>{transform_code}</transform_code>",
-            "7. Metric calculations: <metric_code>{metric_code}</metric_code>",
-            "8. Maximum epoch: <max_epoch>{max_epoch}</max_epoch>",
-            "",
-            "Instructions for the prediction:",
-            "- Carefully deeply analyze the provided model architecture, hyperparameters, early epoch accuracies, max_epoch",
-            "- Predict plausible best_accuracy and best_epoch values consistent with early epochs, and typical learning dynamics for this model/dataset/hyperparams.",
-            "- Do not hallucinate unrealistic results (e.g., do not output 'best_accuracy: 0.99' or 'best_epoch: 2' if the early and max epochs or progressions do not support it).",
-            "- For example, if early epochs are low and models usually reach best accuracy after 38 epochs in similar settings, do not predict best_epoch as 2 or 3.",
-            "- Your prediction must make sense statistically for this row. ",
-            "At the end, respond with ONLY these two lines (no extra explanation, tags, or commentary):",
-            "best_accuracy: [float value between 0 and 1]",
-            "best_epoch: [integer]"
-        ]
-    }
+  "predict_metrics": {
+    "comment": [
+      "Predicts best validation accuracy and epoch for deep learning models",
+      "Uses model code, hyperparameters, and early training metrics"
+    ],
+    "system": [
+      "You are an expert in deep learning training dynamics and performance prediction.",
+      "Given a model architecture, hyperparameters, and early epoch metrics, predict the best achievable accuracy and the epoch it occurs at.",
+      "Base predictions on the observed training progression \u2014 do not hallucinate unrealistic values.",
+      "Respond with exactly two lines: 'best_accuracy: <float>' and 'best_epoch: <int>'."
+    ],
+    "input_list": [
+      {
+        "para": "model_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "hyperparameters",
+        "value": "prm"
+      },
+      {
+        "para": "epoch_1_accuracy",
+        "value": "epoch_1_accuracy"
+      },
+      {
+        "para": "epoch_2_accuracy",
+        "value": "epoch_2_accuracy"
+      },
+      {
+        "para": "dataset",
+        "value": "dataset"
+      },
+      {
+        "para": "task_type",
+        "value": "task"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "metric_code",
+        "value": "metric_code"
+      },
+      {
+        "para": "best_accuracy",
+        "value": "best_accuracy"
+      }
+    ],
+    "addon_list": [
+      {
+        "para": "best_accuracy",
+        "value": "best_accuracy"
+      },
+      {
+        "para": "best_epoch",
+        "value": "best_epoch"
+      }
+    ],
+    "type": "prediction",
+    "is_generation": false,
+    "task": "prediction",
+    "addon_task": null,
+    "no_repeat": [
+      "model_code"
+    ],
+    "keep_same": [
+      "task_type"
+    ],
+    "prompt": [
+      "Predict optimal validation metrics (best accuracy and epoch) for the given deep learning model, given model code, dataset, hyperparameters, and early training metrics.",
+      "",
+      "Given inputs:",
+      "1. Model implementation code:\n<model_code>\n{model_code}\n</model_code>",
+      "2. Hyperparameters: <hyperparameters>{hyperparameters}</hyperparameters> (note: each row has different hyperparameters, so analyze these values carefully for your prediction)",
+      "3. Validation accuracy:",
+      "   - Epoch 1: <epoch_1_accuracy>{epoch_1_accuracy}</epoch_1_accuracy>",
+      "   - Epoch 2: <epoch_2_accuracy>{epoch_2_accuracy}</epoch_2_accuracy>",
+      "4. Dataset: <dataset>{dataset}</dataset>",
+      "5. Task type: <task_type>{task_type}</task_type>",
+      "6. Data transformations: <transform_code>{transform_code}</transform_code>",
+      "7. Metric calculations: <metric_code>{metric_code}</metric_code>",
+      "8. Maximum epoch: <max_epoch>{max_epoch}</max_epoch>",
+      "",
+      "Instructions for the prediction:",
+      "- Carefully deeply analyze the provided model architecture, hyperparameters, early epoch accuracies, max_epoch",
+      "- Predict plausible best_accuracy and best_epoch values consistent with early epochs, and typical learning dynamics for this model/dataset/hyperparams.",
+      "- Do not hallucinate unrealistic results (e.g., do not output 'best_accuracy: 0.99' or 'best_epoch: 2' if the early and max epochs or progressions do not support it).",
+      "- For example, if early epochs are low and models usually reach best accuracy after 38 epochs in similar settings, do not predict best_epoch as 2 or 3.",
+      "- Your prediction must make sense statistically for this row. ",
+      "At the end, respond with ONLY these two lines (no extra explanation, tags, or commentary):",
+      "best_accuracy: [float value between 0 and 1]",
+      "best_epoch: [integer]"
+    ]
+  }
 }

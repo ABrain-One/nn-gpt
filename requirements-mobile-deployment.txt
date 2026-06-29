@@ -1,0 +1,11 @@
+# Mobile deployment add-ons for the integrated --mobile_deployment pipeline.
+# Install this AFTER requirements.txt + req-no-isolation.txt.
+#
+# Keep this file minimal to reduce dependency conflicts with training stack.
+# Do NOT mix stable+nightly variants for the same family in one environment.
+
+# Keep torch stack from requirements.txt (torch 2.9.1 in this repo).
+# Use litert-torch replacement compatible with current training stack.
+litert-torch==0.8.0
+ai_edge_tensorflow==2.21.0.dev20251110
+ai-edge-quantizer==0.4.0

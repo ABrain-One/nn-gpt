@@ -11,8 +11,8 @@ class NNPrompt(Prompt):
     """
     Assumes the existence of accuracies.json and folder-based dataset
     """
-    def __init__(self, max_len: int, tokenizer: PreTrainedTokenizerBase):
-        super().__init__(max_len, tokenizer)
+    def __init__(self, max_len: int, tokenizer: PreTrainedTokenizerBase, system_prompt: str = None):
+        super().__init__(max_len, tokenizer, system_prompt=system_prompt)
 
     @override
     def get_raw_dataset(self, only_best_accuracy, n_training_prompts=None) -> DataFrame:
@@ -31,10 +31,8 @@ class NNPrompt(Prompt):
             )
             response = "```\n" + str(lemur_row['nn_code']) + "\n```"
             text = self.tokenizer.apply_chat_template(
-                [
-                    {"role": "user", "content": inst},
-                    {"role": "assistant", "content": response}
-                ], tokenize=False
+                self._build_messages(inst, response),
+                tokenize=False
             )
 
             dataframe.loc[len(dataframe)] = [inst, "", response, "", text]

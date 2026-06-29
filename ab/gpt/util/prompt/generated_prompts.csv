@@ -1,0 +1,27 @@
+instruction,context,response,category,text
+"Model performance evaluation:
+Accuracy: 0.0984
+Duration: 152819
+Score = 6.438989916175345e-07
+Improve this score for dataset CIFAR10",,<nn>Improved model here</nn>,,"USER:
+Model performance evaluation:
+Accuracy: 0.0984
+Duration: 152819
+Score = 6.438989916175345e-07
+Improve this score for dataset CIFAR10
+
+ASSISTANT:
+<nn>Improved model here</nn>"
+"Model performance evaluation:
+Accuracy: 0.2144
+Duration: 197172
+Score = 1.0873754894204046e-06
+Improve this score for dataset CIFAR10",,<nn>Improved model here</nn>,,"USER:
+Model performance evaluation:
+Accuracy: 0.2144
+Duration: 197172
+Score = 1.0873754894204046e-06
+Improve this score for dataset CIFAR10
+
+ASSISTANT:
+<nn>Improved model here</nn>"

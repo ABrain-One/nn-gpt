@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Local Experiment Artifacts
+ga_fractal_arch/
+stats/
+out/
+fine_tuned_adapter/
+ga_history_backup/
+# Agent Skills & Metadata
+# .agent/
+.agents/
+# Checkpoints
+fractal_ga_ckpt.pkl
+visualizations/

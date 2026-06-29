@@ -1,53 +1,83 @@
 {
-    "improvement_classification_codeonly": {
-        "comment": [
-            "para: where you fill in content, value: where data come from (colum key in api.data() DataFrame).",
-            "task(only in addon_list): which task the additional content come from.",
-            "comment: explain the usage of this file"
-        ],
-        "input_list": [{"para": "nn_code","value": "nn_code"}],
-        "addon_list": [],
-        "type": "change_parameters",
-        "is_generation": false,
-        "input_list": [{"para": "nn_code","value": "nn_code"},{"para": "accuracy","value": "accuracy"}],
-        "addon_list": [{"para": "addon_accuracy","value": "accuracy"}],
-        "task": "img-classification",
-        "addon_task": null,
-        "addon_task": "img-classification",
-        "no_repeat": [],
-        "keep_same": [],
-        "prompt": [
-            "Improve the following implementation to make it a better performance on image classification tasks.",
-            "The class name should be 'Net' and you MUST PROVIDE FULL CODES of the changed implementation.",
-            "You can change the structure, alternatively also changed training procedure.",
-            "Strictly DO NOT remove the `train_setup` and `learn` method, and NEVER change their parameters or implementation.",
-            "Strictly NO use of models in `torchvision`.",
-            "Focus on improving the model architecture and forward pass only.",
-            "Change the layers in the following implementation to improve accuracy from {accuracy} to {addon_accuracy} on image classification tasks.",
-            "Strictly modify ONLY the layers in the code and ***STRICTLY DO NOT INTRODUCE NEW METHODS OR PARAMETERS***",
-            "You should answer not only the class you modified but with ***FULL CODES INCLUDING EVERYTHING (Other classes, etc.) NOT CHANGED***",
-            "You have to reply will full codes, don't be afraid of actually reducing the accuracy.",
-            "***Strictly check and make sure at least one layer being modified.***",
-            "```\n{nn_code}\n```"
-        ]
-    },
-
-    "improvement_segmentation_codeonly": {
-        "input_list": [{"para": "nn_code","value": "nn_code"}],
-        "addon_list": [{"para": "addon_nn_code","value": "nn_code"}],
-        "task": "img-segmentation",
-        "addon_task": "img-classification",
-        "no_repeat": ["nn"],
-        "keep_same": [],
-        "prompt": [
-            "Improve the following implementation to make it a better performance on image segmentation tasks given another backbone implementation.",
-            "The class name should be 'Net' and you MUST PROVIDE FULL CODES of the changed implementation.",
-            "You can change the structure, alternatively also changed training procedure.",
-            "Strictly DO NOT remove the `train_setup` and `learn` method, and NEVER change their parameters or implementation.",
-            "Strictly NO use of models in `torchvision`.",
-            "Focus on improving the model architecture and forward pass only.",
-            "Code:\n```\n{nn_code}\n```",
-            "Backbone:\n```\n{addon_nn_code}\n```"
-        ]
-    }
+  "improvement_classification_codeonly": {
+    "comment": [
+      "para: where you fill in content, value: where data come from (colum key in api.data() DataFrame).",
+      "task(only in addon_list): which task the additional content come from.",
+      "comment: explain the usage of this file"
+    ],
+    "system": [
+      "You are an expert PyTorch neural network architect.",
+      "Improve the given neural network architecture to achieve higher accuracy on image classification.",
+      "Return the complete improved model code \u2014 do not truncate or omit unchanged sections."
+    ],
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      }
+    ],
+    "addon_list": [
+      {
+        "para": "addon_accuracy",
+        "value": "accuracy"
+      }
+    ],
+    "type": "change_parameters",
+    "is_generation": false,
+    "task": "img-classification",
+    "addon_task": "img-classification",
+    "no_repeat": [],
+    "keep_same": [],
+    "prompt": [
+      "Improve the following implementation to make it a better performance on image classification tasks.",
+      "The class name should be 'Net' and you MUST PROVIDE FULL CODES of the changed implementation.",
+      "You can change the structure, alternatively also changed training procedure.",
+      "Strictly DO NOT remove the `train_setup` and `learn` method, and NEVER change their parameters or implementation.",
+      "Strictly NO use of models in `torchvision`.",
+      "Focus on improving the model architecture and forward pass only.",
+      "Change the layers in the following implementation to improve accuracy from {accuracy} to {addon_accuracy} on image classification tasks.",
+      "Strictly modify ONLY the layers in the code and ***STRICTLY DO NOT INTRODUCE NEW METHODS OR PARAMETERS***",
+      "You should answer not only the class you modified but with ***FULL CODES INCLUDING EVERYTHING (Other classes, etc.) NOT CHANGED***",
+      "You have to reply will full codes, don't be afraid of actually reducing the accuracy.",
+      "***Strictly check and make sure at least one layer being modified.***",
+      "```\n{nn_code}\n```"
+    ]
+  },
+  "improvement_segmentation_codeonly": {
+    "system": [
+      "You are an expert PyTorch neural network architect specialising in segmentation models.",
+      "Improve the given neural network architecture to achieve higher accuracy on image segmentation.",
+      "Return the complete improved model code \u2014 do not truncate or omit unchanged sections."
+    ],
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      }
+    ],
+    "addon_list": [
+      {
+        "para": "addon_nn_code",
+        "value": "nn_code"
+      }
+    ],
+    "task": "img-segmentation",
+    "addon_task": "img-classification",
+    "no_repeat": ["nn"],
+    "keep_same": [],
+    "prompt": [
+      "Improve the following implementation to make it a better performance on image segmentation tasks given another backbone implementation.",
+      "The class name should be 'Net' and you MUST PROVIDE FULL CODES of the changed implementation.",
+      "You can change the structure, alternatively also changed training procedure.",
+      "Strictly DO NOT remove the `train_setup` and `learn` method, and NEVER change their parameters or implementation.",
+      "Strictly NO use of models in `torchvision`.",
+      "Focus on improving the model architecture and forward pass only.",
+      "Code:\n```\n{nn_code}\n```",
+      "Backbone:\n```\n{addon_nn_code}\n```"
+    ]
+  }
 }

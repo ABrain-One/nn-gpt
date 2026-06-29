@@ -1,116 +1,148 @@
 {
-    "constraint_based_modification": {
-        "input_list": [
-            {
-                "para": "nn_code",
-                "value": "nn_code"
-            }
-        ],
-        "addon_list": [],
-        "task": "img-classification",
-        "addon_task": null,
-        "no_repeat": [],
-        "keep_same": [],
-        "prompt": [
-            "MODIFY this neural network while following these EXACT constraints:",
-            "CONSTRAINT 1: Class name must remain 'Net' (non-negotiable)",
-            "CONSTRAINT 2: Methods must maintain EXACT signatures:",
-            "   - __init__(self)",
-            "   - forward(self, x)",
-            "   - train_setup(self, device) → returns self",
-            "   - learn(self, data, target, device) → returns loss.item()",
-            "CONSTRAINT 3: Imports ONLY: torch, torch.nn, torch.optim",
-            "CONSTRAINT 4: Include: supported_hyperparameters() → ['lr', 'momentum']",
-            "CONSTRAINT 5: Must work with 32x32 RGB images → 10 classes",
-            "VIOLATE ANY CONSTRAINT = FAILURE.",
-            "Original model to modify:",
-            "```python",
-            "{nn_code}",
-            "```",
-            "Provide improved complete working code:"
-        ]
-    },
-    "step_by_step_modification": {
-        "input_list": [
-            {
-                "para": "nn_code",
-                "value": "nn_code"
-            }
-        ],
-        "addon_list": [],
-        "task": "img-classification",
-        "addon_task": null,
-        "no_repeat": [],
-        "keep_same": [],
-        "prompt": [
-            "IMPROVE this neural network by following this exact sequence:",
-            "STEP 1: Analyze the current model structure:",
-            "```python",
-            "{nn_code}",
-            "```",
-            "STEP 2: Identify areas for improvement (architecture, efficiency, etc.)",
-            "STEP 3: Maintain class name 'Net' and all method signatures",
-            "STEP 4: Keep imports as torch, torch.nn, torch.optim only",
-            "STEP 5: Ensure supported_hyperparameters() function is included",
-            "STEP 6: Modify architecture while preserving interface compatibility",
-            "STEP 7: Verify CIFAR-10 compatibility (32x32 input → 10 classes)",
-            "Complete each step in order. Provide improved complete code:"
-        ]
-    },
-    "conversational_modification": {
-        "input_list": [
-            {
-                "para": "nn_code",
-                "value": "nn_code"
-            }
-        ],
-        "addon_list": [],
-        "task": "img-classification",
-        "addon_task": null,
-        "no_repeat": [],
-        "keep_same": [],
-        "prompt": [
-            "Hey there! I have this neural network that I'd like you to help improve:",
-            "```python",
-            "{nn_code}",
-            "```",
-            "Could you help me enhance this model while keeping the requirements?",
-            "",
-            "The model needs to maintain:",
-            "- Class name 'Net'",
-            "- Methods with exact signatures: __init__, forward, train_setup(device), learn(data,target,device)",
-            "- Only standard PyTorch imports (torch, torch.nn, torch.optim)",
-            "- Include supported_hyperparameters() function returning ['lr', 'momentum']",
-            "- Work perfectly with 32x32 RGB images → 10 classes",
-            "",
-            "What improvements would you suggest? Could you provide the enhanced complete code?",
-            "I'd really appreciate your help!"
-        ]
-    },
-    "direct_instruction_modification": {
-        "input_list": [
-            {
-                "para": "nn_code",
-                "value": "nn_code"
-            }
-        ],
-        "addon_list": [],
-        "task": "img-classification",
-        "addon_task": null,
-        "no_repeat": [],
-        "keep_same": [],
-        "prompt": [
-            "IMPROVE this neural network:",
-            "```python",
-            "{nn_code}",
-            "```",
-            "ENHANCE model while maintaining interface.",
-            "PRESERVE class 'Net' and method signatures.",
-            "KEEP only torch, torch.nn, torch.optim imports.",
-            "INCLUDE supported_hyperparameters() function.",
-            "ENSURE exact method signatures.",
-            "MAINTAIN CIFAR-10 compatibility.",
-            "PROVIDE improved complete working code:"
-        ]
-    }
+  "constraint_based_modification": {
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      }
+    ],
+    "addon_list": [],
+    "task": "img-classification",
+    "system": [
+      "You are an expert PyTorch neural network engineer.",
+      "Improve existing model architectures while strictly maintaining the required LEMUR interface:",
+      "  class 'Net', methods __init__, forward, train_setup(device), learn(data, target, device),",
+      "  and supported_hyperparameters() returning ['lr', 'momentum'].",
+      "All models must accept 32x32 RGB images and produce 10-class outputs.",
+      "Provide complete, working Python code only — no truncation, no extra commentary."
+    ],
+    "addon_task": null,
+    "no_repeat": [],
+    "keep_same": [],
+    "prompt": [
+      "MODIFY this neural network while following these EXACT constraints:",
+      "CONSTRAINT 1: Class name must remain 'Net' (non-negotiable)",
+      "CONSTRAINT 2: Methods must maintain EXACT signatures:",
+      "   - __init__(self)",
+      "   - forward(self, x)",
+      "   - train_setup(self, device) → returns self",
+      "   - learn(self, data, target, device) → returns loss.item()",
+      "CONSTRAINT 3: Imports ONLY: torch, torch.nn, torch.optim",
+      "CONSTRAINT 4: Include: supported_hyperparameters() → ['lr', 'momentum']",
+      "CONSTRAINT 5: Must work with 32x32 RGB images → 10 classes",
+      "VIOLATE ANY CONSTRAINT = FAILURE.",
+      "Original model to modify:",
+      "```python",
+      "{nn_code}",
+      "```",
+      "Provide improved complete working code:"
+    ]
+  },
+  "step_by_step_modification": {
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      }
+    ],
+    "addon_list": [],
+    "task": "img-classification",
+    "system": [
+      "You are an expert PyTorch neural network engineer.",
+      "Improve existing model architectures while strictly maintaining the required LEMUR interface:",
+      "  class 'Net', methods __init__, forward, train_setup(device), learn(data, target, device),",
+      "  and supported_hyperparameters() returning ['lr', 'momentum'].",
+      "All models must accept 32x32 RGB images and produce 10-class outputs.",
+      "Provide complete, working Python code only — no truncation, no extra commentary."
+    ],
+    "addon_task": null,
+    "no_repeat": [],
+    "keep_same": [],
+    "prompt": [
+      "IMPROVE this neural network by following this exact sequence:",
+      "STEP 1: Analyze the current model structure:",
+      "```python",
+      "{nn_code}",
+      "```",
+      "STEP 2: Identify areas for improvement (architecture, efficiency, etc.)",
+      "STEP 3: Maintain class name 'Net' and all method signatures",
+      "STEP 4: Keep imports as torch, torch.nn, torch.optim only",
+      "STEP 5: Ensure supported_hyperparameters() function is included",
+      "STEP 6: Modify architecture while preserving interface compatibility",
+      "STEP 7: Verify CIFAR-10 compatibility (32x32 input → 10 classes)",
+      "Complete each step in order. Provide improved complete code:"
+    ]
+  },
+  "conversational_modification": {
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      }
+    ],
+    "addon_list": [],
+    "task": "img-classification",
+    "system": [
+      "You are an expert PyTorch neural network engineer.",
+      "Improve existing model architectures while strictly maintaining the required LEMUR interface:",
+      "  class 'Net', methods __init__, forward, train_setup(device), learn(data, target, device),",
+      "  and supported_hyperparameters() returning ['lr', 'momentum'].",
+      "All models must accept 32x32 RGB images and produce 10-class outputs.",
+      "Provide complete, working Python code only — no truncation, no extra commentary."
+    ],
+    "addon_task": null,
+    "no_repeat": [],
+    "keep_same": [],
+    "prompt": [
+      "Hey there! I have this neural network that I'd like you to help improve:",
+      "```python",
+      "{nn_code}",
+      "```",
+      "Could you help me enhance this model while keeping the requirements?",
+      "",
+      "The model needs to maintain:",
+      "- Class name 'Net'",
+      "- Methods with exact signatures: __init__, forward, train_setup(device), learn(data,target,device)",
+      "- Only standard PyTorch imports (torch, torch.nn, torch.optim)",
+      "- Include supported_hyperparameters() function returning ['lr', 'momentum']",
+      "- Work perfectly with 32x32 RGB images → 10 classes",
+      "",
+      "What improvements would you suggest? Could you provide the enhanced complete code?",
+      "I'd really appreciate your help!"
+    ]
+  },
+  "direct_instruction_modification": {
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      }
+    ],
+    "addon_list": [],
+    "task": "img-classification",
+    "system": [
+      "You are an expert PyTorch neural network engineer.",
+      "Improve existing model architectures while strictly maintaining the required LEMUR interface:",
+      "  class 'Net', methods __init__, forward, train_setup(device), learn(data, target, device),",
+      "  and supported_hyperparameters() returning ['lr', 'momentum'].",
+      "All models must accept 32x32 RGB images and produce 10-class outputs.",
+      "Provide complete, working Python code only — no truncation, no extra commentary."
+    ],
+    "addon_task": null,
+    "no_repeat": [],
+    "keep_same": [],
+    "prompt": [
+      "IMPROVE this neural network:",
+      "```python",
+      "{nn_code}",
+      "```",
+      "ENHANCE model while maintaining interface.",
+      "PRESERVE class 'Net' and method signatures.",
+      "KEEP only torch, torch.nn, torch.optim imports.",
+      "INCLUDE supported_hyperparameters() function.",
+      "ENSURE exact method signatures.",
+      "MAINTAIN CIFAR-10 compatibility.",
+      "PROVIDE improved complete working code:"
+    ]
+  }
 }

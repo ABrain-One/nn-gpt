@@ -1,0 +1,14 @@
+{
+    "token_from_file": false,
+    "base_model_name": "open-r1/OlympicCoder-7B",
+    "num_epochs": 20,
+    "use_deepspeed": false,
+    "only_best_accuracy": true,
+    "context_length": 4096,
+    "max_input_length": 4096,
+    "chat_template_path": "qwen2_no_think_prefill.jinja",
+    "use_unsloth": false,
+    "load_in_4bit": false,
+    "max_new_tokens": 2048,
+    "backbone": true
+}

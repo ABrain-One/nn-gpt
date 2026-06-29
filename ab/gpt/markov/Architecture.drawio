@@ -1,0 +1,39 @@
+<mxfile host="65bd71144e">
+    <diagram id="g7Jls4alghZnNaeeSGSJ" name="Page-1">
+        <mxGraphModel dx="501" dy="574" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="4" value="" style="edgeStyle=none;html=1;" parent="1" source="2" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="2" value="Code Generator" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="110" y="200" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="" style="edgeStyle=none;html=1;" parent="1" source="3" target="5" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="Code Extractor" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="310" y="200" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="" style="edgeStyle=none;html=1;" parent="1" source="5" target="7" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="feedback" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="8" vertex="1" connectable="0">
+                    <mxGeometry x="0.175" y="1" relative="1" as="geometry">
+                        <mxPoint x="7" y="-1" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="5" value="Evaluator" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="310" y="340" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="prompt" style="edgeStyle=none;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="7" target="2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="Prompt Improver" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="110" y="340" width="120" height="60" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

@@ -1,0 +1,99 @@
+{
+  "curriculum_L1_high_k2": {
+    "type": "curriculum_prompt",
+    "is_generation": false,
+    "selection_mode": "tall",
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "metric": "acc",
+    "nn_prefixes": [],
+    "num_joint_nns": 2,
+    "similarity_mode": "anchor_band_db_minhash",
+    "similarity_band": "high",
+    "anchor_strategy": "auto",
+    "input_list": [
+      {
+        "para": "dataset",
+        "value": "dataset"
+      },
+      {
+        "para": "task",
+        "value": "task"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "epoch",
+        "value": "epoch"
+      },
+      {
+        "para": "acc_1",
+        "value": "acc_1"
+      },
+      {
+        "para": "hp_1",
+        "value": "hp_1"
+      },
+      {
+        "para": "tr_1",
+        "value": "tr_1"
+      },
+      {
+        "para": "nn_1",
+        "value": "nn_1"
+      },
+      {
+        "para": "acc_2",
+        "value": "acc_2"
+      },
+      {
+        "para": "hp_2",
+        "value": "hp_2"
+      },
+      {
+        "para": "tr_2",
+        "value": "tr_2"
+      },
+      {
+        "para": "nn_2",
+        "value": "nn_2"
+      }
+    ],
+    "prompt": [
+      "Do not use <think> tags.",
+      "Do not reason before generating.",
+      "Your response must begin with <nn> immediately.",
+      "You are a machine learning model designer.",
+      "Your first character must be '<'.",
+      "Output only XML.",
+      "Do not write any explanation.",
+      "Do not think aloud.",
+      "Do not write prose before the XML.",
+      "Return exactly these tags in order: <nn>...</nn><hp>...</hp><tr>...</tr>.",
+      "Your task is to generate a LEMUR Dataset neural network model that increases the '{metric}' metric value beyond {acc_2} at training epoch {epoch} on the '{dataset}' dataset for an '{task}' task.",
+      "Reference A is the structural anchor (accuracy={acc_1}). Keep its overall structure.",
+      "Reference B is the improvement source (accuracy={acc_2}). Use it only for one small improvement.",
+      "Constraints:",
+      "- Keep the overall structure of Reference A.",
+      "- Make at most ONE improvement inspired by Reference B.",
+      "- Output only <nn>, <hp>, <tr> tags \u2014 no explanation.",
+      "- The 'transform' value in <hp> must be exactly 'norm_256_flip'.",
+      "- supported_hyperparameters() must return exactly: 'batch', 'dropout', 'epoch', 'lr', 'momentum', 'transform'.",
+      "Reference A (structural anchor, accuracy={acc_1}):",
+      "<hp>{hp_1}</hp>",
+      "<tr>{tr_1}</tr>",
+      "<nn>{nn_1}</nn>",
+      "Reference B (improvement source, accuracy={acc_2}):",
+      "<hp>{hp_2}</hp>",
+      "<tr>{tr_2}</tr>",
+      "<nn>{nn_2}</nn>"
+    ],
+    "output": [
+      "<nn>{nn_1}</nn>",
+      "<hp>{hp_1}</hp>",
+      "<tr>{tr_1}</tr>"
+    ]
+  }
+}

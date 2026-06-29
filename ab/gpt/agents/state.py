@@ -31,6 +31,10 @@ class AgentState(BaseModel):
     next_action: Optional[str] = None
     status: Optional[str] = None
     use_predictor: Optional[bool] = None
+    use_backbone: Optional[bool] = None
+    enable_merge: Optional[bool] = None
+    sft_nn_prefixes: Optional[Any] = None
+    sft_dataset: Optional[str] = None
 
     # ---- Generation Inputs ----
     experiment_id: Optional[str] = None
@@ -49,9 +53,11 @@ class AgentState(BaseModel):
     only_best_accuracy: Optional[bool] = None
     max_prompts: Optional[int] = None
     trans_mode: Optional[bool] = None
+    classification_mode: Optional[bool] = None
     context_length: Optional[int] = None
     use_unsloth: Optional[bool] = None
     unsloth_max_input_length: Optional[int] = None
+    trainer_resume_checkpoint: Optional[str] = None
 
     # ---- Sampling ----
     temperature: Optional[float] = None

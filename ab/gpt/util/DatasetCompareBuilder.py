@@ -1,4 +1,4 @@
-#  generates the actual prompt data: Phase 1 of Cross-dataset adapatation 
+#  generates the actual prompt data (Generates pairs - independently from the pipeline): Phase 1 of Cross-dataset adapatation 
 import json
 import pandas as pd
 import ab.nn.api as lemur

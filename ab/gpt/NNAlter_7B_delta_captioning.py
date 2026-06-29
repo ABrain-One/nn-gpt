@@ -1,0 +1,55 @@
+"""
+Delta-based neural network generation wrapper for Image Captioning.
+
+This module provides a simple interface for generating improved neural networks
+using delta-based approach, specifically tailored for the image captioning pipeline.
+
+Usage:
+    python -m ab.gpt.NNAlter_7B_delta_captioning --epochs 8
+"""
+
+import argparse
+
+from ab.gpt.util.AlterNN import alter_delta
+
+
+def main():
+    """
+    Main entry point for delta-based neural network generation (Captioning).
+    
+    Uses alter_delta() function which:
+    1. Loads delta-enabled config (NN_gen_delta_captioning.json)
+    2. Generates code deltas from LLM
+    3. Applies deltas to baseline code
+    4. Saves improved code
+    """
+    parser = argparse.ArgumentParser(
+        description="Generate improved captioning neural networks using delta-based approach."
+    )
+    parser.add_argument(
+        '-e', '--epochs', 
+        type=int, 
+        default=8, 
+        help="Maximum number of generation epochs."
+    )
+    parser.add_argument(
+        '-n', '--num-supporting-models', 
+        type=int, 
+        default=1, 
+        help="Number of supporting models to fetch from database for more ideas."
+    )
+    args = parser.parse_args()
+    
+    alter_delta(
+        args.epochs, 
+        'NN_gen_delta_captioning.json', 
+        'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B', 
+        n=args.num_supporting_models, 
+        temperature=0.8, 
+        top_k=100,
+        load_in_4bit=True  # Passed explicitly here, as requested by the professor
+    )
+
+
+if __name__ == "__main__":
+    main()

@@ -1,12 +1,7 @@
-import argparse
 import ab.gpt.TuneNNGen as TuneNNGen
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--use_agents", action="store_true")
-    parser.add_argument("--use_predictor", action="store_true")
-    args = parser.parse_args()
 
     TuneNNGen.main(
         llm_conf='ds_coder_7b_olympic.json',
@@ -16,8 +11,7 @@ def main():
         test_nn=10,
         skip_epoches=1,
         nn_name_prefix='chn',
-        use_agents=args.use_agents,
-        use_predictor=args.use_predictor,
+        context_length=8192,
     )
 
 

@@ -1,6 +1,6 @@
 # ab/gpt/util/LLM.py
 from ab.nn.util.Const import out_dir
-from ab.gpt.util.Const import llm_dir, llm_tokenizer_dir
+from ab.gpt.util.Const import conf_chat_template_dir, llm_dir, llm_tokenizer_dir
 from ab.gpt.util.LLMUtil import quantization_config_4bit
 from ab.gpt.util.Util import exists
 
@@ -8,6 +8,7 @@ import os
 import json
 import tempfile
 import shutil
+from pathlib import Path
 import torch
 import torch.cuda
 from transformers import (
@@ -33,13 +34,16 @@ class LLM:
                  gguf_file=None,
                  training_args=None,
                  use_unsloth=False,
-                 load_in_4bit=True):
+                 load_in_4bit=True,
+                 chat_template_path=None):
         self.context_length = context_length
         self._use_unsloth = use_unsloth
+        self.chat_template_path = chat_template_path
         
         # ===== Unsloth Fast Path =====
         if use_unsloth:
-            self.model, self.tokenizer = FastModel.from_pretrained(
+            from unsloth import FastLanguageModel
+            self.model, self.tokenizer = FastLanguageModel.from_pretrained(
                 model_name=model_path,
                 dtype = None,
                 max_seq_length=context_length or 4096,
@@ -51,6 +55,7 @@ class LLM:
             if self.tokenizer.pad_token_id is None:
                 self.tokenizer.pad_token = self.tokenizer.eos_token
             self.tokenizer.padding_side = "right"
+            self._apply_chat_template_override()
             print(f"[Unsloth] Loaded {model_path}, 4bit={load_in_4bit}")
             return
         
@@ -71,6 +76,7 @@ class LLM:
             # This is safer for LLaMA-like models (e.g., DeepSeek-Coder)
             self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "right"
+        self._apply_chat_template_override()
 
         if tokenizer_exists:
             print("Loading Tokenizer from local files:", tok_fl_nm)
@@ -167,6 +173,17 @@ class LLM:
         else:
             self.model.save_pretrained(raw_fl_nm, access_token=access_token)
             print("Model saved to: ", raw_fl_nm)
+
+    def _apply_chat_template_override(self) -> None:
+        if not self.chat_template_path:
+            return
+        template_path = Path(str(self.chat_template_path)).expanduser()
+        if not template_path.is_absolute():
+            template_path = conf_chat_template_dir / template_path
+        if not template_path.exists():
+            raise FileNotFoundError(f"chat_template_path not found: {template_path}")
+        self.tokenizer.chat_template = template_path.read_text(encoding="utf-8")
+        print(f"[LLM] Applied chat template override: {template_path}")
 
     def get_model(self) -> PreTrainedModel:
         return self.model

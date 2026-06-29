@@ -1,24 +1,20 @@
 import argparse
 from typing import Literal
+import sys
 
 import torch
-from ab.gpt.util.Const import nngpt_dir, new_out_file, NN_TRAIN_EPOCHS
+from ab.gpt.util.Const import nngpt_dir, NN_TRAIN_EPOCHS
 
 from ab.nn.util.Const import out_dir
 
-from pathlib import Path
 import json
 from ab.gpt.util.Const import conf_llm_dir
 
 RUN_META = out_dir / 'nngpt' / 'run_config.json'
 
 
-def persist_llm_conf(llm_conf):
-    """Save run configuration including llm_conf and base_model_name."""
-
-
-    if RUN_META.exists():
-        return
+def persist_llm_conf(llm_conf, enable_merge=False):
+    """Save run configuration including llm_conf, base_model_name, and enable_merge."""
 
     RUN_META.parent.mkdir(parents=True, exist_ok=True)
 
@@ -34,10 +30,13 @@ def persist_llm_conf(llm_conf):
         except Exception as e:
             print(f"Failed to read base_model_name from {llm_conf}: {e}")
 
-    # Save both llm_conf and base_model_name
-    run_config = {"llm_conf": llm_conf}
+    # Save llm_conf, base_model_name, and enable_merge
+    run_config = {
+        "llm_conf": llm_conf,
+        "enable_merge": enable_merge
+    }
     if base_model_name:
-        run_config["base_model_name"] = base_model_name #infers from conf_llm and stores it
+        run_config["base_model_name"] = base_model_name
 
     with open(RUN_META, "w") as f:
         json.dump(run_config, f, indent=2)
@@ -47,16 +46,16 @@ def persist_llm_conf(llm_conf):
 START_LAYER = 0
 END_LAYER = 24
 TUNE_LAYERS = range(START_LAYER, END_LAYER)
-R = 32
-LORA_ALPHA = 32
-LORA_DROPOUT = 0.05
-TARGET_MODULES = ('q_proj', 'k_proj', 'v_proj', 'o_proj', 'up_proj', 'down_proj', 'gate_proj')
+R = 32  # dimension of the updated matrices
+LORA_ALPHA = 32  # parameter for scaling
+LORA_DROPOUT = 0.05  # dropout probability for layers
+TARGET_MODULES = ('q_proj', 'k_proj', 'v_proj', 'o_proj', 'up_proj', 'down_proj', 'gate_proj')  # , 'lm_head'
 TASK_TYPE = 'CAUSAL_LM'
 BiasType = Literal['none', 'all', 'lora_only']
 BIAS: BiasType = 'none'
 LEARNING_RATE = 1e-6  # Conservative default for standalone
 MAX_GRAD_NORM = 1.0  # Gradient clipping
-
+ENABLE_MERGE = False
 PEFT = None
 SKIP_EPOCHES = -1
 
@@ -87,7 +86,7 @@ TRANS_MODE = False  # only transform fine-tuning
 PROMPT_BATCH = 2
 
 # --- LangGraph Agent Defaults ---
-USE_AGENTS = False
+USE_AGENTS = True
 USE_PREDICTOR = False
 
 # --- Pipeline-Optimized Defaults (for iterative_finetune.py) ---
@@ -117,15 +116,15 @@ def get_pipeline_defaults():
         'warmup_steps': PIPELINE_WARMUP_STEPS,
         'num_train_epochs': PIPELINE_NUM_TRAIN_EPOCHS,
         'logging_steps': PIPELINE_LOGGING_STEPS,
-        'max_grad_norm': MAX_GRAD_NORM,
-        'target_modules': ','.join(PIPELINE_TARGET_MODULES),
+        'max_grad_norm': MAX_GRAD_NORM,  # Same as standalone
+        'target_modules': ','.join(PIPELINE_TARGET_MODULES),  # Convert tuple to comma-separated string
         'max_new_tokens': PIPELINE_MAX_NEW_TOKENS,
         'temperature': PIPELINE_TEMPERATURE,
         'top_k': PIPELINE_TOP_K,
         'evaluation_strategy': PIPELINE_EVALUATION_STRATEGY,
         'eval_steps': PIPELINE_EVAL_STEPS,
         'per_device_eval_batch_size': PIPELINE_PER_DEVICE_EVAL_BATCH_SIZE,
-        'save_strategy': PIPELINE_EVALUATION_STRATEGY,
+        'save_strategy': PIPELINE_EVALUATION_STRATEGY,  # Same as evaluation_strategy
         'save_steps': PIPELINE_SAVE_STEPS,
         'save_total_limit': PIPELINE_SAVE_TOTAL_LIMIT,
         'load_best_model_at_end': PIPELINE_LOAD_BEST_MODEL_AT_END,
@@ -134,8 +133,12 @@ def get_pipeline_defaults():
 
 
 def _best_dtype_args():
+    """Detect the best mixed precision dtype based on hardware support."""
     bf16_ok = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
-    return {"bf16": bf16_ok, "fp16": not bf16_ok}
+    if bf16_ok:
+        return {"bf16": True}
+    else:
+        return {"fp16": True}
 
 
 def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_norm=MAX_GRAD_NORM, test_metric=TEST_METRIC,
@@ -144,7 +147,7 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
          llm_conf=LLM_CONF, test_nn=TEST_NN, peft=PEFT, skip_epoches=SKIP_EPOCHES, per_device_train_batch_size=PER_DEVICE_TRAIN_BATCH_SIZE,
          gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS, warmup_ratio=WARMUP_RATIO, logging_steps=LOGGING_STEPS, optimizer=OPTIMIZER,
          max_prompts=MAX_PROMPTS, save_llm_output=SAVE_LLM_OUTPUT, max_new_tokens=MAX_NEW_TOKENS, use_deepspeed=USE_DEEPSPEED, nn_name_prefix=NN_NAME_PREFIX,
-         nn_train_epochs=NN_TRAIN_EPOCHS, temperature=TEMPERATURE, top_k=TOP_K, top_p=TOP_P, data_dir=None,
+         nn_train_epochs=NN_TRAIN_EPOCHS, temperature=TEMPERATURE, top_k=TOP_K, top_p=TOP_P, data_dir=None,base_data_dir=None,output_dir=None,
          # Pipeline-specific overrides (for backward compatibility with iterative_finetune.py)
          evaluation_strategy=None, eval_steps=None, save_strategy=None, save_steps=None,
          save_total_limit=None, load_best_model_at_end=False, metric_for_best_model=None, warmup_steps=None, weight_decay=None,
@@ -154,13 +157,26 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
          run_iterative_pipeline=False, cycles=5, models_per_cycle=150, samples_per_prompt=1, accuracy_threshold=0.40,
          min_selected_k=15, fallback_threshold=0.35, adaptive_threshold=False,
          novelty_check=True, resume_from_cycle=None, max_retries=3, use_optimized_training=True,
-         use_agents=USE_AGENTS, use_predictor=USE_PREDICTOR, use_backbone=False):
-    persist_llm_conf(llm_conf)
-    # --- Pipeline mode intercept ---
+         use_agents=USE_AGENTS, use_predictor=USE_PREDICTOR, use_backbone=False,
+         classification_mode=False, context_length=None, max_input_length=None,
+         only_best_accuracy=False, load_in_4bit=True,
+         mobile_deployment=False, mobile_reval_only=False,
+         mobile_min_quantized_accuracy=None, mobile_max_duration_ms=None,
+         mobile_score_tolerance=0.99, mobile_min_valid_models=5, mobile_delegate_priority="npu,gpu,cpu"):
+
+    persist_llm_conf(llm_conf, enable_merge)
+
     if run_iterative_pipeline:
         print("--- Initiating Iterative Fine-Tuning Pipeline ---")
-        from ab.gpt.iterative_finetune import IterativeFinetuner
-        pipeline = IterativeFinetuner(
+        try:
+            if mobile_deployment:
+                from ab.gpt.mobile_iterative_finetune import MobileDeploymentFinetuner as IterativeFinetuner
+            else:
+                from ab.gpt.iterative_finetune import IterativeFinetuner
+        except ImportError as e:
+            print(f"[ERROR] Pipeline mode requires ab.gpt.iterative_finetune: {e}")
+            sys.exit(1)
+        pipeline_kwargs = dict(
             llm_conf=llm_conf,
             cycles=cycles,
             models_per_cycle=models_per_cycle,
@@ -175,6 +191,23 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
             use_optimized_training=use_optimized_training,
             num_train_epochs=num_train_epochs,
         )
+        if mobile_deployment:
+            pipeline_kwargs["mobile_min_quantized_accuracy"] = mobile_min_quantized_accuracy
+            pipeline_kwargs["mobile_max_duration_ms"] = mobile_max_duration_ms
+            pipeline_kwargs["mobile_score_tolerance"] = mobile_score_tolerance
+            pipeline_kwargs["mobile_min_valid_models"] = mobile_min_valid_models
+            pipeline_kwargs["mobile_delegate_priority"] = mobile_delegate_priority
+            if mobile_reval_only:
+                pipeline_kwargs["skip_mobile_seed_prep"] = True
+        pipeline = IterativeFinetuner(**pipeline_kwargs)
+        if mobile_deployment and mobile_reval_only:
+            cycle = resume_from_cycle or 1
+            result = pipeline.run_mobile_reval_cycle(cycle, clean=True)
+            if not result.get("success", False):
+                print(f"[ERROR] Mobile re-eval failed for cycle {cycle}: {result.get('error')}")
+                sys.exit(1)
+            print(f"Mobile re-eval cycle {cycle} complete.")
+            return
         pipeline.run()
         return  # Skip standalone training
 
@@ -183,16 +216,24 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
         try:
             import unsloth
             UNSLOTH_AVAILABLE = True
-        except:
-            pass
+        except ImportError:
+            print("[WARN] Unsloth requested but not installed. Falling back to standard PEFT.")
 
     from peft import LoraConfig
     from transformers import TrainingArguments
 
     if onnx_run:
-        from ab.gpt.util.Tune_Onnx import tune, ds_conf
+        try:
+            from ab.gpt.util.Tune_Onnx import tune, ds_conf
+        except ImportError as e:
+            print(f"[ERROR] ONNX mode requires ab.gpt.util.Tune_Onnx: {e}")
+            sys.exit(1)
     else:
-        from ab.gpt.util.Tune import tune, ds_conf
+        try:
+            from ab.gpt.util.Tune import tune, ds_conf
+        except ImportError as e:
+            print(f"[ERROR] Failed to import ab.gpt.util.Tune: {e}")
+            sys.exit(1)
 
     print(f'''All hyperparameters:
 num_train_epochs={num_train_epochs}, lr_scheduler={lr_scheduler}, max_grad_norm={max_grad_norm}, tune_layers={tune_layers}, test_metric={test_metric},
@@ -202,7 +243,8 @@ llm_conf={llm_conf}, test_nn={test_nn}, nn_train_epochs={nn_train_epochs}, peft=
 per_device_train_batch_size={per_device_train_batch_size}, gradient_accumulation_steps={gradient_accumulation_steps}, warmup_ratio={warmup_ratio},
 logging_steps={logging_steps}, optimizer={optimizer}, max_prompts={max_prompts}, save_llm_output={save_llm_output}, max_new_tokens={max_new_tokens},
 use_deepspeed={use_deepspeed}, nn_name_prefix={nn_name_prefix}, temperature={temperature}, top_k={top_k}, top_p={top_p}, onnx_run={onnx_run},
-unsloth_opt={unsloth_opt}, trans_mode={trans_mode}, prompt_batch={prompt_batch}, use_agents={use_agents}, use_predictor={use_predictor}''')
+unsloth_opt={unsloth_opt}, trans_mode={trans_mode}, prompt_batch={prompt_batch}, use_agents={use_agents}, use_predictor={use_predictor},
+use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={classification_mode}''')
 
     test_prm = {
         'metric_for_best_model': test_metric,
@@ -227,7 +269,6 @@ unsloth_opt={unsloth_opt}, trans_mode={trans_mode}, prompt_batch={prompt_batch},
             'per_device_train_batch_size': per_device_train_batch_size,
             'gradient_accumulation_steps': gradient_accumulation_steps,
             'learning_rate': learning_rate,
-            'bf16': True,
             'logging_steps': logging_steps,
             'output_dir': nngpt_dir / 'outputs',
             'optim': optimizer,
@@ -274,7 +315,6 @@ unsloth_opt={unsloth_opt}, trans_mode={trans_mode}, prompt_batch={prompt_batch},
             'gradient_accumulation_steps': gradient_accumulation_steps,
             'warmup_ratio': warmup_ratio,
             'learning_rate': learning_rate,
-            'bf16': True,
             'logging_steps': logging_steps,
             'output_dir': nngpt_dir / 'outputs',
             'optim': optimizer,
@@ -286,12 +326,13 @@ unsloth_opt={unsloth_opt}, trans_mode={trans_mode}, prompt_batch={prompt_batch},
 
     # Create TrainingArguments with all parameters at once
     training_args = TrainingArguments(**training_kwargs)
+    # FIX: Ensure int types for LoRA config
     peft_config = LoraConfig(
-        r=r,
-        lora_alpha=lora_alpha,
+        r=int(r),
+        lora_alpha=int(lora_alpha),
         target_modules=target_modules,
         layers_to_transform=list(tune_layers),
-        lora_dropout=lora_dropout,
+        lora_dropout=float(lora_dropout),
         bias=bias,
         task_type=task_type)
 
@@ -312,9 +353,6 @@ unsloth_opt={unsloth_opt}, trans_mode={trans_mode}, prompt_batch={prompt_batch},
     except Exception as e:
         print(f"[WARN] peft_config validation warning: {e}")
 
-    from pathlib import Path
-    import subprocess
-
     try:
         tune(
             test_nn, nn_train_epochs, skip_epoches, peft,
@@ -327,29 +365,55 @@ unsloth_opt={unsloth_opt}, trans_mode={trans_mode}, prompt_batch={prompt_batch},
             temperature=temperature,
             top_k=top_k,
             top_p=top_p,
+            test_metric=test_metric,
             onnx_run=onnx_run,
             trans_mode=trans_mode,
             prompt_batch=prompt_batch,
             use_agents=use_agents,
             use_predictor=use_predictor,
+            use_unsloth=unsloth_opt,
+            enable_merge=enable_merge,
+            classification_mode=classification_mode,
+            use_backbone=use_backbone,
+            context_length=context_length,
+            max_input_length=max_input_length,
+            only_best_accuracy=only_best_accuracy,
+            load_in_4bit=load_in_4bit,
         )
+
+        # Normal completion - auto merge best
+        if enable_merge:
+            print("\n[MERGE] Training complete - running auto merge...\n")
+            try:
+                from ab.gpt.util.MergeLLM import rebuild_from_lineage
+                rebuild_from_lineage()
+                print("[MERGE] Completed successfully.\n")
+            except ImportError as e:
+                print(f"[WARN] MergeLLM module not found: {e}")
+            except Exception as e:
+                print(f"[MERGE] Auto merge failed: {e}")
+                import traceback
+                traceback.print_exc()
 
     except KeyboardInterrupt:
         print("\n[INTERRUPT] Training stopped by user")
 
     finally:
-        # Safety merge: run merge decision even if training crashes or is interrupted
+        # Interrupted case - still try to merge best from available epochs
         if enable_merge:
-            print("\n[MERGE] Running final merge decision...\n")
-
+            print("\n[MERGE] Running emergency merge (interrupted)...\n")
             try:
-                from ab.gpt.util.Mergedecision import main as merge
-                merge()
-                print("[MERGE] Completed successfully.\n")
-
+                from ab.gpt.util.MergeLLM import rebuild_from_lineage
+                rebuild_from_lineage()
+                print("[MERGE] Emergency merge completed.\n")
+            except ImportError as e:
+                print(f"[WARN] MergeLLM module not found: {e}")
             except Exception as e:
-                print(f"[MERGE] Merge decision failed: {e}")
+                print(f"[MERGE] Emergency merge failed: {e}")
+                import traceback
+                traceback.print_exc()
 
+    print("\n" + "=" * 70)
     print("FINE-TUNING CONFIGURATION SUMMARY")
     print("=" * 70)
     print(f"✓ LoRA: r={r}, alpha={lora_alpha}, dropout={lora_dropout}, target={target_modules}")
@@ -458,6 +522,8 @@ if __name__ == '__main__':
                         help=f'Config of LLM (default: {LLM_CONF}).')
 
     # Training configuration
+    parser.add_argument('--num_cycles', type=int, default=None,
+                        help='Number of outer generate/eval/SFT cycles (default: 100).')
     parser.add_argument('-n', '--test_nn', type=int, default=TEST_NN,
                         help=f'Count of NNs to generate (default: {TEST_NN}).')
     parser.add_argument('--nn_train_epochs', type=int, default=NN_TRAIN_EPOCHS,
@@ -522,93 +588,39 @@ if __name__ == '__main__':
     parser.add_argument("--enable_merge", action="store_true", default=False, help="Enable automatic merge decision after fine-tuning.")
     parser.add_argument('--prompt_batch', type=int, default=PROMPT_BATCH,
                         help=f"Prompt batch size (default: {PROMPT_BATCH}).")
-
-    # --- LangGraph Agent Flags ---
     parser.add_argument('--use_agents', action='store_true', default=USE_AGENTS,
                         help='Enable LangGraph multi-agent workflow (default: False).')
+    parser.add_argument('--no-use_agents', dest='use_agents', action='store_false',
+                        help='Disable LangGraph multi-agent workflow during fine-tuning.')
     parser.add_argument('--use_predictor', action='store_true', default=USE_PREDICTOR,
-                        help='Enable predictor agent (requires --use_agents) (default: False).')
+                        help='Enable predictor agent.')
+    parser.add_argument('--use_backbone', action='store_true', default=False,
+                        help='Use backbone mode for code generation (default: False).')
+    parser.add_argument('--classification_mode', action='store_true', default=False,
+                        help='Enable classification-only mode (default: False).')
+    parser.add_argument('--context_length', type=int, default=None,
+                        help='Model context length override (falls back to default_context_length in config).')
+    parser.add_argument('--max_input_length', type=int, default=None,
+                        help='Unsloth max input length override.')
+    parser.add_argument('--mobile_deployment', action='store_true', default=False,
+                        help='Enable standalone mobile deployment pipeline extensions (default: False).')
+    parser.add_argument('--mobile_reval_only', action='store_true', default=False,
+                        help='[Mobile Pipeline] Re-run GPU eval + mobile for one cycle only (requires --mobile_deployment).')
+    parser.add_argument('--mobile_min_quantized_accuracy', type=float, default=None,
+                        help='[Mobile Pipeline] Minimum quantized accuracy required for selection (default: None).')
+    parser.add_argument('--mobile_max_duration_ms', type=float, default=None,
+                        help='[Mobile Pipeline] Maximum on-device duration (ms) allowed for selection (default: None).')
+    parser.add_argument('--mobile_score_tolerance', type=float, default=0.99,
+                        help='[Mobile Pipeline] Non-regression tolerance multiplier for cycle gate (default: 0.99).')
+    parser.add_argument('--mobile_min_valid_models', type=int, default=5,
+                        help='[Mobile Pipeline] Minimum valid mobile-scored models required to accept cycle (default: 5).')
+    parser.add_argument('--mobile_delegate_priority', type=str, default='npu,gpu,cpu',
+                        help='[Mobile Pipeline] Tie-break delegate priority for equal scores (default: npu,gpu,cpu).')
 
     args = parser.parse_args()
 
-    if args.run_iterative_pipeline:
-        if args.base_data_dir is None:
-            parser.error("--base_data_dir is required when --run_iterative_pipeline is set")
-        if args.llm_conf is None:
-            parser.error("--llm_conf is required when --run_iterative_pipeline is set")
-        if args.resume_from_cycle is not None:
-            if args.resume_from_cycle < 1 or args.resume_from_cycle > args.cycles:
-                parser.error(f"--resume_from_cycle must be between 1 and {args.cycles}, got {args.resume_from_cycle}")
+    # Convert start_layer/end_layer → tune_layers (main() expects a range, not two ints)
+    kwargs = vars(args)
+    kwargs['tune_layers'] = range(kwargs.pop('start_layer'), kwargs.pop('end_layer'))
 
-        from ab.gpt.iterative_finetune import IterativeFinetuner
-        pipeline = IterativeFinetuner(
-            base_data_dir=args.base_data_dir,
-            output_dir=args.output_dir,
-            llm_conf=args.llm_conf,
-            cycles=args.cycles,
-            models_per_cycle=args.models_per_cycle,
-            samples_per_prompt=args.samples_per_prompt,
-            accuracy_threshold=args.accuracy_threshold,
-            min_selected_k=args.min_selected_k,
-            fallback_threshold=args.fallback_threshold,
-            adaptive_threshold=args.adaptive_threshold,
-            novelty_check=args.novelty_check,
-            resume_from_cycle=args.resume_from_cycle,
-            max_retries=args.max_retries,
-            use_optimized_training=args.use_optimized_training,
-            num_train_epochs=args.num_train_epochs,
-        )
-        pipeline.run()
-        import sys
-        sys.exit(0)
-
-    main(num_train_epochs=args.num_train_epochs,
-         lr_scheduler=args.lr_scheduler,
-         max_grad_norm=args.max_grad_norm,
-         tune_layers=range(args.start_layer, args.end_layer),
-         r=args.r,
-         lora_alpha=args.lora_alpha,
-         lora_dropout=args.lora_dropout,
-         task_type=args.task_type,
-         bias=args.bias,
-         target_modules=args.target_modules,
-         learning_rate=args.learning_rate,
-         llm_tune_conf=args.llm_tune_conf,
-         nn_gen_conf=args.nn_gen_conf,
-         nn_gen_conf_id=args.nn_gen_conf_id,
-         llm_conf=args.llm_conf,
-         test_nn=args.test_nn,
-         per_device_train_batch_size=args.per_device_train_batch_size,
-         gradient_accumulation_steps=args.gradient_accumulation_steps,
-         warmup_ratio=args.warmup_ratio,
-         logging_steps=args.logging_steps,
-         optimizer=args.optimizer,
-         peft=args.peft,
-         skip_epoches=args.skip_epoches,
-         max_prompts=args.max_prompts,
-         max_new_tokens=args.max_new_tokens,
-         use_deepspeed=args.use_deepspeed,
-         nn_name_prefix=args.nn_name_prefix,
-         nn_train_epochs=args.nn_train_epochs,
-         temperature=args.temperature,
-         top_k=args.top_k,
-         top_p=args.top_p,
-         test_metric=args.test_metric,
-         data_dir=args.data_dir,
-         evaluation_strategy=args.evaluation_strategy,
-         eval_steps=args.eval_steps,
-         per_device_eval_batch_size=args.per_device_eval_batch_size,
-         save_strategy=args.save_strategy,
-         save_steps=args.save_steps,
-         save_total_limit=args.save_total_limit,
-         load_best_model_at_end=args.load_best_model_at_end,
-         metric_for_best_model=args.metric_for_best_model,
-         warmup_steps=args.warmup_steps,
-         weight_decay=args.weight_decay,
-         onnx_run=args.onnx_run,
-         unsloth_opt=args.unsloth_opt,
-         trans_mode=args.trans_mode,
-         prompt_batch=args.prompt_batch,
-         enable_merge=args.enable_merge,
-         use_agents=args.use_agents,
-         use_predictor=args.use_predictor)
+    main(**kwargs)

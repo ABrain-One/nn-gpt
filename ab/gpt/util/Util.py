@@ -1,5 +1,6 @@
 import importlib
 import inspect
+import math
 import os
 import os.path
 import re
@@ -232,3 +233,54 @@ def copy_to_lemur(gen_nn_dir, name, task, dataset, metric):
     Path(dr_nm).mkdir(parents=True, exist_ok=True)
     for f_nm in [f for f in os.listdir(gen_nn_dir) if re.match(r'[0-9]+\.json', f)]:
         shutil.copyfile(gen_nn_dir / f_nm, dr_nm / f_nm)
+
+
+# ========== FORMULA EVALUATION FUNCTION ==========
+def evaluate_delimited_formulas(text: str, para_dict: dict) -> str:
+    """
+    Find patterns like <<accuracy / duration>> and replace with calculated values.
+    Works for ANY formula inside << >> delimiters.
+    """
+    pattern = r'<<(.*?)>>'
+
+    def replace_match(match):
+        formula = match.group(1).strip()
+        try:
+            expr = formula
+            # Replace variable names with their values
+            for key in sorted(para_dict.keys(), key=len, reverse=True):
+                val = para_dict[key]
+                try:
+                    val = float(val)
+                except (ValueError, TypeError):
+                    pass
+                if isinstance(val, (int, float)):
+                    expr = re.sub(rf'\b{re.escape(key)}\b', str(val), expr)
+
+            # Safe evaluation
+            safe_globals = {
+                "__builtins__": {},
+                "math": math,
+                "abs": abs,
+                "round": round,
+                "min": min,
+                "max": max,
+            }
+            result = eval(expr, safe_globals)
+
+            # Format result nicely
+            if isinstance(result, float):
+                if abs(result) < 0.001:
+                    return f"{result:.2e}"
+                elif result > 100:
+                    return f"{result:.1f}"
+                else:
+                    return f"{result:.4f}"
+            return str(result)
+        except Exception as e:
+            print(f"[FORMULA ERROR] '{formula}' - {e}")
+            return f"<<{formula}>>"
+
+    return re.sub(pattern, replace_match, text)
+# =================================================
+

@@ -1,55 +1,111 @@
 {
-    "optimal_channel_configuration": {
-        "type": "change_parameters",
-        "is_generation": false,
-        "task": "img-classification",
-        "addon_task": "channel_optimization",
-        "input_list": [
-            {"para": "nn_code","value": "nn_code"},
-            {"para": "accuracy","value": "accuracy"},
-            {"para": "epoch","value": "epoch"},
-            {"para": "dataset","value": "dataset"},
-            {"para": "task","value": "task"},
-            {"para": "metric","value": "metric"},
-            {"para": "metric_code","value": "metric_code"},
-            {"para": "transform_code","value": "transform_code"},
-            {"para": "prm","value": "prm"},
-
-            {"para": "addon_accuracy","value": "accuracy_2"},
-            {"para": "addon_epoch","value": "epoch_2"},
-            {"para": "addon_nn_code","value": "nn_code_2"},
-            {"para": "addon_transform_code","value": "transform_code_2"},
-            {"para": "addon_prm","value": "prm_2"}
-        ],
-        "no_repeat": ["nn"],
-        "keep_same": ["epoch", "metric", "dataset", "task"],
-        "nn_prefixes": ["ast-dimension-"],
-        "num_joint_nns": 2,
-        "improve": true,
-        "prompt": [
-            "Your task is to change the channel configuration of the baseline neural network to improve (increase) the value of a '{metric}' metric from {accuracy} at least to {addon_accuracy} for neural network model that was trained during {epoch} epochs on the '{dataset}' dataset for an '{task}' task.",
-            "Current baseline model achieves {accuracy} with the given channel configuration.",
-            "The already given network channel configuration, the baseline model, right now results in '{metric}' of {accuracy}. Therefore, you need to take a look at how the channel configuration can be changed such that {addon_accuracy} can be achieved.",
-            "You must focus on strategically adjusting channel dimensions throughout the network layers to achieve metric value of {addon_accuracy} after training with {addon_epoch} epochs.",
-            "You must respond with following format and values because the pipeline expects them in this format so the parsing would work correctly:",
-            "1. A <hp> XML tag containing the optimized training hyperparameters in valid JSON format.",
-            "2. A <tr> XML tag containing the corresponding transformer code, ready to be used on the LEMUR dataset.",
-            "3. A <nn> XML tag containing the corresponding PyTorch model code with your channel configuration, ready to be trained on the LEMUR dataset.",
-            "Channel Optimization Guidelines:",
-            "- Analyze and optimize channel dimensions at each layer for better feature extraction",
-            "- Examine and establish new channel growth/reduction patterns",
-            "- Consider computational constraints and parameter efficiency",
-            "- Ensure channel configurations align with dataset complexity and task requirements",
-            "Baseline hyperparameters used to train the network and the neural network code is given as follows in a compatible formatted way:",
-            "<hp>{prm}</hp>",
-            "<tr>{transform_code}</tr>",
-            "<nn>{nn_code}</nn>",
-            "<metric>{metric_code}</metric>"
-        ],
-        "output": [
-            "<hp>{addon_prm}</hp>",
-            "<tr>{addon_transform_code}</tr>",
-            "<nn>{addon_nn_code}</nn>"
-        ]
-    }
+  "optimal_channel_configuration": {
+    "system": [
+      "You are an expert PyTorch neural network architect specialising in channel dimension optimisation.",
+      "Redesign CNN channel configurations to maximise feature extraction efficiency and improve accuracy.",
+      "Analyse channel growth and reduction patterns carefully before making changes.",
+      "Always follow LEMUR NN Dataset conventions and output only the requested XML tags (<hp>, <tr>, <nn>)."
+    ],
+    "type": "change_parameters",
+    "is_generation": false,
+    "task": "img-classification",
+    "addon_task": "channel_optimization",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "epoch",
+        "value": "epoch"
+      },
+      {
+        "para": "dataset",
+        "value": "dataset"
+      },
+      {
+        "para": "task",
+        "value": "task"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "metric_code",
+        "value": "metric_code"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      },
+      {
+        "para": "addon_accuracy",
+        "value": "accuracy_2"
+      },
+      {
+        "para": "addon_epoch",
+        "value": "epoch_2"
+      },
+      {
+        "para": "addon_nn_code",
+        "value": "nn_code_2"
+      },
+      {
+        "para": "addon_transform_code",
+        "value": "transform_code_2"
+      },
+      {
+        "para": "addon_prm",
+        "value": "prm_2"
+      }
+    ],
+    "no_repeat": [
+      "nn"
+    ],
+    "keep_same": [
+      "epoch",
+      "metric",
+      "dataset",
+      "task"
+    ],
+    "nn_prefixes": [
+      "ast-dimension-"
+    ],
+    "num_joint_nns": 2,
+    "improve": true,
+    "prompt": [
+      "Your task is to change the channel configuration of the baseline neural network to improve (increase) the value of a '{metric}' metric from {accuracy} at least to {addon_accuracy} for neural network model that was trained during {epoch} epochs on the '{dataset}' dataset for an '{task}' task.",
+      "Current baseline model achieves {accuracy} with the given channel configuration.",
+      "The already given network channel configuration, the baseline model, right now results in '{metric}' of {accuracy}. Therefore, you need to take a look at how the channel configuration can be changed such that {addon_accuracy} can be achieved.",
+      "You must focus on strategically adjusting channel dimensions throughout the network layers to achieve metric value of {addon_accuracy} after training with {addon_epoch} epochs.",
+      "You must respond with following format and values because the pipeline expects them in this format so the parsing would work correctly:",
+      "1. A <hp> XML tag containing the optimized training hyperparameters in valid JSON format.",
+      "2. A <tr> XML tag containing the corresponding transformer code, ready to be used on the LEMUR dataset.",
+      "3. A <nn> XML tag containing the corresponding PyTorch model code with your channel configuration, ready to be trained on the LEMUR dataset.",
+      "Channel Optimization Guidelines:",
+      "- Analyze and optimize channel dimensions at each layer for better feature extraction",
+      "- Examine and establish new channel growth/reduction patterns",
+      "- Consider computational constraints and parameter efficiency",
+      "- Ensure channel configurations align with dataset complexity and task requirements",
+      "Baseline hyperparameters used to train the network and the neural network code is given as follows in a compatible formatted way:",
+      "<hp>{prm}</hp>",
+      "<tr>{transform_code}</tr>",
+      "<nn>{nn_code}</nn>",
+      "<metric>{metric_code}</metric>"
+    ],
+    "output": [
+      "<hp>{addon_prm}</hp>",
+      "<tr>{addon_transform_code}</tr>",
+      "<nn>{addon_nn_code}</nn>"
+    ]
+  }
 }

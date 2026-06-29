@@ -95,20 +95,26 @@ def compute_delta(baseline_code: str, improved_code: str) -> str:
     if not baseline_code or not improved_code:
         return ""
     
-    baseline_lines = baseline_code.splitlines(keepends=True)
-    improved_lines = improved_code.splitlines(keepends=True)
+    # Use splitlines() WITHOUT keepends to get clean lines (no trailing \n)
+    baseline_lines = baseline_code.splitlines()
+    improved_lines = improved_code.splitlines()
     
-    # Generate unified diff
+    # Generate unified diff with lineterm='' so difflib doesn't add \n to each line
+    # Then we join with \n ourselves for proper formatting
     delta = difflib.unified_diff(
         baseline_lines,
         improved_lines,
         fromfile='baseline.py',
         tofile='improved.py',
-        lineterm='',
+        lineterm='',  # Don't add \n to each line (we'll join with \n)
         n=3  # Context lines
     )
     
-    return ''.join(delta)
+    # Join with newlines - this produces proper format:
+    # --- baseline.py
+    # +++ improved.py
+    # @@ -1,5 +1,6 @@
+    return '\n'.join(delta)
 
 
 def apply_delta(baseline_code: str, delta: str) -> Optional[str]:

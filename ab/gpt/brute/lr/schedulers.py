@@ -36,29 +36,29 @@ ARCHITECTURES = [
 SCHEDULERS = [
     {
         'name': 'StepLR_s10_g05',
-        'extra_hp': ['step_size', 'gamma'],
-        'setup_code': "        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=prm.get('step_size', 10), gamma=prm.get('gamma', 0.5))",
+        'extra_hp': ['step_size', 'gamma', 'epoch_max'],
+        'setup_code': "        step_size = int(prm.get('step_size', 0.5) * prm.get('epoch_max', 50))\n        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=step_size, gamma=prm.get('gamma', 0.5))",
         'step_code': '        self.scheduler.step()',
         'step_location': 'per_epoch',
     },
     {
         'name': 'StepLR_s5_g03',
-        'extra_hp': ['step_size', 'gamma'],
-        'setup_code': "        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=prm.get('step_size', 5), gamma=prm.get('gamma', 0.3))",
+        'extra_hp': ['step_size', 'gamma', 'epoch_max'],
+        'setup_code': "        step_size = int(prm.get('step_size', 0.25) * prm.get('epoch_max', 50))\n        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=step_size, gamma=prm.get('gamma', 0.3))",
         'step_code': '        self.scheduler.step()',
         'step_location': 'per_epoch',
     },
     {
         'name': 'StepLR_s20_g07',
-        'extra_hp': ['step_size', 'gamma'],
-        'setup_code': "        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=prm.get('step_size', 20), gamma=prm.get('gamma', 0.7))",
+        'extra_hp': ['step_size', 'gamma', 'epoch_max'],
+        'setup_code': "        step_size = int(prm.get('step_size', 0.7) * prm.get('epoch_max', 50))\n        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=step_size, gamma=prm.get('gamma', 0.7))",
         'step_code': '        self.scheduler.step()',
         'step_location': 'per_epoch',
     },
     {
         'name': 'StepLR_s3_g01',
-        'extra_hp': ['step_size', 'gamma'],
-        'setup_code': "        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=prm.get('step_size', 3), gamma=prm.get('gamma', 0.1))",
+        'extra_hp': ['step_size', 'gamma', 'epoch_max'],
+        'setup_code': "        step_size = int(prm.get('step_size', 0.1) * prm.get('epoch_max', 50))\n        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=step_size, gamma=prm.get('gamma', 0.1))",
         'step_code': '        self.scheduler.step()',
         'step_location': 'per_epoch',
     },
@@ -85,22 +85,22 @@ SCHEDULERS = [
     },
     {
         'name': 'CosineAnnealingLR_T5',
-        'extra_hp': ['T_max', 'eta_min'],
-        'setup_code': "        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=prm.get('T_max', 5), eta_min=prm.get('eta_min', 1e-6))",
+        'extra_hp': ['T_max', 'eta_min', 'epoch_max'],
+        'setup_code': "        T_max = int(prm.get('T_max', 0.1) * prm.get('epoch_max', 50))\n        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=max(1, T_max), eta_min=prm.get('eta_min', 1e-6))",
         'step_code': '        self.scheduler.step()',
         'step_location': 'per_epoch',
     },
     {
         'name': 'CosineAnnealingLR_T10',
-        'extra_hp': ['T_max', 'eta_min'],
-        'setup_code': "        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=prm.get('T_max', 10), eta_min=prm.get('eta_min', 1e-6))",
+        'extra_hp': ['T_max', 'eta_min', 'epoch_max'],
+        'setup_code': "        T_max = int(prm.get('T_max', 0.2) * prm.get('epoch_max', 50))\n        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=max(1, T_max), eta_min=prm.get('eta_min', 1e-6))",
         'step_code': '        self.scheduler.step()',
         'step_location': 'per_epoch',
     },
     {
         'name': 'CosineAnnealingLR_T20',
-        'extra_hp': ['T_max', 'eta_min'],
-        'setup_code': "        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=prm.get('T_max', 20), eta_min=prm.get('eta_min', 1e-6))",
+        'extra_hp': ['T_max', 'eta_min', 'epoch_max'],
+        'setup_code': "        T_max = int(prm.get('T_max', 0.4) * prm.get('epoch_max', 50))\n        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=max(1, T_max), eta_min=prm.get('eta_min', 1e-6))",
         'step_code': '        self.scheduler.step()',
         'step_location': 'per_epoch',
     },
@@ -183,29 +183,29 @@ SCHEDULERS = [
     },
     {
         'name': 'CosineWarmRestarts_T5',
-        'extra_hp': ['T_0', 'eta_min'],
-        'setup_code': "        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, T_0=prm.get('T_0', 5), eta_min=prm.get('eta_min', 1e-6))",
+        'extra_hp': ['T_0', 'eta_min', 'epoch_max'],
+        'setup_code': "        T_0 = int(prm.get('T_0', 0.1) * prm.get('epoch_max', 50))\n        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, T_0=max(1, T_0), eta_min=prm.get('eta_min', 1e-6))",
         'step_code': '        self.scheduler.step()',
         'step_location': 'per_epoch',
     },
     {
         'name': 'CosineWarmRestarts_T2',
-        'extra_hp': ['T_0', 'eta_min'],
-        'setup_code': "        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, T_0=prm.get('T_0', 2), eta_min=prm.get('eta_min', 1e-6))",
+        'extra_hp': ['T_0', 'eta_min', 'epoch_max'],
+        'setup_code': "        T_0 = int(prm.get('T_0', 0.04) * prm.get('epoch_max', 50))\n        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, T_0=max(1, T_0), eta_min=prm.get('eta_min', 1e-6))",
         'step_code': '        self.scheduler.step()',
         'step_location': 'per_epoch',
     },
     {
         'name': 'LinearLR_sf01',
         'extra_hp': ['start_factor', 'total_iters'],
-        'setup_code': "        self.scheduler = torch.optim.lr_scheduler.LinearLR(self.optimizer, start_factor=prm.get('start_factor', 0.1), total_iters=prm.get('total_iters', 5))",
+        'setup_code': "        self.scheduler = torch.optim.lr_scheduler.LinearLR(self.optimizer, start_factor=prm.get('start_factor', 0.1), total_iters=int(prm.get('total_iters', 5)))",
         'step_code': '        self.scheduler.step()',
         'step_location': 'per_epoch',
     },
     {
         'name': 'PolynomialLR_p2',
         'extra_hp': ['total_iters', 'power'],
-        'setup_code': "        self.scheduler = torch.optim.lr_scheduler.PolynomialLR(self.optimizer, total_iters=prm.get('total_iters', 5), power=prm.get('power', 2.0))",
+        'setup_code': "        self.scheduler = torch.optim.lr_scheduler.PolynomialLR(self.optimizer, total_iters=int(prm.get('total_iters', 5)), power=prm.get('power', 2.0))",
         'step_code': '        self.scheduler.step()',
         'step_location': 'per_epoch',
     },
@@ -239,6 +239,7 @@ def build_hp_dict(arch, scheduler_cfg, weight_decay):
         'dropout': 0.2,
         'momentum': 0.9,
         'transform': 'norm_256_flip',
+        'epoch_max': 50,
     }
     # Add architecture-specific defaults
     if arch in ARCH_EXTRA_HP_DEFAULTS:
@@ -248,13 +249,14 @@ def build_hp_dict(arch, scheduler_cfg, weight_decay):
         if param not in hp:
             # Use the default value from the setup_code
             defaults = {
-                'step_size': 10, 'gamma': 0.5,
-                'T_max': 10, 'eta_min': 1e-6,
+                'step_size': 0.5, 'gamma': 0.5,
+                'T_max': 0.2, 'eta_min': 1e-6,
                 'factor': 0.5, 'patience': 3,
                 'base_lr': 1e-4, 'max_lr': 0.1,
-                'T_0': 5,
-                'start_factor': 0.1, 'total_iters': 5,
+                'T_0': 0.1,
+                'start_factor': 0.1, 'total_iters': 0.1,
                 'power': 2.0,
+                'epoch_max': 50,
             }
             if param in defaults:
                 hp[param] = defaults[param]
@@ -706,21 +708,31 @@ def main():
     project_root = Path(__file__).resolve().parents[4]  # nn-gpt root
     output_dir = project_root / 'out' / 'nngpt' / 'llm' / 'epoch' / 'A0' / 'synth_nn'
     
-    # Clean existing BO_ models
+    # Clean existing lr_ models
     if output_dir.exists():
         import shutil
         removed = 0
         for d in output_dir.iterdir():
-            if d.is_dir() and d.name.startswith('BO_'):
+            if d.is_dir() and d.name.startswith('lr_'):
                 shutil.rmtree(d)
                 removed += 1
         if removed:
-            print(f"Cleaned {removed} existing BO_ model directories.\n")
+            print(f"Cleaned {removed} existing lr_ model directories.\n")
     
-    total = generate_models(str(output_dir), prefix='BO')
+    # Clean database to avoid "NN already exists" error
+    db_file = project_root / 'db' / 'ab.nn.db'
+    if db_file.exists():
+        import shutil
+        try:
+            db_file.unlink()
+            print(f"Removed database file: {db_file}\n")
+        except Exception as e:
+            print(f"Warning: Could not delete database file: {e}\n")
+    
+    total = generate_models(str(output_dir), prefix='lr')
     print(f"\nDone. Generated {total} models ready for NNEval.")
     print(f"\nTo evaluate, run:")
-    print(f"  PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python -m ab.gpt.NNEval --only_epoch 0 --nn_train_epochs 5 --nn_name_prefix BO")
+    print(f"  PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python -m ab.gpt.NNEval --only_epoch 0 --nn_train_epochs 5 --nn_name_prefix lr")
 
 
 if __name__ == '__main__':

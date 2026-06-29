@@ -2,6 +2,29 @@ import json
 import os
 
 
+def _extract_accuracy_from_eval_info(existing_eval_data):
+    if not isinstance(existing_eval_data, dict):
+        return None
+
+    eval_res = existing_eval_data.get('eval_results')
+    accuracy = None
+    if isinstance(eval_res, (tuple, list)) and len(eval_res) >= 2:
+        accuracy = eval_res[1]
+    elif isinstance(eval_res, dict):
+        accuracy = eval_res.get('accuracy', eval_res.get('acc'))
+        if accuracy is None:
+            epochs = eval_res.get('epochs', [])
+            if epochs and isinstance(epochs[0], dict):
+                accuracy = epochs[0].get('accuracy', epochs[0].get('acc'))
+
+    if accuracy is None:
+        return None
+    try:
+        return float(accuracy)
+    except (TypeError, ValueError):
+        return None
+
+
 def generate_cycle_results(cycle, models_base_dir, eval_results_list, model_dirs_list, successful_models, 
                             failed_models, cycle_time_minutes, current_alter_epoch_path):
     """
@@ -107,17 +130,15 @@ def collect_cycle_metrics(models_base_dir, current_alter_epoch_path):
                 with open(eval_info_path, 'r') as f:
                     existing_eval_data = json.load(f)
                     existing_eval_files[model_id] = existing_eval_data
-                    # If we have existing successful eval, track it
-                    if 'eval_results' in existing_eval_data:
-                        eval_res = existing_eval_data['eval_results']
-                        if isinstance(eval_res, (tuple, list)) and len(eval_res) >= 2:
-                            eval_results_list.append({
-                                'model_id': model_id,
-                                'model_dir': str(model_dir_path),
-                                'accuracy': eval_res[1] if len(eval_res) > 1 else None,
-                                'eval_results': eval_res
-                            })
-                            successful_models.append(model_dir_path)
+                    accuracy = _extract_accuracy_from_eval_info(existing_eval_data)
+                    if accuracy is not None:
+                        eval_results_list.append({
+                            'model_id': model_id,
+                            'model_dir': str(model_dir_path),
+                            'accuracy': accuracy,
+                            'eval_results': existing_eval_data.get('eval_results')
+                        })
+                        successful_models.append(model_dir_path)
             except:
                 pass
         
@@ -138,4 +159,3 @@ def save_cycle_results(cycle_results, output_path):
     """
     with open(output_path, 'w') as f:
         json.dump(cycle_results, f, indent=2, default=str)
-

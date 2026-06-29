@@ -1,0 +1,112 @@
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        
+        # Encoder Path
+        # Convolutional Layer 1
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=192, kernel_size=3, stride=1, padding=1) # output shape: (192, 32, 32)
+        self.bn1 = nn.BatchNorm2d(num_features=192, momentum=0.9, eps=1e-4) # output shape: (192, 32, 32)
+        self.silu1 = nn.SiLU() # output shape: (192, 32, 32)
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2) # output shape: (192, 16, 16)
+
+        # Attention Mechanism 1
+        self.attention1 = nn.Sequential(
+            nn.Conv2d(in_channels=192, out_channels=192, kernel_size=1), 
+            nn.BatchNorm2d(num_features=192, momentum=0.9, eps=1e-4),
+            nn.SiLU(),
+            nn.Conv2d(in_channels=192, out_channels=1, kernel_size=1),
+            nn.Sigmoid()
+        ) # output shape: (1, 16, 16)
+
+        self.residual1 = nn.Conv2d(in_channels=192, out_channels=192, kernel_size=1) # output shape: (192, 16, 16)
+
+        # Convolutional Layer 2
+        self.conv2 = nn.Conv2d(in_channels=192, out_channels=384, kernel_size=3, stride=1, padding=1) # output shape: (384, 16, 16)
+        self.bn2 = nn.BatchNorm2d(num_features=384, momentum=0.9, eps=1e-4) # output shape: (384, 16, 16)
+        self.silu2 = nn.SiLU() # output shape: (384, 16, 16)
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2) # output shape: (384, 8, 8)
+
+        # Attention Mechanism 2
+        self.attention2 = nn.Sequential(
+            nn.Conv2d(in_channels=384, out_channels=384, kernel_size=1), 
+            nn.BatchNorm2d(num_features=384, momentum=0.9, eps=1e-4),
+            nn.SiLU(),
+            nn.Conv2d(in_channels=384, out_channels=1, kernel_size=1),
+            nn.Sigmoid()
+        ) # output shape: (1, 8, 8)
+
+        self.residual2 = nn.Conv2d(in_channels=384, out_channels=384, kernel_size=1) # output shape: (384, 8, 8)
+
+        # Convolutional Layer 3
+        self.conv3 = nn.Conv2d(in_channels=384, out_channels=768, kernel_size=3, stride=1, padding=1) # output shape: (768, 8, 8)
+        self.bn3 = nn.BatchNorm2d(num_features=768, momentum=0.9, eps=1e-4) # output shape: (768, 8, 8)
+        self.silu3 = nn.SiLU() # output shape: (768, 8, 8)
+        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2) # output shape: (768, 4, 4)
+
+        # Attention Mechanism 3
+        self.attention3 = nn.Sequential(
+            nn.Conv2d(in_channels=768, out_channels=768, kernel_size=1), 
+            nn.BatchNorm2d(num_features=768, momentum=0.9, eps=1e-4),
+            nn.SiLU(),
+            nn.Conv2d(in_channels=768, out_channels=1, kernel_size=1),
+            nn.Sigmoid()
+        ) # output shape: (1, 4, 4)
+
+        self.residual3 = nn.Conv2d(in_channels=768, out_channels=768, kernel_size=1) # output shape: (768, 4, 4)
+
+        # Fully Connected Layers
+        self.fc1 = nn.Linear(in_features=768*4*4, out_features=768) # output shape: (768)
+        self.bn5 = nn.BatchNorm1d(num_features=768, momentum=0.9, eps=1e-4) # output shape: (768)
+        self.silu5 = nn.SiLU() # output shape: (768)
+        self.fc2 = nn.Linear(in_features=768, out_features=10) # output shape: (10)
+
+        # Decoder Path
+        # Deconvolutional Layer 1
+        self.deconv1 = nn.ConvTranspose2d(in_channels=768, out_channels=384, kernel_size=2, stride=2) # output shape: (384, 8, 8)
+        self.bn4 = nn.BatchNorm2d(num_features=384, momentum=0.9, eps=1e-4) # output shape: (384, 8, 8)
+        self.silu6 = nn.SiLU() # output shape: (384, 8, 8)
+
+        # Attention Mechanism 4
+        self.attention4 = nn.Sequential(
+            nn.Conv2d(in_channels=384, out_channels=384, kernel_size=1), 
+            nn.BatchNorm2d(num_features=384, momentum=0.9, eps=1e-4),
+            nn.SiLU(),
+            nn.Conv2d(in_channels=384, out_channels=1, kernel_size=1),
+            nn.Sigmoid()
+        ) # output shape: (1, 8, 8)
+
+        self.residual4 = nn.Conv2d(in_channels=384, out_channels=384, kernel_size=1) # output shape: (384, 8, 8)
+
+        # Concatenate skip connection from conv2
+        self.concat1 = nn.Concatenate(dim=1) # output shape: (768, 8, 8)
+
+        # Deconvolutional Layer 2
+        self.deconv2 = nn.ConvTranspose2d(in_channels=768, out_channels=192, kernel_size=2, stride=2) # output shape: (192, 16, 16)
+        self.bn6 = nn.BatchNorm2d(num_features=192, momentum=0.9, eps=1e-4) # output shape: (192, 16, 16)
+        self.silu7 = nn.SiLU() # output shape: (192, 16, 16)
+
+        # Attention Mechanism 5
+        self.attention5 = nn.Sequential(
+            nn.Conv2d(in_channels=192, out_channels=192, kernel_size=1), 
+            nn.BatchNorm2d(num_features=192, momentum=0.9, eps=1e-4),
+            nn.SiLU(),
+            nn.Conv2d(in_channels=192, out_channels=1, kernel_size=1),
+            nn.Sigmoid()
+        ) # output shape: (1, 16, 16)
+
+        self.residual5 = nn.Conv2d(in_channels=192, out_channels=192, kernel_size=1) # output shape: (192, 16, 16)
+
+        # Concatenate skip connection from conv1
+        self.concat2 = nn.Concatenate(dim=1) # output shape: (384, 16, 16)
+
+        # Deconvolutional Layer 3
+        self.deconv3 = nn.ConvTranspose2d(in_channels=384, out_channels=192, kernel_size=2, stride=2) # output shape: (192, 32, 32)
+        self.bn7 = nn.BatchNorm2d(num_features=192, momentum=0.9, eps=1e-4) # output shape: (192, 32, 32)
+        self.silu8 = nn.SiLU() # output shape: (192, 32, 32)
+
+        # Final Convolutional Layer
+        self.final_conv = nn.Conv2d(in_channels=192, out_channels=10, kernel_size=1) # output shape: (10, 32, 32)
+
+    def forward(self, x):
+        # Encoder Path
+        e1 = self.pool1(self.silu1(self.bn1(self.conv1(x)))) # output shape: (192, 16, 1

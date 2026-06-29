@@ -1,43 +1,69 @@
 {
-    "improvement_classification_codeonly": {
-        "comment": [
-            "para: where you fill in content, value: where data come from (colum key in api.data() DataFrame).",
-            "task(only in addon_list): which task the additional content come from.",
-            "comment: explain the usage of this file"
-        ],
-        "input_list": [{"para": "nn_code","value": "nn_code"}],
-        "addon_list": [],
-        "task": "img-classification",
-        "addon_task": null,
-        "no_repeat": [],
-        "keep_same": [],
-        "prompt": [
-            "Improve the following implementation to make it a better performance on image classification tasks.",
-            "The class name should be 'Net' and you MUST PROVIDE FULL CODES of the changed implementation.",
-            "You can change the structure, alternatively also changed training procedure.",
-            "Strictly DO NOT remove the `train_setup` and `learn` method, and NEVER change their parameters or implementation.",
-            "Strictly NO use of models in `torchvision`.",
-            "Focus on improving the model architecture and forward pass only.",
-            "```\n{nn_code}\n```"
-        ]
-    },
-
-    "improvement_segmentation_codeonly": {
-        "input_list": [{"para": "nn_code","value": "nn_code"}],
-        "addon_list": [{"para": "addon_nn_code","value": "nn_code"}],
-        "task": "img-segmentation",
-        "addon_task": "img-classification",
-        "no_repeat": ["nn"],
-        "keep_same": [],
-        "prompt": [
-            "Improve the following implementation to make it a better performance on image segmentation tasks given another backbone implementation.",
-            "The class name should be 'Net' and you MUST PROVIDE FULL CODES of the changed implementation.",
-            "You can change the structure, alternatively also changed training procedure.",
-            "Strictly DO NOT remove the `train_setup` and `learn` method, and NEVER change their parameters or implementation.",
-            "Strictly NO use of models in `torchvision`.",
-            "Focus on improving the model architecture and forward pass only.",
-            "Code:\n```\n{nn_code}\n```",
-            "Backbone:\n```\n{addon_nn_code}\n```"
-        ]
-    }
+  "improvement_classification_codeonly": {
+    "comment": [
+      "para: where you fill in content, value: where data come from (colum key in api.data() DataFrame).",
+      "task(only in addon_list): which task the additional content come from.",
+      "comment: explain the usage of this file"
+    ],
+    "system": [
+      "You are an expert PyTorch neural network architect.",
+      "Improve the given neural network to achieve higher accuracy on image classification tasks.",
+      "Always follow LEMUR NN Dataset conventions: include a standalone function 'supported_hyperparameters' (outside the class) returning a set of hyperparameter key names, class name 'Net', and methods __init__, forward, train_setup, and learn. Output only the requested XML tags (<hp>, <tr>, <nn>)."
+    ],
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      }
+    ],
+    "addon_list": [],
+    "task": "img-classification",
+    "addon_task": null,
+    "no_repeat": [],
+    "keep_same": [],
+    "prompt": [
+      "Improve the following implementation to make it a better performance on image classification tasks.",
+      "The class name should be 'Net' and you MUST PROVIDE FULL CODES of the changed implementation.",
+      "You can change the structure, alternatively also changed training procedure.",
+      "Strictly DO NOT remove the `train_setup` and `learn` method, and NEVER change their parameters or implementation.",
+      "Strictly NO use of models in `torchvision`.",
+      "Focus on improving the model architecture and forward pass only.",
+      "```\n{nn_code}\n```"
+    ]
+  },
+  "improvement_segmentation_codeonly": {
+    "system": [
+      "You are an expert PyTorch neural network architect specialising in segmentation models.",
+      "Improve the given neural network to achieve higher accuracy on image segmentation tasks.",
+      "Always follow LEMUR NN Dataset conventions: include a standalone function 'supported_hyperparameters' (outside the class) returning a set of hyperparameter key names, class name 'Net', and methods __init__, forward, train_setup, and learn. Output only the requested XML tags (<hp>, <tr>, <nn>)."
+    ],
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      }
+    ],
+    "addon_list": [
+      {
+        "para": "addon_nn_code",
+        "value": "nn_code"
+      }
+    ],
+    "task": "img-segmentation",
+    "addon_task": "img-classification",
+    "no_repeat": [
+      "nn"
+    ],
+    "keep_same": [],
+    "prompt": [
+      "Improve the following implementation to make it a better performance on image segmentation tasks given another backbone implementation.",
+      "The class name should be 'Net' and you MUST PROVIDE FULL CODES of the changed implementation.",
+      "You can change the structure, alternatively also changed training procedure.",
+      "Strictly DO NOT remove the `train_setup` and `learn` method, and NEVER change their parameters or implementation.",
+      "Strictly NO use of models in `torchvision`.",
+      "Focus on improving the model architecture and forward pass only.",
+      "Code:\n```\n{nn_code}\n```",
+      "Backbone:\n```\n{addon_nn_code}\n```"
+    ]
+  }
 }

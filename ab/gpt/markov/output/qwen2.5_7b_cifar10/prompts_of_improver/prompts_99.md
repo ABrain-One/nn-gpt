@@ -1,0 +1,267 @@
+## Role
+
+You are an excellent vision model architect. You have much experience in designing vision models. You are good at improving the vision model code. You have a lot of experience of debugging the vision model code.
+
+## Task
+
+You are given:
+1. The BEST performing code so far (reference implementation)
+2. The CURRENT iteration's code and its evaluation result
+3. History of previous improvement attempts and their results (learn from past experience!)
+
+Analyze the problems and provide specific improvement suggestions for the next iteration.
+
+- The evaluation result is a float number between 0 and 1, meaning the accuracy of the vision model.
+- Sometimes the evaluation maybe a message string, meaning the error or other questions of the vision model. In this case, you should provide suggestions to fix the error.
+- Your suggestions should help improve upon the BEST code, not just fix the current iteration's issues.
+- IMPORTANT: Learn from the improvement history! Avoid repeating suggestions that didn't work, and build upon ideas that showed improvement.
+
+## Improvement History (Recent Iterations)
+### Iteration 93
+- **Problem identified**: The accuracy is low due to the inappropriate handling of feature maps and attention mechanisms, as well as the introduction of unnecessary complexity like the Feature Pyramid Network (FPN). The spatial attention mechanism is not properly integrated, leading to misaligned dimensions, and the architecture has been overcomplicated, which may introduce instability and reduce performance.
+- **Suggestion given**: [{'suggestion': 'Simplify the Architecture', 'details': 'Remove the Feature Pyramid Network (FPN) and focus on a simpler, more direct path from input to output. This will help in reducing the complexity and potential sources of errors.'}, {'suggestion': 'Refactor Attention Mechanisms', 'details': 'E...
+- **Result after applying**: accuracy: 60.53%
+
+### Iteration 94
+- **Problem identified**: The accuracy is low primarily due to the inappropriate handling of feature maps and attention mechanisms, as well as the unnecessary complexity introduced by the large number of convolutional layers and channels. Additionally, the spatial attention mechanism is not properly integrated, leading to misaligned dimensions. The current architecture is overly complex, which may introduce instability and reduce performance.
+- **Suggestion given**: [{'suggestion': 'Reduce the Number of Convolutional Layers and Channels', 'details': 'Reduce the number of convolutional layers and channels to match those in the best-performing code. For instance, change the number of channels in each convolutional layer and reduce the number of layers. This will ...
+- **Result after applying**: accuracy: 57.79%
+
+### Iteration 95
+- **Problem identified**: The accuracy is low primarily due to the incorrect handling of feature maps and attention mechanisms, as well as the unnecessary complexity introduced by the large number of convolutional layers and channels. Additionally, the spatial attention mechanism is not properly integrated, leading to misaligned dimensions. The current architecture is overly complex, which may introduce instability and reduce performance.
+- **Suggestion given**: [{'suggestion': 'Reduce the Number of Convolutional Layers and Channels', 'details': 'Match the number of convolutional layers and channels to those in the best-performing code. For example, reduce the number of channels in each convolutional layer and decrease the number of layers. This will help i...
+- **Result after applying**: accuracy: 58.48%
+
+### Iteration 96
+- **Problem identified**: The accuracy is low primarily due to the incorrect handling of feature maps and attention mechanisms, as well as the unnecessary complexity introduced by the large number of convolutional layers and channels. Additionally, the spatial attention mechanism is not properly integrated, leading to misaligned dimensions. The current architecture is overly complex, which may introduce instability and reduce performance.
+- **Suggestion given**: [{'suggestion': 'Reduce the Number of Convolutional Layers and Channels', 'details': 'Match the number of convolutional layers and channels to those in the best-performing code. For example, reduce the number of channels in each convolutional layer and decrease the number of layers. This will help i...
+- **Result after applying**: accuracy: 59.59%
+
+### Iteration 98
+- **Problem identified**: The accuracy is low primarily due to the incorrect handling of feature maps and attention mechanisms, as well as the unnecessary complexity introduced by the large number of convolutional layers and channels. Additionally, the spatial attention mechanism is not properly integrated, leading to misaligned dimensions. The current architecture is overly complex, which may introduce instability and reduce performance.
+- **Suggestion given**: [{'suggestion': 'Simplify the Architecture', 'details': 'Remove the spatial attention mechanism and the adaptive feature map aggregation. Focus on a simpler, more direct path from input to output. This will help in reducing the complexity and potential sources of errors.'}, {'suggestion': 'Reduce th...
+- **Result after applying**: accuracy: 64.00%
+
+
+## Best Code (Reference - Accuracy: 66.41%)
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        
+        # Convolutional Layer 1
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, stride=1, padding=1) # output shape: (32, 32, 32)
+        
+        # Batch Normalization 1
+        self.bn1 = nn.BatchNorm2d(num_features=32, momentum=0.9, eps=1e-5) # output shape: (32, 32, 32)
+        
+        # SiLU Activation
+        self.silu1 = nn.SiLU() # output shape: (32, 32, 32)
+        
+        # Max Pooling 1
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2) # output shape: (32, 16, 16)
+        
+        # Convolutional Layer 2
+        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1) # output shape: (64, 16, 16)
+        
+        # Batch Normalization 2
+        self.bn2 = nn.BatchNorm2d(num_features=64, momentum=0.9, eps=1e-5) # output shape: (64, 16, 16)
+        
+        # SiLU Activation
+        self.silu2 = nn.SiLU() # output shape: (64, 16, 16)
+        
+        # Max Pooling 2
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2) # output shape: (64, 8, 8)
+        
+        # Convolutional Layer 3
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1) # output shape: (128, 8, 8)
+        
+        # Batch Normalization 3
+        self.bn3 = nn.BatchNorm2d(num_features=128, momentum=0.9, eps=1e-5) # output shape: (128, 8, 8)
+        
+        # SiLU Activation
+        self.silu3 = nn.SiLU() # output shape: (128, 8, 8)
+        
+        # Max Pooling 3
+        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2) # output shape: (128, 4, 4)
+        
+        # Convolutional Layer 4
+        self.conv4 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1) # output shape: (256, 4, 4)
+        
+        # Batch Normalization 4
+        self.bn4 = nn.BatchNorm2d(num_features=256, momentum=0.9, eps=1e-5) # output shape: (256, 4, 4)
+        
+        # SiLU Activation
+        self.silu4 = nn.SiLU() # output shape: (256, 4, 4)
+        
+        # Max Pooling 4
+        self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2) # output shape: (256, 2, 2)
+        
+        # Fully Connected Layer 1
+        self.fc1 = nn.Linear(in_features=256*2*2, out_features=1024) # output shape: (1024)
+        
+        # Batch Normalization 5
+        self.bn5 = nn.BatchNorm1d(num_features=1024, momentum=0.9, eps=1e-5) # output shape: (1024)
+        
+        # SiLU Activation
+        self.silu5 = nn.SiLU() # output shape: (1024)
+        
+        # Conditional Stochastic Depth
+        self.drop_path = nn.ModuleList([nn.Identity() for _ in range(4)]) # output shape: (1024)
+        
+        # Fully Connected Layer 2
+        self.fc2 = nn.Linear(in_features=1024, out_features=10) # output shape: (10)
+        
+        # Adaptive Attention Mechanism
+        self.attention1 = nn.Sequential(
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=1), 
+            nn.BatchNorm2d(num_features=32),
+            nn.SiLU(),
+            nn.Conv2d(in_channels=32, out_channels=1, kernel_size=1),
+            nn.Sigmoid()
+        ) # output shape: (1, 16, 16)
+        
+        self.attention2 = nn.Sequential(
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=1), 
+            nn.BatchNorm2d(num_features=64),
+            nn.SiLU(),
+            nn.Conv2d(in_channels=64, out_channels=1, kernel_size=1),
+            nn.Sigmoid()
+        ) # output shape: (1, 8, 8)
+        
+        self.attention3 = nn.Sequential(
+            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=1), 
+            nn.BatchNorm2d(num_features=128),
+            nn.SiLU(),
+            nn.Conv2d(in_channels=128, out_channels=1, kernel_size=1),
+            nn.Sigmoid()
+        ) # output shape: (1, 4, 4)
+        
+        self.attention4 = nn.Sequential(
+            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=1), 
+            nn.BatchNorm2d(num_features=256),
+            nn.SiLU(),
+            nn.Conv2d(in_channels=256, out_channels=1, kernel_size=1),
+            nn.Sigmoid()
+        ) # output shape: (1, 2, 2)
+    
+    def forward(self, x):
+        # Apply attention mechanisms
+        x = self.pool1(self.silu1(self.bn1(self.conv1(x)))) # output shape: (32, 16, 16)
+        att1 = self.attention1(x)
+        x = att1 * x + x # output shape: (32, 16, 16)
+        
+        x = self.pool2(self.silu2(self.bn2(self.conv2(x)))) # output shape: (64, 8, 8)
+        att2 = self.attention2(x)
+        x = att2 * x + x # output shape: (64, 8, 8)
+        
+        x = self.pool3(self.silu3(self.bn3(self.conv3(x)))) # output shape: (128, 4, 4)
+        att3 = self.attention3(x)
+        x = att3 * x + x # output shape: (128, 4, 4)
+        
+        x = self.pool4(self.silu4(self.bn4(self.conv4(x)))) # output shape: (256, 2, 2)
+        att4 = self.attention4(x)
+        x = att4 * x + x # output shape: (256, 2, 2)
+        
+        x = x.view(-1, 256*2*2) # output shape: (1024)
+        x = self.silu5(self.bn5(self.fc1(x))) # output shape: (1024)
+        
+        # Apply conditional stochastic depth
+        for i, drop_path in enumerate(self.drop_path):
+            if i < 3:  # Apply stochastic depth only to the first three fully connected layers
+                x = drop_path(x)
+        
+        x = self.fc2(x) # output shape: (10)
+        
+        return x
+
+## Current Iteration Code (Accuracy: 64.00%)
+import torch.nn as nn
+
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        
+        # Convolutional Layer 1
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, stride=1, padding=1) # output shape: (32, 32, 32)
+        
+        # Batch Normalization 1
+        self.bn1 = nn.BatchNorm2d(num_features=32, momentum=0.9, eps=1e-5) # output shape: (32, 32, 32)
+        
+        # SiLU Activation
+        self.silu1 = nn.SiLU() # output shape: (32, 32, 32)
+        
+        # Max Pooling 1
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2) # output shape: (32, 16, 16)
+        
+        # Convolutional Layer 2
+        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1) # output shape: (64, 16, 16)
+        
+        # Batch Normalization 2
+        self.bn2 = nn.BatchNorm2d(num_features=64, momentum=0.9, eps=1e-5) # output shape: (64, 16, 16)
+        
+        # SiLU Activation
+        self.silu2 = nn.SiLU() # output shape: (64, 16, 16)
+        
+        # Max Pooling 2
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2) # output shape: (64, 8, 8)
+        
+        # Convolutional Layer 3
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1) # output shape: (128, 8, 8)
+        
+        # Batch Normalization 3
+        self.bn3 = nn.BatchNorm2d(num_features=128, momentum=0.9, eps=1e-5) # output shape: (128, 8, 8)
+        
+        # SiLU Activation
+        self.silu3 = nn.SiLU() # output shape: (128, 8, 8)
+        
+        # Max Pooling 3
+        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2) # output shape: (128, 4, 4)
+        
+        # Fully Connected Layer 1
+        self.fc1 = nn.Linear(in_features=128*4*4, out_features=512) # output shape: (512)
+        
+        # Batch Normalization 4
+        self.bn4 = nn.BatchNorm1d(num_features=512, momentum=0.9, eps=1e-5) # output shape: (512)
+        
+        # SiLU Activation
+        self.silu4 = nn.SiLU() # output shape: (512)
+        
+        # Fully Connected Layer 2
+        self.fc2 = nn.Linear(in_features=512, out_features=10) # output shape: (10)
+    
+    def forward(self, x):
+        # Forward pass through convolutional layers
+        x = self.pool1(self.silu1(self.bn1(self.conv1(x)))) # output shape: (32, 16, 16)
+        x = self.pool2(self.silu2(self.bn2(self.conv2(x)))) # output shape: (64, 8, 8)
+        x = self.pool3(self.silu3(self.bn3(self.conv3(x)))) # output shape: (128, 4, 4)
+        
+        # Flatten the tensor before passing it to the fully connected layer
+        x = x.view(-1, 128*4*4) # output shape: (2048)
+        
+        # Fully Connected Layers
+        x = self.silu4(self.bn4(self.fc1(x))) # output shape: (512)
+        x = self.fc2(x) # output shape: (10)
+        
+        return x
+
+## Feedback from Evaluator
+Training successful. Test accuracy: 64.00%
+
+## Tips
+
+- **Learn from history**: Review what was tried before and what results it produced. Don't repeat failed approaches.
+- Compare the current code with the best code to understand what changes led to performance differences.
+- Analyze the possible reasons why the accuracy is low or why the error occurred.
+- Provide specific, actionable improvement suggestions that build upon the BEST code.
+- You have a lot of knowledge, so the inspiration can come from any subject, such as computer science, philosophy, economics, biology, etc.
+- Focus on concrete architectural changes, hyperparameter suggestions, or bug fixes.
+
+## Output format
+```json
+{
+    "reason": "The reason why the accuracy is low or the error occurred",
+    "inspiration": "The inspiration from any subject, such as computer science, philosophy, economics, biology, etc.",
+    "improvement_suggestions": "Specific, actionable suggestions on how to improve upon the best code. Be detailed and concrete."
+}
+```
+

@@ -1,109 +1,148 @@
 {
-    "improvement_classification_codeonly": {
-        "comment": [
-            "para: where you fill in content, value: where data come from (colum key in api.data() DataFrame).",
-            "task(only in addon_list): which task the additional content come from.",
-            "comment: explain the usage of this file"
-        ],
-        "input_list": [{"para": "nn_code","value": "nn_code"}],
-        "addon_list": [],
-        "task": "img-classification",
-        "addon_task": null,
-        "prompt": [
-            "Change the layers in the following implementation to increase the accuracy on image classification tasks.",
-            "Strictly modify ONLY the layers in the code and ***STRICTLY DO NOT INTRODUCE NEW METHODS OR PARAMETERS***",
-            "You should answer not only the class you modified but with ***FULL CODES INCLUDING EVERYTHING (Other classes, etc.) NOT CHANGED***",
-            "You have to reply will full codes, don't be afraid of actually reducing the accuracy.",
-            "***Strictly check and make sure at least one layer being modified.***",
-            "```\n{nn_code}\n```"
-        ]
-    },
-
-    "improvement_segmentation_codeonly": {
-        "input_list": [{"para": "nn_code","value": "nn_code"}],
-        "addon_list": [{"para": "addon_nn_code","value": "nn_code"}],
-        "task": "img-segmentation",
-        "addon_task": "img-classification",
-        "prompt": [
-            "Improve the following implementation to make it a better performance on image segmentation tasks given another backbone implementation.",
-            "The class name should be 'Net' and you MUST PROVIDE FULL CODES of the changed implementation.",
-            "You can change the structure, alternatively also changed training procedure.",
-            "Strictly DO NOT remove the `train_setup` and `learn` method, and NEVER change their parameters or implementation.",
-            "Strictly NO use of models in `torchvision`.",
-            "Focus on improving the model architecture and forward pass only.",
-            "Code:\n```\n{nn_code}\n```",
-            "Backbone:\n```\n{addon_nn_code}\n```"
-        ]
-    },
-
-    "Zero shot prompts":
-    {
-        "input_list": [],
-        "addon_list": [],
-        "task": null,
-        "addon_task": null,
-        "prompt": [
-            "Write PyTorch code for an efficient classification model that includes self-attention blocks.",
-            "Design a model for image classification task. Make sure it is composed of all modules needed in such model.",
-            "Build an image classification model that extends AlexNet, so it will allow for extraction of more complex features.",
-            "Create a state-of-the-art model for image classification task that not only includes all necessary modules, but also incorporate new features to enhance model robustness and accuracy.",
-            "Build a nuanced computer vision model for image classification that will achieve accuracy of at least 80%."
-        ]
-    },
-
-    "RCI":
-    {
-        "input_list": [],
-        "addon_list": [],
-        "task": null,
-        "addon_task": null,
-        "prompt": [
-            "Design a model for image classification that resembles torchvision approaches, ensure that the generated model is complete. After generating the code, review your previous answer and identify any issues. Based on your critique, improve the code to address those issues.",
-            "Build an image classification model that extends AlexNet, so it will allow for extraction of more complex features. After generating the code, review your previous answer and identify any issues. Based on your critique, improve the code to address those issues.",
-            "Create a complete state-of-the-art model for image classification. After generating the code, review your previous answer and identify any issues. Based on your critique, improve the code to address those issues.",
-            "Build a nuanced computer vision model for image classification that will achieve accuracy of at least 80%. After generating the code, review your previous answer and identify any issues. Based on your critique, improve the code to address those issues."
-        ]
-    },
-
-    "Progressive Hint Prompting":
-    {
-        "input_list": [],
-        "addon_list": [],
-        "task": null,
-        "addon_task": null,
-        "prompt": [
-            "Start by generating a basic implementation of computer vision model. Make sure it initializes layers correctly and contains an appropriate forward function. In the next step, provide a more novel solution by introducing additional features.",
-            "Start by building an image classification model that extends AlexNet, so it will allow for extraction of more complex features. Make sure it initializes layers correctly and contains an appropriate forward function. In the next step, provide a more novel solution by introducing additional features.",
-            "Start by creating a complete state-of-the-art model for image classification. Make sure it initializes layers correctly and contains an appropriate forward function. In the next step, provide a more novel solution by introducing additional features.",
-            "Start by generating a basic implementation of computer vision model. Make sure it initializes layers correctly and contains an appropriate forward function. In the next step, provide a more novel solution by introducing additional features. Finally, correct the model so that it will achieve accuracy of at least 80%."
-        ]
-    },
-
-    "Persona Pattern/Memetic Proxy Prompting":
-    {
-        "input_list": [],
-        "addon_list": [],
-        "task": null,
-        "addon_task": null,
-        "prompt": [
-            "Adopt the persona of a cutting-edge AI researcher at Google. Design a model for image classification task. Make sure it is composed of all modules needed in such model.",
-            "Adopt the persona of a cutting-edge AI researcher at Google. Build an image classification model that extends AlexNet, so it will allow for extraction of more complex features.",
-            "Adopt the persona of a cutting-edge AI researcher at Google. Create a state-of-the-art model for image classification task that not only includes all necessary modules, but also incorporate new features to enhance model robustness and accuracy.",
-            "Adopt the persona of a cutting-edge AI researcher at Google. Build a nuanced computer vision model for image classification that will achieve accuracy of at least 80%."
-        ]
-    },
-
-    "Zero-shot Chain-of-Thought Prompting":
-    {
-        "input_list": [],
-        "addon_list": [],
-        "task": null,
-        "addon_task": null,
-        "prompt": [
-            "Let's think step by step and design a model for image classification task. The solution should include full usable model. Start by outlining the needed components and then implement the code.",
-            "Let's think step by step and build an image classification model that extends AlexNet, so it will allow for extraction of more complex features. Start by outlining the challenges of AlexNet architecture and then implement the code.",
-            "Let's think step by step and create a state-of-the-art model for image classification task. Make sure it contains all necessary modules and also incorporate new features to enhance model robustness and accuracy. Start by outlining the typical weak points of computer vision models and then account for them in the generated code.",
-            "Let's think step by step an build a nuanced computer vision model for image classification that will achieve accuracy of at least 80%. Start by identifying the key factors that influence model accuracy, then implement the code incorporating strategies to address these factors."
-        ]
-    }
+  "improvement_classification_codeonly": {
+    "comment": [
+      "para: where you fill in content, value: where data come from (colum key in api.data() DataFrame).",
+      "task(only in addon_list): which task the additional content come from.",
+      "comment: explain the usage of this file"
+    ],
+    "system": [
+      "You are an expert PyTorch neural network engineer.",
+      "Modify existing model architectures to improve image classification performance by changing layers.",
+      "Return complete, runnable Python code. Never introduce new methods or change method signatures."
+    ],
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      }
+    ],
+    "addon_list": [],
+    "task": "img-classification",
+    "addon_task": null,
+    "prompt": [
+      "Change the layers in the following implementation to increase the accuracy on image classification tasks.",
+      "Strictly modify ONLY the layers in the code and ***STRICTLY DO NOT INTRODUCE NEW METHODS OR PARAMETERS***",
+      "You should answer not only the class you modified but with ***FULL CODES INCLUDING EVERYTHING (Other classes, etc.) NOT CHANGED***",
+      "You have to reply will full codes, don't be afraid of actually reducing the accuracy.",
+      "***Strictly check and make sure at least one layer being modified.***",
+      "```\n{nn_code}\n```"
+    ]
+  },
+  "improvement_segmentation_codeonly": {
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      }
+    ],
+    "addon_list": [
+      {
+        "para": "addon_nn_code",
+        "value": "nn_code"
+      }
+    ],
+    "task": "img-segmentation",
+    "system": [
+      "You are an expert PyTorch neural network engineer specialising in image segmentation.",
+      "Modify existing segmentation model architectures to improve performance by changing layers.",
+      "Preserve train_setup and learn method signatures exactly. Return complete, runnable code."
+    ],
+    "addon_task": "img-classification",
+    "prompt": [
+      "Improve the following implementation to make it a better performance on image segmentation tasks given another backbone implementation.",
+      "The class name should be 'Net' and you MUST PROVIDE FULL CODES of the changed implementation.",
+      "You can change the structure, alternatively also changed training procedure.",
+      "Strictly DO NOT remove the `train_setup` and `learn` method, and NEVER change their parameters or implementation.",
+      "Strictly NO use of models in `torchvision`.",
+      "Focus on improving the model architecture and forward pass only.",
+      "Code:\n```\n{nn_code}\n```",
+      "Backbone:\n```\n{addon_nn_code}\n```"
+    ]
+  },
+  "Zero shot prompts": {
+    "input_list": [],
+    "addon_list": [],
+    "task": null,
+    "system": [
+      "You are an expert PyTorch deep learning engineer.",
+      "Generate complete, runnable neural network implementations for computer vision tasks.",
+      "Always name the main class 'Net', include a standalone function 'supported_hyperparameters' (outside the class) returning a set of hyperparameter key names, and include all required interface methods: __init__, forward, train_setup, and learn."
+    ],
+    "addon_task": null,
+    "prompt": [
+      "Write PyTorch code for an efficient classification model that includes self-attention blocks.",
+      "Design a model for image classification task. Make sure it is composed of all modules needed in such model.",
+      "Build an image classification model that extends AlexNet, so it will allow for extraction of more complex features.",
+      "Create a state-of-the-art model for image classification task that not only includes all necessary modules, but also incorporate new features to enhance model robustness and accuracy.",
+      "Build a nuanced computer vision model for image classification that will achieve accuracy of at least 80%."
+    ]
+  },
+  "RCI": {
+    "input_list": [],
+    "addon_list": [],
+    "task": null,
+    "system": [
+      "You are an expert PyTorch deep learning engineer.",
+      "Generate complete, runnable neural network implementations for computer vision tasks.",
+      "Always name the main class 'Net', include a standalone function 'supported_hyperparameters' (outside the class) returning a set of hyperparameter key names, and include all required interface methods: __init__, forward, train_setup, and learn."
+    ],
+    "addon_task": null,
+    "prompt": [
+      "Design a model for image classification that resembles torchvision approaches, ensure that the generated model is complete. After generating the code, review your previous answer and identify any issues. Based on your critique, improve the code to address those issues.",
+      "Build an image classification model that extends AlexNet, so it will allow for extraction of more complex features. After generating the code, review your previous answer and identify any issues. Based on your critique, improve the code to address those issues.",
+      "Create a complete state-of-the-art model for image classification. After generating the code, review your previous answer and identify any issues. Based on your critique, improve the code to address those issues.",
+      "Build a nuanced computer vision model for image classification that will achieve accuracy of at least 80%. After generating the code, review your previous answer and identify any issues. Based on your critique, improve the code to address those issues."
+    ]
+  },
+  "Progressive Hint Prompting": {
+    "input_list": [],
+    "addon_list": [],
+    "task": null,
+    "system": [
+      "You are an expert PyTorch deep learning engineer.",
+      "Generate complete, runnable neural network implementations for computer vision tasks.",
+      "Always name the main class 'Net', include a standalone function 'supported_hyperparameters' (outside the class) returning a set of hyperparameter key names, and include all required interface methods: __init__, forward, train_setup, and learn."
+    ],
+    "addon_task": null,
+    "prompt": [
+      "Start by generating a basic implementation of computer vision model. Make sure it initializes layers correctly and contains an appropriate forward function. In the next step, provide a more novel solution by introducing additional features.",
+      "Start by building an image classification model that extends AlexNet, so it will allow for extraction of more complex features. Make sure it initializes layers correctly and contains an appropriate forward function. In the next step, provide a more novel solution by introducing additional features.",
+      "Start by creating a complete state-of-the-art model for image classification. Make sure it initializes layers correctly and contains an appropriate forward function. In the next step, provide a more novel solution by introducing additional features.",
+      "Start by generating a basic implementation of computer vision model. Make sure it initializes layers correctly and contains an appropriate forward function. In the next step, provide a more novel solution by introducing additional features. Finally, correct the model so that it will achieve accuracy of at least 80%."
+    ]
+  },
+  "Persona Pattern/Memetic Proxy Prompting": {
+    "input_list": [],
+    "addon_list": [],
+    "task": null,
+    "system": [
+      "You are an expert PyTorch deep learning engineer.",
+      "Generate complete, runnable neural network implementations for computer vision tasks.",
+      "Always name the main class 'Net', include a standalone function 'supported_hyperparameters' (outside the class) returning a set of hyperparameter key names, and include all required interface methods: __init__, forward, train_setup, and learn."
+    ],
+    "addon_task": null,
+    "prompt": [
+      "Adopt the persona of a cutting-edge AI researcher at Google. Design a model for image classification task. Make sure it is composed of all modules needed in such model.",
+      "Adopt the persona of a cutting-edge AI researcher at Google. Build an image classification model that extends AlexNet, so it will allow for extraction of more complex features.",
+      "Adopt the persona of a cutting-edge AI researcher at Google. Create a state-of-the-art model for image classification task that not only includes all necessary modules, but also incorporate new features to enhance model robustness and accuracy.",
+      "Adopt the persona of a cutting-edge AI researcher at Google. Build a nuanced computer vision model for image classification that will achieve accuracy of at least 80%."
+    ]
+  },
+  "Zero-shot Chain-of-Thought Prompting": {
+    "input_list": [],
+    "addon_list": [],
+    "task": null,
+    "system": [
+      "You are an expert PyTorch deep learning engineer.",
+      "Generate complete, runnable neural network implementations for computer vision tasks.",
+      "Always name the main class 'Net', include a standalone function 'supported_hyperparameters' (outside the class) returning a set of hyperparameter key names, and include all required interface methods: __init__, forward, train_setup, and learn."
+    ],
+    "addon_task": null,
+    "prompt": [
+      "Let's think step by step and design a model for image classification task. The solution should include full usable model. Start by outlining the needed components and then implement the code.",
+      "Let's think step by step and build an image classification model that extends AlexNet, so it will allow for extraction of more complex features. Start by outlining the challenges of AlexNet architecture and then implement the code.",
+      "Let's think step by step and create a state-of-the-art model for image classification task. Make sure it contains all necessary modules and also incorporate new features to enhance model robustness and accuracy. Start by outlining the typical weak points of computer vision models and then account for them in the generated code.",
+      "Let's think step by step an build a nuanced computer vision model for image classification that will achieve accuracy of at least 80%. Start by identifying the key factors that influence model accuracy, then implement the code incorporating strategies to address these factors."
+    ]
+  }
 }
