@@ -16,6 +16,7 @@ from ab.gpt.util.Const import epoch_dir, new_nn_file, nngpt_dir, synth_dir, hp_f
 from ab.gpt.util.Util import verify_nn_code, copy_to_lemur
 from ab.gpt.util.CycleResults import generate_cycle_results, collect_cycle_metrics, save_cycle_results
 from ab.gpt.util import nneval_worker_pool as NNEvalWorkerPool
+from ab.gpt.brute.fract.nas.EvalUtil import _update_model_description
 
 # Default evaluation parameters used by the CLI entrypoint when no per-model
 # metadata is available.
@@ -235,6 +236,11 @@ def _write_success_outputs(spec: Dict[str, Any], result: Dict[str, Any]) -> Dict
         spec["dataset"],
         spec["metric"],
     )
+    if _update_model_description is not None and lemur_prefix and str(lemur_prefix).startswith("FractalFusion"):
+        try:
+            _update_model_description(model_dir_path, spec, result, success=True)
+        except Exception as exc:
+            print(f"Failed to update model description: {exc}")
     return {
         "model_id": spec["model_id"],
         "success": True,
@@ -252,6 +258,12 @@ def _write_failure_outputs(spec: Dict[str, Any], result: Dict[str, Any]) -> Dict
         f"{error_text}\n\n{traceback_text}".strip() + "\n",
         encoding="utf-8",
     )
+    lemur_prefix = spec.get("lemur_prefix")
+    if _update_model_description is not None and lemur_prefix and str(lemur_prefix).startswith("FractalFusion"):
+        try:
+            _update_model_description(model_dir_path, spec, result, success=False)
+        except Exception as exc:
+            print(f"Failed to update model description on failure: {exc}")
     return {
         "model_id": spec["model_id"],
         "success": False,
@@ -259,7 +271,6 @@ def _write_failure_outputs(spec: Dict[str, Any], result: Dict[str, Any]) -> Dict
         "is_oom": bool(result.get("is_oom", False)),
         "skipped": False,
     }
-
 
 def _build_eval_request(
     *,
