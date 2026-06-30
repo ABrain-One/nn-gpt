@@ -52,6 +52,16 @@ def _fenced(code: str) -> str:
     return f"```python\n{code.strip()}\n```"
 
 
+def _unfenced(text: str) -> str:
+    """Recover raw code from a ```python ... ``` fence (best-effort)."""
+    t = (text or "").strip()
+    if t.startswith("```"):
+        t = t.split("\n", 1)[1] if "\n" in t else ""
+        if "```" in t:
+            t = t[: t.rfind("```")]
+    return t.strip()
+
+
 # ── pipeline ──────────────────────────────────────────────────────────────────
 
 class SelfContainedKTOPipeline:
@@ -78,6 +88,16 @@ class SelfContainedKTOPipeline:
         # desirable_weight*n_D ~= class_weight_target * undesirable_weight*n_U.
         class_weight_mode: str = "fixed",
         class_weight_target: float = 1.0,
+        # similarity penalty (#3): subtract alpha*shaped_jaccard from the KTO chosen
+        # reward for near-duplicate generations (vs LEMUR DB + our own prior gens).
+        # When on, non-novel passers are NOT dropped — they enter as desirable with
+        # a penalty; novelty stays a reported metric.
+        sim_penalty: bool = False,
+        sim_alpha: float = 0.4,
+        sim_threshold: float = 0.85,
+        sim_shape: str = "exponential",
+        sim_db_task: str = "img-classification",
+        sim_db_dataset: str = "cifar-10",
         # KTO hyperparameters
         kto_beta: float = 0.1,
         kto_desirable_weight: float = 1.0,
@@ -139,6 +159,13 @@ class SelfContainedKTOPipeline:
         self.class_weight_mode = class_weight_mode
         self.class_weight_target = class_weight_target
 
+        self.sim_penalty = sim_penalty
+        self.sim_alpha = sim_alpha
+        self.sim_threshold = sim_threshold
+        self.sim_shape = sim_shape
+        self.sim_db_task = sim_db_task
+        self.sim_db_dataset = sim_db_dataset
+
         self.kto_beta = kto_beta
         self.kto_desirable_weight = kto_desirable_weight
         self.kto_undesirable_weight = kto_undesirable_weight
@@ -186,6 +213,19 @@ class SelfContainedKTOPipeline:
 
         # Novelty checker — starts EMPTY (no dataset); grows as we accept models.
         self.novelty_checker = NoveltyChecker(self.output_dir / "seen_models.json")
+
+        # Similarity-penalty index (#3): LEMUR DB code + our own prior generations.
+        # Built once; new generations are added as they're accepted (cumulative).
+        self.sim_index = None
+        if self.sim_penalty:
+            from ab.gpt.kto_pipeline.similarity_penalty import SimilarityIndex
+            self.sim_index = SimilarityIndex(threshold=self.sim_threshold)
+            n_db = self.sim_index.add_db(self.sim_db_task, self.sim_db_dataset)
+            n_prev = self.sim_index.add_codes(
+                [_unfenced(r.get("completion", "")) for r in self.desirable])
+            logger.info(f"[sim] index built: {n_db} DB models + {n_prev} prior generations "
+                        f"(alpha={self.sim_alpha}, threshold={self.sim_threshold}, "
+                        f"shape={self.sim_shape})")
 
         self._setup_logging()
         self.cycle_results: List[Dict[str, Any]] = []
@@ -413,9 +453,11 @@ class SelfContainedKTOPipeline:
         point spending GPU on duplicates that won't enter training. Flagged records
         get new_nn.py moved aside (so NNEval ignores them) and are counted as
         not_novel_skipped in bucketing. Idempotent across resumes via the moved file.
-        Disabled by eval_skip=False (e.g. benchmark runs that must evaluate ALL).
+        Disabled by eval_skip=False (e.g. benchmark runs that must evaluate ALL),
+        and always disabled under the similarity penalty (non-novel passers must be
+        evaluated so they can enter training as desirable).
         """
-        if not self.novelty_check or not self.eval_skip:
+        if not self.novelty_check or not self.eval_skip or self.sim_index is not None:
             return 0
         n = 0
         for rec in generation_records:
@@ -476,12 +518,19 @@ class SelfContainedKTOPipeline:
         n_und_unparseable = 0
         n_skipped = 0
         accuracies: List[float] = []
+        cycle_penalties: List[float] = []  # similarity penalties of this cycle's desirables
 
         def add_desirable(code: str, model_id: str, accuracy: float) -> None:
+            pen = 0.0
+            if self.sim_index is not None:
+                pen = self.sim_index.penalty_for(code, self.sim_shape)  # vs DB + prior gens
+                self.sim_index.add(code)                                # becomes a "prior" too
+                cycle_penalties.append(pen)
             self.desirable.append({
                 "prompt_messages": prompt_messages,
                 "completion": _fenced(code),
                 "label": True,
+                "sim_penalty": pen,
                 "_meta": {
                     "model_id": model_id, "cycle": cycle,
                     "accuracy": accuracy, "reason": "passed",
@@ -570,17 +619,20 @@ class SelfContainedKTOPipeline:
                 n_und_lowacc += 1
                 continue
 
-            # passed the accuracy bar → novel ones become desirable; exact
-            # duplicates of already-accepted architectures are skipped (dedup),
-            # NOT penalised as undesirable (they cleared the bar — they're good).
+            # passed the accuracy bar. Without the similarity penalty, exact
+            # duplicates of already-accepted designs are skipped (legacy dedup).
+            # WITH the similarity penalty (sim_index set), non-novel passers are
+            # NOT skipped — they enter as desirable carrying a penalty; novelty
+            # stays a reported metric only.
             is_novel = self.novelty_checker.is_novel(code, model_id) if self.novelty_check else True
-            if not is_novel:
+            if is_novel:
+                n_desirable += 1
+            else:
                 n_not_novel += 1
-                continue
-
+                if self.sim_index is None:
+                    continue  # legacy: drop the duplicate
             add_desirable(code, model_id, accuracy)
             self.novelty_checker.mark_as_seen(code, model_id, source=f"cycle_{cycle}")
-            n_desirable += 1
 
         # Persist caches + novelty.
         _write_jsonl(self.desirable, self.desirable_cache_file)
@@ -606,6 +658,8 @@ class SelfContainedKTOPipeline:
                 "unparseable": n_und_unparseable,
             },
             "not_novel_skipped": n_not_novel,
+            "sim_penalty_mean": (sum(cycle_penalties) / len(cycle_penalties)) if cycle_penalties else 0.0,
+            "sim_penalty_nonzero": sum(1 for p in cycle_penalties if p > 0.0),
             "skipped_no_signal": n_skipped,
             "evaluated_accuracies": len(accuracies),
             "best_accuracy": best_acc,
@@ -654,11 +708,12 @@ class SelfContainedKTOPipeline:
 
         combined = [
             {"prompt_messages": r["prompt_messages"], "completion": r["completion"],
-             "label": True, "_meta": r.get("_meta", {})}
+             "label": True, "sim_penalty": float(r.get("sim_penalty", 0.0)),
+             "_meta": r.get("_meta", {})}
             for r in desirables
         ] + [
             {"prompt_messages": r["prompt_messages"], "completion": r["completion"],
-             "label": False, "_meta": r.get("_meta", {})}
+             "label": False, "sim_penalty": 0.0, "_meta": r.get("_meta", {})}
             for r in selected_u
         ]
         _write_jsonl(combined, kto_file)
@@ -723,6 +778,8 @@ class SelfContainedKTOPipeline:
             "--lora_alpha", str(self.kto_lora_alpha),
             "--max_grad_norm", str(self.kto_max_grad_norm),
         ]
+        if self.sim_penalty:
+            cmd.extend(["--sim_alpha", str(self.sim_alpha)])
         if prev_adapter is not None:
             logger.info(f"[cycle {cycle}] warm-starting from previous adapter: {prev_adapter}")
             cmd.extend(["--peft", str(prev_adapter)])
@@ -873,6 +930,17 @@ def main() -> None:
                         choices=["fixed", "auto"])
     parser.add_argument("--class_weight_target", type=float, default=1.0)
 
+    # similarity penalty (#3)
+    parser.add_argument("--sim_penalty", action="store_true", default=False,
+                        help="Penalize near-duplicate generations in the KTO reward "
+                             "(vs LEMUR DB + own prior gens); non-novel passers kept as desirable")
+    parser.add_argument("--sim_alpha", type=float, default=0.4)
+    parser.add_argument("--sim_threshold", type=float, default=0.85)
+    parser.add_argument("--sim_shape", type=str, default="exponential",
+                        choices=["exponential", "linear"])
+    parser.add_argument("--sim_db_task", type=str, default="img-classification")
+    parser.add_argument("--sim_db_dataset", type=str, default="cifar-10")
+
     parser.add_argument("--kto_beta", type=float, default=0.1)
     parser.add_argument("--kto_desirable_weight", type=float, default=1.0)
     parser.add_argument("--kto_undesirable_weight", type=float, default=1.0)
@@ -927,6 +995,12 @@ def main() -> None:
         threshold_slope=args.threshold_slope,
         class_weight_mode=args.class_weight_mode,
         class_weight_target=args.class_weight_target,
+        sim_penalty=args.sim_penalty,
+        sim_alpha=args.sim_alpha,
+        sim_threshold=args.sim_threshold,
+        sim_shape=args.sim_shape,
+        sim_db_task=args.sim_db_task,
+        sim_db_dataset=args.sim_db_dataset,
         kto_beta=args.kto_beta,
         kto_desirable_weight=args.kto_desirable_weight,
         kto_undesirable_weight=args.kto_undesirable_weight,
