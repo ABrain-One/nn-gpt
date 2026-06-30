@@ -51,6 +51,7 @@ class NNGenPrompt(Prompt):
             packed[f"tr_{i}"] = transform_code
             packed[f"nn_{i}"] = nn_code_packed
             packed[f"name_{i}"] = row.get("nn")
+            packed[f"duration_{i}"] = row.get("duration")
             packed[f"jaccard_{i}"] = row.get("anchor_jaccard")
 
         for key in ("dataset", "task", "metric", "epoch"):
@@ -170,10 +171,8 @@ class NNGenPrompt(Prompt):
                 df = data.copy()
 
                 if "anchor_nn" not in df.columns:
-                    raise ValueError(
-                        f"[{key}] tall mode requires anchor_nn column. "
-                        f"Have={list(df.columns)}"
-                    )
+                    print(f"[WARN] [{key}] anchor_nn column missing — using constant anchor fallback")
+                    df["anchor_nn"] = "anchor_0"
 
                 # sort: best accuracy first, then best jaccard, stable tie-break on nn name
                 sort_cols = ["anchor_nn"]
