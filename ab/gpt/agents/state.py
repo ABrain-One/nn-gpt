@@ -77,6 +77,7 @@ class AgentState(BaseModel):
     predicted_best_epoch: Optional[int] = None
     epoch_1_accuracy: Optional[float] = None
     epoch_2_accuracy: Optional[float] = None
+    epoch_3_accuracy: Optional[float] = None
     error_message: Optional[str] = None
 
     # ---- Predictor inputs (collected by evaluate_step, names match LEMUR DB columns) ----

@@ -810,10 +810,11 @@ def evaluate_step(state: AgentState) -> dict:
     updates = {}
 
     # Count actual evaluations that produced results (not epoch numbers)
-    # epoch_1_accuracy = first real evaluation, epoch_2_accuracy = second real evaluation
+    # epoch_1_accuracy = first real evaluation, epoch_2_accuracy = second, epoch_3_accuracy = third
     # This works correctly with skip_epoch — epoch 0 skips generation so produces no accuracy
     has_epoch1_in_state = state.get("epoch_1_accuracy") is not None
     has_epoch2_in_state = state.get("epoch_2_accuracy") is not None
+    has_epoch3_in_state = state.get("epoch_3_accuracy") is not None
 
     acc_key = f"epoch_{epoch + 1}_accuracy"
     best_acc = results.get(acc_key)
@@ -823,18 +824,21 @@ def evaluate_step(state: AgentState) -> dict:
             updates["epoch_1_accuracy"] = best_acc
         elif not has_epoch2_in_state:
             updates["epoch_2_accuracy"] = best_acc
+        elif not has_epoch3_in_state:
+            updates["epoch_3_accuracy"] = best_acc
 
     # Pass all predictor inputs to state — names match exact DB column names
     for field in ["nn_code", "prm", "task", "dataset", "metric", "transform_code", "nn"]:
         if field in results:
             updates[field] = results[field]
 
-    # Route to predictor only if enabled AND we have at least 2 epochs of results
+    # Route to predictor only if enabled AND we have 3 epochs of results
     use_predictor = state.get("use_predictor", False)
     has_epoch1 = has_epoch1_in_state or "epoch_1_accuracy" in updates
     has_epoch2 = has_epoch2_in_state or "epoch_2_accuracy" in updates
+    has_epoch3 = has_epoch3_in_state or "epoch_3_accuracy" in updates
 
-    if use_predictor and has_epoch1 and has_epoch2:
+    if use_predictor and has_epoch1 and has_epoch2 and has_epoch3:
         updates["next_action"] = "predict"
     else:
         updates["next_action"] = "finetune"
