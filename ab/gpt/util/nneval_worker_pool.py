@@ -202,7 +202,7 @@ def _resolve_target_gpu_tokens(
     return list(visible_gpu_tokens), "visible_fallback"
 
 
-def build_nneval_worker_plan(*, use_all_visible_gpus: bool = True) -> Dict[str, Any]:
+def build_nneval_worker_plan(*, use_all_visible_gpus: bool = False) -> Dict[str, Any]:
     visible_gpu_tokens = _visible_cuda_device_tokens()
     visible_gpu_count = int(len(visible_gpu_tokens))
     if visible_gpu_count <= 0 or (not torch.cuda.is_available()):
@@ -223,44 +223,17 @@ def build_nneval_worker_plan(*, use_all_visible_gpus: bool = True) -> Dict[str, 
     if not target_gpu_indices:
         return _cpu_worker_plan(reason="configured_eval_gpus_unavailable", use_all_visible_gpus=use_all_visible_gpus)
 
-    fixed_workers_override = _env_is_set("NNGPT_NNEVAL_WORKERS_PER_GPU")
     gpu_memory_snapshots = [
         _cuda_device_memory_snapshot_gib(index, visible_gpu_tokens[index])
         for index in target_gpu_indices
     ]
-
     per_gpu_worker_counts = [0] * visible_gpu_count
-    if fixed_workers_override:
-        workers_per_gpu = max(1, _safe_int_env("NNGPT_NNEVAL_WORKERS_PER_GPU", 1))
-        for index in target_gpu_indices:
-            per_gpu_worker_counts[int(index)] = int(workers_per_gpu)
-        eval_gpu_indices, eval_gpu_tokens = _expand_gpu_assignments(visible_gpu_tokens, per_gpu_worker_counts)
-        return {
-            "mode": "fixed_worker_pool",
-            "reason": "fixed_workers_override",
-            "use_all_visible_gpus": bool(use_all_visible_gpus),
-            "visible_gpu_count": visible_gpu_count,
-            "visible_gpu_tokens": list(visible_gpu_tokens),
-            "target_gpu_indices": list(target_gpu_indices),
-            "target_gpu_tokens": list(target_gpu_tokens),
-            "eval_gpu_indices": list(eval_gpu_indices),
-            "eval_gpu_tokens": list(eval_gpu_tokens),
-            "per_gpu_worker_counts": list(per_gpu_worker_counts),
-            "pool_size": max(1, len(eval_gpu_indices)),
-            "workers_per_gpu": int(workers_per_gpu),
-            "dynamic_scaling": False,
-            "gpu_memory_snapshots": list(gpu_memory_snapshots),
-            "worker_budget_gib": None,
-            "reserved_headroom_gib": None,
-        }
-
-    dynamic_scaling = _safe_bool_env("NNGPT_NNEVAL_ENABLE_DYNAMIC_SCALING", True)
-    if not dynamic_scaling:
+    if _safe_bool_env("NNGPT_NNEVAL_PARALLEL", False):
         for index in target_gpu_indices:
             per_gpu_worker_counts[int(index)] = 1
         eval_gpu_indices, eval_gpu_tokens = _expand_gpu_assignments(visible_gpu_tokens, per_gpu_worker_counts)
         return {
-            "mode": "static_worker_pool",
+            "mode": "parallel_worker_pool",
             "reason": source_reason,
             "use_all_visible_gpus": bool(use_all_visible_gpus),
             "visible_gpu_count": visible_gpu_count,
@@ -278,48 +251,18 @@ def build_nneval_worker_plan(*, use_all_visible_gpus: bool = True) -> Dict[str, 
             "reserved_headroom_gib": None,
         }
 
-    reserved_headroom_gib = max(0.0, _safe_float_env("NNGPT_NNEVAL_RESERVED_HEADROOM_GIB", 2.0))
-    worker_budget_gib = max(0.5, _safe_float_env("NNGPT_NNEVAL_WORKER_BUDGET_GIB", 3.0))
-    min_workers_per_gpu = max(0, _safe_int_env("NNGPT_NNEVAL_MIN_WORKERS_PER_GPU", 1))
-    max_workers_per_gpu = max(
-        min_workers_per_gpu,
-        _safe_int_env("NNGPT_NNEVAL_MAX_WORKERS_PER_GPU", 2),
+    best_target_index, _ = max(
+        zip(target_gpu_indices, gpu_memory_snapshots),
+        key=lambda item: (
+            -1.0
+            if item[1].get("free_gib") is None
+            else float(item[1].get("free_gib") or 0.0)
+        ),
     )
-    local_worker_counts = [
-        _dynamic_workers_for_snapshot(
-            snapshot,
-            reserved_headroom_gib=reserved_headroom_gib,
-            worker_budget_gib=worker_budget_gib,
-            min_workers_per_gpu=min_workers_per_gpu,
-            max_workers_per_gpu=max_workers_per_gpu,
-        )
-        for snapshot in gpu_memory_snapshots
-    ]
-    for target_index, worker_count in zip(target_gpu_indices, local_worker_counts):
-        per_gpu_worker_counts[int(target_index)] = int(worker_count)
-    if sum(per_gpu_worker_counts) <= 0:
-        return {
-            "mode": "gpu_wait",
-            "reason": "awaiting_gpu_headroom",
-            "use_all_visible_gpus": bool(use_all_visible_gpus),
-            "visible_gpu_count": visible_gpu_count,
-            "visible_gpu_tokens": list(visible_gpu_tokens),
-            "target_gpu_indices": list(target_gpu_indices),
-            "target_gpu_tokens": list(target_gpu_tokens),
-            "eval_gpu_indices": [],
-            "eval_gpu_tokens": [],
-            "per_gpu_worker_counts": list(per_gpu_worker_counts),
-            "pool_size": 0,
-            "workers_per_gpu": 0,
-            "dynamic_scaling": True,
-            "gpu_memory_snapshots": list(gpu_memory_snapshots),
-            "worker_budget_gib": float(worker_budget_gib),
-            "reserved_headroom_gib": float(reserved_headroom_gib),
-        }
-
+    per_gpu_worker_counts[int(best_target_index)] = 1
     eval_gpu_indices, eval_gpu_tokens = _expand_gpu_assignments(visible_gpu_tokens, per_gpu_worker_counts)
     return {
-        "mode": "dynamic_worker_pool",
+        "mode": "serial_worker_pool",
         "reason": source_reason,
         "use_all_visible_gpus": bool(use_all_visible_gpus),
         "visible_gpu_count": visible_gpu_count,
@@ -329,12 +272,12 @@ def build_nneval_worker_plan(*, use_all_visible_gpus: bool = True) -> Dict[str, 
         "eval_gpu_indices": list(eval_gpu_indices),
         "eval_gpu_tokens": list(eval_gpu_tokens),
         "per_gpu_worker_counts": list(per_gpu_worker_counts),
-        "pool_size": max(1, len(eval_gpu_indices)),
-        "workers_per_gpu": max([int(count) for count in per_gpu_worker_counts] or [0]),
-        "dynamic_scaling": True,
+        "pool_size": 1,
+        "workers_per_gpu": 1,
+        "dynamic_scaling": False,
         "gpu_memory_snapshots": list(gpu_memory_snapshots),
-        "worker_budget_gib": float(worker_budget_gib),
-        "reserved_headroom_gib": float(reserved_headroom_gib),
+        "worker_budget_gib": None,
+        "reserved_headroom_gib": None,
     }
 
 

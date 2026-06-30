@@ -65,7 +65,7 @@ def _resolve_use_all_visible_gpus(use_all_visible_gpus: Optional[bool]) -> bool:
         return bool(use_all_visible_gpus)
     raw = os.getenv("NNGPT_NNEVAL_USE_ALL_VISIBLE_GPUS")
     if raw is None or raw == "":
-        return True
+        return False
     return str(raw).strip().lower() in {"1", "true", "yes", "on"}
 
 

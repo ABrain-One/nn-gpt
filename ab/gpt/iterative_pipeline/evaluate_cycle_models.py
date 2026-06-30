@@ -63,7 +63,7 @@ def evaluate_cycle_models(
         transform="norm_256_flip",
         custom_synth_dir=str(nneval_dir),
         cycle=cycle,
-        use_all_visible_gpus=True,
+        use_all_visible_gpus=False,
         save_eval_checkpoint=save_eval_checkpoint,
     )
 

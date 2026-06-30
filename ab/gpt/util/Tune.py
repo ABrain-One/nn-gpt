@@ -678,8 +678,7 @@ def _evaluate_epoch(
             if eval_cuda_visible_devices:
                 env = os.environ.copy()
                 env["CUDA_VISIBLE_DEVICES"] = eval_cuda_visible_devices
-                env["NNGPT_NNEVAL_USE_ALL_VISIBLE_GPUS"] = "1"
-                env.pop("NNGPT_NNEVAL_GPU_TOKENS", None)
+                env.setdefault("NNGPT_NNEVAL_USE_ALL_VISIBLE_GPUS", "0")
                 cmd = [
                     sys.executable,
                     "-m",
@@ -696,6 +695,7 @@ def _evaluate_epoch(
                 print(
                     f"[TUNE] Running NNEval subprocess with "
                     f"CUDA_VISIBLE_DEVICES={eval_cuda_visible_devices} "
+                    f"NNGPT_NNEVAL_USE_ALL_VISIBLE_GPUS={env.get('NNGPT_NNEVAL_USE_ALL_VISIBLE_GPUS')} "
                     f"custom_synth_dir={custom_synth_dir or ''}"
                 )
                 subprocess.run(cmd, check=True, env=env)
