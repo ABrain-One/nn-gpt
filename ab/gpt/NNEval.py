@@ -453,6 +453,22 @@ def _collect_epoch_requests(
         else:
             print("  No dataframe.df found. Using command-line/default evaluation parameters.")
 
+        # Variants produced by NNVariants carry a variant_meta.json instead of a
+        # dataframe.df. When present, encode the loss/optimizer into the DB name so
+        # each variant stays distinguishable in LEMUR (e.g. ResNet-loss_NGL-opt_Adam),
+        # rather than collapsing to the bare base-model name. An explicit
+        # --nn_name_prefix still wins.
+        variant_meta_path = model_dir_path / "variant_meta.json"
+        if variant_meta_path.exists():
+            try:
+                vm = json.loads(variant_meta_path.read_text(encoding="utf-8"))
+                variant_prefix = f"{vm['base_nn']}-loss_{vm['loss']}-opt_{vm['optimizer']}"
+                prefix_for_db = nn_name_prefix or variant_prefix
+                orig_pref = nn_name_prefix or variant_prefix
+                print(f"  Loaded variant metadata: prefix={variant_prefix}")
+            except Exception as exc:
+                print(f"  Error loading variant_meta.json from {variant_meta_path}: {exc}.")
+
         if prm_json:
             prm.update(prm_json)
             print(f"  Applied --prm_json overrides: {prm_json}")
