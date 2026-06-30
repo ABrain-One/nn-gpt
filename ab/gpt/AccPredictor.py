@@ -230,7 +230,7 @@ def _build_user_message(record: dict, nn_code: str) -> str:
         "EARLY_TRAINING_SIGNAL",
         f"epoch_1_accuracy: {round(_safe_float(record.get('accuracy_epoch_1'), 0.0), 6)}",
         f"epoch_2_accuracy: {round(_safe_float(record.get('accuracy_epoch_2'), 0.0), 6)}",
-       # f"epoch_3_accuracy: {round(_safe_float(record.get('accuracy_epoch_3'), 0.0), 6)}",
+        f"epoch_3_accuracy: {round(_safe_float(record.get('accuracy_epoch_3'), 0.0), 6)}",
         "",
         "NEURAL_NETWORK_CODE",
         "```python",
@@ -320,6 +320,7 @@ def predict_best_accuracy(
     nn_code: str,
     epoch_1_accuracy: float,
     epoch_2_accuracy: float,
+    epoch_3_accuracy: float,
 ) -> tuple[float, int]:
     """Predict final best_accuracy and best_epoch using ABrain/Accuracy-Prediction."""
     record = {
@@ -329,6 +330,7 @@ def predict_best_accuracy(
         "total_epochs": PREDICTOR_DEFAULT_MAX_EPOCHS,
         "accuracy_epoch_1": epoch_1_accuracy,
         "accuracy_epoch_2": epoch_2_accuracy,
+        "accuracy_epoch_3": epoch_3_accuracy,
         
     }
     user_content = _build_user_message(record, nn_code)
