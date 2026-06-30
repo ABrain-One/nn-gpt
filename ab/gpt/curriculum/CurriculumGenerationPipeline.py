@@ -49,12 +49,90 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-# ── Project root ──────────────────────────────────────────────────────────────
+
+# ----- Inline setup helpers (no external model_setup module needed) -----------------------------------
+
+def ensure_nn_dataset() -> None:
+    """Upgrade nn-dataset to >=2.2.9 if an older version is installed."""
+    import importlib.metadata, subprocess
+    MIN = (2, 2, 9)
+    try:
+        installed = tuple(int(x) for x in importlib.metadata.version("nn-dataset").split(".")[:3])
+    except importlib.metadata.PackageNotFoundError:
+        installed = (0, 0, 0)
+    if installed >= MIN:
+        return
+    min_str = ".".join(str(v) for v in MIN)
+    log(f"nn-dataset {installed} is too old — upgrading to >={min_str} ...")
+    subprocess.run([sys.executable, "-m", "pip", "install", f"nn-dataset>={min_str}", "-q"], check=False)
+    stale = [k for k in sys.modules if k == "ab" or k.startswith("ab.nn")]
+    for key in stale:
+        del sys.modules[key]
+    log("nn-dataset upgrade complete.")
+
+
+def ensure_model(model_dir: Optional[Path] = None) -> Path:
+    """Download OlympicCoder-7B weights + tokenizer if any files are missing."""
+    from transformers import AutoTokenizer
+    REQUIRED = ["tokenizer.json", "tokenizer_config.json", "chat_template.jinja"]
+    target = Path(model_dir) if model_dir else BASE_MODEL_PATH
+    target.mkdir(parents=True, exist_ok=True)
+
+    has_weights = (
+        (target / "model.safetensors").exists()
+        or any(target.glob("model-*-of-*.safetensors"))
+        or (target / "pytorch_model.bin").exists()
+    )
+    missing = [f for f in REQUIRED if not (target / f).exists()]
+
+    if has_weights and not missing:
+        return target
+
+    if not has_weights:
+        import torch
+        from transformers import AutoModelForCausalLM
+        log(f"Model weights not found — downloading open-r1/OlympicCoder-7B (~15GB) ...")
+        model = AutoModelForCausalLM.from_pretrained(
+            "open-r1/OlympicCoder-7B", torch_dtype=torch.bfloat16,
+            trust_remote_code=True, low_cpu_mem_usage=True)
+        model.save_pretrained(str(target))
+        log(f"Model weights saved to {target}")
+
+    if missing:
+        log(f"Missing tokenizer files {missing} — downloading ...")
+        tok = AutoTokenizer.from_pretrained("open-r1/OlympicCoder-7B", trust_remote_code=True)
+        tok.save_pretrained(str(target))
+        tok_cache = OUT_DIR / "tokenizer" / "open-r1" / "OlympicCoder-7B"
+        tok_cache.mkdir(parents=True, exist_ok=True)
+        tok.save_pretrained(str(tok_cache))
+        # Extract chat_template.jinja if stored inline in tokenizer_config.json
+        for d in [target, tok_cache]:
+            jinja = d / "chat_template.jinja"
+            cfg_path = d / "tokenizer_config.json"
+            if not jinja.exists() and cfg_path.exists():
+                try:
+                    cfg = json.loads(cfg_path.read_text())
+                    tmpl = cfg.get("chat_template")
+                    if tmpl and isinstance(tmpl, str):
+                        jinja.write_text(tmpl)
+                except Exception:
+                    pass
+        log(f"Tokenizer saved to {target}")
+
+    return target
+
+
+# ----- Project root----------------------------------------------------------------------------------
 
 NNGPT_DIR = Path(__file__).parents[3].resolve()
 OUT_DIR   = NNGPT_DIR / "out"
 
-# ── Base model (original, never modified) ─────────────────────────────────────
+try:
+    from ab.gpt.util.model_setup import ensure_nn_dataset
+    ensure_nn_dataset()
+except ImportError:
+    pass
+# ----- Base model (original, never modified) ------------------------------------------------------------------------------------------─
 
 BASE_MODEL_NAME = "open-r1/OlympicCoder-7B"
 
@@ -71,7 +149,7 @@ if _run_cfg_path.exists():
         pass
 BASE_MODEL_PATH = OUT_DIR / "llm" / "open-r1" / "OlympicCoder-7B"
 
-# ── Fixed curriculum sequence ─────────────────────────────────────────────────
+# ----- Fixed curriculum sequence ------------------------------------------------------------------------
 # Order is immutable — each level builds on the merged adapter of all previous.
 # The drift is significant from Medium band to very_low_near band — because (0.65 - 0.85) only 1 anchor group for CIFAR-10.
 CURRICULUM_SEQUENCE = [
@@ -89,7 +167,7 @@ CURRICULUM_SEQUENCE = [
      "description": "Very-low-near, k=4 — maximum reference diversity"},
 ]
 
-# ── Dataset configurations ────────────────────────────────────────────────────
+# ----- Dataset configurations---------------------------------------------------------
 DATASET_CONFIGS = {
     "cifar-10": {
         "task":             "img-classification",
@@ -218,7 +296,7 @@ DATASET_CONFIGS = {
     },
 }
 
-# ── Proven CIFAR-10 prompt files (adapted for other datasets) ─────────────────
+# ----- Proven CIFAR-10 prompt files (adapted for other datasets) ----------------------------------------─
 PROVEN_PROMPTS = {
     ("L1", 2): ("Curriculum_L1_high_k2.json",              "Curriculum_L1_high_k2_train.json"),
     ("L2", 2): ("Curriculum_L2_medium_k2.json",            "Curriculum_L2_medium_k2_train.json"),
@@ -228,7 +306,7 @@ PROVEN_PROMPTS = {
     ("L3", 4): ("Curriculum_L3_very_low_near_k4.json",     "Curriculum_L3_very_low_near_k4_train.json"),
 }
 
-# ── Logging ───────────────────────────────────────────────────────────────────
+# ----- Logging--------------------------------------------------------------------------------------------─
 def log(msg: str, level: str = "INFO") -> None:
     ts = datetime.now().strftime("%H:%M:%S")
     print(f"[{ts}] [{level}] {msg}", flush=True)
@@ -238,7 +316,7 @@ def timestamp() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
-# ── Naming helpers ────────────────────────────────────────────────────────────
+# ----- Naming helpers-----------------------------------------------------------------------------
 def get_step_id(level: str, k: int) -> str:
     """Unique identifier for a curriculum step. Uses hyphens per LEMUR convention."""
     return f"{level.lower()}-k{k}"
@@ -261,7 +339,7 @@ def get_nn_prefix(dataset: str, level: str, k: int) -> str:
     return f"{dataset_safe}_{level.lower()}-k{k}"
 
 
-# ── Progress tracking ─────────────────────────────────────────────────────────
+# ----- Progress tracking-------------------------------------------------------------------─
 def progress_path(dataset: str) -> Path:
     return OUT_DIR / "curriculum" / dataset / "progress.json"
 
@@ -286,15 +364,17 @@ def step_key(level: str, k: int) -> str:
     return f"{level}_k{k}"
 
 
-# ── DB viability check ────────────────────────────────────────────────────────
+# ----- DB viability check-------------------------------------------------------------------
 def check_band_viability(dataset: str, band: str, k: int) -> tuple[bool, int]:
     """
     Check if the LEMUR DB has enough anchor groups for this dataset/band/k.
     Returns (is_viable, row_count).
     """
     try:
-        sys.path.insert(0, str(NNGPT_DIR / "..") + "/nn-dataset")
-        sys.path.insert(0, str(NNGPT_DIR))
+        # Fix nn-dataset version BEFORE any ab.nn import.
+        # This is the only change vs the original function.
+        from ab.gpt.util.model_setup import ensure_nn_dataset, TOKENIZER_CACHE
+        ensure_nn_dataset()
 
         from ab.gpt.util.prompt.NNGenPromptCurriculum import NNGenPrompt
         from transformers import AutoTokenizer
@@ -302,8 +382,12 @@ def check_band_viability(dataset: str, band: str, k: int) -> tuple[bool, int]:
 
         tok_path = OUT_DIR / "tokenizer" / "open-r1" / "OlympicCoder-7B"
         if not tok_path.exists():
-            log("Tokenizer not found — skipping viability check, assuming viable", "WARN")
-            return True, k
+            log("Tokenizer cache not found — downloading from HuggingFace ...")
+            try:
+                ensure_model()
+            except Exception as e:
+                log(f"Could not initialise tokenizer: {e} — assuming viable", "WARN")
+                return True, k
 
         tok = AutoTokenizer.from_pretrained(str(tok_path), local_files_only=True)
         cfg = DATASET_CONFIGS.get(dataset, {})
@@ -311,20 +395,20 @@ def check_band_viability(dataset: str, band: str, k: int) -> tuple[bool, int]:
         tmp = Path(tempfile.mktemp(suffix=".json"))
         tmp.write_text(json.dumps({
             f"check_{dataset}_{band}": {
-                "type":             "curriculum_prompt",
-                "is_generation":    True,
-                "selection_mode":   "tall",
-                "task":             cfg.get("task", "img-classification"),
-                "dataset":          dataset,
-                "metric":           cfg.get("metric", "acc"),
-                "nn_prefixes":      [],
-                "num_joint_nns":    k,
-                "similarity_mode":  "anchor_band_db_minhash",
-                "similarity_band":  band,
-                "anchor_strategy":  "auto",
-                "input_list":       [{"para": f"acc_{i}", "value": f"acc_{i}"} for i in range(1, k+1)],
-                "prompt":           ["test"],
-                "output":           []
+                "type":            "curriculum_prompt",
+                "is_generation":   True,
+                "selection_mode":  "tall",
+                "task":            cfg.get("task", "img-classification"),
+                "dataset":         dataset,
+                "metric":          cfg.get("metric", "acc"),
+                "nn_prefixes":     [],
+                "num_joint_nns":   k,
+                "similarity_mode": "anchor_band_db_minhash",
+                "similarity_band": band,
+                "anchor_strategy": "auto",
+                "input_list":      [{"para": f"acc_{i}", "value": f"acc_{i}"} for i in range(1, k+1)],
+                "prompt":          ["test"],
+                "output":          []
             }
         }))
 
@@ -339,12 +423,13 @@ def check_band_viability(dataset: str, band: str, k: int) -> tuple[bool, int]:
         finally:
             tmp.unlink(missing_ok=True)
 
-    except ImportError:
-        log("Cannot import LEMUR — skipping viability check", "WARN")
+    except ImportError as e:
+        log(f"Cannot import LEMUR ({e}) — skipping viability check", "WARN")
         return True, k
 
 
-# ── Prompt adaptation ─────────────────────────────────────────────────────────
+
+# ----- Prompt adaptation-------------------------------------------------------------------─
 # Lines in the proven CIFAR-10 prompts that are backbone/architecture-specific
 # and must be REPLACED (not inherited) when adapting to a different dataset.
 _CIFAR10_BACKBONE_LINES = {
@@ -488,7 +573,7 @@ def adapt_prompt(source_cfg: dict, dataset: str, level: str, k: int, is_train: b
     return {conf_id: new_conf}
 
 
-# ── Config file writers ───────────────────────────────────────────────────────
+# ----- Config file writers--------------------------------------------------------------─
 def write_llm_conf(dataset: str, current_model_path: str, dry_run: bool = False) -> str:
     """
     Write LLM configuration JSON for this curriculum step.
@@ -599,10 +684,13 @@ def write_prompts(dataset: str, level: str, k: int, dry_run: bool = False) -> tu
 
 
 def write_entry_script(dataset: str, level: str, k: int,
-                       llm_conf: str, dry_run: bool = False) -> Path:
+                       llm_conf: str, dry_run: bool = False) -> "Path":
     """
-    Write a CurriculumGen entry script for this step.
-    Uses list-join approach to avoid indentation errors from f-string triple quotes.
+    Write a self-contained CurriculumGen entry script for this step.
+
+    The generated script runs bootstrap() before any other import, so it
+    automatically fixes the nn-dataset version and downloads missing model
+    files on any machine, regardless of what is already set up.
     """
     dataset_safe = dataset.replace("-", "_")
     script_name  = f"CurriculumGen_{dataset_safe}_{level}_k{k}.py"
@@ -651,7 +739,8 @@ def write_entry_script(dataset: str, level: str, k: int,
         f'',
         f'',
         f'def main():',
-        f'    layer_list  = list(TUNE_LAYERS)',
+        f'    import ab.gpt.util.Tune_Curriculum as Tune_Curriculum  # after bootstrap',
+        f'    layer_list = list(TUNE_LAYERS)',
         f'    peft_config = LoraConfig(',
         f'        r=R,',
         f'        lora_alpha=LORA_ALPHA,',
@@ -678,6 +767,8 @@ def write_entry_script(dataset: str, level: str, k: int,
         f'        gradient_checkpointing=True,',
         f'        gradient_checkpointing_kwargs={{"use_reentrant": False}},',
         f'        bf16=True,',
+        f'        padding_free=False,',
+        f'        packing_strategy="wrapped",  # bfd strategy auto-enables padding-free; wrapped does not',
         f'        dataloader_pin_memory=False,',
         f'    )',
         f'    Tune_Curriculum.tune(',
@@ -707,6 +798,7 @@ def write_entry_script(dataset: str, level: str, k: int,
         f'if __name__ == "__main__":',
         f'    main()',
     ]
+
     content = "\n".join(lines) + "\n"
 
     if not dry_run:
@@ -718,7 +810,7 @@ def write_entry_script(dataset: str, level: str, k: int,
     return script_path
 
 
-# ── Merge and clean ───────────────────────────────────────────────────────────
+# ----- Merge and clean------------------------------------------------------------------------─
 def select_best_epoch(tracker_path: Path) -> Optional[tuple[int, float]]:
     """
     Read epoch_tracker.json and return (best_epoch_index, best_score).
@@ -798,7 +890,7 @@ def clean_epoch_dirs(tracker_backup_name: str, dry_run: bool = False) -> None:
         log(f"Removed: {p.name}")
 
 
-# ── Single step runner ────────────────────────────────────────────────────────
+# ----- Single step runner-------------------------------------------------------------------
 def run_step(dataset: str, step: dict, progress: dict,
              resume: bool = False, dry_run: bool = False) -> bool:
     """
@@ -817,7 +909,7 @@ def run_step(dataset: str, step: dict, progress: dict,
     log(f"Starting step: {key}  ({step['description']})")
     log(f"{'='*60}")
 
-    # ── Check if already completed ─────────────────────────────────────────────
+    # ----- Check if already completed--------------------------------------------------------------
     if key in progress.get("completed_steps", []):
         if resume:
             log(f"Step {key} already completed — skipping (--resume)")
@@ -826,7 +918,7 @@ def run_step(dataset: str, step: dict, progress: dict,
             log(f"Step {key} already completed. Use --resume to skip or delete progress.json to restart.")
             return False
 
-    # ── Viability check ────────────────────────────────────────────────────────
+    # ----- Viability check-------------------------------------------------------------------
     cfg = DATASET_CONFIGS.get(dataset, {})
     viable_bands = cfg.get("viable_bands", [])
 
@@ -838,7 +930,7 @@ def run_step(dataset: str, step: dict, progress: dict,
 
     log(f"Band '{band}' is viable for '{dataset}' ✓")
 
-    # ── DB row count check ────────────────────────────────────────────────────
+    # ----- DB row count check---------------------------------------------------------
     log(f"Checking DB viability for {dataset}/{band}/k={k}...")
     is_viable, row_count = check_band_viability(dataset, band, k)
     if not is_viable:
@@ -847,7 +939,7 @@ def run_step(dataset: str, step: dict, progress: dict,
 
     log(f"DB check: {row_count} rows available ✓")
 
-    # ── Write configuration files ──────────────────────────────────────────────
+    # ----- Write configuration files--------------------------------------------------------------─
     llm_conf = write_llm_conf(dataset, progress.get("current_merged_model", ""), dry_run)
     write_prompts(dataset, level, k, dry_run)
     script_path = write_entry_script(dataset, level, k, llm_conf, dry_run)
@@ -855,7 +947,7 @@ def run_step(dataset: str, step: dict, progress: dict,
     dataset_safe = dataset.replace("-", "_")
     script_stem  = f"CurriculumGen_{dataset_safe}_{level}_k{k}"
 
-    # ── Run curriculum fine-tuning ─────────────────────────────────────────────
+    # ----- Run curriculum fine-tuning--------------------------------------------------------------
     log(f"Launching: python -m ab.gpt.{script_stem}")
 
     if dry_run:
@@ -881,7 +973,7 @@ def run_step(dataset: str, step: dict, progress: dict,
 
     log(f"Step {key} training complete in {elapsed:.1f}h ✓")
 
-    # ── Select best epoch ──────────────────────────────────────────────────────
+    # ----- Select best epoch--------------------------------------------------------------
     tracker_path = NNGPT_DIR / "out" / "nngpt" / "epoch_tracker.json"
     best = select_best_epoch(tracker_path)
     if best:
@@ -890,17 +982,17 @@ def run_step(dataset: str, step: dict, progress: dict,
     else:
         log("No successful epochs found — step produced no valid models", "WARN")
 
-    # ── Merge best adapter ─────────────────────────────────────────────────────
+    # ----- Merge best adapter---------------------------------------------------------─
     merge_ok = run_merge(dry_run=False)
     if not merge_ok:
         log(f"Merge failed for step {key}", "ERROR")
         return False
 
-    # ── Back up tracker and clean ──────────────────────────────────────────────
+    # ----- Back up tracker and clean--------------------------------------------------------------─
     tracker_backup = f"epoch_tracker_{key}.json"
     clean_epoch_dirs(tracker_backup, dry_run=False)
 
-    # ── Update progress ────────────────────────────────────────────────────────
+    # ----- Update progress-------------------------------------------------------------------
     merged_model_path = str(NNGPT_DIR / "out" / "llm_to_upload" / "OlympicCoder-7B")
     progress["completed_steps"].append(key)
     progress["current_merged_model"] = merged_model_path
@@ -917,7 +1009,7 @@ def run_step(dataset: str, step: dict, progress: dict,
     return True
 
 
-# ── Full curriculum runner ────────────────────────────────────────────────────
+# ----- Full curriculum runner---------------------------------------------------------
 def run_curriculum(dataset: str, resume: bool = False, dry_run: bool = False) -> None:
     """
     Run the complete progressive curriculum for a dataset.
@@ -941,11 +1033,10 @@ def run_curriculum(dataset: str, resume: bool = False, dry_run: bool = False) ->
     log(f"Dry run:  {dry_run}")
     log(f"Resume:   {resume}")
 
-    # Check base model exists
-    if not BASE_MODEL_PATH.exists() and not dry_run:
-        log(f"Base model not found: {BASE_MODEL_PATH}", "ERROR")
-        log(f"Download OlympicCoder-7B to out/llm/open-r1/OlympicCoder-7B/ first.")
-        sys.exit(1)
+    # Check base model exists — download if needed
+    if not dry_run:
+        ensure_nn_dataset()
+        ensure_model()
 
     progress = load_progress(dataset)
 
@@ -991,7 +1082,7 @@ def run_curriculum(dataset: str, resume: bool = False, dry_run: bool = False) ->
     print_results(dataset)
 
 
-# ── Single step runner (for cross-dataset experiments) ───────────────────────
+# ----- Single step runner (for cross-dataset experiments) -------------------------------------------------------─
 def run_single_step(dataset: str, level: str, k: int,
                     resume: bool = False, dry_run: bool = False) -> None:
     """Run a single curriculum step — used for cross-dataset ablation experiments."""
@@ -1010,7 +1101,7 @@ def run_single_step(dataset: str, level: str, k: int,
         sys.exit(1)
 
 
-# ── Results display ───────────────────────────────────────────────────────────
+# ----- Results display------------------------------------------------------------------------─
 def print_results(dataset: str) -> None:
     """Print a formatted summary of all completed curriculum steps."""
     progress = load_progress(dataset)
@@ -1048,7 +1139,7 @@ def print_results(dataset: str) -> None:
             log(f"  {t.name}")
 
 
-# ── CLI ───────────────────────────────────────────────────────────────────────
+# ----- CLI------------------------------------------------------------------------------------------------------─
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Automatic progressive curriculum fine-tuning pipeline",
