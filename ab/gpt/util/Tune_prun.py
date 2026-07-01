@@ -129,7 +129,8 @@ def _finetune_epoch(epoch, out_path, model, tokenizer, model_loader, lora_tuner,
 def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_conf, conf_keys, llm_conf,
          training_args, peft_config, max_prompts=None, save_llm_output=True, max_new_tokens=16 * 1024,
          nn_name_prefix=None, temperature=1.0, top_k=50, top_p=0.9, test_metric=None, onnx_run=False,
-         trans_mode=False, prompt_batch=1, use_agents=False, use_predictor=False, use_backbone=False, enable_merge=False):
+         trans_mode=False, prompt_batch=1, use_agents=False, use_predictor=False, use_backbone=False, enable_merge=False,
+         context_length=None, max_input_length=None, num_cycles=None, only_best_accuracy=False, load_in_4bit=True):
 
     if not isinstance(conf_keys, (list, tuple)):
         conf_keys = (conf_keys,)
@@ -138,18 +139,15 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
         config = json.load(f)
 
     base_model_name = config["base_model_name"]
-    llm_tune_epochs = int(config["num_epochs"])
-    use_deepspeed = config["use_deepspeed"]
-    only_best_accuracy = config["only_best_accuracy"]
-    context_length = config.get("context_length")
-    unsloth_max_input_length = config.get("max_input_length", None)
-    use_unsloth = config.get("use_unsloth", False)
-    unsloth_load_in_4bit = config.get("load_in_4bit", True)
+    llm_tune_epochs = int(num_cycles) if num_cycles is not None else 100
+    if context_length is None:
+        context_length = config.get("default_context_length")
+    unsloth_max_input_length = max_input_length
+    use_unsloth = False
+    unsloth_load_in_4bit = load_in_4bit
 
+    use_deepspeed = False
     access_token = None
-    if config.get("token_from_file", False):
-        with open(ab_root_path / "token") as f:
-            access_token = f.readline()
 
     train_config_path = conf_train_dir / llm_tune_conf
     with open(conf_test_dir / nn_gen_conf) as prompt_file:

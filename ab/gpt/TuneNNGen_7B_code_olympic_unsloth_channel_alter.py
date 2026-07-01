@@ -11,7 +11,8 @@ def main():
         test_nn=10,
         skip_epoches=1,
         nn_name_prefix='chn',
-        unsloth_opt=True
+        unsloth_opt=True,
+        context_length=8192,
     )
 
 

@@ -123,6 +123,11 @@ def _accept_exact_function(
             return signature + code[len(alias):]
     if not code.startswith(signature):
         return ""
+    return code
+
+
+def _normalize_required_function(code: str, fn_name: str, signature: str) -> str:
+    code = _strip_outer_code_fences(code)
     code = textwrap.dedent(code).strip()
     if not code:
         return ""

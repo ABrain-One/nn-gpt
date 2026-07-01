@@ -35,12 +35,12 @@ PPO_CLIP = 0.2
 PPO_EPOCHS = 4
 PPO_VALUE_COEF = 0.5
 MAX_NEW_TOKENS = 768
-MAX_LOG_PROB_TOKENS = 128
+MAX_LOG_PROB_TOKENS = 512
 LEARNING_RATE = 5e-5
 LORA_R = 16
 LORA_ALPHA = 32
 LORA_DROPOUT = 0.05
-NN_TRAIN_EPOCHS = 2          # Epochs to train each generated CV model on CIFAR-10
+NN_TRAIN_EPOCHS = 5          # Epochs to train each generated CV model on CIFAR-10
 
 
 # ══════════════════════════════════════════════════════
@@ -101,28 +101,130 @@ class CIFARRewardEvaluator:
                 header = ("import torch\nimport torch.nn as nn\n"
                           "import torch.nn.functional as F\n"
                           "import math\nfrom collections import OrderedDict\n\n")
+                # Patch ANY __init__ with args to add defaults + **kwargs
+                def patch_init(match):
+                    """Add default values to all constructor parameters."""
+                    params = match.group(1)
+                    defaults = {
+                        "in_shape": "(1,3,32,32)", "out_shape": "10",
+                        "in_channels": "3", "out_channels": "10",
+                        "num_classes": "10", "n_classes": "10",
+                        "prm": "None", "device": '"cuda"',
+                        "dropout_prob": "0.3", "drop_prob": "0.3",
+                        "loc_drop_prob": "0.3", "loc_dropout_prob": "0.3",
+                        "dropout": "0.3", "num_columns": "4",
+                        "hidden_dim": "128", "hidden_size": "128",
+                        "num_layers": "4", "num_heads": "4",
+                        "num_blocks": "4", "channels": "64",
+                        "img_size": "32", "embed_dim": "128",
+                        "model": "None", "backbone": "None",
+                    }
+                    new_params = []
+                    for p in params.split(","):
+                        p = p.strip()
+                        if not p or p == "self":
+                            continue
+                        # Remove type annotations
+                        name = p.split(":")[0].split("=")[0].strip()
+                        if "=" in p:
+                            new_params.append(p.strip())
+                        elif name in defaults:
+                            new_params.append(f"{name}={defaults[name]}")
+                        else:
+                            new_params.append(f"{name}=None")
+                    result = "def __init__(self, " + ", ".join(new_params) + ", **kwargs)"
+                    return result
+                code = re.sub(
+                    r'def __init__\(self,([^)]+)\)',
+                    patch_init,
+                    code
+                )
+                # Remove broken attribute-only lines (e.g. self._something_undefined)
+                lines = code.split("\n")
+                clean_lines = []
+                for line in lines:
+                    stripped = line.strip()
+                    # Skip lines that are just bare attribute access (no assignment, no call)
+                    if (stripped.startswith("self._") and
+                        "=" not in stripped and "(" not in stripped and
+                        not stripped.endswith(":")):
+                        continue
+                    clean_lines.append(line)
+                code = "\n".join(clean_lines)
                 return header + code
+        print(f'    [DEBUG] All instantiation attempts failed')
         return None
 
     def try_instantiate(self, net_class):
+        """Try to instantiate by inspecting constructor and providing defaults."""
+        import inspect
+        try:
+            sig = inspect.signature(net_class.__init__)
+            params = list(sig.parameters.keys())[1:]  # skip 'self'
+            defaults = {
+                "in_shape": (1, 3, 32, 32), "in_channels": 3,
+                "out_shape": 10, "out_channels": 10, "num_classes": 10,
+                "prm": {"lr": 0.001, "batch": 128, "momentum": 0.9, "dropout": 0.3},
+                "device": "cuda", "dropout_prob": 0.3, "drop_prob": 0.3,
+                "loc_drop_prob": 0.3, "dropout": 0.3, "num_columns": 4,
+                "hidden_dim": 128, "hidden_size": 128, "embed_dim": 128,
+                "num_layers": 4, "num_heads": 4, "num_blocks": 4,
+                "channels": 64, "n_classes": 10, "img_size": 32,
+            }
+            kwargs = {}
+            for p in params:
+                if p in defaults:
+                    kwargs[p] = defaults[p]
+                elif "drop" in p.lower():
+                    kwargs[p] = 0.3
+                elif "num" in p.lower() or "n_" in p.lower():
+                    kwargs[p] = 4
+                elif "dim" in p.lower() or "size" in p.lower() or "channel" in p.lower():
+                    kwargs[p] = 64
+                else:
+                    kwargs[p] = None
+            try:
+                return net_class(**kwargs).cuda()
+            except Exception:
+                pass
+            # Remove None values and retry
+            kwargs = {k: v for k, v in kwargs.items() if v is not None}
+            try:
+                return net_class(**kwargs).cuda()
+            except Exception:
+                pass
+        except Exception:
+            pass
         """Try multiple LEMUR argument formats."""
         prm = {"lr": 0.001, "batch": 128, "momentum": 0.9, "dropout": 0.3}
+        # Try all common argument patterns
         for args in [
-            ((1, 3, 32, 32), (10,), prm, "cuda"),
-            ((1, 3, 32, 32), (10,), prm),
-            (),
+            ((1, 3, 32, 32), 10, prm, "cuda"),      # out_shape as int + device
+            ((1, 3, 32, 32), 10, prm),                # out_shape as int
+            ((1, 3, 32, 32), (10,), prm, "cuda"),     # out_shape as tuple + device
+            ((1, 3, 32, 32), (10,), prm),              # out_shape as tuple
+            (3, 10),                                    # in_channels, num_classes
+            (),                                         # no args
         ]:
             try:
                 return net_class(*args).cuda()
-            except Exception:
+            except Exception as e:
+                print(f'    [DEBUG] args={[type(a).__name__ for a in args]} failed: {str(e)[:80]}')
                 continue
         # Try keyword args
-        try:
-            return net_class(
-                in_shape=(1, 3, 32, 32), out_shape=(10,),
-                prm=prm, device="cuda").cuda()
-        except Exception:
-            pass
+        for out in [10, (10,)]:
+            try:
+                return net_class(
+                    in_shape=(1, 3, 32, 32), out_shape=out,
+                    prm=prm, device="cuda").cuda()
+            except Exception:
+                pass
+            try:
+                return net_class(
+                    in_shape=(1, 3, 32, 32), out_shape=out,
+                    prm=prm).cuda()
+            except Exception:
+                pass
         try:
             return net_class(num_classes=10).cuda()
         except Exception:
@@ -130,6 +232,7 @@ class CIFARRewardEvaluator:
         return None
 
     def _heuristic_score(self, code):
+        """Heuristic code quality score when real evaluation fails."""
         if not code or len(code) < 50: return 0.0
         s, cl = 0.0, code.lower()
         if 'class' in cl and 'nn.module' in cl: s += 0.15
@@ -150,7 +253,7 @@ class CIFARRewardEvaluator:
         # Extract code
         code = self.extract_code(generated_text)
         if code is None:
-            return 0.0, "no_class_extracted"
+            return -0.5, "no_class_extracted"
 
         # Parse and exec
         namespace = {
@@ -163,24 +266,37 @@ class CIFARRewardEvaluator:
         try:
             exec(code, namespace)
         except Exception as e:
-            return self._heuristic_score(code) * 0.5, "heuristic_fallback"
+            return -0.4, "exec_failed"
 
         if "Net" not in namespace:
-            return 0.0, "no_Net_after_exec"
+            return -0.4, "no_Net_class"
 
         # Instantiate
         net = self.try_instantiate(namespace["Net"])
         if net is None:
             score = self._heuristic_score(code)
-            return score * 0.5, f"instantiation_failed_heuristic={score:.2f}"
+            return score * 0.5 - 0.5, f"instantiation_failed({score:.2f})"
 
-        # Shape test
+        # Shape test — auto-fix models that forget to flatten/pool
         try:
             test_in = torch.randn(2, 3, 32, 32).cuda()
             test_out = net(test_in)
+            if test_out.dim() > 2:
+                # Model outputs (batch, classes, H, W) — wrap with global avg pool
+                original_forward = net.forward
+                pool = nn.AdaptiveAvgPool2d(1).cuda()
+                def fixed_forward(x, _orig=original_forward, _pool=pool):
+                    out = _orig(x)
+                    if out.dim() > 2:
+                        out = _pool(out).flatten(1)
+                    return out
+                net.forward = fixed_forward
+                test_out = net(test_in)
+            if test_out.dim() == 1:
+                test_out = test_out.unsqueeze(0)
             if test_out.shape[-1] != 10:
                 del net; torch.cuda.empty_cache()
-                return 0.0, f"wrong_output_shape_{test_out.shape}"
+                return -0.1, f"wrong_output_shape_{test_out.shape}"
         except Exception as e:
             del net; torch.cuda.empty_cache()
             return 0.0, f"shape_test_failed: {str(e)[:60]}"
@@ -287,7 +403,7 @@ class PPOLLMTrainer:
         return self.value_head(out.hidden_states[-1]).item()
 
     def collect_rollout(self, prompts):
-        """Generate pairs, evaluate on CIFAR-10, compute binary rewards."""
+        """Generate pairs, evaluate on CIFAR-10, use continuous accuracy as reward."""
         self.model.eval()
         data = []
 
@@ -312,15 +428,12 @@ class PPOLLMTrainer:
             if acc_b > 0:
                 self.all_accuracies.append(acc_b)
 
-            # Binary comparison
-            if acc_a > acc_b:
-                r_a, r_b = 1.0, -1.0
-            elif acc_b > acc_a:
-                r_a, r_b = -1.0, 1.0
-            else:
-                r_a, r_b = 0.0, 0.0
+            # Continuous reward: use raw accuracy directly
+            # Continuous reward: raw accuracy (or heuristic score) as reward
+            r_a = acc_a
+            r_b = acc_b
 
-            print(f"    A: {acc_a*100:.1f}% ({status_a}) | B: {acc_b*100:.1f}% ({status_b}) | reward: A={r_a:+.0f} B={r_b:+.0f}")
+            print(f"    A: {acc_a*100:.1f}% ({status_a}) | B: {acc_b*100:.1f}% ({status_b}) | reward: A={r_a:.3f} B={r_b:.3f}")
 
             val_a = self.get_value(ids_a)
             val_b = self.get_value(ids_b)
@@ -340,7 +453,7 @@ class PPOLLMTrainer:
         rewards = torch.tensor([d["reward"] for d in data], device=self.device)
         values = torch.tensor([d["value"] for d in data], device=self.device)
         advantages = rewards - values
-        if advantages.std() > 1e-8:
+        if len(advantages) >= 4 and advantages.std() > 1e-8:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
         old_lps = []
@@ -391,7 +504,7 @@ class PPOLLMTrainer:
         print(f"CV model training: {NN_TRAIN_EPOCHS} epochs on CIFAR-10")
         print(f"{'='*60}\n")
 
-        pairs_per_step = 2
+        pairs_per_step = 4
         for epoch in range(num_epochs):
             random.shuffle(prompts)
             epoch_rewards = []
@@ -454,10 +567,10 @@ def load_prompts(tokenizer, limit=200):
         ds = str(row.get('dataset', 'cifar-10'))
         ep = int(row.get('epoch', 1) or 1)
         text = (f"You are a machine learning model designer.\n"
-                f"Generate a simple PyTorch CNN class Net(nn.Module) with no constructor arguments that achieves "
+                f"Generate a PyTorch neural network class Net(nn.Module) that achieves "
                 f"at least {acc:.4f} accuracy at epoch {ep} on '{ds}' for img-classification.\n"
                 f"Input: 3x32x32 images. Output: 10 classes.\n"
-                f"The class __init__(self) must take NO arguments except self. Use hardcoded values for channels. Respond only with code inside <nn> tags.")
+                f"Respond only with the Python class code inside <nn> tags.")
         try:
             fmt = tokenizer.apply_chat_template(
                 [{"role": "user", "content": text}],
@@ -491,15 +604,15 @@ def plot_results(history, path="ppo_cifar10_results.png"):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--base_model", default=DEFAULT_BASE_MODEL)
-    parser.add_argument("--num_epochs", type=int, default=3)
-    parser.add_argument("--num_prompts", type=int, default=20)
+    parser.add_argument("--num_epochs", type=int, default=5)
+    parser.add_argument("--num_prompts", type=int, default=40)
     parser.add_argument("--nn_train_epochs", type=int, default=NN_TRAIN_EPOCHS)
     parser.add_argument("--simple_test", action="store_true")
     args = parser.parse_args()
 
     if args.simple_test:
         args.num_epochs = 2
-        args.num_prompts = 4
+        args.num_prompts = 8
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()

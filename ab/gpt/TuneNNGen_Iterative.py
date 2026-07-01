@@ -14,7 +14,8 @@ def main():
         run_iterative_pipeline=True,
         cycles=22,
         resume_from_cycle=None,
-        nn_name_prefix='unq'
+        nn_name_prefix='unq',
+        context_length=8192,
         # models_per_cycle=20,
     )
 

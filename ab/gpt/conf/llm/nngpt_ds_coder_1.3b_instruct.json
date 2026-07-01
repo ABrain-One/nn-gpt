@@ -1,8 +1,3 @@
 {
-  "base_model_name": "ABrain/NNGPT-DeepSeek-Coder-1.3B-Instruct",
-  "num_epochs": 100,
-  "num_test_epochs": 2,
-  "use_deepspeed": false,
-  "token_from_file": false,
-  "only_best_accuracy": false
+  "base_model_name": "ABrain/NNGPT-DeepSeek-Coder-1.3B-Instruct"
 }

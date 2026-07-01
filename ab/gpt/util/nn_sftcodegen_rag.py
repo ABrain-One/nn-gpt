@@ -560,6 +560,7 @@ def main(
     prompt_template: str = "unique_rag_test_rules.json",
     samples_per_prompt: int = 5,
     use_delta: bool = False,
+    forward_structural_check: bool = False,
 ):
     """
     Generate NNEval-compatible PyTorch models using a finetuned LLM.
@@ -589,6 +590,7 @@ def main(
         prompt_template: Prompt template config file in conf/prompt/test/ (default: unique_rag_test_rules.json)
         samples_per_prompt: How many architectures to generate per prompt (default: 5)
         use_delta: Enable delta mode - extract deltas from output and apply to baseline (default: False)
+        forward_structural_check: Run instantiate+forward smoke test after AST validation (default: False)
     """
     # Set device if not provided
     if device is None:
@@ -920,6 +922,30 @@ def main(
                                 continue
                             else:
                                 print(f"[WARN] gidx={global_idx}: Invalid structure but rejection_sampling disabled: {error_msg}")
+                                break
+
+                        if forward_structural_check:
+                            from ab.gpt.markov.structural_check import quick_structural_check
+
+                            ok_forward, forward_msg = quick_structural_check(code)
+                            if not ok_forward:
+                                if rejection_sampling:
+                                    rejection_count += 1
+                                    if rejection_count >= max_rejections:
+                                        print(
+                                            f"[WARN] gidx={global_idx}: Reached max rejections "
+                                            f"({max_rejections}), accepting despite forward check: {forward_msg}"
+                                        )
+                                        break
+                                    current_temp = min(1.0, current_temp + 0.1)
+                                    print(
+                                        f"[REJECT-FORWARD] gidx={global_idx}: Attempt {rejection_count}/{max_rejections} "
+                                        f"- Forward check failed: {forward_msg}, retrying with temp={current_temp:.2f}"
+                                    )
+                                    continue
+                                print(
+                                    f"[WARN] gidx={global_idx}: Forward check failed but rejection_sampling disabled: {forward_msg}"
+                                )
                                 break
 
                         # 2) Novelty-based rejection (vs train AND vs previously generated)

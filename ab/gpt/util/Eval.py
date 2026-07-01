@@ -41,7 +41,7 @@ class Eval:
         else:
             self.use_ast_validation = use_ast_validation
 
-    def evaluate(self, nn_file):
+    def evaluate(self, nn_file, checkpoint_path=None):
         os.listdir(self.model_package)
         code = read_py_file_as_string(nn_file)
         if not code or not code.strip():
@@ -87,8 +87,23 @@ class Eval:
         df = nn_dataset.data()
         ids_list = df["nn_id"].unique().tolist() if "nn_id" in df.columns else []
         new_checksum = uuid4(code)
-        if new_checksum not in ids_list:
+        allow_retrain = bool(checkpoint_path) or not self.save_to_db
+        if new_checksum not in ids_list or allow_retrain:
             with _isolated_eval_tmp_modules():
+                if checkpoint_path:
+                    from ab.gpt.util.eval_checkpoint import train_and_eval_with_checkpoint
+
+                    return train_and_eval_with_checkpoint(
+                        code,
+                        self.task,
+                        self.dataset,
+                        self.metric,
+                        self.prm,
+                        checkpoint_path,
+                        save_to_db=self.save_to_db,
+                        prefix=self.prefix,
+                        save_path=self.save_path,
+                    )
                 return api.check_nn(
                     code,
                     self.task,

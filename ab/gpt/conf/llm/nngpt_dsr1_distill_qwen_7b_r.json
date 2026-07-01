@@ -1,9 +1,4 @@
 {
   "base_model_name": "ABrain/HPGPT-DeepSeek-R1-Distill-Qwen-7B-R",
-  "num_epochs": 100,
-  "num_test_epochs": 2,
-  "use_deepspeed": false,
-  "token_from_file": false,
-  "only_best_accuracy": false,
-  "context_length": 4096
+  "default_context_length": 4096
 }

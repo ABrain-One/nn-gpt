@@ -65,7 +65,7 @@ def _resolve_use_all_visible_gpus(use_all_visible_gpus: Optional[bool]) -> bool:
         return bool(use_all_visible_gpus)
     raw = os.getenv("NNGPT_NNEVAL_USE_ALL_VISIBLE_GPUS")
     if raw is None or raw == "":
-        return True
+        return False
     return str(raw).strip().lower() in {"1", "true", "yes", "on"}
 
 
@@ -137,9 +137,15 @@ def _extract_accuracy_from_eval_payload(payload: Dict[str, Any]) -> Optional[flo
         return None
 
 
-def _load_existing_success_result(model_dir_path: Path) -> Optional[Dict[str, Any]]:
+def _load_existing_success_result(
+    model_dir_path: Path,
+    *,
+    require_eval_checkpoint: bool = False,
+) -> Optional[Dict[str, Any]]:
     eval_info_path = model_dir_path / "eval_info.json"
     if not eval_info_path.exists():
+        return None
+    if require_eval_checkpoint and not (model_dir_path / "eval_checkpoint.pth").exists():
         return None
     try:
         payload = json.loads(eval_info_path.read_text(encoding="utf-8"))
@@ -268,8 +274,9 @@ def _build_eval_request(
     prefix_for_db: Optional[str],
     epoch_limit_minutes: Optional[int],
     lemur_prefix: Optional[str],
+    save_eval_checkpoint: bool = False,
 ) -> Dict[str, Any]:
-    return {
+    request = {
         "model_id": str(model_id),
         "model_dir": str(model_dir_path),
         "code_file": str(code_file_path),
@@ -284,6 +291,10 @@ def _build_eval_request(
         "lemur_prefix": lemur_prefix,
         "use_ast_validation": None,
     }
+    if save_eval_checkpoint:
+        request["save_eval_checkpoint"] = True
+        request["checkpoint_path"] = str(model_dir_path / "eval_checkpoint.pth")
+    return request
 
 
 def _collect_epoch_requests(
@@ -317,6 +328,7 @@ def _collect_epoch_requests(
     patch_size: float,
     prm_json: Optional[Dict[str, Any]],
     epoch_limit_minutes: Optional[int],
+    save_eval_checkpoint: bool = False,
 ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     requests: List[Dict[str, Any]] = []
     immediate_results: List[Dict[str, Any]] = []
@@ -344,7 +356,10 @@ def _collect_epoch_requests(
             print(f"Code file {new_nn_file} not found in {model_dir_path}. Skipping.")
             continue
 
-        existing_result = _load_existing_success_result(model_dir_path)
+        existing_result = _load_existing_success_result(
+            model_dir_path,
+            require_eval_checkpoint=save_eval_checkpoint,
+        )
         if existing_result is not None:
             print(
                 f"  [SKIP] {_display_model_path(model_dir_path)} already evaluated "
@@ -468,6 +483,7 @@ def _collect_epoch_requests(
                 prefix_for_db=prefix_for_db,
                 epoch_limit_minutes=epoch_limit_minutes,
                 lemur_prefix=nn_name_prefix or orig_pref,
+                save_eval_checkpoint=save_eval_checkpoint,
             )
         )
 
@@ -508,6 +524,7 @@ def main(
     custom_synth_dir=CUSTOM_SYNTH_DIR,
     cycle=CYCLE,
     use_all_visible_gpus: Optional[bool] = None,
+    save_eval_checkpoint: bool = False,
 ):
     base_nngpt_path = nngpt_dir
     custom_synth_path = Path(custom_synth_dir) if custom_synth_dir else None
@@ -581,6 +598,7 @@ def main(
                     patch_size=patch_size,
                     prm_json=prm_json,
                     epoch_limit_minutes=epoch_limit_minutes,
+                    save_eval_checkpoint=save_eval_checkpoint,
                 )
 
                 if requests:
