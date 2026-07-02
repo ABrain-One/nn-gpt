@@ -810,10 +810,11 @@ def evaluate_step(state: AgentState) -> dict:
     updates = {}
 
     # Count actual evaluations that produced results (not epoch numbers)
-    # epoch_1_accuracy = first real evaluation, epoch_2_accuracy = second real evaluation
+    # epoch_1_accuracy = first real evaluation, epoch_2_accuracy = second, epoch_3_accuracy = third
     # This works correctly with skip_epoch — epoch 0 skips generation so produces no accuracy
     has_epoch1_in_state = state.get("epoch_1_accuracy") is not None
     has_epoch2_in_state = state.get("epoch_2_accuracy") is not None
+    has_epoch3_in_state = state.get("epoch_3_accuracy") is not None
 
     acc_key = f"epoch_{epoch + 1}_accuracy"
     best_acc = results.get(acc_key)
@@ -823,18 +824,21 @@ def evaluate_step(state: AgentState) -> dict:
             updates["epoch_1_accuracy"] = best_acc
         elif not has_epoch2_in_state:
             updates["epoch_2_accuracy"] = best_acc
+        elif not has_epoch3_in_state:
+            updates["epoch_3_accuracy"] = best_acc
 
     # Pass all predictor inputs to state — names match exact DB column names
     for field in ["nn_code", "prm", "task", "dataset", "metric", "transform_code", "nn"]:
         if field in results:
             updates[field] = results[field]
 
-    # Route to predictor only if enabled AND we have at least 2 epochs of results
+    # Route to predictor only if enabled AND we have 3 epochs of results
     use_predictor = state.get("use_predictor", False)
     has_epoch1 = has_epoch1_in_state or "epoch_1_accuracy" in updates
     has_epoch2 = has_epoch2_in_state or "epoch_2_accuracy" in updates
+    has_epoch3 = has_epoch3_in_state or "epoch_3_accuracy" in updates
 
-    if use_predictor and has_epoch1 and has_epoch2:
+    if use_predictor and has_epoch1 and has_epoch2 and has_epoch3:
         updates["next_action"] = "predict"
     else:
         updates["next_action"] = "finetune"
@@ -1075,50 +1079,50 @@ def tune(
     chat_bot = ChatBot(
         model, tokenizer, temperature=temperature, top_k=top_k, top_p=top_p)
 
-    state = {
-        "experiment_id": nn_name_prefix or "exp_default",
-        "nn_name_prefix": nn_name_prefix,
-        "current_epoch": 0,
-        "llm_tune_epochs": llm_tune_epochs,
-        "skip_epoch": skip_epoch,
-        "next_action": "generate",
-        "status": "pending",
+    state = AgentState(
+        experiment_id=nn_name_prefix or "exp_default",
+        nn_name_prefix=nn_name_prefix,
+        current_epoch=0,
+        llm_tune_epochs=llm_tune_epochs,
+        skip_epoch=skip_epoch,
+        next_action="generate",
+        status="pending",
 
-        "model": model,
-        "tokenizer": tokenizer,
-        "model_loader": model_loader,
-        "lora_tuner": lora_tuner,
-        "chat_bot": chat_bot,
+        model=model,
+        tokenizer=tokenizer,
+        model_loader=model_loader,
+        lora_tuner=lora_tuner,
+        chat_bot=chat_bot,
 
-        "prompt_dict": prompt_dict,
-        "conf_keys": conf_keys,
-        "test_nn": test_nn,
-        "nn_train_epochs": nn_train_epochs,
-        "max_new_tokens": max_new_tokens,
-        "save_llm_output": save_llm_output,
-        "prompt_batch": prompt_batch,
+        prompt_dict=prompt_dict,
+        conf_keys=conf_keys,
+        test_nn=test_nn,
+        nn_train_epochs=nn_train_epochs,
+        max_new_tokens=max_new_tokens,
+        save_llm_output=save_llm_output,
+        prompt_batch=prompt_batch,
 
-        "context_length": context_length,
-        "use_unsloth": use_unsloth,
-        "unsloth_max_input_length": unsloth_max_input_length,
-        "train_config_path": train_config_path,
-        "only_best_accuracy": only_best_accuracy,
-        "base_model_name": base_model_name,
-        "trans_mode": trans_mode,
-        "max_prompts": max_prompts,
+        context_length=context_length,
+        use_unsloth=use_unsloth,
+        unsloth_max_input_length=unsloth_max_input_length,
+        train_config_path=train_config_path,
+        only_best_accuracy=only_best_accuracy,
+        base_model_name=base_model_name,
+        trans_mode=trans_mode,
+        max_prompts=max_prompts,
 
-        "temperature": temperature,
-        "top_k": top_k,
-        "top_p": top_p,
+        temperature=temperature,
+        top_k=top_k,
+        top_p=top_p,
 
-        "use_predictor": use_predictor,
-        "use_backbone": use_backbone,
-        "sft_nn_prefixes": sft_nn_prefixes,
-        "sft_dataset": sft_dataset,
-        "trainer_resume_checkpoint": trainer_resume_checkpoint,
-        "enable_merge": enable_merge,
-        "classification_mode": classification_mode,
-    }
+        use_predictor=use_predictor,
+        use_backbone=use_backbone,
+        sft_nn_prefixes=sft_nn_prefixes,
+        sft_dataset=sft_dataset,
+        trainer_resume_checkpoint=trainer_resume_checkpoint,
+        enable_merge=enable_merge,
+        classification_mode=classification_mode,
+    )
 
     shutil.rmtree(epoch_root_path, ignore_errors=True)
 
