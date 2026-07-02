@@ -1,3 +1,6 @@
+import sys
+
+import ab.nn.api as lemur
 import ab.gpt.analog.TuneNNGenAnalog as TuneNNGen
 
 def add_normalization_to_lemur(epoch=5):
@@ -68,7 +71,7 @@ def test_patch():
         print(f"\nSample rows:")
         print(df[cols].head(5).to_string(index=False))
 
-def main():
+def main(dry_run=False):
     add_normalization_to_lemur(epoch=5)
 
     TuneNNGen.main(
@@ -82,7 +85,9 @@ def main():
 
 
 if __name__ == '__main__':
-    if '--test' in sys.argv:
+    if any(arg in {'-h', '--help'} for arg in sys.argv[1:]):
+        print('Run ONNX TuneNNGen analog experiment. Use --test to validate normalization patch or --dry-run for a small run.')
+    elif '--test' in sys.argv:
         test_patch()
     elif '--dry-run' in sys.argv:
         main(dry_run=True)

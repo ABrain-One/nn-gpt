@@ -5,6 +5,7 @@ import json
 import hashlib
 import re
 import ast
+import importlib.util
 from os import makedirs
 from os.path import isfile
 import glob
@@ -500,6 +501,36 @@ def _apply_geometry_guard(hp_str, tr_str, origdf=None, para_context=None):
     return json.dumps(fixed_hp, separators=(',', ':')), preferred_tr or tr_str
 
 
+def _transform_module_exists(name):
+    name = str(name or '').strip()
+    if not re.match(r'^[A-Za-z_]\w*$', name):
+        return False
+    return importlib.util.find_spec(f'ab.nn.transform.{name}') is not None
+
+
+def _guard_available_transform(hp_str, tr_str, origdf=None):
+    hp_obj = parse_hyperparam_text(hp_str)
+    if not isinstance(hp_obj, dict):
+        return hp_str, tr_str
+
+    generated_transform = hp_obj.get('transform')
+    if _transform_module_exists(generated_transform):
+        return hp_str, tr_str
+
+    dataset = origdf.get('dataset') if origdf is not None else None
+    defaults = get_dataset_prompt_defaults(dataset) or {}
+    fallback_transform = defaults.get('default_transform')
+    if not fallback_transform or not _transform_module_exists(fallback_transform):
+        return hp_str, tr_str
+
+    hp_obj['transform'] = fallback_transform
+    print(
+        f"[INFO] Replaced unavailable transform {generated_transform!r} "
+        f"with {fallback_transform!r} for {dataset or 'unknown dataset'}"
+    )
+    return json.dumps(hp_obj, separators=(',', ':')), defaults.get('transform_code') or tr_str
+
+
 def _select_addon_row(available_addon, baseline_row, key_config):
     if available_addon is None or available_addon.empty:
         return None
@@ -714,6 +745,104 @@ def _edit_assistant_prefill(dataset_name=None, mode_seed=False):
     )
 
 
+def _chat_with_assistant_prefill(chat_bot, prompt_text, assistant_prefill, max_new_tokens=None):
+    """Analog-only generation path that preserves a structured assistant prefix.
+
+    The public ChatBot API does not accept assistant_prefill. For structured edit
+    experiments, we render the normal user chat prompt, append the assistant
+    prefix after the generation marker, and decode only the continuation.
+    """
+    if not assistant_prefill:
+        return chat_bot.chat(prompt_text, engineer_prompt=False, max_new_tokens=max_new_tokens)
+
+    if hasattr(chat_bot.model, "eval"):
+        chat_bot.model.eval()
+
+    messages = []
+    system_prompt = getattr(chat_bot, "system_prompt", None)
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": prompt_text})
+
+    tokenizer = chat_bot.tokenizer
+    if (
+        not getattr(chat_bot, "disable_chat_template", False)
+        and hasattr(tokenizer, "apply_chat_template")
+    ):
+        formatted_prompt = tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+    else:
+        formatted_prompt = "\n".join(
+            f"{msg['role'].capitalize()}: {msg['content']}" for msg in messages
+        )
+        formatted_prompt = f"{formatted_prompt}\nAssistant:"
+
+    formatted_prompt = formatted_prompt + assistant_prefill
+    token_budget = max_new_tokens or 4096
+    tokenizer_max_len = getattr(tokenizer, "model_max_length", 4096)
+    try:
+        tokenizer_max_len = int(tokenizer_max_len)
+    except Exception:
+        tokenizer_max_len = 4096
+    if tokenizer_max_len <= 0 or tokenizer_max_len > 10**8:
+        tokenizer_max_len = 4096
+    max_input_len = max(1, tokenizer_max_len - token_budget)
+
+    inputs = tokenizer(
+        formatted_prompt,
+        return_tensors="pt",
+        truncation=True,
+        max_length=max(max_input_len, 128),
+        add_special_tokens=False,
+    )
+
+    if 'input_ids' in inputs:
+        input_ids = inputs['input_ids']
+        vocab_size = tokenizer.vocab_size
+        max_token_id = input_ids.max().item()
+        if max_token_id >= vocab_size:
+            clamp_value = tokenizer.eos_token_id if tokenizer.eos_token_id is not None else vocab_size - 1
+            inputs['input_ids'] = torch.clamp(input_ids, max=clamp_value)
+
+    if hasattr(chat_bot.model, 'device') and chat_bot.model.device is not None:
+        device = chat_bot.model.device
+    elif getattr(chat_bot, "is_onnx", False):
+        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    else:
+        try:
+            device = next(chat_bot.model.parameters()).device
+        except StopIteration:
+            device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+    inputs = {k: v.to(device) for k, v in inputs.items()}
+    input_length = inputs['input_ids'].shape[-1]
+
+    with torch.no_grad():
+        outputs = chat_bot.model.generate(
+            **inputs,
+            max_new_tokens=max_new_tokens or 4096,
+            do_sample=True,
+            temperature=chat_bot.temperature,
+            top_k=chat_bot.top_k,
+            top_p=chat_bot.top_p,
+            pad_token_id=tokenizer.pad_token_id,
+            eos_token_id=tokenizer.eos_token_id,
+        )
+
+    generated_ids = outputs[0][input_length:]
+    generated = tokenizer.decode(generated_ids, skip_special_tokens=True)
+    full_out = assistant_prefill + generated
+    return (
+        extract_code(full_out),
+        extract_hyperparam(full_out),
+        extract_transform(full_out),
+        full_out,
+    )
+
+
 def apply_sliding_window(example, max_length, stride, tokenizer):
     input_ids = example['input_ids']
     attention_mask = example['attention_mask']
@@ -758,7 +887,7 @@ def _resolve_prompt_config(base_dir: Path, config_name: str) -> Path:
 
 def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_conf, conf_keys, llm_conf, training_args, peft_config,
          max_prompts=None, save_llm_output=True, max_new_tokens=16 * 1024, nn_name_prefix=None, temperature=1.0, top_k=50, top_p=0.9, test_metric=None,
-         onnx_run=False, trans_mode=False, prompt_batch=1, use_backbone=False, eval_save_to_db=True):
+         onnx_run=False, trans_mode=False, prompt_batch=1, use_backbone=False, eval_save_to_db=True, context_length=None):
     if not isinstance(conf_keys, (list, tuple)):
         conf_keys = (conf_keys,)
     with open(conf_llm_dir / llm_conf) as f:
@@ -779,7 +908,8 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
     llm_tune_epochs = int(config['num_epochs'])
     use_deepspeed = config['use_deepspeed']
     only_best_accuracy = config['only_best_accuracy']
-    context_length = config.get('context_length')
+    if context_length is None:
+        context_length = config.get('context_length') or config.get('default_context_length')
     unsloth_max_input_length = config.get('max_input_length', None)
     use_unsloth = config.get('use_unsloth', False)
     unsloth_load_in_4bit = config.get('load_in_4bit', True)
@@ -1090,7 +1220,12 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
                 print(f'[INFO] hp_copy copied source recipe for B{idx} without LLM generation')
             else:
                 # Initial generation
-                _, hp, tr, full_out = chat_bot.chat(prompt_text, engineer_prompt=False, max_new_tokens=max_new_tokens, assistant_prefill=assistant_prefill)
+                _, hp, tr, full_out = _chat_with_assistant_prefill(
+                    chat_bot,
+                    prompt_text,
+                    assistant_prefill,
+                    max_new_tokens=max_new_tokens,
+                )
 
                 if use_backbone:
                     from ab.gpt.util.SFTUtil import skeleton_code
@@ -1125,7 +1260,12 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
                 current_assistant_prefill = assistant_prefill
                 for attempt in range(_MAX_DELTA_RETRIES + 1):
                     if attempt > 0:
-                        _, _, _, current_out = chat_bot.chat(current_prompt, engineer_prompt=False, max_new_tokens=max_new_tokens, assistant_prefill=current_assistant_prefill)
+                        _, _, _, current_out = _chat_with_assistant_prefill(
+                            chat_bot,
+                            current_prompt,
+                            current_assistant_prefill,
+                            max_new_tokens=max_new_tokens,
+                        )
 
                     if use_edit:
                         edit_str = extract_edit(current_out)
@@ -1216,6 +1356,7 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
             raw_hp_str = extract_hyperparam(final_out)
             tr_str = extract_transform(final_out)
             hp_str, tr_str = _apply_geometry_guard(raw_hp_str, tr_str, origdf, para_context)
+            hp_str, tr_str = _guard_available_transform(hp_str, tr_str, origdf)
             if para_context.get('_log_source_recipe_delta'):
                 _write_source_recipe_delta(
                     model_dir,
@@ -1407,10 +1548,20 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
             batch = pending[start:start + prompt_batch]
             batch_prompts = [item[1] for item in batch]
 
-            if prompt_batch > 1 and hasattr(chat_bot, 'chat_batch'):
-                batch_outputs = chat_bot.chat_batch(batch_prompts, engineer_prompt=False, max_new_tokens=max_new_tokens, assistant_prefill=assistant_prefill)
+            if assistant_prefill:
+                batch_outputs = [
+                    _chat_with_assistant_prefill(
+                        chat_bot,
+                        p,
+                        assistant_prefill,
+                        max_new_tokens=max_new_tokens,
+                    )
+                    for p in batch_prompts
+                ]
+            elif prompt_batch > 1 and hasattr(chat_bot, 'chat_batch'):
+                batch_outputs = chat_bot.chat_batch(batch_prompts, engineer_prompt=False, max_new_tokens=max_new_tokens)
             else:
-                batch_outputs = [chat_bot.chat(p, engineer_prompt=False, max_new_tokens=max_new_tokens, assistant_prefill=assistant_prefill) for p in batch_prompts]
+                batch_outputs = [chat_bot.chat(p, engineer_prompt=False, max_new_tokens=max_new_tokens) for p in batch_prompts]
 
             for (idx, prompt, origdf), output in zip(batch, batch_outputs):
                 model_dir = models_dir / f'B{idx}'
@@ -1424,6 +1575,7 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
                     repair_label = 'minimal-repaired' if _MINIMAL_REPAIR else 'normalized'
                     print(f'[INFO] {repair_label.capitalize()} generated code for B{idx} before evaluation')
                 code = repaired_code
+                hp, tr = _guard_available_transform(hp, tr, origdf)
 
                 try:
                     print(f'Generated params: {hp}')
