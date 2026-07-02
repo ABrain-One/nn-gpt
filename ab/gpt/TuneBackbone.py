@@ -73,7 +73,7 @@ def main():
         max_prompts=args.sft_dataset_limit,
         use_backbone=True,
         only_best_accuracy=True,
-        load_in_4bit=False,
+        load_in_4bit=True,
         context_length=4096,
         sft_nn_prefixes=args.sft_nn_prefixes,
         sft_dataset=args.sft_dataset,
