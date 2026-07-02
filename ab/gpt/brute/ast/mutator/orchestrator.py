@@ -98,7 +98,11 @@ def run_single_mutation(worker_args):
         # Get dataset-specific parameters
         dataset_params = get_dataset_params(dataset)
         h, w = dataset_params["spatial_dims"]
-        expected_out_classes = dataset_params["output_size"][0]
+        # output_size is None for image-to-image tasks (e.g. denoising), where the
+        # network output must match the input shape rather than a class count.
+        out_size = dataset_params.get("output_size")
+        is_image_to_image = out_size is None
+        expected_out_classes = None if is_image_to_image else out_size[0]
 
         # Use LEMUR loader with specialized parameters
         with ModuleSourceTracer(model_source) as tracer:
@@ -107,7 +111,7 @@ def run_single_mutation(worker_args):
         temp_module_info = getattr(original_model, '_temp_module_info', None)
         source_map = tracer.create_source_map(original_model)
 
-        planner = ModelPlanner(original_model, source_map=source_map, search_depth=config.PRODUCER_SEARCH_DEPTH)
+        planner = ModelPlanner(original_model, source_map=source_map, search_depth=config.PRODUCER_SEARCH_DEPTH, source_code=model_source)
         plan = planner.plan_random_mutation()
 
         if not plan:
@@ -129,17 +133,25 @@ def run_single_mutation(worker_args):
 
         # Enhanced model verification
         try:
+            # Run verification on whatever device the model was loaded onto
+            model_device = next(mutated_model.parameters()).device
+
             # Test with dataset-specific input resolution
-            test_input = torch.randn(2, 3, h, w)
+            test_input = torch.randn(2, 3, h, w, device=model_device)
 
             # Forward pass
             mutated_model.eval()
             with torch.no_grad():
                 output = mutated_model(test_input)
 
-            # Check output shape with dataset-specific class count
-            if output.shape[0] != 2 or output.shape[1] != expected_out_classes:
-                raise RuntimeError(f"Output shape {output.shape} not as expected for input {h}x{w} (expected {expected_out_classes} classes)")
+            # Check output shape: image-to-image tasks (denoising) must preserve the
+            # input shape; classification tasks must emit the expected class count.
+            if is_image_to_image:
+                if tuple(output.shape) != tuple(test_input.shape):
+                    raise RuntimeError(f"Output shape {tuple(output.shape)} != input shape {tuple(test_input.shape)} for image-to-image task")
+            else:
+                if output.shape[0] != 2 or output.shape[1] != expected_out_classes:
+                    raise RuntimeError(f"Output shape {output.shape} not as expected for input {h}x{w} (expected {expected_out_classes} classes)")
 
             # Backward pass test
             mutated_model.train()
@@ -156,7 +168,7 @@ def run_single_mutation(worker_args):
             # Simple learning capability check
             optimizer = torch.optim.SGD(mutated_model.parameters(), lr=0.01)
             mutated_model.train()
-            test_input = torch.randn(2, 3, 224, 224)
+            test_input = torch.randn(2, 3, h, w, device=model_device)
             output = mutated_model(test_input)
             loss = output.sum()
             loss.backward()
@@ -173,7 +185,9 @@ def run_single_mutation(worker_args):
                 continue
 
             mutation_type = details.get("mutation_type", "dimension")
-            module = original_model.get_submodule(full_module_name)
+            # `skip` targets a forward() return, not a submodule/constructor, so its
+            # plan key (e.g. "LightFusionNet.forward") is not a real module name.
+            module = None if mutation_type == "skip" else original_model.get_submodule(full_module_name)
 
             if mutation_type == "dimension":
                 arg_to_change = None
@@ -216,7 +230,50 @@ def run_single_mutation(worker_args):
                 if new_stride:
                     code_mutator.schedule_stride_modification(location, new_stride)
 
+            elif mutation_type == "scale":
+                # Grow a scalar architectural kwarg (width/depth) of a sub-network call.
+                arg_name = details.get('arg_name')
+                new_value = details.get('new_value')
+                if arg_name and new_value is not None:
+                    code_mutator.schedule_modification(location, arg_name, new_value)
+
+            elif mutation_type == "skip":
+                # Toggle a global input->output residual in a forward() return.
+                action = details.get('action')
+                input_arg = details.get('input_arg')
+                if action and input_arg:
+                    code_mutator.schedule_skip_modification(location, action, input_arg)
+
         modified_code = code_mutator.get_modified_code()
+
+        # --- Validate the EMITTED code (authoritative: this is what actually gets trained) ---
+        # The block above validates the planner's in-memory (FX) model, but AST text edits
+        # can diverge from it. Re-instantiate from the written source and forward-check shape
+        # so broken candidates are rejected here instead of wasting a training slot later.
+        try:
+            _emitted = load_lemur_model(modified_code)
+            _edev = next(_emitted.parameters()).device
+            _ti = torch.randn(2, 3, h, w, device=_edev)
+            _emitted.eval()
+            with torch.no_grad():
+                _eo = _emitted(_ti)
+            if is_image_to_image:
+                _shape_ok = tuple(_eo.shape) == tuple(_ti.shape)
+            else:
+                _shape_ok = (_eo.shape[0] == 2 and _eo.shape[1] == expected_out_classes)
+            if hasattr(_emitted, '_temp_module_info'):
+                _tn, _tp = getattr(_emitted, '_temp_module_info')
+                cleanup_temp_module(_tn, _tp)
+            del _emitted
+            if not _shape_ok:
+                raise RuntimeError(f"emitted output {tuple(_eo.shape)} not valid for input {tuple(_ti.shape)}")
+        except Exception as e:
+            save_plan_to_file(model_name, 'fail_emitted_validation', plan,
+                              {"error": f"emitted-code validation: {str(e)}"})
+            if hasattr(original_model, '_temp_module_info'):
+                tn, tp = getattr(original_model, '_temp_module_info')
+                cleanup_temp_module(tn, tp)
+            return 'fail_emitted_validation', None
 
         # Save to nn-dataset repository
         from ab.nn.util.Util import uuid4  # use canonical hashing
@@ -290,7 +347,7 @@ def run_single_mutation(worker_args):
 
         # Convert absolute model path to relative path for the plan file
         try:
-            relative_model_path = os.path.relpath(model_path, "f:/mutator_env")
+            relative_model_path = os.path.relpath(model_path)
         except ValueError:
             # Fallback to absolute path if relative path conversion fails
             relative_model_path = model_path
@@ -376,7 +433,7 @@ def run_all_models() -> Tuple[int, int]:
 
             end_time = time.time()
             total = sum(stats.values())
-            failed = stats.get('fail_worker_uncaught_error', 0) + stats.get('fail_instantiation', 0) + stats.get('fail_planning', 0)
+            failed = stats.get('fail_worker_uncaught_error', 0) + stats.get('fail_instantiation', 0) + stats.get('fail_planning', 0) + stats.get('fail_emitted_validation', 0)
 
             print(f"{model_name}: {stats['success']}✓ {failed}✗ in {end_time - start_time:.2f}s")
             model_pbar.set_postfix_str(f"{model_name}: ✓{stats['success']} ✗{failed}")

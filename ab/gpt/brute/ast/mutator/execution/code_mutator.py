@@ -16,6 +16,7 @@ from mutator.execution.apply_activation import apply_activation_modification
 from mutator.execution.apply_layer_type import apply_layer_type_modification
 from mutator.execution.apply_architectural import apply_architectural_modification
 from mutator.execution.apply_spatial import apply_kernel_size_modification, apply_stride_modification
+from mutator.execution.apply_skip import apply_skip_modification
 
 
 class CodeMutator(ast.NodeTransformer):
@@ -208,6 +209,45 @@ class CodeMutator(ast.NodeTransformer):
             self.modifications.append(mod)
             if config.DEBUG_MODE:
                 print(f"[CodeMutator] Scheduled stride modification: {mod}")
+
+    def schedule_skip_modification(self, location: Dict[str, int], action: str, input_arg: str) -> None:
+        """
+        Schedule a global-residual skip-connection modification on a forward()
+        return statement.
+
+        Args:
+            location: Source location (lineno, col_offset) of the `return` node
+            action: 'add' or 'remove' the global input->output residual
+            input_arg: name of the forward() input argument (e.g. 'inp', 'x')
+        """
+        if location and action and input_arg:
+            mod = {
+                'type': 'skip',
+                'location': location,
+                'action': action,
+                'input_arg': input_arg,
+            }
+            self.modifications.append(mod)
+            if config.DEBUG_MODE:
+                print(f"[CodeMutator] Scheduled skip modification: {mod}")
+
+    def visit_Return(self, node: ast.Return) -> ast.Return:
+        """
+        Visit Return nodes and apply scheduled skip (global-residual) edits.
+        """
+        self.generic_visit(node)
+
+        for mod in self.modifications:
+            if mod['type'] != 'skip':
+                continue
+            loc = mod['location']
+            if (hasattr(node, 'lineno') and node.lineno == loc['lineno'] and
+                    hasattr(node, 'col_offset') and node.col_offset == loc['col_offset']):
+                if config.DEBUG_MODE:
+                    print(f"[CodeMutator] Found AST Return node at Line {loc['lineno']}, Col {loc['col_offset']} for skip modification.")
+                apply_skip_modification(node, mod)
+
+        return node
 
     def visit_Call(self, node: ast.Call) -> ast.Call:
         """

@@ -27,6 +27,12 @@ DATASET_PARAMS = {
     "MNIST": {
         "spatial_dims": (28, 28),
         "output_size": (10,)
+    },
+    "denoise": {
+        # Image-to-image task (mobile denoising). output_size=None signals that the
+        # network output must match the input shape rather than emit a class count.
+        "spatial_dims": (256, 256),
+        "output_size": None,
     }
 }
 

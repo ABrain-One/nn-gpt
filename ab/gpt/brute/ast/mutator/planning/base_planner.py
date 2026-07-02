@@ -26,6 +26,8 @@ from .activation_planner import ActivationPlanner
 from .layer_planner import LayerTypePlanner
 from .spatial_planner import SpatialPlanner
 from .architectural_planner import ArchitecturalPlanner
+from .scale_planner import ScalePlanner
+from .skip_planner import SkipPlanner
 from .fallback_planner import FallbackPlanner
 from mutator.utils.fx_graph_utils import get_detailed_graph
 
@@ -42,18 +44,21 @@ class ModelPlanner:
     MUTABLE_MODULES = (nn.Conv2d, nn.Linear, nn.BatchNorm2d, nn.LayerNorm)
     ACTIVATION_MODULES = (nn.ReLU, nn.GELU, nn.ELU, nn.LeakyReLU, nn.Tanh, nn.Sigmoid, nn.SiLU)
     
-    def __init__(self, model: nn.Module, source_map: dict = None, search_depth: int = 3):
+    def __init__(self, model: nn.Module, source_map: dict = None, search_depth: int = 3, source_code: str = None):
         """
         Initialize the model planner.
-        
+
         Args:
             model: The PyTorch model to plan mutations for
             source_map: Optional mapping of module names to source locations
             search_depth: Depth for graph traversal operations
+            source_code: Optional original source string (parsed in-memory by planners
+                that need the actual call AST; avoids relying on stale temp-file paths)
         """
         self.original_model = model
         self.source_map = source_map or {}
         self.search_depth = search_depth
+        self.source_code = source_code
         self.plan = {}
         
         # Correctly load VALID_CHANNEL_SIZES from config.py
@@ -65,6 +70,8 @@ class ModelPlanner:
         self.layer_planner = LayerTypePlanner(self)
         self.spatial_planner = SpatialPlanner(self)
         self.architectural_planner = ArchitecturalPlanner(self)
+        self.scale_planner = ScalePlanner(self)
+        self.skip_planner = SkipPlanner(self)
         self.fallback_planner = FallbackPlanner(self)
         
         # Initialize model analysis
@@ -236,6 +243,10 @@ class ModelPlanner:
             return self.spatial_planner.plan_stride_mutation()
         elif selected_type == 'architectural':
             return self.architectural_planner.plan_architectural_mutation()
+        elif selected_type == 'scale':
+            return self.scale_planner.plan_scale_mutation()
+        elif selected_type == 'skip':
+            return self.skip_planner.plan_skip_mutation()
         else:
             # Fallback to dimension mutation
             return self.dimension_planner.plan_dimension_mutation()
@@ -274,7 +285,15 @@ class ModelPlanner:
         elif mutation_type == 'architectural':
             # Architectural mutations are always applicable
             return True
-        
+
+        elif mutation_type == 'scale':
+            # Applicable when any located constructor call exposes a scalable kwarg.
+            return bool(self.scale_planner._collect_candidates())
+
+        elif mutation_type == 'skip':
+            # Applicable when the inner-net forward return can be located.
+            return self.skip_planner.can_apply()
+
         return False
 
     def apply_plan(self) -> nn.Module:

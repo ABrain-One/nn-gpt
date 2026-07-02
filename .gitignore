@@ -35,3 +35,9 @@ slurm_nngpt_kto_*.sh
 nngpt.def
 .claude/
 Experiment_Metrics/
+
+# Brute-force mutator generated artifacts (not source)
+ab/gpt/brute/ast/mutator/nn-dataset/
+ab/gpt/brute/ast/**/mutation_plans/
+ab/gpt/brute/ast/mutation_plans/
+ab/gpt/brute/ast/denoise_*.json

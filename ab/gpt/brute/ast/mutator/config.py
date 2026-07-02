@@ -2,12 +2,20 @@ import multiprocessing
 import os
 
 # List of specific models to mutate (leave empty to mutate all)
-SPECIFIC_MODELS = ["AlexNet"]
+# Denoise NAS seeds — GOOD models (all have global residual + decent PSNR), free from the
+# existing pool. 7F best, 9F 2nd, 5F tiny/efficient, 8F mobile, 3F/4F/10F mid, LiteDenoiseNet
+# the group's strongest (37.66 dB). WEAK seeds 1F/2F/6F (no global residual) are intentionally
+# EXCLUDED until the skip-connection operator exists — they're reserved for the
+# skip before/after experiment (see plan), since the current operators can't add the residual.
+SPECIFIC_MODELS = [
+    "DenoiseUnet7F", "DenoiseUnet9F", "DenoiseUnet5F", "DenoiseUnet8F",
+    "DenoiseUnet3F", "DenoiseUnet4F", "DenoiseUnet10F", "LiteDenoiseNet",
+]
 
-DEBUG_MODE = False
+DEBUG_MODE = True  # smoke run: single-process + verbose so rejection reasons are visible
 # When True, keeps temporary model source files for debugging.
 KEEP_TEMP_MODEL_FILES = False
-NUM_ATTEMPTS_PER_MODEL = 2000
+NUM_ATTEMPTS_PER_MODEL = 10  # smoke run; scale to 50-200 once pipeline is verified
 PRODUCER_SEARCH_DEPTH = 10
 PLANS_OUTPUT_DIR = "mutation_plans"
 NUM_WORKERS = multiprocessing.cpu_count()
@@ -26,9 +34,11 @@ MUTATED_MODELS_OUTPUT_ROOT = os.path.abspath(
 # Toggle DB saving for each successfully generated mutated model
 SAVE_MUTATED_TO_DB = False
 # Required identifiers when saving to DB (set these to match your dataset)
-DB_TASK = None          # e.g., 'img-classification'
-DB_DATASET = None       # e.g., 'CIFAR10'
-DB_METRIC = None        # e.g., 'acc'
+# Denoise NAS: generation is decoupled from eval (our search driver calls check_nn),
+# so SAVE_MUTATED_TO_DB stays False; these are set for when/if DB-eval is enabled.
+DB_TASK = "img-denoising"
+DB_DATASET = "denoise"
+DB_METRIC = "psnr"
 # A prefix added to model name before uuid hash, resulting name: f"{prefix}-{uuid4(nn_code)}"
 DB_MODEL_PREFIX = "mutated"
 # Minimal training parameters required by nn-dataset during check_nn/train_new
@@ -65,13 +75,97 @@ LAYER_TYPE_MUTATIONS = {
 }
 
 # Mutation type weights (probability distribution)
+# Phase 1 (component mutations): biased toward shape-preserving ops (activation, norm
+# swaps) so fully-convolutional denoise nets yield valid candidates; dimension/stride
+# often break skip-connection shape matching and get rejected by the validator (expected).
+# architectural stays 0.0 — those operators are ConvNeXT-only (Phase 2 adds denoise topology).
 MUTATION_TYPE_WEIGHTS = {
-    'dimension': 1.00,       # 100% - only dimension mutations (in/out sizes)
-    'activation': 0.0,      # 0% - no activation function mutations
-    'layer_type': 0.0,      # 0% - no layer type mutations
-    'kernel_size': 0.0,     # 0% - no kernel size mutations
-    'stride': 0.0,          # 0% - no stride mutations
-    'architectural': 0.0    # 0% - no architectural mutations
+    'dimension': 0.10,
+    'activation': 0.15,
+    'layer_type': 0.15,
+    'kernel_size': 0.10,
+    'stride': 0.10,
+    'architectural': 0.0,   # ConvNeXT-specific; not used for denoise
+    'scale': 0.40,          # Phase 2: grow sub-net width/depth (capacity/topology + bigger models)
+    'skip': 0.0,            # Phase 2: toggle global input->output residual in forward().
+                            #   Kept 0.0 for the general search; raise it (e.g. via the CLI
+                            #   `--only skip` or `--weights skip:1.0`) to search skip connections.
+}
+
+# Human-readable operator catalog — used by `cli.py --list-operators` and the README.
+# When you add an operator (see README "Adding an operator"), add a line here too.
+OPERATOR_DESCRIPTIONS = {
+    'dimension':    'Change channel/feature widths of a conv/linear/norm (constructor kwarg).',
+    'activation':   'Swap an activation module (ReLU/GELU/SiLU/ELU/...).',
+    'layer_type':   'Swap a norm/pool layer type (BatchNorm/GroupNorm/LayerNorm, Max/AvgPool).',
+    'kernel_size':  'Change a Conv2d kernel size.',
+    'stride':       'Change a Conv2d stride.',
+    'architectural':'ConvNeXT-only block/stage restructuring (not used for denoise).',
+    'scale':        'Grow a sub-network width/depth constructor kwarg.',
+    'skip':         'Toggle a global input->output residual in forward() (dataflow operator).',
+}
+
+# --- RUNTIME OVERRIDES (env vars) -------------------------------------------
+# Let the CLI (cli.py) and batch/SLURM jobs configure a search WITHOUT editing this
+# file. Because env vars are inherited by child processes, these overrides also reach
+# multiprocessing workers (which re-import config) — so they work in parallel mode too,
+# unlike assigning config attributes at runtime. Each applies only if its var is set.
+import os as _os
+
+def _env_list(name):
+    v = _os.environ.get(name)
+    return [s.strip() for s in v.split(',') if s.strip()] if v else None
+
+def _env_int(name):
+    v = _os.environ.get(name)
+    return int(v) if v not in (None, '') else None
+
+_v = _env_list('BRUTE_MODELS')
+if _v is not None:
+    SPECIFIC_MODELS = _v
+
+_v = _env_int('BRUTE_ATTEMPTS')
+if _v is not None:
+    NUM_ATTEMPTS_PER_MODEL = _v
+
+_v = _env_int('BRUTE_WORKERS')
+if _v is not None:
+    MAX_CORES_TO_USE = _v
+
+if _os.environ.get('BRUTE_OUTPUT'):
+    MUTATED_MODELS_OUTPUT_ROOT = _os.path.abspath(_os.environ['BRUTE_OUTPUT'])
+
+if _os.environ.get('BRUTE_DEBUG') is not None:
+    DEBUG_MODE = _os.environ['BRUTE_DEBUG'] not in ('0', '', 'false', 'False')
+
+# BRUTE_ONLY=<op> isolates a single operator (weight 1.0, all others 0.0).
+_only = _os.environ.get('BRUTE_ONLY')
+if _only:
+    MUTATION_TYPE_WEIGHTS = {k: (1.0 if k == _only else 0.0) for k in MUTATION_TYPE_WEIGHTS}
+    MUTATION_TYPE_WEIGHTS.setdefault(_only, 1.0)
+
+# BRUTE_WEIGHTS="skip:1.0,activation:0.5" overrides individual operator weights.
+_weights = _os.environ.get('BRUTE_WEIGHTS')
+if _weights:
+    for _pair in _weights.split(','):
+        if ':' in _pair:
+            _k, _val = _pair.split(':', 1)
+            MUTATION_TYPE_WEIGHTS[_k.strip()] = float(_val)
+
+# --- PHASE 2: ARCHITECTURAL SCALE MUTATION (denoise capacity/topology) ---
+# Grows scalar architectural hyperparameters of a sub-network constructor call.
+SCALE_MUTATIONS = {
+    # width-like params: multiplied by a width factor
+    'width_params': ['num_filters', 'base_channels', 'base_ch', 'dim', 'width',
+                     'embed_dim', 'hidden_dim', 'channels', 'nf', 'features'],
+    'width_factors': [1.5, 2.0],
+    'width_max': 256,
+    # depth-like params: incremented
+    'depth_params': ['depth', 'blocks_per_level', 'mid_blocks', 'num_blocks',
+                     'n_blocks', 'num_layers', 'num_res_blocks', 'stages'],
+    'depth_deltas': [1, 2],
+    'depth_max': 10,
+    'min_value': 1,
 }
 
 # --- DIMENSION MUTATION STRATEGY ---
