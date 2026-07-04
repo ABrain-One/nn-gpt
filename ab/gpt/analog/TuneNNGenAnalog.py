@@ -487,7 +487,7 @@ if __name__ == '__main__':
                         help=f"Batch size for prompts – Number of prompts processed simultaneously (default: {PROMPT_BATCH}).")
     parser.add_argument('--eval_save_to_db', action=argparse.BooleanOptionalAction, default=True,
                         help='Save evaluation results to the database during generated-model evaluation (default: True).')
-    parser.add_argument('--context_length', type=int, default=None,
+    parser.add_argument('--context_length', type=int, default=CONTEXT_LENGTH,
                         help='Model context length override (falls back to context_length/default_context_length in config).')
 
     args = parser.parse_args()

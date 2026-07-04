@@ -894,7 +894,7 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
         config = json.load(f)
     assert isinstance(config, dict)
 
-    token_from_file = config['token_from_file']
+    token_from_file = False
     base_model_name = config['base_model_name']
     merged_candidate = nngpt_upload / Path(base_model_name).name
 
@@ -905,15 +905,14 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
         print(f"[EVOLUTION] Using base model from config: {base_model_name}")
 
 
-    llm_tune_epochs = int(config['num_epochs'])
-    use_deepspeed = config['use_deepspeed']
-    only_best_accuracy = config['only_best_accuracy']
+    llm_tune_epochs = int(training_args.num_train_epochs)
+    use_deepspeed = training_args.deepspeed is not None
+    only_best_accuracy = False
     if context_length is None:
         context_length = config.get('context_length') or config.get('default_context_length')
     unsloth_max_input_length = config.get('max_input_length', None)
     use_unsloth = config.get('use_unsloth', False)
     unsloth_load_in_4bit = config.get('load_in_4bit', True)
-    max_new_tokens = config.get('max_new_tokens', max_new_tokens)
     use_backbone = config.get('backbone', use_backbone)
 
     access_token = None
