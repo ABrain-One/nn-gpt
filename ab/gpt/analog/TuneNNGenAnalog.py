@@ -49,6 +49,7 @@ ONNX_RUN = False
 UNSLOTH_OPT = False
 TRANS_MODE = False  # only transform fine-tuning
 PROMPT_BATCH = 2
+CONTEXT_LENGTH = 4096
 
 # --- Pipeline-Optimized Defaults (for iterative_finetune.py) ---
 # These defaults are optimized for multi-cycle iterative fine-tuning
@@ -121,7 +122,7 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
          save_total_limit=None, load_best_model_at_end=False, metric_for_best_model=None, warmup_steps=None, weight_decay=None,
          per_device_eval_batch_size=None, onnx_run=ONNX_RUN, unsloth_opt=UNSLOTH_OPT, trans_mode=TRANS_MODE,
          prompt_batch=PROMPT_BATCH, enable_merge=False,
-         context_length=None,
+         context_length=CONTEXT_LENGTH,
          # --- Pipeline Hyperparameters ---
          run_iterative_pipeline=False, cycles=5, models_per_cycle=150, samples_per_prompt=1, accuracy_threshold=0.40,
          min_selected_k=15, fallback_threshold=0.35, adaptive_threshold=False,
