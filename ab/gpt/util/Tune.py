@@ -155,11 +155,13 @@ def nn_gen(
                 data_kwargs["nn_prefixes"] = sft_nn_prefixes
             if use_backbone and sft_dataset:
                 data_kwargs["dataset"] = sft_dataset
-            data = (
-                lemur.data(**data_kwargs)
-                .groupby(by="nn")
-                .sample(n=1)[:test_nn]
-            )
+            data = lemur.data(**data_kwargs)
+            if data.empty or "nn" not in data.columns:
+                raise ValueError(
+                    "No NN seed rows matched the generation filters: "
+                    f"{data_kwargs}"
+                )
+            data = data.groupby(by="nn").sample(n=1)[:test_nn]
             if use_backbone:
                 datasets = sorted(data["dataset"].dropna().unique().tolist()) if "dataset" in data else []
                 print(

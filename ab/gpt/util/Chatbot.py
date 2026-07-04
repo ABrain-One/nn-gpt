@@ -67,6 +67,13 @@ def _safe_tokenizer_max_length(tokenizer, fallback: int = 4096) -> int:
     return tokenizer_max_len
 
 
+def _effective_vocab_size(tokenizer) -> int:
+    try:
+        return max(int(tokenizer.vocab_size), len(tokenizer))
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return len(tokenizer)
+
+
 def _strip_reasoning_output(text: str) -> str:
     if not isinstance(text, str) or not text:
         return text
@@ -176,12 +183,11 @@ class ChatBot:
 
         if 'input_ids' in inputs:
             input_ids = inputs['input_ids']
-            vocab_size = self.tokenizer.vocab_size
+            vocab_size = _effective_vocab_size(self.tokenizer)
             max_token_id = input_ids.max().item()
             if max_token_id >= vocab_size:
                 print(f"[WARN] Invalid token IDs detected in batch: max_id={max_token_id}, vocab_size={vocab_size}")
-                clamp_value = self.tokenizer.eos_token_id if self.tokenizer.eos_token_id is not None else vocab_size - 1
-                inputs['input_ids'] = torch.clamp(input_ids, max=clamp_value)
+                inputs['input_ids'] = torch.clamp(input_ids, max=vocab_size - 1)
 
         if hasattr(self.model, 'device') and self.model.device is not None:
             device = self.model.device
@@ -325,17 +331,14 @@ class ChatBot:
             # -- FIX 1: Validate token IDs before GPU move -- 
             if 'input_ids' in inputs:
                 input_ids = inputs['input_ids']
-                vocab_size = self.tokenizer.vocab_size
+                vocab_size = _effective_vocab_size(self.tokenizer)
                 max_token_id = input_ids.max().item()
 
                 if max_token_id >= vocab_size:
                     print(f"[WARN] Invalid token IDs detected: max_id={max_token_id}, vocab_size={vocab_size}")
                     print(f"[WARN] Clamping to valid range [0, {vocab_size-1}]")
-
-                clamp_value = self.tokenizer.eos_token_id if self.tokenizer.eos_token_id is not None else vocab_size - 1
-                input_ids = torch.clamp(input_ids, max=clamp_value)
-                inputs['input_ids'] = input_ids
-                if max_token_id >= vocab_size:
+                    input_ids = torch.clamp(input_ids, max=vocab_size - 1)
+                    inputs['input_ids'] = input_ids
                     print(f"[WARN] After clamping: max_id={input_ids.max().item()}")
 
             
