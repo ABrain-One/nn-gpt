@@ -1,9 +1,39 @@
 import argparse
+import inspect
 import sys
+import torch
 from peft import LoraConfig
 from trl import SFTConfig
 from ab.gpt.util.Tune import tune
 from ab.gpt.util.Const import nngpt_dir, conf_train_dir
+
+
+def _build_sft_config(args):
+    use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+    kwargs = {
+        "output_dir": str(nngpt_dir / 'outputs'),
+        "per_device_train_batch_size": args.sft_batch_size,
+        "gradient_accumulation_steps": args.sft_gradient_accumulation,
+        "learning_rate": 1e-5,
+        "num_train_epochs": args.num_train_epochs,
+        "logging_steps": 5,
+        "bf16": use_bf16,
+        "fp16": torch.cuda.is_available() and not use_bf16,
+        "save_strategy": "no",
+        "report_to": "none",
+        "remove_unused_columns": False,
+        "max_length": args.sft_max_length,
+        "gradient_checkpointing": True,
+    }
+    signature_parameters = inspect.signature(SFTConfig.__init__).parameters
+    if "packing_strategy" in signature_parameters:
+        kwargs["packing_strategy"] = "wrapped"
+    if "padding_free" in signature_parameters:
+        kwargs["padding_free"] = False
+    if "gradient_checkpointing_kwargs" in signature_parameters:
+        kwargs["gradient_checkpointing_kwargs"] = {"use_reentrant": False}
+    return SFTConfig(**kwargs)
+
 
 def main():
     parser = argparse.ArgumentParser(description='Run Backbone Tuning.')
@@ -28,23 +58,7 @@ def main():
     
     args = parser.parse_args()
 
-    # Training Arguments
-    training_args = SFTConfig(
-        output_dir=str(nngpt_dir / 'outputs'),
-        per_device_train_batch_size=args.sft_batch_size,
-        gradient_accumulation_steps=args.sft_gradient_accumulation,
-        learning_rate=1e-5,
-        num_train_epochs=args.num_train_epochs,
-        logging_steps=5,
-        bf16=True,
-        save_strategy="no",
-        report_to="none",
-        remove_unused_columns=False,
-        max_length=args.sft_max_length,
-        packing_strategy="wrapped",
-        padding_free=False,
-        gradient_checkpointing=True
-    )
+    training_args = _build_sft_config(args)
 
     # LoRA Config
     peft_config = LoraConfig(
