@@ -156,7 +156,7 @@ def nn_gen(
             if use_backbone and sft_dataset:
                 data_kwargs["dataset"] = sft_dataset
             data = (
-                lemur.data(only_best_accuracy=True, task=key_config["task"])
+                lemur.data(**data_kwargs)
                 .groupby(by="nn")
                 .sample(n=1)[:test_nn]
             )
