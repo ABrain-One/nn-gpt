@@ -959,6 +959,21 @@ def _resolve_tune_resume_trainer_checkpoint(initial_adapter_path) -> Optional[st
     return str(resume_spec.trainer_checkpoint)
 
 
+def _config_bool(value, default: bool) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"Invalid boolean config value: {value}")
+
+
 def tune(
     test_nn,
     nn_train_epochs,
@@ -993,7 +1008,7 @@ def tune(
     context_length=None,
     max_input_length=None,
     only_best_accuracy=False,
-    load_in_4bit=True,
+    load_in_4bit=None,
     epoch_root=None,
 ):
     if not isinstance(conf_keys, (list, tuple)):
@@ -1016,7 +1031,13 @@ def tune(
     if context_length is None:
         context_length = config.get("default_context_length")
     unsloth_max_input_length = max_input_length
-    unsloth_load_in_4bit = load_in_4bit
+    unsloth_load_in_4bit = _config_bool(
+        load_in_4bit, _config_bool(config.get("load_in_4bit"), True)
+    )
+    if "force_direct_generate" in config:
+        os.environ["NNGPT_FORCE_DIRECT_GENERATE"] = (
+            "1" if _config_bool(config.get("force_direct_generate"), False) else "0"
+        )
     use_deepspeed = False
     chat_template_path = config.get("chat_template_path")
     access_token = None
