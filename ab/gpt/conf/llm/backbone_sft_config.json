@@ -1,4 +1,6 @@
 {
   "base_model_name": "deepseek-ai/deepseek-coder-6.7b-instruct",
-  "default_context_length": 4096
+  "default_context_length": 4096,
+  "load_in_4bit": true,
+  "force_direct_generate": true
 }
