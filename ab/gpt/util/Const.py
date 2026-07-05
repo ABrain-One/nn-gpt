@@ -23,7 +23,7 @@ nngpt_dir = out_dir / 'nngpt'
 # Setting NNGPT_DIR_OVERRIDE env var to redirect all nngpt output to a custom path.
 # Used by CurriculumGenerationPipeline.py to isolate per-dataset/level/k runs.
 import os as _os
-_nngpt_override = _os.environ.get("NNGPT_DIR_OVERRIDE")
+_nngpt_override = _os.environ.get("AB_GPT_NNGPT_DIR") or _os.environ.get("NNGPT_DIR_OVERRIDE")
 if _nngpt_override:
     nngpt_dir = Path(_nngpt_override)
     print(f"[Const] nngpt_dir overridden → {nngpt_dir}")
