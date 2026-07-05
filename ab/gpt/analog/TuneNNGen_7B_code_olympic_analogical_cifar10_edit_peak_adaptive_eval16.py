@@ -7,11 +7,7 @@ import time
 from ab.gpt.util.Const import ab_root_path
 
 REPO_ROOT = ab_root_path
-DATASET_ROOT = Path(os.environ.get('AB_NN_DATASET_ROOT', str(ab_root_path.parent / 'nn-dataset'))).resolve()
 
-for path in (str(REPO_ROOT), str(DATASET_ROOT)):
-    if path not in sys.path:
-        sys.path.insert(0, path)
 
 from ab.gpt.util.CycleResults import collect_cycle_metrics, generate_cycle_results, save_cycle_results
 

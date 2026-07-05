@@ -4,11 +4,7 @@ from pathlib import Path
 from ab.gpt.util.Const import ab_root_path
 
 REPO_ROOT = ab_root_path
-DATASET_ROOT = Path(os.environ.get('AB_NN_DATASET_ROOT', str(ab_root_path.parent / 'nn-dataset'))).resolve()
 
-for path in (str(REPO_ROOT), str(DATASET_ROOT)):
-    if path not in sys.path:
-        sys.path.insert(0, path)
 
 os.environ.setdefault(
     'AB_GPT_NNGPT_DIR',
