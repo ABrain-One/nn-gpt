@@ -6,7 +6,7 @@
 - PyTorch: 2.9.1+cu128
 - CUDA: 12.8
 - GPU: NVIDIA GeForce RTX 4090
-- OS: Linux romankochnev 6.8.0-111-generic #111~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue Apr 14 17:13:45 UTC x86_64 x86_64 x86_64 GNU/Linux
+- OS: Linux 6.8.0-111-generic #111~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue Apr 14 17:13:45 UTC x86_64 x86_64 x86_64 GNU/Linux
 
 ## Setup
 
