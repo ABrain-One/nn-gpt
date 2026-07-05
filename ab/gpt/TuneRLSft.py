@@ -915,7 +915,7 @@ def _write_sft_run_config(
     log_dir = Path(resolve_sft_log_dir())
     log_dir.mkdir(parents=True, exist_ok=True)
     with open(log_dir / "run_config.json", "w", encoding="utf-8") as handle:
-        json.dump(payload, handle, indent=2, ensure_ascii=False, sort_keys=True)
+        json.dump(TrainingRuntime.json_safe(payload), handle, indent=2, ensure_ascii=False, sort_keys=True)
 
 
 def _resolved_visible_cuda_device_tokens(visible_cuda_devices: int) -> List[str]:
