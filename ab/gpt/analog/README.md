@@ -10,13 +10,12 @@
 
 ## Setup
 
-*Note: Replace `/home/kabir/newws` with your preferred clone location and update `NN_GPT_ROOT`, `NN_DATASET_ROOT`, and `VENV` accordingly in the later scripts.*
+*Note: Replace `/home/kabir/newws` with your preferred clone location and update `NN_GPT_ROOT`, and `VENV` accordingly in the later scripts.*
 
 ### 1. Clone both repositories
 
 ```bash
 git clone https://github.com/ABrain-One/nn-gpt.git ${NN_GPT_ROOT}
-git clone https://github.com/ABrain-One/nn-dataset.git ${NN_DATASET_ROOT}
 ```
 
 ### 2. Create and activate the virtual environment
@@ -48,8 +47,7 @@ python -m pip install \
 ### 4. Set PYTHONPATH
 
 ```bash
-export PYTHONPATH=${NN_GPT_ROOT}:${NN_DATASET_ROOT}:${PYTHONPATH:-}
-export AB_NN_DATASET_ROOT=${NN_DATASET_ROOT}
+export PYTHONPATH=${NN_GPT_ROOT}:${PYTHONPATH:-}
 ```
 
 ## Repository structure
@@ -85,13 +83,11 @@ All commands run from the `nn-gpt` repository root with `PYTHONPATH` set as abov
 ```bash
 # Adjust these three paths to match your clone location
 export NN_GPT_ROOT=/home/kabir/newws/nn-gpt
-export NN_DATASET_ROOT=/home/kabir/newws/nn-dataset
 export VENV=/home/kabir/newws/.venv
 
 cd ${NN_GPT_ROOT}
 
-export PYTHONPATH=${NN_GPT_ROOT}:${NN_DATASET_ROOT}:${PYTHONPATH:-}
-export AB_NN_DATASET_ROOT=${NN_DATASET_ROOT}
+export PYTHONPATH=${NN_GPT_ROOT}:${PYTHONPATH:-}
 export AB_GPT_SKIP_POST_FINETUNE=1
 export AB_GPT_STRICT_NO_REPAIR=0
 export AB_GPT_REPAIR_MODE=minimal
@@ -352,4 +348,4 @@ The full one-epoch generation/evaluation commands were not rerun after the isola
 
 ## Reproducibility note
 
-PyTorch deterministic mode is not used; exact bitwise replay is not claimed. Reproducibility is defined at the protocol level: the same frozen prompts, same source/target IDs, same candidate budget, same LLM, same seed offset, and same validation settings should produce results within normal stochastic variation of the reported values. Analog experiment output paths are configured with `AB_GPT_NNGPT_DIR`, which is resolved through `ab.gpt.util.Const` relative to the repository/output root conventions; dataset support scripts use `AB_NN_DATASET_ROOT` or the sibling `nn-dataset` path derived from `ab_root_path`. The `results_registry/` directory contains the logged outputs used to generate the paper tables; fresh runs should be checked through their run-local `cycle_results.json` and `eval_info.json` files before being merged into the curated registry.
+PyTorch deterministic mode is not used; exact bitwise replay is not claimed. Reproducibility is defined at the protocol level: the same frozen prompts, same source/target IDs, same candidate budget, same LLM, same seed offset, and same validation settings should produce results within normal stochastic variation of the reported values. Analog experiment output paths are configured with `AB_GPT_NNGPT_DIR`, which is resolved through `ab.gpt.util.Const` relative to the repository/output root conventions. The `results_registry/` directory contains the logged outputs used to generate the paper tables; fresh runs should be checked through their run-local `cycle_results.json` and `eval_info.json` files before being merged into the curated registry.
