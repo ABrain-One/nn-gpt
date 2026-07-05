@@ -54,6 +54,19 @@ def _load_json(path: Path) -> Dict[str, Any]:
     return dict(payload or {})
 
 
+def json_safe(value: Any) -> Any:
+    """Return a JSON-serializable copy of common runtime payload values."""
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, dict):
+        return {str(key): json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return [json_safe(item) for item in value]
+    return value
+
+
 def _dedup_names(primary_name: str, extra_names: Sequence[str]) -> list[str]:
     names: list[str] = []
     for name in (primary_name, *extra_names):
