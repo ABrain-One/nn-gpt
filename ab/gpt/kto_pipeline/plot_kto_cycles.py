@@ -39,6 +39,12 @@ def _parse_cycle(c: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         "desirable_total": int(b.get("desirable_total", 0)),
         "undesirable_total": int(b.get("undesirable_total", 0)),
         "pass_acc": new_des + not_novel,  # cleared the accuracy bar (novel + duplicate)
+        # Novelty read-out: among models that cleared the bar, how many were
+        # structurally new vs duplicates of an already-accepted design.
+        "novelty_rate": (new_des / (new_des + not_novel)) if (new_des + not_novel) else float("nan"),
+        # Similarity-penalty telemetry (present only on sim-penalty runs).
+        "sim_penalty_nonzero": int(b.get("sim_penalty_nonzero", 0)),
+        "sim_penalty_mean": float(b.get("sim_penalty_mean", 0.0) or 0.0),
         "trained": bool(c.get("training", {}).get("success", False)),
     }
 
@@ -287,6 +293,32 @@ def plot_separate(cycles: List[Dict[str, Any]], out_dir: Path,
     bpath = out_dir / "kto_bucket_counts.png"
     fig.tight_layout(); fig.savefig(bpath, dpi=130); plt.close(fig)
     paths.append(bpath)
+
+    # ── Novelty per cycle: novel vs duplicate among threshold-clearing models ──
+    # Direct read-out of whether the similarity penalty is pushing generation
+    # toward structurally new architectures. Under the penalty, non-novel passers
+    # still enter training, but a working penalty should slow their growth / lift
+    # the novelty rate over cycles relative to the no-penalty baseline.
+    novel = [int(r["new_desirable"]) for r in cycles]
+    dup = [int(r["not_novel"]) for r in cycles]
+    rate = [100.0 * n / (n + d) if (n + d) else float("nan")
+            for n, d in zip(novel, dup)]
+    fig, ax = plt.subplots(figsize=(11, 5.5))
+    ax.bar(xs, novel, width=0.6, color="#2ca02c", label="Novel (unique)")
+    ax.bar(xs, dup, width=0.6, bottom=novel, color="#ff7f0e", alpha=0.85,
+           label="Duplicate (non-novel)")
+    ax.set_xlabel("Cycle"); ax.set_ylabel("Threshold-clearing models")
+    ax.set_title("Novel vs Duplicate Architectures per Cycle (with novelty rate)")
+    ax.grid(True, alpha=0.3, axis="y")
+    ax2 = ax.twinx()
+    ax2.plot(xs, rate, "o-", color="#1f77b4", label="Novelty rate")
+    ax2.set_ylabel("Novelty rate (%)"); ax2.set_ylim(0, 100)
+    h1, l1 = ax.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax.legend(h1 + h2, l1 + l2, fontsize=9, loc="best")
+    npath = out_dir / "kto_novelty.png"
+    fig.tight_layout(); fig.savefig(npath, dpi=130); plt.close(fig)
+    paths.append(npath)
     return paths
 
 
@@ -294,7 +326,8 @@ def save_csv(cycles: List[Dict[str, Any]], out_dir: Path) -> Path:
     path = out_dir / "kto_cycle_summary.csv"
     cols = ["cycle", "generated", "evaluated", "valid", "best", "avg", "avg_all",
             "median", "ge_threshold_pct", "new_desirable", "new_undesirable",
-            "low_accuracy", "not_novel", "desirable_total", "undesirable_total", "trained"]
+            "low_accuracy", "not_novel", "novelty_rate", "sim_penalty_nonzero",
+            "sim_penalty_mean", "desirable_total", "undesirable_total", "trained"]
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
