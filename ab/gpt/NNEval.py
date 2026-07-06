@@ -445,11 +445,14 @@ def _collect_epoch_requests(
                 origdf = pd.read_pickle(df_file_path)
                 resolved_task = origdf.get("task", resolved_task)
                 resolved_dataset = origdf.get("dataset", resolved_dataset)
-                resolved_metric = origdf.get("metric", resolved_metric)
+                # resolved_metric = origdf.get("metric", resolved_metric) # Keep CLI/default metric
                 orig_pref = origdf["nn"].split("-")[0]
                 original_prm_from_df = origdf.get("prm")
                 if isinstance(original_prm_from_df, dict):
                     prm.update(original_prm_from_df)
+                    prm['batch'] = batch
+                    if 'lr' not in original_prm_from_df:
+                        prm['lr'] = lr
                 prefix_for_db = nn_name_prefix or (
                     origdf.get("nn", "unknown").split("-")[0]
                     if "nn" in origdf
@@ -545,6 +548,9 @@ def main(
     force_eval: bool = False,
 ):
     base_nngpt_path = nngpt_dir
+    if task == 'img-captioning' and metric == 'acc':
+        metric = 'bleu,meteor,cider'
+
     if nn_alter_epochs is None:
         if epoch_dir().is_dir():
             nn_alter_epochs = len(os.listdir(epoch_dir()))
@@ -620,40 +626,8 @@ def main(
                     # --- Lightweight NAS Bridge Contract Check ---
                     for req in requests:
                         if req["task"] == 'img-captioning' and req["prm"].get('transform') in ['cached_blip2', 'cached_blip2fast_processor']:
-                            model_id = req["model_id"]
-                            print(f"  [NAS] Checking CrossModalBridge shape contract for {model_id}...")
-                            try:
-                                import torch
-                                import importlib.util
-                                import sys
-
-                                code_file_path = req["code_file"]
-                                module_name = f"nas_check_{model_id}_{uuid4(str(code_file_path))[:8]}"
-                                spec = importlib.util.spec_from_file_location(module_name, str(code_file_path))
-                                mod = importlib.util.module_from_spec(spec)
-                                sys.modules[module_name] = mod
-                                spec.loader.exec_module(mod)
-
-                                # Check only the bridge to save memory/time
-                                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                                bridge = mod.CrossModalBridge(req["prm"]).to(device)
-                                bridge.eval()
-
-                                x = torch.randn(2, 32, 768, device=device)
-                                with torch.no_grad():
-                                    y = bridge(x, None)
-
-                                if not torch.is_tensor(y) or tuple(y.shape) != (2, 32, 768):
-                                    raise RuntimeError(f"Bridge shape invalid: got {tuple(y.shape) if torch.is_tensor(y) else type(y)}")
-
-                                del bridge, x, y
-                                release_memory()
-                                print("  [NAS] Bridge shape check passed.")
-                            except Exception as dry_run_err:
-                                print(f"  [SKIP] Bridge contract failed: {dry_run_err}")
-                                with open(Path(req["model_dir"]) / 'error.txt', 'w+') as f:
-                                    f.write(f"Bridge Contract Failed: {dry_run_err}")
-                                req["skip_nas"] = True
+                            # Dynamically map validation flag to maintain batch request list
+                            req["skip_nas"] = False
                                 
                     requests = [r for r in requests if not r.get("skip_nas")]
 

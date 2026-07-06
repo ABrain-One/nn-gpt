@@ -164,6 +164,9 @@ class LLM:
             base_model,
             **model_kwargs
         )
+        if len(self.tokenizer) > self.model.config.vocab_size:
+            print(f"[INFO] Resizing model token embeddings from {self.model.config.vocab_size} to {len(self.tokenizer)}")
+            self.model.resize_token_embeddings(len(self.tokenizer))
         if exists(local_path):
             print("Loading Model from local files:", "'" + local_path + "'")
         elif exists(raw_fl_nm):

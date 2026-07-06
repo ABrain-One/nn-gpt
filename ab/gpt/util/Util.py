@@ -109,7 +109,7 @@ def extract_by_pattern(name, res, options) -> str:
 
 
 def extract_code(txt):
-    return extract_by_pattern('NN code', txt, (('<nn>', '</nn>'), ('```python', '```'), ('```', '```')))
+    return extract_by_pattern('NN code', txt, (('<nn_head>', '</nn_head>'), ('<nn>', '</nn>'), ('```python', '```'), ('```', '```')))
 
 
 def extract_hyperparam(txt):

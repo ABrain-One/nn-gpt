@@ -65,6 +65,7 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
     if inference_gpt_oss and inference_gpt_oss_max_input_length is None:
         inference_gpt_oss_max_input_length = 10**18
     batch_size = max(1, int(kwargs.get("batch_size", 1)))
+    nn_name_prefix = kwargs.get("nn_name_prefix", "Blip2Fast")
 
     nn_prefixes = kwargs.get('nn_prefixes')
     # Load test prompts
@@ -182,7 +183,7 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
                         print("Response Available!")
                         nn_code = extract_code(out)
                         if nn_code:
-                            model_dir = synth_dir(out_path) / f"Blip2Fast-A{epoch}-B{B_index}"
+                            model_dir = synth_dir(out_path) / f"{nn_name_prefix}-A{epoch}-B{B_index}"
                             code_file = model_dir / new_nn_file
                             df_file = model_dir / 'dataframe.df'
                             print(f"[INFO]Saving code to: {code_file}")
@@ -378,7 +379,7 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
         B_index = 0
         for idx, prompt in tqdm(enumerate(prompts), desc="Generate Deltas"):
             prompt, origdf = prompt
-            model_dir = synth_dir(out_path) / f"Blip2Fast-A{target_epoch}-B{B_index}"
+            model_dir = synth_dir(out_path) / f"{nn_name_prefix}-A{target_epoch}-B{B_index}"
             code_file = model_dir / new_nn_file
             df_file = model_dir / 'dataframe.df'
 
@@ -468,7 +469,7 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
                     
                     # IMMEDIATELY assemble the code using the updated CaptioningUtil
                     try:
-                        if "CrossModalBridge" in llm_code or "Blip2Fast" in llm_code:
+                        if nn_name_prefix != "Blip2Fast" and ("CrossModalBridge" in llm_code or "Blip2Fast" in llm_code):
                             from ab.gpt.util.CaptioningUtil import assemble_nn_code
                             from ab.nn.util.Util import uuid4
                             assembled_code = assemble_nn_code(llm_code)
@@ -509,7 +510,7 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
                 
                 # IMMEDIATELY assemble the code using the updated CaptioningUtil
                 try:
-                    if "CrossModalBridge" in llm_code or "Blip2Fast" in llm_code:
+                    if nn_name_prefix != "Blip2Fast" and ("CrossModalBridge" in llm_code or "Blip2Fast" in llm_code):
                         from ab.gpt.util.CaptioningUtil import assemble_nn_code
                         from ab.nn.util.Util import uuid4
                         assembled_code = assemble_nn_code(llm_code)

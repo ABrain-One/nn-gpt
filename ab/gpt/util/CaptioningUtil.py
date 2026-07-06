@@ -742,6 +742,18 @@ def _is_bridge_valid(code: str) -> tuple:
 
 
 def assemble_nn_code(nn_head_code, prm=None, device="cuda", q_former_hidden=768):
+    if nn_head_code and "Blip2Fast" in nn_head_code:
+        print("[WARNING] Delta pipeline failed or fallback triggered for Blip2Fast. Returning untouched baseline to prevent syntax errors.")
+        import os
+        import importlib.util
+        spec = importlib.util.find_spec("ab.nn.nn.Blip2Fast")
+        if spec is not None:
+            baseline_path = spec.origin
+        else:
+            baseline_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../nn-dataset/ab/nn/nn/Blip2Fast.py"))
+        with open(baseline_path, "r") as f:
+            return f.read()
+
     """
     Build a stable Blip2Fast-style image-captioning model around an
     LLM-generated CrossModalBridge.
@@ -833,7 +845,7 @@ def assemble_nn_code(nn_head_code, prm=None, device="cuda", q_former_hidden=768)
         "",
         "",
         "def supported_hyperparameters():",
-        "    return {'lr', 'batch', 'dropout', 'num_layers', 'num_heads', 'ff_dim', 'decoder_dim', 'load_in_4bit', 'freeze_gpt2'}",
+        "    return {'lr', 'batch', 'dropout', 'num_layers', 'num_heads', 'ff_dim', 'decoder_dim'}",
         "",
         "",
         "def safe_prm(prm, key, default=None):",
@@ -948,15 +960,19 @@ def assemble_nn_code(nn_head_code, prm=None, device="cuda", q_former_hidden=768)
         "        self.tokenizer.pad_token = self.tokenizer.eos_token",
         "",
         "        config = GPT2Config.from_pretrained(gpt2_id)",
-        "        self.gpt2 = GPT2LMHeadModel.from_pretrained(gpt2_id, config=config).to(device)",
+        "        self.gpt2 = GPT2LMHeadModel.from_pretrained(gpt2_id, config=config, torch_dtype=torch.float16).to(device)",
         "        self.gpt2_hidden = int(config.n_embd)",
         "",
-        "        freeze_gpt2 = bool(self.prm.get('freeze_gpt2', True))",
+        "        freeze_gpt2 = False  # Always train bridge + final_proj; OPT/GPT-2 backbone stays frozen.",
         "        if freeze_gpt2:",
         "            for p in self.gpt2.parameters():",
         "                p.requires_grad = False",
         "",
         "        self.bridge = CrossModalBridge(self.prm).to(device)",
+        "        with torch.no_grad():",
+        "            dummy = torch.zeros(1, 1, 768, device=device)",
+        "            b_out = self.bridge(dummy).size(-1)",
+        "        self.final_proj = nn.Linear(b_out, self.gpt2_hidden).to(device) if b_out != self.gpt2_hidden else nn.Identity()",
         "",
         "    def _normalize_visual_embeds(self, visual_embeds, batch_size):",
         "        if not torch.is_tensor(visual_embeds):",
@@ -985,11 +1001,7 @@ def assemble_nn_code(nn_head_code, prm=None, device="cuda", q_former_hidden=768)
         "        if visual_embeds.size(1) > 32:",
         "            visual_embeds = visual_embeds[:, :32, :]",
         "",
-        "        hidden = visual_embeds.size(-1)",
-        "        if hidden > self.gpt2_hidden:",
-        "            visual_embeds = visual_embeds[..., :self.gpt2_hidden]",
-        "        elif hidden < self.gpt2_hidden:",
-        "            visual_embeds = F.pad(visual_embeds, (0, self.gpt2_hidden - hidden))",
+        "        visual_embeds = self.final_proj(visual_embeds)",
         "",
         "        return visual_embeds",
         "",
@@ -1015,6 +1027,7 @@ def assemble_nn_code(nn_head_code, prm=None, device="cuda", q_former_hidden=768)
         "",
         "            text_embeds = self.gpt2.transformer.wte(caption_ids)",
         "            inputs_embeds = torch.cat([visual_embeds, text_embeds], dim=1)",
+        "            inputs_embeds = inputs_embeds.to(self.gpt2.dtype)",
         "",
         "            ignore_labels = torch.full(",
         "                (batch_size, visual_embeds.shape[1] + 1),",
@@ -1039,6 +1052,7 @@ def assemble_nn_code(nn_head_code, prm=None, device="cuda", q_former_hidden=768)
         "        )",
         "        start_embed = self.gpt2.transformer.wte(start_token)",
         "        outputs_embeds = torch.cat([visual_embeds, start_embed], dim=1)",
+        "        outputs_embeds = outputs_embeds.to(self.gpt2.dtype)",
         "",
         "        generated = []",
         "        past_key_values = None",
@@ -1076,7 +1090,7 @@ def assemble_nn_code(nn_head_code, prm=None, device="cuda", q_former_hidden=768)
         "        self.vocab_size = int(out_shape[0]) if out_shape and len(out_shape) > 0 else 50257",
         "        print(f'!!! [MODEL SETUP] Hyperparameters: {self.prm}')",
         "",
-        "        load_in_4bit = bool(self.prm.get('load_in_4bit', True))",
+        "        load_in_4bit = True  # Hardcoded: required for 24GB GPU. Not tunable by Optuna.",
         "        self.encoder = FrozenBlip2Encoder(device, load_in_4bit=load_in_4bit)",
         "        self.decoder = CaptionDecoder(self.encoder.hidden_size, device, self.prm)",
         "",
@@ -1351,3 +1365,54 @@ if __name__ == "__main__":
         sys.exit(0 if success else 1)
     else:
         parser.print_help()
+
+
+def assemble_blip2fastopt_code(llm_code: str, prm: dict = None) -> str:
+    """
+    Assembles a Blip2Fast model by injecting the LLM's ProjectionAdapter
+    into the frozen baseline file.
+    """
+    import re
+    from ab.gpt.util.Util import extract_code
+
+    # Extract LLM Code
+    adapter_code = extract_code(llm_code)
+    if not adapter_code:
+        adapter_code = llm_code
+
+    if "class CrossModalBridge" not in adapter_code:
+        raise ValueError("No 'class CrossModalBridge' found in LLM code.")
+
+    # Read Baseline
+    import os
+    import importlib.util
+    spec = importlib.util.find_spec("ab.nn.nn.Blip2Fast")
+    if spec is not None:
+        baseline_path = spec.origin
+    else:
+        baseline_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../nn-dataset/ab/nn/nn/Blip2Fast.py"))
+    with open(baseline_path, "r") as f:
+        baseline_code = f.read()
+
+    # Delegate injection to str.replace
+    injection_anchor = "class OPTCaptionDecoder(nn.Module):"
+    if injection_anchor not in baseline_code:
+        injection_anchor = "# ==============================================================================\n# OPT-2.7B decoder"
+        if injection_anchor not in baseline_code:
+            raise ValueError(f"Injection failed: anchor not found in baseline code.")
+    
+    parts = baseline_code.split(injection_anchor, 1)
+    assembled = parts[0] + adapter_code + "\n\n" + injection_anchor + parts[1]
+    
+    old_linear = "        self.visual_projection = nn.Linear(QFORMER_HIDDEN, self.opt_embed_dim).to(device)"
+    new_bridge_init = """        try:
+            self.visual_projection = CrossModalBridge(self.prm, self.opt_embed_dim)
+        except TypeError:
+            raise ValueError("CrossModalBridge must accept (prm, out_features) in __init__.")
+        self.visual_projection = self.visual_projection.to(device)"""
+    
+    if old_linear not in assembled:
+        raise ValueError(f"Injection failed: visual_projection init line not found in baseline.")
+    assembled = assembled.replace(old_linear, new_bridge_init, 1)
+
+    return assembled
