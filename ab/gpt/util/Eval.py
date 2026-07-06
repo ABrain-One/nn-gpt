@@ -41,7 +41,7 @@ class Eval:
         else:
             self.use_ast_validation = use_ast_validation
 
-    def evaluate(self, nn_file):
+    def evaluate(self, nn_file, checkpoint_path=None):
         os.listdir(self.model_package)
         from ab.gpt.util.Util import read_py_file_as_string
         code = read_py_file_as_string(nn_file)
@@ -88,11 +88,25 @@ class Eval:
         nn_dataset.data.cache_clear()
         import random
         new_checksum = uuid4(code)
-        # Optimized check: only query for the specific checksum instead of fetching everything
         df = nn_dataset.data(nn=new_checksum)
+        allow_retrain = bool(checkpoint_path) or not self.save_to_db
         
-        if df.empty:
+        if df.empty or allow_retrain:
             with _isolated_eval_tmp_modules():
+                if checkpoint_path:
+                    from ab.gpt.util.eval_checkpoint import train_and_eval_with_checkpoint
+
+                    return train_and_eval_with_checkpoint(
+                        code,
+                        self.task,
+                        self.dataset,
+                        self.metric,
+                        self.prm,
+                        checkpoint_path,
+                        save_to_db=self.save_to_db,
+                        prefix=self.prefix,
+                        save_path=self.save_path,
+                    )
                 return api.check_nn(
                     code,
                     self.task,

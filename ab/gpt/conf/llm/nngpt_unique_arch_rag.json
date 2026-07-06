@@ -1,9 +1,4 @@
 {
-    "base_model_name": "ABrain/NNGPT-UniqueArch-Rag",
-    "num_epochs": 5,
-    "num_test_epochs": 2,
-    "use_deepspeed": false,
-    "token_from_file": false,
-    "only_best_accuracy": false,
-    "context_length": 4096
-  }
+  "base_model_name": "ABrain/NNGPT-UniqueArch-Rag",
+  "default_context_length": 4096
+}

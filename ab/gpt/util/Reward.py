@@ -2,6 +2,7 @@ from typing import Optional, Dict, Tuple, Callable, Any
 from dataclasses import dataclass, asdict, replace
 import atexit
 import ast
+import ctypes
 import csv
 import gc
 import importlib
@@ -14,13 +15,15 @@ import subprocess
 import sys
 import tempfile
 import time
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 import torch
+import ab.gpt.util.DatasetSplit as DatasetSplit
 import ab.gpt.rl_pipeline.reward_payload as RewardPayload
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Subset, TensorDataset
 
 
 _NN_DATASET_IMPORT_READY = False
@@ -99,6 +102,26 @@ def _env_is_set(name: str) -> bool:
     return raw is not None and raw != ""
 
 
+def _clear_exception_frames(exc: BaseException) -> None:
+    try:
+        traceback.clear_frames(exc.__traceback__)
+    except Exception:
+        pass
+
+
+def _trim_cpu_allocator() -> None:
+    gc.collect()
+    if not sys.platform.startswith("linux"):
+        return
+    try:
+        libc = ctypes.CDLL("libc.so.6")
+        malloc_trim = getattr(libc, "malloc_trim", None)
+        if callable(malloc_trim):
+            malloc_trim(0)
+    except Exception:
+        pass
+
+
 def _optional_positive_int_env(name: str) -> Optional[int]:
     raw = os.environ.get(name)
     if raw is None or raw == "":
@@ -111,8 +134,10 @@ def _optional_positive_int_env(name: str) -> Optional[int]:
 
 
 FORMAL_MULTI_HORIZON_REWARD_TARGET_METRIC = "formal_multi_horizon_acc"
-DEFAULT_FORMAL_REWARD_EPOCHS: tuple[int, ...] = (1, 5, 10)
+DEFAULT_FORMAL_REWARD_EPOCHS: tuple[int, ...] = (1,)
 FORMAL_REWARD_SCORE_HORIZONS: tuple[int, ...] = (1, 5, 10)
+CPU_SMOKE_MAX_ESTIMATED_PARAM_GIB_DEFAULT = 8.0
+CPU_SMOKE_TRAIN_STATE_MULTIPLIER_DEFAULT = 4.0
 
 
 def _parse_formal_reward_epochs(raw: Optional[str]) -> list[int]:
@@ -190,6 +215,8 @@ def get_distributed_runtime_info() -> Dict[str, Any]:
         visible_gpu_tokens = [str(index) for index in range(max(0, visible_gpu_count))]
     configured_train_gpu_tokens = _configured_cuda_device_tokens("NNGPT_TRAIN_GPU_TOKENS")
     configured_reward_gpu_tokens = _configured_cuda_device_tokens("NNGPT_REWARD_GPU_TOKENS")
+    if configured_reward_gpu_tokens is None:
+        configured_reward_gpu_tokens = _configured_cuda_device_tokens("NNGPT_REWARD_GPU_INDICES")
     if configured_reward_gpu_tokens is None:
         configured_reward_gpu_tokens = _configured_cuda_device_tokens("NNGPT_AUX_GPU_TOKENS")
 
@@ -602,7 +629,6 @@ def get_reward_worker_plan() -> Dict[str, Any]:
                 reason="configured_reward_gpu_unavailable",
                 gpu_memory_snapshots=gpu_memory_snapshots,
             )
-        gpu_priority_indices = _ordered_reward_gpu_indices(reward_gpu_indices, gpu_memory_snapshots)
         per_gpu_worker_counts = [0] * visible_gpu_count
         for reward_gpu_index in reward_gpu_indices:
             per_gpu_worker_counts[int(reward_gpu_index)] = workers_per_gpu
@@ -615,12 +641,12 @@ def get_reward_worker_plan() -> Dict[str, Any]:
             mode=mode,
             per_gpu_worker_counts=per_gpu_worker_counts,
             dynamic_scaling=False,
-            gpu_priority_indices=gpu_priority_indices,
+            gpu_priority_indices=list(reward_gpu_indices),
             gpu_memory_snapshots=gpu_memory_snapshots,
             reason="fixed_workers_override",
         )
 
-    dynamic_scaling = _safe_bool_env("NNGPT_REWARD_ENABLE_DYNAMIC_SCALING", True)
+    dynamic_scaling = _safe_bool_env("NNGPT_REWARD_ENABLE_DYNAMIC_SCALING", False)
     if not dynamic_scaling:
         reward_gpu_indices = list(configured_reward_gpu_indices)
         gpu_memory_snapshots = [
@@ -633,7 +659,6 @@ def get_reward_worker_plan() -> Dict[str, Any]:
                 reason="configured_reward_gpu_unavailable",
                 gpu_memory_snapshots=gpu_memory_snapshots,
             )
-        gpu_priority_indices = _ordered_reward_gpu_indices(reward_gpu_indices, gpu_memory_snapshots)
         per_gpu_worker_counts = [0] * visible_gpu_count
         for reward_gpu_index in reward_gpu_indices:
             per_gpu_worker_counts[int(reward_gpu_index)] = 1
@@ -646,7 +671,7 @@ def get_reward_worker_plan() -> Dict[str, Any]:
             mode=mode,
             per_gpu_worker_counts=per_gpu_worker_counts,
             dynamic_scaling=False,
-            gpu_priority_indices=gpu_priority_indices,
+            gpu_priority_indices=list(reward_gpu_indices),
             gpu_memory_snapshots=gpu_memory_snapshots,
             reason="dynamic_scaling_disabled",
         )
@@ -729,12 +754,16 @@ def _reward_worker_plan_signature(plan: Dict[str, Any]) -> Tuple[Any, ...]:
         int(plan.get("world_size", 1)),
         tuple(int(index) for index in plan.get("reward_gpu_indices", [])),
         tuple(str(token) for token in plan.get("reward_gpu_tokens", [])),
+        tuple(int(count) for count in plan.get("per_gpu_worker_counts", [])),
+        int(plan.get("pool_size", 0)),
+        bool(plan.get("dynamic_scaling", False)),
     )
 
 
 def _clear_reward_cuda_state() -> None:
     gc.collect()
     if not torch.cuda.is_available():
+        _trim_cpu_allocator()
         return
     try:
         torch.cuda.empty_cache()
@@ -742,6 +771,38 @@ def _clear_reward_cuda_state() -> None:
         pass
     try:
         torch.cuda.ipc_collect()
+    except Exception:
+        pass
+    _trim_cpu_allocator()
+
+
+def _shutdown_reward_dataloader(loader: Any) -> None:
+    if loader is None:
+        return
+    iterator = getattr(loader, "_iterator", None)
+    if iterator is not None:
+        try:
+            shutdown_workers = getattr(iterator, "_shutdown_workers", None)
+            if callable(shutdown_workers):
+                shutdown_workers()
+        except Exception:
+            pass
+        try:
+            loader._iterator = None
+        except Exception:
+            pass
+
+
+def _shutdown_registered_reward_loaders(patch_token: Optional[Dict[str, Any]]) -> None:
+    if not isinstance(patch_token, dict):
+        return
+    loaders = patch_token.get("loaders")
+    if not loaders:
+        return
+    for loader in list(loaders):
+        _shutdown_reward_dataloader(loader)
+    try:
+        loaders.clear()
     except Exception:
         pass
 
@@ -1489,18 +1550,72 @@ def _cpu_smoke_prevalidate_reward_code(
     safe_prm["epoch"] = 1
 
     model = None
+    builder = None
+    forward_input = None
+    output = None
+    strict_forward = _safe_bool_env("NNGPT_RL_CPU_SMOKE_STRICT_FORWARD", True)
     smoke_context = {
         "code_trace": code_trace,
         "cpu_smoke": True,
         "cpu_smoke_input_shape": cpu_input_shape,
+        "cpu_smoke_strict_forward": strict_forward,
     }
     original_cuda_is_available = getattr(torch.cuda, "is_available", None)
     original_cuda_device_count = getattr(torch.cuda, "device_count", None)
+    original_smoke_flag = os.environ.get("NNGPT_SMOKE_PREVALIDATE")
     try:
+        os.environ["NNGPT_SMOKE_PREVALIDATE"] = "1"
         if callable(original_cuda_is_available):
             torch.cuda.is_available = lambda: False  # type: ignore[method-assign]
         if callable(original_cuda_device_count):
             torch.cuda.device_count = lambda: 0  # type: ignore[method-assign]
+        if _safe_bool_env("NNGPT_RL_CPU_SMOKE_META_ESTIMATE", True):
+            max_gib = max(
+                0.0,
+                _safe_float_env("NNGPT_RL_CPU_SMOKE_MAX_ESTIMATED_PARAM_GIB", CPU_SMOKE_MAX_ESTIMATED_PARAM_GIB_DEFAULT),
+            )
+            multiplier = max(
+                1.0,
+                _safe_float_env("NNGPT_RL_CPU_SMOKE_TRAIN_STATE_MULTIPLIER", CPU_SMOKE_TRAIN_STATE_MULTIPLIER_DEFAULT),
+            )
+            try:
+                meta_builder = build_fn_from_code(
+                    code,
+                    cpu_input_shape,
+                    (int(getattr(effective_cfg, "n_classes", 10)),),
+                    safe_prm,
+                    "meta",
+                )
+                with torch.device("meta"):
+                    meta_model = meta_builder()
+                params = sum(int(p.numel()) for p in meta_model.parameters())
+                buffers = sum(int(b.numel()) for b in meta_model.buffers())
+                param_gib = float(params + buffers) * 4.0 / float(1024 ** 3)
+                estimated_gib = param_gib * multiplier
+                smoke_context.update(
+                    {
+                        "memory_preflight": "meta_build",
+                        "estimated_params_m": params / 1e6,
+                        "estimated_param_gib": param_gib,
+                        "estimated_train_state_gib": estimated_gib,
+                        "max_estimated_param_gib": max_gib,
+                    }
+                )
+                if max_gib > 0 and estimated_gib > max_gib:
+                    return _cpu_prevalidation_failure_result(
+                        reward=-3.0,
+                        error_message=(
+                            "RuntimeError: estimated reward eval memory "
+                            f"{estimated_gib:.2f}GiB exceeds limit {max_gib:.2f}GiB"
+                        ),
+                        error_type="RuntimeError",
+                        error_context=smoke_context,
+                        seed_accuracy_baseline=seed_accuracy_baseline,
+                        effective_cfg=effective_cfg,
+                        backbone_model_names=backbone_model_names,
+                    )
+            except Exception as meta_exc:
+                _clear_exception_frames(meta_exc)
         builder = build_fn_from_code(
             code,
             cpu_input_shape,
@@ -1515,13 +1630,15 @@ def _cpu_smoke_prevalidate_reward_code(
         train_setup = getattr(model, "train_setup", None)
         if callable(train_setup):
             train_setup(safe_prm)
-        forward_input = torch.randn(*cpu_input_shape, device="cpu")
-        with torch.no_grad():
-            output = model(forward_input)
-        smoke_context["cpu_smoke_output_shape"] = tuple(output.shape) if hasattr(output, "shape") else None
+        if strict_forward:
+            forward_input = torch.randn(*cpu_input_shape, device="cpu")
+            with torch.no_grad():
+                output = model(forward_input)
+            smoke_context["cpu_smoke_output_shape"] = tuple(output.shape) if hasattr(output, "shape") else None
     except Exception as exc:
         error_type = type(exc).__name__
         error_message = f"{error_type}: {exc}"
+        _clear_exception_frames(exc)
         return _cpu_prevalidation_failure_result(
             reward=-3.0,
             error_message=error_message,
@@ -1536,13 +1653,32 @@ def _cpu_smoke_prevalidate_reward_code(
             torch.cuda.is_available = original_cuda_is_available  # type: ignore[method-assign]
         if callable(original_cuda_device_count):
             torch.cuda.device_count = original_cuda_device_count  # type: ignore[method-assign]
+        if original_smoke_flag is None:
+            os.environ.pop("NNGPT_SMOKE_PREVALIDATE", None)
+        else:
+            os.environ["NNGPT_SMOKE_PREVALIDATE"] = original_smoke_flag
+        try:
+            del output
+        except Exception:
+            pass
+        try:
+            del forward_input
+        except Exception:
+            pass
         if model is not None:
             try:
                 model.to("cpu")
             except Exception:
                 pass
+        try:
             del model
-        gc.collect()
+        except Exception:
+            pass
+        try:
+            del builder
+        except Exception:
+            pass
+        _trim_cpu_allocator()
     return None
 
 
@@ -1674,7 +1810,7 @@ def _base_eval_result(
         seed_accuracy_baseline=seed_accuracy_baseline,
         eval_limit_seconds=eval_limit_seconds,
         backbone_model_names=backbone_model_names,
-        formal_reward_epochs=DEFAULT_FORMAL_REWARD_EPOCHS,
+        formal_reward_epochs=_resolve_formal_reward_epochs(),
     )
 
 
@@ -2317,7 +2453,7 @@ def _quick_accuracy(
 
 
 def _build_cifar10_loaders(cfg: "EvalConfig") -> Tuple[DataLoader, DataLoader]:
-    from torchvision import datasets, transforms
+    from torchvision import transforms
 
     height = int(cfg.input_shape[2])
     width = int(cfg.input_shape[3])
@@ -2341,18 +2477,16 @@ def _build_cifar10_loaders(cfg: "EvalConfig") -> Tuple[DataLoader, DataLoader]:
         ]
     )
 
-    train_dataset = datasets.CIFAR10(
+    split_datasets = DatasetSplit.build_cifar10_split_datasets(
         root=cfg.data_root,
-        train=True,
+        train_transform=train_transform,
+        eval_transform=val_transform,
         download=cfg.download,
-        transform=train_transform,
+        seed=int(getattr(cfg, "split_seed", 42)),
     )
-    val_dataset = datasets.CIFAR10(
-        root=cfg.data_root,
-        train=False,
-        download=cfg.download,
-        transform=val_transform,
-    )
+    eval_split_role = str(getattr(cfg, "eval_split_role", "reward_eval") or "reward_eval")
+    train_dataset = split_datasets["train"]
+    val_dataset = split_datasets.get(eval_split_role) or split_datasets["reward_eval"]
 
     if 0 < cfg.train_subset_size < len(train_dataset):
         train_dataset = Subset(train_dataset, range(cfg.train_subset_size))
@@ -2392,10 +2526,13 @@ class EvalConfig:
     train_steps: Optional[int] = None
     max_val_batches: int = 2
     default_batch_size: int = 32
-    train_subset_size: int = 256
-    val_subset_size: int = 128
+    train_subset_size: int = 0
+    val_subset_size: int = 0
     data_root: str = "data_v2"
     download: bool = True
+    split_protocol: str = DatasetSplit.TRAIN_VAL_TEST_PROTOCOL
+    split_seed: int = 42
+    eval_split_role: str = "reward_eval"
     # Optional efficiency logging
     measure_latency: bool = True
     # Optional PPO/critic
@@ -2618,6 +2755,83 @@ def _restore_nn_dataset_dataroll_patch(patch_token: Optional[Tuple[type, Any, An
     data_roll_cls.__next__ = original_next
 
 
+def _patch_nn_dataset_load_dataset_for_reward(cfg: "EvalConfig") -> Optional[Dict[str, Any]]:
+    split_protocol = DatasetSplit.TRAIN_VAL_TEST_PROTOCOL
+
+    try:
+        import ab.nn.util.Loader as nn_loader  # type: ignore
+        import ab.nn.util.Train as nn_train  # type: ignore
+    except Exception:
+        return None
+
+    original_train_load_dataset = getattr(nn_train, "load_dataset", None)
+    original_loader_load_dataset = getattr(nn_loader, "load_dataset", None)
+    if original_train_load_dataset is None:
+        return None
+
+    split_seed = int(getattr(cfg, "split_seed", 42))
+    eval_split_role = str(getattr(cfg, "eval_split_role", "reward_eval") or "reward_eval")
+    supported_dataset_meta = {
+        "cifar-10": ((10,), 1.0 / 10.0, 45000, 5000),
+        "cifar10": ((10,), 1.0 / 10.0, 45000, 5000),
+        "cifar-100": ((100,), 1.0 / 100.0, 45000, 5000),
+        "cifar100": ((100,), 1.0 / 100.0, 45000, 5000),
+        "imagenette": ((10,), 1.0 / 10.0, 7500, 1969),
+    }
+
+
+    # Cache: avoid rebuilding split datasets on every single model evaluation.
+    # Each call triggers torch.utils.data.random_split + Subset construction,
+    # which adds up over 1000+ reward evaluations and causes timeouts.
+    _split_datasets_cache: Dict[tuple, tuple] = {}
+
+    def _patched_load_dataset(task, dataset_name, transform_name, transform_dir=None):
+        normalized_dataset = str(dataset_name or "").strip().lower().replace("_", "-")
+        dataset_meta = supported_dataset_meta.get(normalized_dataset)
+        if dataset_meta is None:
+            return original_train_load_dataset(task, dataset_name, transform_name, transform_dir)
+
+        dataset_loader = original_loader_load_dataset or original_train_load_dataset
+        _, _, train_size, val_size = dataset_meta
+        cache_key = (normalized_dataset, split_seed)
+        if cache_key not in _split_datasets_cache:
+            class_shape, min_acc, train_source, heldout_test_source = dataset_loader(
+                task, dataset_name, transform_name, transform_dir
+            )
+            split_datasets = DatasetSplit.build_classification_reward_split_datasets(
+                train_source=train_source,
+                heldout_test_source=heldout_test_source,
+                train_size=train_size,
+                val_size=val_size,
+                seed=split_seed,
+            )
+            _split_datasets_cache[cache_key] = (class_shape, min_acc, split_datasets)
+        class_shape, min_acc, split_datasets = _split_datasets_cache[cache_key]
+        eval_set = split_datasets.get(eval_split_role) or split_datasets["reward_eval"]
+        return class_shape, min_acc, split_datasets["train"], eval_set
+
+    nn_train.load_dataset = _patched_load_dataset
+    if original_loader_load_dataset is not None:
+        nn_loader.load_dataset = _patched_load_dataset
+    return {
+        "nn_train": nn_train,
+        "nn_loader": nn_loader,
+        "train_load_dataset": original_train_load_dataset,
+        "loader_load_dataset": original_loader_load_dataset,
+    }
+
+
+def _restore_nn_dataset_load_dataset_patch(patch_token: Optional[Dict[str, Any]]) -> None:
+    if not isinstance(patch_token, dict):
+        return
+    nn_train = patch_token.get("nn_train")
+    nn_loader = patch_token.get("nn_loader")
+    if nn_train is not None:
+        nn_train.load_dataset = patch_token.get("train_load_dataset")
+    if nn_loader is not None and patch_token.get("loader_load_dataset") is not None:
+        nn_loader.load_dataset = patch_token.get("loader_load_dataset")
+
+
 def _patch_nn_dataset_loader_utils_for_reward() -> Optional[Dict[str, Any]]:
     try:
         import ab.nn.util.Train as nn_train  # type: ignore
@@ -2643,9 +2857,10 @@ def _patch_nn_dataset_loader_utils_for_reward() -> Optional[Dict[str, Any]]:
     )
     persistent_workers = _safe_bool_env(
         "NNGPT_RL_FORMAL_PERSISTENT_WORKERS",
-        True,
+        False,
     )
     prefetch_factor = _optional_positive_int_env("NNGPT_RL_FORMAL_PREFETCH_FACTOR")
+    loaders: list[DataLoader] = []
 
     def _resolved_num_workers(dataset: Any, default_num_workers: int) -> int:
         value = getattr(dataset, "num_workers", default_num_workers)
@@ -2670,7 +2885,9 @@ def _patch_nn_dataset_loader_utils_for_reward() -> Optional[Dict[str, Any]]:
                 loader_kwargs["persistent_workers"] = True
             if prefetch_factor is not None:
                 loader_kwargs["prefetch_factor"] = max(1, int(prefetch_factor))
-        return DataLoader(dataset, **loader_kwargs)
+        loader = DataLoader(dataset, **loader_kwargs)
+        loaders.append(loader)
+        return loader
 
     def _train_loader(dataset: Any, batch: int, num_workers: int) -> DataLoader:
         return _build_loader(dataset, batch, num_workers, shuffle=True)
@@ -2689,12 +2906,14 @@ def _patch_nn_dataset_loader_utils_for_reward() -> Optional[Dict[str, Any]]:
         "test_loader_f": original_test_loader,
         "util_train_loader_f": original_util_train_loader,
         "util_test_loader_f": original_util_test_loader,
+        "loaders": loaders,
     }
 
 
 def _restore_nn_dataset_loader_utils_patch(patch_token: Optional[Dict[str, Any]]) -> None:
     if not isinstance(patch_token, dict):
         return
+    _shutdown_registered_reward_loaders(patch_token)
     nn_train = patch_token.get("nn_train")
     nn_util = patch_token.get("nn_util")
     if nn_train is not None:
@@ -3077,6 +3296,9 @@ def _formal_eval_with_nn_dataset(
         "epoch_limit_minutes": epoch_limit_minutes,
         "formal_reward_epochs": list(formal_reward_epochs),
         "formal_reward_max_epoch": int(formal_reward_max_epoch),
+        "split_protocol": DatasetSplit.TRAIN_VAL_TEST_PROTOCOL,
+        "split_seed": int(getattr(cfg, "split_seed", 42)),
+        "eval_split_role": str(getattr(cfg, "eval_split_role", "reward_eval") or "reward_eval"),
     }
     safe_prm = dict(prm)
     safe_prm["freeze_backbones"] = bool(freeze_backbones)
@@ -3236,6 +3458,7 @@ def _formal_eval_with_nn_dataset(
         _clear_reward_cuda_state()
 
     started_at = time.time()
+    dataset_split_patch = None
     data_roll_patch = None
     loader_patch = None
     cuda_backend_state = None
@@ -3244,6 +3467,7 @@ def _formal_eval_with_nn_dataset(
             f"# reward formal eval nonce pid={os.getpid()} ns={time.time_ns()} "
             f"freeze={int(bool(freeze_backbones))}\n{code}"
         )
+        dataset_split_patch = _patch_nn_dataset_load_dataset_for_reward(cfg)
         data_roll_patch = _patch_nn_dataset_dataroll_for_reward()
         loader_patch = _patch_nn_dataset_loader_utils_for_reward()
         cuda_backend_state = _configure_formal_eval_cuda_backend(str(cfg.device))
@@ -3261,7 +3485,7 @@ def _formal_eval_with_nn_dataset(
         )
         formal_trace_context["reward_loader_persistent_workers"] = _safe_bool_env(
             "NNGPT_RL_FORMAL_PERSISTENT_WORKERS",
-            True,
+            False,
         )
         formal_trace_context["reward_loader_prefetch_factor"] = _optional_positive_int_env(
             "NNGPT_RL_FORMAL_PREFETCH_FACTOR"
@@ -3391,6 +3615,7 @@ def _formal_eval_with_nn_dataset(
     finally:
         _restore_formal_eval_cuda_backend(cuda_backend_state)
         _restore_nn_dataset_loader_utils_patch(loader_patch)
+        _restore_nn_dataset_load_dataset_patch(dataset_split_patch)
         _restore_nn_dataset_dataroll_patch(data_roll_patch)
         _clear_reward_cuda_state()
 
@@ -3409,7 +3634,7 @@ def _empty_eval_result(
         seed_accuracy_baseline=seed_accuracy_baseline,
         eval_limit_seconds=eval_limit_seconds,
         backbone_model_names=backbone_model_names,
-        formal_reward_epochs=DEFAULT_FORMAL_REWARD_EPOCHS,
+        formal_reward_epochs=_resolve_formal_reward_epochs(),
     )
 
 
@@ -3478,7 +3703,7 @@ def _timeout_eval_result(
         training_context_metric_value=training_context_metric_value,
         latency_ms=latency_ms,
         params_m=params_m,
-        formal_reward_epochs=DEFAULT_FORMAL_REWARD_EPOCHS,
+        formal_reward_epochs=_resolve_formal_reward_epochs(),
     )
 
 def evaluate_and_reward(
@@ -3921,12 +4146,67 @@ def evaluate_static_build_and_forward(
         forward_shape_ok = bool(forward_result.get("forward_shape_ok"))
         if cfg.measure_latency:
             latency_ms = forward_result.get("latency_ms")
+        train_result = {
+            "backward_ok": False,
+            "trained_step_ok": False,
+            "loss_start": None,
+            "loss_end": None,
+            "loss_drop": None,
+            "loss_drop_ok": False,
+            "steps_completed": 0,
+            "best_epoch_loss": None,
+            "avg_epoch_loss": None,
+            "epochs_completed": 0,
+            "epoch_loss_series": [],
+            "training_context_metric_name": "best_epoch_loss",
+            "training_context_metric_value": None,
+        }
+        if forward_shape_ok:
+            try:
+                smoke_batch = max(1, _safe_int_env("NNGPT_RL_STAGE1_TRAIN_SMOKE_BATCH", 2))
+                smoke_steps = max(1, _safe_int_env("NNGPT_RL_STAGE1_TRAIN_SMOKE_STEPS", 2))
+                smoke_batch = min(smoke_batch, 4)
+                c, h, w = int(cfg.input_shape[1]), int(cfg.input_shape[2]), int(cfg.input_shape[3])
+                xs = torch.randn(smoke_batch * smoke_steps, c, h, w)
+                ys = torch.arange(smoke_batch * smoke_steps, dtype=torch.long) % int(cfg.n_classes)
+                train_loader = DataLoader(
+                    TensorDataset(xs, ys),
+                    batch_size=smoke_batch,
+                    shuffle=False,
+                    num_workers=0,
+                )
+                train_setup = getattr(mdl, "train_setup", None)
+                if callable(train_setup):
+                    train_setup(
+                        {
+                            "lr": 1e-3,
+                            "momentum": 0.9,
+                            "batch": smoke_batch,
+                            "epoch": 1,
+                            "dropout": 0.1,
+                            "freeze_backbones": True,
+                        }
+                    )
+                train_result = _train_steps(
+                    mdl,
+                    train_loader,
+                    epochs=1,
+                    max_steps=smoke_steps,
+                    device=device,
+                    n_classes=int(cfg.n_classes),
+                    freeze_backbones=True,
+                )
+            except Exception as exc:
+                train_result = {
+                    **train_result,
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
         estimated_total_seconds = max(0.0, time.time() - started_at)
         components = compute_cv_reward_simple(
             built_ok=built_ok,
             forward_shape_ok=forward_shape_ok,
-            backward_ok=False,
-            loss_drop_ok=False,
+            backward_ok=bool(train_result.get("backward_ok")),
+            loss_drop_ok=bool(train_result.get("loss_drop_ok")),
             val_metric=None,
             val_metric_baseline=None,
             latency_ms=latency_ms,
@@ -3947,6 +4227,23 @@ def evaluate_static_build_and_forward(
             "built_ok": built_ok,
             "forward_ok": forward_ok,
             "forward_shape_ok": forward_shape_ok,
+            "backward_ok": bool(train_result.get("backward_ok")),
+            "trained_step_ok": bool(train_result.get("trained_step_ok")),
+            "loss_start": train_result.get("loss_start"),
+            "loss_end": train_result.get("loss_end"),
+            "loss_drop": train_result.get("loss_drop"),
+            "loss_drop_ok": bool(train_result.get("loss_drop_ok")),
+            "steps_completed": int(train_result.get("steps_completed", 0) or 0),
+            "best_epoch_loss": train_result.get("best_epoch_loss"),
+            "avg_epoch_loss": train_result.get("avg_epoch_loss"),
+            "epochs_completed": int(train_result.get("epochs_completed", 0) or 0),
+            "epoch_loss_series": list(train_result.get("epoch_loss_series") or []),
+            "training_context_metric_name": train_result.get(
+                "training_context_metric_name",
+                "best_epoch_loss",
+            ),
+            "training_context_metric_value": train_result.get("training_context_metric_value"),
+            "error": train_result.get("error"),
             "latency_ms": latency_ms,
             "params_m": params_m,
             "estimated_total_seconds": estimated_total_seconds,
@@ -4012,6 +4309,9 @@ def _loader_cache_key(cfg: EvalConfig) -> Tuple[Any, ...]:
         cfg.val_subset_size,
         cfg.data_root,
         cfg.download,
+        DatasetSplit.TRAIN_VAL_TEST_PROTOCOL,
+        int(getattr(cfg, "split_seed", 42)),
+        str(getattr(cfg, "eval_split_role", "reward_eval") or "reward_eval"),
         bool(getattr(cfg, "full_test_acc", False)),
     )
 
@@ -4051,6 +4351,23 @@ def _await_eval_worker_pool(*, require_gpu: bool, timeout: float) -> Optional[_E
     deadline = time.time() + max(0.0, float(timeout))
     logged_wait = False
     while True:
+        desired_plan = get_reward_worker_plan()
+        desired_has_gpu_worker = any(index is not None for index in desired_plan.get("reward_gpu_indices", []))
+        if not desired_has_gpu_worker:
+            remaining = max(0.0, deadline - time.time())
+            if remaining <= 0.0:
+                return None
+            if not logged_wait:
+                print(
+                    "[Reward Worker Pool] Waiting "
+                    f"mode={desired_plan.get('mode')} "
+                    f"reason={desired_plan.get('reason', '')!r} "
+                    f"timeout_seconds={timeout:.0f}"
+                )
+                logged_wait = True
+            time.sleep(min(5.0, remaining))
+            continue
+
         pool = _get_or_create_eval_worker_pool()
         diagnostics = pool.diagnostics()
         has_gpu_worker = any(worker.get("assigned_gpu") is not None for worker in diagnostics.get("workers", []))
@@ -4690,7 +5007,11 @@ def _persistent_eval_worker_loop(conn, *, worker_device: str, assigned_gpu: Opti
                     backbone_model_names=_extract_backbone_model_names_from_code(request.get("code", "")),
                 )
                 result["components"]["reward"] = -1.0
-            worker_restart_requested = _is_fatal_cuda_worker_error(result.get("error"))
+            worker_error = result.get("error")
+            worker_restart_requested = (
+                _is_cuda_oom_error_message(worker_error)
+                or _is_fatal_cuda_worker_error(worker_error)
+            )
             result["assigned_gpu"] = assigned_gpu
             result["worker_device"] = worker_device
             result["worker_slot"] = request.get("worker_slot", None)

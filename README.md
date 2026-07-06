@@ -53,7 +53,7 @@ python -m ab.gpt.TuneNNGen --use_predictor
 | `ab/gpt/agents/predictor.py` | Optional accuracy prediction node |
 | `ab/gpt/agents/state.py` | Shared `AgentState` TypedDict — field names match LEMUR DB columns |
 | `ab/gpt/util/Tune.py` | Single source of truth: `nn_gen`, `trans_gen`, `_evaluate_epoch`, `_finetune_epoch`, `generate_step`, `evaluate_step`, `finetune_step` |
-| `ab/gpt/util/AccPredictor.py` | Accuracy predictor interface (to be implemented) |
+| `ab/gpt/AccPredictor.py` | Accuracy predictor: data prep, fine-tuning, and evaluation |
 
 ## Create and Activate a Virtual Environment (recommended)
 For Linux/Mac:
@@ -92,6 +92,7 @@ pip install --no-cache-dir git+https://github.com/ABrain-One/nn-dataset --extra-
 ```
 Installing the stable version:
 ```bash
+rm -rf db
 pip uninstall -y nn-dataset 
 pip install nn-dataset --extra-index-url https://download.pytorch.org/whl/cu130
 ```
@@ -113,12 +114,42 @@ python -m ab.stat.export
 
 ## Use
 
-- **`ab.gpt.NNAlter*.py`** – Generates modified neural network models.  
+- **`ab.gpt.NNAlter*`** – Generates modified neural network models.  
   Use the `-e` argument to set the number of epochs for the initial CV model generation.
 
-- **`ab.gpt.NNEval.py`** – Evaluates the models generated in the previous step.
+- **`ab.gpt.NNEval`** – Evaluates the models generated in the previous step.
 
-- **`ab.gpt.TuneNNGen*.py`** – Performs fine-tuning and evaluation of an LLM. For evaluation purposes, the LLM generates neural network models, which are then trained to assess improvements in the LLM’s performance on this task. The -s flag allows skipping model generation for the specified number of epochs.
+- **`ab.gpt.TuneNNGen*`** – Performs fine-tuning and evaluation of an LLM. For evaluation purposes, the LLM generates neural network models, which are then trained to assess improvements in the LLM’s performance on this task. The -s flag allows skipping model generation for the specified number of epochs.
+
+- **`ab.gpt.AccPredictor`** – Fine-tunes and evaluates a Qwen3-8B accuracy predictor from LEMUR training runs. Given early-epoch accuracies and neural network code, it predicts final `best_accuracy` and `best_epoch`.
+
+  Running the script runs four steps in order:
+
+  1. **Preprocessing** — loads training runs from the nn_dataset API, filters runs with ≥50 epochs, and writes `ab/gpt/data/llm_finetuning_data.jsonl`
+  2. **Data preparation for training** — converts preprocessed runs into ChatML train/val/test splits (`ab/gpt/data/train_llm_dataset.jsonl`, `val_llm_dataset.jsonl`, `test_llm_dataset.jsonl`)
+  3. **Model training** — QLoRA fine-tunes Qwen3-8B with validation and early stopping; saves the checkpoint to `ab/gpt/model2/`
+  4. **Model testing** — runs inference on the test split and writes `ab/gpt/data/test_predictions.csv` and `test_metrics.log`
+
+  ```bash
+  python -m ab.gpt.AccPredictor
+  ```
+
+  Individual steps can also be imported:
+
+  ```python
+  from ab.gpt.AccPredictor import data_preprocessing, prepare_llm_datasets, train_model, test_model, predict_best_accuracy
+  from ab.gpt.AccPredictor import DEFAULT_TRAIN_PATH, DEFAULT_VAL_PATH, DEFAULT_OUTPUT_DIR, DEFAULT_TEST_PATH
+
+  data_preprocessing()
+  prepare_llm_datasets()
+  train_model(DEFAULT_TRAIN_PATH, DEFAULT_VAL_PATH)
+  test_model(model_path=DEFAULT_OUTPUT_DIR, data_path=DEFAULT_TEST_PATH)
+
+  # Inference with the published Hugging Face checkpoint
+  best_acc, best_epoch = predict_best_accuracy(task, dataset, metric, nn_code, epoch_1_acc, epoch_2_acc)
+  ```
+
+  Requires a GPU with ≥24 GB VRAM, `unsloth`, and the LEMUR/nn-dataset package installed.
 
 - **`ab.gpt.TuneNNGen_delta.py`** – Delta-based fine-tuning entry point (see [arXiv:2605.04903](https://arxiv.org/abs/2605.04903)). The LLM generates compact unified diffs (deltas) to refine baseline architectures instead of full code. Uses paper-aligned hyperparameters (lr=1e-5, temperature=0.35, top-k=50, LoRA with `lm_head`). Calls `TuneNNGen.main()` with delta defaults — no upstream behavior is changed.
   ```bash

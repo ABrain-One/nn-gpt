@@ -1,0 +1,128 @@
+{
+  "improve_classification_only_analogical_cifar100_edit_paper": {
+    "comment": [
+      "CIFAR-100 analogical structured edit generation"
+    ],
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "cifar-100",
+    "addon_task": "img-classification",
+    "addon_dataset": "cifar-100",
+    "prefer_better_addon": true,
+    "addon_selection": "best_safe_edit",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "addon_list": [
+      {
+        "para": "source_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "source_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "source_prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "prompt": [
+      "Task: Improve the baseline CIFAR-100 model using a small structured edit.",
+      "",
+      "=== BASELINE MODEL ===",
+      "<hp>{prm}</hp>",
+      "",
+      "<tr>",
+      "{transform_code}",
+      "</tr>",
+      "",
+      "<nn>",
+      "{nn_code}",
+      "</nn>",
+      "",
+      "Current performance: {accuracy}",
+      "<target_summary>{target_summary}</target_summary>",
+      "Goal: Maximize first-epoch '{metric}' on 'cifar-100' for 'img-classification'",
+      "",
+      "=== ANALOGICAL HINT ===",
+      "Use this source edit as a transfer hint, not as a literal template.",
+      "Inside <source_edit>, compare suggested_edit against safe_edit.",
+      "If target_summary already has traits listed in target_already_has, prefer safe_edit; otherwise start from suggested_edit.",
+      "Use edit_bias only as a tie-breaker when both edits look safe.",
+      "Source performance: {source_accuracy}",
+      "<source_edit>{source_edit}</source_edit>",
+      "",
+      "=== YOUR TASK ===",
+      "Emit one safe target edit JSON for the target baseline.",
+      "Transfer the improvement pattern, not every field literally.",
+      "Translate risky or source-specific fields into the nearest safe CIFAR-100 edit.",
+      "Do not copy raw Python code.",
+      "",
+      "=== ALLOWED EDIT JSON ===",
+      "- mode: \"hp_transform_only\" or \"structured_cifar_edit\"",
+      "- width: \"same\", \"narrow\", or \"wide\"",
+      "- pool: \"keep\" or \"adaptive_avg\"",
+      "- residual_kernel: optional integer 1, 2, or 3",
+      "- classifier_dropout: float between 0.0 and 0.5",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "",
+      "<hp>",
+      "{{\"batch\": 64, \"transform\": \"echo_32\", \"lr\": 0.01, \"momentum\": 0.9}}",
+      "</hp>",
+      "",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()])",
+      "</tr>",
+      "",
+      "<edit>",
+      "{{\"mode\":\"structured_cifar_edit\",\"width\":\"wide\",\"pool\":\"adaptive_avg\",\"classifier_dropout\":0.12}}",
+      "</edit>",
+      "",
+      "=== CIFAR-100 SAFE TRANSFER RULES ===",
+      "- Prefer width=\"wide\" when the source edit suggests a stronger architecture",
+      "- Prefer pool=\"adaptive_avg\" over pool=\"keep\" for safe classifier-head transfer",
+      "- Keep classifier_dropout in the safe band 0.05 to 0.2 unless the source edit clearly requires otherwise",
+      "- Avoid residual_kernel unless the source edit clearly depends on it and the target baseline already has a compatible residual path",
+      "- If target_summary already shows adaptive_avg or wide_tail, do not repeat that upgrade unless the source advantage is clearly larger",
+      "- Do not use mode=\"structured_cifar_edit\" for same+keep+dropout-only edits unless the target currently lacks classifier dropout",
+      "- If the source edit is weak or ambiguous, emit the nearest safe target edit instead of copying it literally",
+      "",
+      "=== CRITICAL RULES ===",
+      "- The <edit> body must begin with either {{\"mode\":\"hp_transform_only\" or {{\"mode\":\"structured_cifar_edit\"",
+      "- Output exactly one JSON object inside <edit>",
+      "- Use only the allowed keys above",
+      "- Keep this key order when present: mode, width, pool, residual_kernel, classifier_dropout",
+      "- Start the <edit> body with JSON keys immediately, not prose",
+      "- Do not mention or explain the source edit",
+      "- If no safe architecture change is clear, set mode to \"hp_transform_only\"",
+      "- Do not explain your reasoning",
+      "- Never write phrases like \"You need to\" or \"here is the corrected version\""
+    ]
+  }
+}

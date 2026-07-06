@@ -1,0 +1,2235 @@
+{
+  "improve_classification_only_cifar10_frozen_hp_default": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "CIFAR-10 frozen protocol: non-analogical HP/transform control"
+    ],
+    "addon_task": null,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Improve this weak CIFAR-10 model without using any source model.",
+      "",
+      "=== TARGET MODEL ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== YOUR TASK ===",
+      "Keep the target Python architecture unchanged.",
+      "Only choose training hyperparameters and transform.",
+      "Do not write full Python code and do not write a unified diff.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_32\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"hp_transform_only\"}}",
+      "</edit>",
+      "",
+      "Critical rules:",
+      "- Do not write prose.",
+      "- Do not change target architecture.",
+      "- The <edit> JSON must be exactly mode hp_transform_only."
+    ]
+  },
+  "improve_classification_only_cifar10_frozen_hp_transfer": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "CIFAR-10 frozen protocol: analogical source HP/transform transfer"
+    ],
+    "addon_task": "img-classification",
+    "addon_dataset": "cifar-10",
+    "prefer_better_addon": false,
+    "addon_list": [
+      {
+        "para": "source_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "source_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "source_transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "source_prm",
+        "value": "prm"
+      }
+    ],
+    "log_source_recipe_delta": true,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Improve a weak CIFAR-10 target by transferring the training recipe from a much stronger same-family source.",
+      "",
+      "=== WEAK TARGET ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== STRONG SOURCE ===",
+      "Source performance: {source_accuracy}",
+      "<source_hp>{source_prm}</source_hp>",
+      "<source_tr>",
+      "{source_transform_code}",
+      "</source_tr>",
+      "<source_nn>",
+      "{source_nn_code}",
+      "</source_nn>",
+      "",
+      "=== YOUR TASK ===",
+      "Output one candidate for the weak target.",
+      "Keep the target architecture unchanged.",
+      "Use the source hyperparameters and source transform as the main transfer.",
+      "Convert the source_hp dictionary to valid JSON with double quotes.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_32\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"hp_transform_only\"}}",
+      "</edit>",
+      "",
+      "Critical rules:",
+      "- Do not write prose.",
+      "- Do not change target architecture.",
+      "- The <edit> JSON must be exactly mode hp_transform_only."
+    ]
+  },
+  "improve_classification_only_cifar10_frozen_hp_copy": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "CIFAR-10 frozen protocol: deterministic source HP/transform copy"
+    ],
+    "copy_source_recipe": true,
+    "addon_task": "img-classification",
+    "addon_dataset": "cifar-10",
+    "prefer_better_addon": false,
+    "addon_list": [
+      {
+        "para": "source_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "source_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "source_transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "source_prm",
+        "value": "prm"
+      }
+    ],
+    "assistant_prefill_mode": "none",
+    "prompt": [
+      "Task: Deterministically copy the source training recipe onto the weak CIFAR-10 target.",
+      "This config is handled by the pipeline without LLM generation.",
+      "",
+      "=== WEAK TARGET ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== STRONG SOURCE ===",
+      "Source performance: {source_accuracy}",
+      "<source_hp>{source_prm}</source_hp>",
+      "<source_tr>",
+      "{source_transform_code}",
+      "</source_tr>",
+      "<source_nn>",
+      "{source_nn_code}",
+      "</source_nn>"
+    ]
+  },
+  "improve_classification_only_cifar10_frozen_template_stem_preserve": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "cifar-10",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "CIFAR-10 frozen protocol: fixed non-analogical stem-preserve template"
+    ],
+    "addon_task": null,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Emit one fixed CIFAR-10 structured-edit template.",
+      "",
+      "=== TARGET MODEL ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== TEMPLATE ===",
+      "Apply the fixed template: preserve early spatial resolution, remove unsafe stem pooling when present, and use adaptive average pooling.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_32\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"structured_cifar_edit\",\"width\":\"same\",\"pool\":\"adaptive_avg\",\"stem_stride\":\"preserve\",\"stem_pool\":\"remove\",\"classifier_dropout\":0.1}}",
+      "</edit>",
+      "",
+      "Critical: output the exact edit JSON shown above. Do not explain."
+    ]
+  },
+  "improve_classification_only_cifar100_frozen_hp_default": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "cifar-100",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "CIFAR-100 frozen protocol: non-analogical HP/transform control"
+    ],
+    "addon_task": null,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Improve this weak CIFAR-100 model without using any source model.",
+      "",
+      "=== TARGET MODEL ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== YOUR TASK ===",
+      "Keep the target Python architecture unchanged.",
+      "Only choose training hyperparameters and transform.",
+      "Do not write full Python code and do not write a unified diff.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_32\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"hp_transform_only\"}}",
+      "</edit>",
+      "",
+      "Critical rules:",
+      "- Do not write prose.",
+      "- Do not change target architecture.",
+      "- The <edit> JSON must be exactly mode hp_transform_only."
+    ]
+  },
+  "improve_classification_only_cifar100_frozen_hp_transfer": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "cifar-100",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "CIFAR-100 frozen protocol: analogical source HP/transform transfer"
+    ],
+    "addon_task": "img-classification",
+    "addon_dataset": "cifar-100",
+    "prefer_better_addon": false,
+    "addon_list": [
+      {
+        "para": "source_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "source_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "source_transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "source_prm",
+        "value": "prm"
+      }
+    ],
+    "log_source_recipe_delta": true,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Improve a weak CIFAR-100 target by transferring the training recipe from a much stronger same-family source.",
+      "",
+      "=== WEAK TARGET ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== STRONG SOURCE ===",
+      "Source performance: {source_accuracy}",
+      "<source_hp>{source_prm}</source_hp>",
+      "<source_tr>",
+      "{source_transform_code}",
+      "</source_tr>",
+      "<source_nn>",
+      "{source_nn_code}",
+      "</source_nn>",
+      "",
+      "=== YOUR TASK ===",
+      "Output one candidate for the weak target.",
+      "Keep the target architecture unchanged.",
+      "Use the source hyperparameters and source transform as the main transfer.",
+      "Convert the source_hp dictionary to valid JSON with double quotes.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_32\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"hp_transform_only\"}}",
+      "</edit>",
+      "",
+      "Critical rules:",
+      "- Do not write prose.",
+      "- Do not change target architecture.",
+      "- The <edit> JSON must be exactly mode hp_transform_only."
+    ]
+  },
+  "improve_classification_only_cifar100_frozen_hp_copy": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "cifar-100",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "CIFAR-100 frozen protocol: deterministic source HP/transform copy"
+    ],
+    "copy_source_recipe": true,
+    "addon_task": "img-classification",
+    "addon_dataset": "cifar-100",
+    "prefer_better_addon": false,
+    "addon_list": [
+      {
+        "para": "source_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "source_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "source_transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "source_prm",
+        "value": "prm"
+      }
+    ],
+    "assistant_prefill_mode": "none",
+    "prompt": [
+      "Task: Deterministically copy the source training recipe onto the weak CIFAR-100 target.",
+      "This config is handled by the pipeline without LLM generation.",
+      "",
+      "=== WEAK TARGET ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== STRONG SOURCE ===",
+      "Source performance: {source_accuracy}",
+      "<source_hp>{source_prm}</source_hp>",
+      "<source_tr>",
+      "{source_transform_code}",
+      "</source_tr>",
+      "<source_nn>",
+      "{source_nn_code}",
+      "</source_nn>"
+    ]
+  },
+  "improve_classification_only_cifar100_frozen_template_stem_preserve": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "cifar-100",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "CIFAR-100 frozen protocol: fixed non-analogical stem-preserve template"
+    ],
+    "addon_task": null,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Emit one fixed CIFAR-100 structured-edit template.",
+      "",
+      "=== TARGET MODEL ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== TEMPLATE ===",
+      "Apply the fixed template: preserve early spatial resolution, remove unsafe stem pooling when present, and use adaptive average pooling.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_32\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"structured_cifar_edit\",\"width\":\"same\",\"pool\":\"adaptive_avg\",\"stem_stride\":\"preserve\",\"stem_pool\":\"remove\",\"classifier_dropout\":0.1}}",
+      "</edit>",
+      "",
+      "Critical: output the exact edit JSON shown above. Do not explain."
+    ]
+  },
+  "improve_classification_only_svhn_frozen_hp_default": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "svhn",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "SVHN frozen protocol: non-analogical HP/transform control"
+    ],
+    "addon_task": null,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Improve this weak SVHN model without using any source model.",
+      "",
+      "=== TARGET MODEL ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== YOUR TASK ===",
+      "Keep the target Python architecture unchanged.",
+      "Only choose training hyperparameters and transform.",
+      "Do not write full Python code and do not write a unified diff.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_32\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"hp_transform_only\"}}",
+      "</edit>",
+      "",
+      "Critical rules:",
+      "- Do not write prose.",
+      "- Do not change target architecture.",
+      "- The <edit> JSON must be exactly mode hp_transform_only."
+    ]
+  },
+  "improve_classification_only_svhn_frozen_hp_transfer": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "svhn",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "SVHN frozen protocol: analogical source HP/transform transfer"
+    ],
+    "addon_task": "img-classification",
+    "addon_dataset": "svhn",
+    "prefer_better_addon": false,
+    "addon_list": [
+      {
+        "para": "source_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "source_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "source_transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "source_prm",
+        "value": "prm"
+      }
+    ],
+    "log_source_recipe_delta": true,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Improve a weak SVHN target by transferring the training recipe from a much stronger same-family source.",
+      "",
+      "=== WEAK TARGET ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== STRONG SOURCE ===",
+      "Source performance: {source_accuracy}",
+      "<source_hp>{source_prm}</source_hp>",
+      "<source_tr>",
+      "{source_transform_code}",
+      "</source_tr>",
+      "<source_nn>",
+      "{source_nn_code}",
+      "</source_nn>",
+      "",
+      "=== YOUR TASK ===",
+      "Output one candidate for the weak target.",
+      "Keep the target architecture unchanged.",
+      "Use the source hyperparameters and source transform as the main transfer.",
+      "Convert the source_hp dictionary to valid JSON with double quotes.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_32\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"hp_transform_only\"}}",
+      "</edit>",
+      "",
+      "Critical rules:",
+      "- Do not write prose.",
+      "- Do not change target architecture.",
+      "- The <edit> JSON must be exactly mode hp_transform_only."
+    ]
+  },
+  "improve_classification_only_svhn_frozen_hp_copy": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "svhn",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "SVHN frozen protocol: deterministic source HP/transform copy"
+    ],
+    "copy_source_recipe": true,
+    "addon_task": "img-classification",
+    "addon_dataset": "svhn",
+    "prefer_better_addon": false,
+    "addon_list": [
+      {
+        "para": "source_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "source_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "source_transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "source_prm",
+        "value": "prm"
+      }
+    ],
+    "assistant_prefill_mode": "none",
+    "prompt": [
+      "Task: Deterministically copy the source training recipe onto the weak SVHN target.",
+      "This config is handled by the pipeline without LLM generation.",
+      "",
+      "=== WEAK TARGET ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== STRONG SOURCE ===",
+      "Source performance: {source_accuracy}",
+      "<source_hp>{source_prm}</source_hp>",
+      "<source_tr>",
+      "{source_transform_code}",
+      "</source_tr>",
+      "<source_nn>",
+      "{source_nn_code}",
+      "</source_nn>"
+    ]
+  },
+  "improve_classification_only_svhn_frozen_template_stem_preserve": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "svhn",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "SVHN frozen protocol: fixed non-analogical stem-preserve template"
+    ],
+    "addon_task": null,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Emit one fixed SVHN structured-edit template.",
+      "",
+      "=== TARGET MODEL ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== TEMPLATE ===",
+      "Apply the fixed template: preserve early spatial resolution, remove unsafe stem pooling when present, and use adaptive average pooling.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_32\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"structured_cifar_edit\",\"width\":\"same\",\"pool\":\"adaptive_avg\",\"stem_stride\":\"preserve\",\"stem_pool\":\"remove\",\"classifier_dropout\":0.1}}",
+      "</edit>",
+      "",
+      "Critical: output the exact edit JSON shown above. Do not explain."
+    ]
+  },
+  "improve_classification_only_mnist_frozen_hp_default": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "mnist",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "MNIST frozen protocol: non-analogical HP/transform control"
+    ],
+    "addon_task": null,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Improve this weak MNIST model without using any source model.",
+      "",
+      "=== TARGET MODEL ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== YOUR TASK ===",
+      "Keep the target Python architecture unchanged.",
+      "Only choose training hyperparameters and transform.",
+      "Do not write full Python code and do not write a unified diff.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_28\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((28, 28)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"hp_transform_only\"}}",
+      "</edit>",
+      "",
+      "Critical rules:",
+      "- Do not write prose.",
+      "- Do not change target architecture.",
+      "- The <edit> JSON must be exactly mode hp_transform_only."
+    ]
+  },
+  "improve_classification_only_mnist_frozen_hp_transfer": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "mnist",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "MNIST frozen protocol: analogical source HP/transform transfer"
+    ],
+    "addon_task": "img-classification",
+    "addon_dataset": "mnist",
+    "prefer_better_addon": false,
+    "addon_list": [
+      {
+        "para": "source_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "source_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "source_transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "source_prm",
+        "value": "prm"
+      }
+    ],
+    "log_source_recipe_delta": true,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Improve a weak MNIST target by transferring the training recipe from a much stronger same-family source.",
+      "",
+      "=== WEAK TARGET ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== STRONG SOURCE ===",
+      "Source performance: {source_accuracy}",
+      "<source_hp>{source_prm}</source_hp>",
+      "<source_tr>",
+      "{source_transform_code}",
+      "</source_tr>",
+      "<source_nn>",
+      "{source_nn_code}",
+      "</source_nn>",
+      "",
+      "=== YOUR TASK ===",
+      "Output one candidate for the weak target.",
+      "Keep the target architecture unchanged.",
+      "Use the source hyperparameters and source transform as the main transfer.",
+      "Convert the source_hp dictionary to valid JSON with double quotes.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_28\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((28, 28)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"hp_transform_only\"}}",
+      "</edit>",
+      "",
+      "Critical rules:",
+      "- Do not write prose.",
+      "- Do not change target architecture.",
+      "- The <edit> JSON must be exactly mode hp_transform_only."
+    ]
+  },
+  "improve_classification_only_mnist_frozen_hp_copy": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "mnist",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "MNIST frozen protocol: deterministic source HP/transform copy"
+    ],
+    "copy_source_recipe": true,
+    "addon_task": "img-classification",
+    "addon_dataset": "mnist",
+    "prefer_better_addon": false,
+    "addon_list": [
+      {
+        "para": "source_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "source_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "source_transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "source_prm",
+        "value": "prm"
+      }
+    ],
+    "assistant_prefill_mode": "none",
+    "prompt": [
+      "Task: Deterministically copy the source training recipe onto the weak MNIST target.",
+      "This config is handled by the pipeline without LLM generation.",
+      "",
+      "=== WEAK TARGET ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== STRONG SOURCE ===",
+      "Source performance: {source_accuracy}",
+      "<source_hp>{source_prm}</source_hp>",
+      "<source_tr>",
+      "{source_transform_code}",
+      "</source_tr>",
+      "<source_nn>",
+      "{source_nn_code}",
+      "</source_nn>"
+    ]
+  },
+  "improve_classification_only_mnist_frozen_template_stem_preserve": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "mnist",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "MNIST frozen protocol: fixed non-analogical stem-preserve template"
+    ],
+    "addon_task": null,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Emit one fixed MNIST structured-edit template.",
+      "",
+      "=== TARGET MODEL ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== TEMPLATE ===",
+      "Apply the fixed template: preserve early spatial resolution, remove unsafe stem pooling when present, and use adaptive average pooling.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_28\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((28, 28)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"structured_cifar_edit\",\"width\":\"same\",\"pool\":\"adaptive_avg\",\"stem_stride\":\"preserve\",\"stem_pool\":\"remove\",\"classifier_dropout\":0.1}}",
+      "</edit>",
+      "",
+      "Critical: output the exact edit JSON shown above. Do not explain."
+    ]
+  },
+  "improve_classification_only_imagenette_frozen_hp_default": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "imagenette",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "Imagenette frozen protocol: non-analogical HP/transform control"
+    ],
+    "addon_task": null,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Improve this weak Imagenette model without using any source model.",
+      "",
+      "=== TARGET MODEL ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== YOUR TASK ===",
+      "Keep the target Python architecture unchanged.",
+      "Only choose training hyperparameters and transform.",
+      "Do not write full Python code and do not write a unified diff.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_224\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"hp_transform_only\"}}",
+      "</edit>",
+      "",
+      "Critical rules:",
+      "- Do not write prose.",
+      "- Do not change target architecture.",
+      "- The <edit> JSON must be exactly mode hp_transform_only."
+    ]
+  },
+  "improve_classification_only_imagenette_frozen_hp_transfer": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "imagenette",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "Imagenette frozen protocol: analogical source HP/transform transfer"
+    ],
+    "addon_task": "img-classification",
+    "addon_dataset": "imagenette",
+    "prefer_better_addon": false,
+    "addon_list": [
+      {
+        "para": "source_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "source_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "source_transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "source_prm",
+        "value": "prm"
+      }
+    ],
+    "log_source_recipe_delta": true,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Improve a weak Imagenette target by transferring the training recipe from a much stronger same-family source.",
+      "",
+      "=== WEAK TARGET ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== STRONG SOURCE ===",
+      "Source performance: {source_accuracy}",
+      "<source_hp>{source_prm}</source_hp>",
+      "<source_tr>",
+      "{source_transform_code}",
+      "</source_tr>",
+      "<source_nn>",
+      "{source_nn_code}",
+      "</source_nn>",
+      "",
+      "=== YOUR TASK ===",
+      "Output one candidate for the weak target.",
+      "Keep the target architecture unchanged.",
+      "Use the source hyperparameters and source transform as the main transfer.",
+      "Convert the source_hp dictionary to valid JSON with double quotes.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_224\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"hp_transform_only\"}}",
+      "</edit>",
+      "",
+      "Critical rules:",
+      "- Do not write prose.",
+      "- Do not change target architecture.",
+      "- The <edit> JSON must be exactly mode hp_transform_only."
+    ]
+  },
+  "improve_classification_only_imagenette_frozen_hp_copy": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "imagenette",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "Imagenette frozen protocol: deterministic source HP/transform copy"
+    ],
+    "copy_source_recipe": true,
+    "addon_task": "img-classification",
+    "addon_dataset": "imagenette",
+    "prefer_better_addon": false,
+    "addon_list": [
+      {
+        "para": "source_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "source_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "source_transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "source_prm",
+        "value": "prm"
+      }
+    ],
+    "assistant_prefill_mode": "none",
+    "prompt": [
+      "Task: Deterministically copy the source training recipe onto the weak Imagenette target.",
+      "This config is handled by the pipeline without LLM generation.",
+      "",
+      "=== WEAK TARGET ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== STRONG SOURCE ===",
+      "Source performance: {source_accuracy}",
+      "<source_hp>{source_prm}</source_hp>",
+      "<source_tr>",
+      "{source_transform_code}",
+      "</source_tr>",
+      "<source_nn>",
+      "{source_nn_code}",
+      "</source_nn>"
+    ]
+  },
+  "improve_classification_only_imagenette_frozen_template_stem_preserve": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "imagenette",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "Imagenette frozen protocol: fixed non-analogical stem-preserve template"
+    ],
+    "addon_task": null,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Emit one fixed Imagenette structured-edit template.",
+      "",
+      "=== TARGET MODEL ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== TEMPLATE ===",
+      "Apply the fixed template: preserve early spatial resolution, remove unsafe stem pooling when present, and use adaptive average pooling.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_224\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"structured_cifar_edit\",\"width\":\"same\",\"pool\":\"adaptive_avg\",\"stem_stride\":\"preserve\",\"stem_pool\":\"remove\",\"classifier_dropout\":0.1}}",
+      "</edit>",
+      "",
+      "Critical: output the exact edit JSON shown above. Do not explain."
+    ]
+  },
+  "improve_classification_only_celebagender_frozen_hp_default": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "celeba-gender",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "CelebA-Gender frozen protocol: non-analogical HP/transform control"
+    ],
+    "addon_task": null,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Improve this weak CelebA-Gender model without using any source model.",
+      "",
+      "=== TARGET MODEL ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== YOUR TASK ===",
+      "Keep the target Python architecture unchanged.",
+      "Only choose training hyperparameters and transform.",
+      "Do not write full Python code and do not write a unified diff.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_64\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((64, 64)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"hp_transform_only\"}}",
+      "</edit>",
+      "",
+      "Critical rules:",
+      "- Do not write prose.",
+      "- Do not change target architecture.",
+      "- The <edit> JSON must be exactly mode hp_transform_only."
+    ]
+  },
+  "improve_classification_only_celebagender_frozen_hp_transfer": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "celeba-gender",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "CelebA-Gender frozen protocol: analogical source HP/transform transfer"
+    ],
+    "addon_task": "img-classification",
+    "addon_dataset": "celeba-gender",
+    "prefer_better_addon": false,
+    "addon_list": [
+      {
+        "para": "source_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "source_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "source_transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "source_prm",
+        "value": "prm"
+      }
+    ],
+    "log_source_recipe_delta": true,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Improve a weak CelebA-Gender target by transferring the training recipe from a much stronger same-family source.",
+      "",
+      "=== WEAK TARGET ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== STRONG SOURCE ===",
+      "Source performance: {source_accuracy}",
+      "<source_hp>{source_prm}</source_hp>",
+      "<source_tr>",
+      "{source_transform_code}",
+      "</source_tr>",
+      "<source_nn>",
+      "{source_nn_code}",
+      "</source_nn>",
+      "",
+      "=== YOUR TASK ===",
+      "Output one candidate for the weak target.",
+      "Keep the target architecture unchanged.",
+      "Use the source hyperparameters and source transform as the main transfer.",
+      "Convert the source_hp dictionary to valid JSON with double quotes.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_64\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((64, 64)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"hp_transform_only\"}}",
+      "</edit>",
+      "",
+      "Critical rules:",
+      "- Do not write prose.",
+      "- Do not change target architecture.",
+      "- The <edit> JSON must be exactly mode hp_transform_only."
+    ]
+  },
+  "improve_classification_only_celebagender_frozen_hp_copy": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "celeba-gender",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "CelebA-Gender frozen protocol: deterministic source HP/transform copy"
+    ],
+    "copy_source_recipe": true,
+    "addon_task": "img-classification",
+    "addon_dataset": "celeba-gender",
+    "prefer_better_addon": false,
+    "addon_list": [
+      {
+        "para": "source_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "source_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "source_transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "source_prm",
+        "value": "prm"
+      }
+    ],
+    "assistant_prefill_mode": "none",
+    "prompt": [
+      "Task: Deterministically copy the source training recipe onto the weak CelebA-Gender target.",
+      "This config is handled by the pipeline without LLM generation.",
+      "",
+      "=== WEAK TARGET ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== STRONG SOURCE ===",
+      "Source performance: {source_accuracy}",
+      "<source_hp>{source_prm}</source_hp>",
+      "<source_tr>",
+      "{source_transform_code}",
+      "</source_tr>",
+      "<source_nn>",
+      "{source_nn_code}",
+      "</source_nn>"
+    ]
+  },
+  "improve_classification_only_celebagender_frozen_template_stem_preserve": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "celeba-gender",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "CelebA-Gender frozen protocol: fixed non-analogical stem-preserve template"
+    ],
+    "addon_task": null,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Emit one fixed CelebA-Gender structured-edit template.",
+      "",
+      "=== TARGET MODEL ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== TEMPLATE ===",
+      "Apply the fixed template: preserve early spatial resolution, remove unsafe stem pooling when present, and use adaptive average pooling.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_64\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((64, 64)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"structured_cifar_edit\",\"width\":\"same\",\"pool\":\"adaptive_avg\",\"stem_stride\":\"preserve\",\"stem_pool\":\"remove\",\"classifier_dropout\":0.1}}",
+      "</edit>",
+      "",
+      "Critical: output the exact edit JSON shown above. Do not explain."
+    ]
+  },
+  "improve_classification_only_places365_frozen_hp_default": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "places365",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "Places365 frozen protocol: non-analogical HP/transform control"
+    ],
+    "addon_task": null,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Improve this weak Places365 model without using any source model.",
+      "",
+      "=== TARGET MODEL ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== YOUR TASK ===",
+      "Keep the target Python architecture unchanged.",
+      "Only choose training hyperparameters and transform.",
+      "Do not write full Python code and do not write a unified diff.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_256\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((256, 256)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"hp_transform_only\"}}",
+      "</edit>",
+      "",
+      "Critical rules:",
+      "- Do not write prose.",
+      "- Do not change target architecture.",
+      "- The <edit> JSON must be exactly mode hp_transform_only."
+    ]
+  },
+  "improve_classification_only_places365_frozen_hp_transfer": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "places365",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "Places365 frozen protocol: analogical source HP/transform transfer"
+    ],
+    "addon_task": "img-classification",
+    "addon_dataset": "places365",
+    "prefer_better_addon": false,
+    "addon_list": [
+      {
+        "para": "source_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "source_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "source_transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "source_prm",
+        "value": "prm"
+      }
+    ],
+    "log_source_recipe_delta": true,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Improve a weak Places365 target by transferring the training recipe from a much stronger same-family source.",
+      "",
+      "=== WEAK TARGET ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== STRONG SOURCE ===",
+      "Source performance: {source_accuracy}",
+      "<source_hp>{source_prm}</source_hp>",
+      "<source_tr>",
+      "{source_transform_code}",
+      "</source_tr>",
+      "<source_nn>",
+      "{source_nn_code}",
+      "</source_nn>",
+      "",
+      "=== YOUR TASK ===",
+      "Output one candidate for the weak target.",
+      "Keep the target architecture unchanged.",
+      "Use the source hyperparameters and source transform as the main transfer.",
+      "Convert the source_hp dictionary to valid JSON with double quotes.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_256\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((256, 256)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"hp_transform_only\"}}",
+      "</edit>",
+      "",
+      "Critical rules:",
+      "- Do not write prose.",
+      "- Do not change target architecture.",
+      "- The <edit> JSON must be exactly mode hp_transform_only."
+    ]
+  },
+  "improve_classification_only_places365_frozen_hp_copy": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "places365",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "Places365 frozen protocol: deterministic source HP/transform copy"
+    ],
+    "copy_source_recipe": true,
+    "addon_task": "img-classification",
+    "addon_dataset": "places365",
+    "prefer_better_addon": false,
+    "addon_list": [
+      {
+        "para": "source_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "source_accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "source_transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "source_prm",
+        "value": "prm"
+      }
+    ],
+    "assistant_prefill_mode": "none",
+    "prompt": [
+      "Task: Deterministically copy the source training recipe onto the weak Places365 target.",
+      "This config is handled by the pipeline without LLM generation.",
+      "",
+      "=== WEAK TARGET ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== STRONG SOURCE ===",
+      "Source performance: {source_accuracy}",
+      "<source_hp>{source_prm}</source_hp>",
+      "<source_tr>",
+      "{source_transform_code}",
+      "</source_tr>",
+      "<source_nn>",
+      "{source_nn_code}",
+      "</source_nn>"
+    ]
+  },
+  "improve_classification_only_places365_frozen_template_stem_preserve": {
+    "use_edit": true,
+    "task": "img-classification",
+    "dataset": "places365",
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "comment": [
+      "Places365 frozen protocol: fixed non-analogical stem-preserve template"
+    ],
+    "addon_task": null,
+    "assistant_prefill_mode": "hp_open",
+    "prompt": [
+      "Task: Emit one fixed Places365 structured-edit template.",
+      "",
+      "=== TARGET MODEL ===",
+      "Target performance: {accuracy}",
+      "<target_hp>{prm}</target_hp>",
+      "<target_tr>",
+      "{transform_code}",
+      "</target_tr>",
+      "<target_nn>",
+      "{nn_code}",
+      "</target_nn>",
+      "",
+      "=== TEMPLATE ===",
+      "Apply the fixed template: preserve early spatial resolution, remove unsafe stem pooling when present, and use adaptive average pooling.",
+      "",
+      "=== OUTPUT FORMAT ===",
+      "Generate exactly 3 XML tags and nothing else:",
+      "<hp>",
+      "{{\"batch\":64,\"transform\":\"echo_256\",\"lr\":0.01,\"momentum\":0.9}}",
+      "</hp>",
+      "<tr>",
+      "import torchvision.transforms as transforms",
+      "def transform(_):",
+      "    return transforms.Compose([transforms.Resize((256, 256)), transforms.ToTensor()])",
+      "</tr>",
+      "<edit>",
+      "{{\"mode\":\"structured_cifar_edit\",\"width\":\"same\",\"pool\":\"adaptive_avg\",\"stem_stride\":\"preserve\",\"stem_pool\":\"remove\",\"classifier_dropout\":0.1}}",
+      "</edit>",
+      "",
+      "Critical: output the exact edit JSON shown above. Do not explain."
+    ]
+  }
+}

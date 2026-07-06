@@ -10,7 +10,8 @@ def main():
         nn_gen_conf_id='optimal_channel_configuration_test',
         test_nn=10,
         skip_epoches=1,
-        nn_name_prefix='chn'
+        nn_name_prefix='chn',
+        context_length=8192,
     )
 
 

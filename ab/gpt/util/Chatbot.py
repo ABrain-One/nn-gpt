@@ -1,6 +1,10 @@
 # ab/gpt/util/Chatbot.py
 
+import os
+import re
+
 from transformers import PreTrainedTokenizer, PreTrainedModel, pipeline
+from ab.gpt.util.GenerationDType import align_generation_head_dtype, infer_generation_head_dtype
 from ab.gpt.util.Util import extract_code, extract_hyperparam, extract_transform, extract_all_to_train
 import torch
 
@@ -48,6 +52,46 @@ def _strip_prompt_prefix(text, prompt):
         return text[len(prompt):].lstrip()
     return text
 
+
+def _env_flag(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _safe_tokenizer_max_length(tokenizer, fallback: int = 4096) -> int:
+    tokenizer_max_len = getattr(tokenizer, "model_max_length", None)
+    try:
+        tokenizer_max_len = int(tokenizer_max_len)
+    except (TypeError, ValueError, OverflowError):
+        tokenizer_max_len = int(fallback)
+    if tokenizer_max_len <= 0 or tokenizer_max_len > 10**8:
+        tokenizer_max_len = int(fallback)
+    return tokenizer_max_len
+
+
+def _effective_vocab_size(tokenizer) -> int:
+    try:
+        return max(int(tokenizer.vocab_size), len(tokenizer))
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return len(tokenizer)
+
+
+def _strip_reasoning_output(text: str) -> str:
+    if not isinstance(text, str) or not text:
+        return text
+    cleaned = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE)
+    first_tag_positions = [
+        pos for pos in (
+            cleaned.find("<block>"),
+            cleaned.find("<nn>"),
+            cleaned.find("```python"),
+            cleaned.find("```"),
+        )
+        if pos >= 0
+    ]
+    if first_tag_positions:
+        return cleaned[min(first_tag_positions):].lstrip()
+    return cleaned
+
 class ChatBot:
     def __init__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, keep_memory=False,
                  temperature=1.0, top_k=50, top_p=0.9, system_prompt: str = None):
@@ -59,6 +103,8 @@ class ChatBot:
         self.top_k = top_k
         self.top_p = top_p
         self.system_prompt = system_prompt
+        self.disable_chat_template = _env_flag("NNGPT_DISABLE_CHAT_TEMPLATE")
+        self.strip_think_output = _env_flag("NNGPT_STRIP_THINK_OUTPUT")
         
         # Check if model is ONNX (wrapped or direct ORTModel)
         self.is_onnx = (
@@ -66,9 +112,21 @@ class ChatBot:
             type(model).__name__ == 'ORTModelForCausalLM' or
             'ORTModel' in type(model).__name__
         )
+
+        if not self.is_onnx:
+            generation_dtype = infer_generation_head_dtype(self.model)
+            align_generation_head_dtype(
+                self.model,
+                generation_dtype,
+                log_prefix="[ChatBot]",
+            )
         
         # Only create pipeline for PyTorch models
-        if not self.is_onnx:
+        force_direct = os.getenv("NNGPT_FORCE_DIRECT_GENERATE", "").strip().lower() in {"1", "true", "yes", "on"}
+        if force_direct:
+            print("[INFO] NNGPT_FORCE_DIRECT_GENERATE set, using direct generation")
+            self.__pipeline = None
+        elif not self.is_onnx:
             try:
                 self.__pipeline = pipeline(
                     "text-generation",
@@ -98,12 +156,14 @@ class ChatBot:
     def _prepare_pipeline_input(self, prompt_text):
         """Build a pipeline-ready text prompt using chat template when available."""
         messages = self._build_messages(prompt_text)
-        if hasattr(self.tokenizer, 'apply_chat_template'):
+        if not self.disable_chat_template and hasattr(self.tokenizer, 'apply_chat_template'):
             return self.tokenizer.apply_chat_template(
                 messages,
                 tokenize=False,
                 add_generation_prompt=True
             )
+        if self.system_prompt:
+            return f"System: {self.system_prompt}\nUser: {prompt_text}\nAssistant:"
         return prompt_text
 
     def _direct_generate_batch(self, prompts, max_new_tokens=None, max_len=None):
@@ -112,9 +172,7 @@ class ChatBot:
             self.model.eval()
 
         formatted_prompts = [self._prepare_pipeline_input(p) for p in prompts]
-        tokenizer_max_len = getattr(self.tokenizer, "model_max_length", None)
-        if tokenizer_max_len is None or tokenizer_max_len > 10**8:
-            tokenizer_max_len = 4096
+        tokenizer_max_len = _safe_tokenizer_max_length(self.tokenizer)
         token_budget = max_new_tokens or 4096
         max_input_len = max(1, tokenizer_max_len - token_budget)
 
@@ -134,12 +192,11 @@ class ChatBot:
 
         if 'input_ids' in inputs:
             input_ids = inputs['input_ids']
-            vocab_size = self.tokenizer.vocab_size
+            vocab_size = _effective_vocab_size(self.tokenizer)
             max_token_id = input_ids.max().item()
             if max_token_id >= vocab_size:
                 print(f"[WARN] Invalid token IDs detected in batch: max_id={max_token_id}, vocab_size={vocab_size}")
-                clamp_value = self.tokenizer.eos_token_id if self.tokenizer.eos_token_id is not None else vocab_size - 1
-                inputs['input_ids'] = torch.clamp(input_ids, max=clamp_value)
+                inputs['input_ids'] = torch.clamp(input_ids, max=vocab_size - 1)
 
         if hasattr(self.model, 'device') and self.model.device is not None:
             device = self.model.device
@@ -173,6 +230,8 @@ class ChatBot:
         for i in range(outputs.shape[0]):
             generated_ids = outputs[i][padded_input_length:]
             generated = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
+            if self.strip_think_output:
+                generated = _strip_reasoning_output(generated)
             nn = extract_code(generated)
             results.append((nn, extract_hyperparam(generated), extract_transform(generated), generated))
         return results
@@ -216,6 +275,8 @@ class ChatBot:
                     out = _extract_generated_content(out_item)
                 
                 assert isinstance(out, str)
+                if self.strip_think_output:
+                    out = _strip_reasoning_output(out)
                 
                 if self.__keep_memory:
                     self.__messages.append({"role": "assistant", "content": out})
@@ -251,7 +312,7 @@ class ChatBot:
         """Direct model.generate() call without pipeline - works for ONNX and PyTorch"""
         try:
             # Apply chat template to format messages
-            if hasattr(self.tokenizer, 'apply_chat_template'):
+            if not self.disable_chat_template and hasattr(self.tokenizer, 'apply_chat_template'):
                 formatted_prompt = self.tokenizer.apply_chat_template(
                     messages,
                     tokenize=False,
@@ -259,14 +320,19 @@ class ChatBot:
                 )
             else:
                 # Fallback: concatenate messages
-                formatted_prompt = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
+                formatted_prompt = "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in messages])
+                formatted_prompt = f"{formatted_prompt}\nAssistant:"
             
+            tokenizer_max_len = _safe_tokenizer_max_length(self.tokenizer)
+            token_budget = max_new_tokens or 4096
+            max_input_len = max(1, tokenizer_max_len - token_budget)
+
             # Tokenize input
             inputs = self.tokenizer(
                 formatted_prompt,
                 return_tensors="pt",
                 truncation=True,
-                max_length=max(self.tokenizer.model_max_length - (max_new_tokens or 4096), 128),
+                max_length=max(max_input_len, 128),
                 add_special_tokens=False,  # chat template already includes BOS; prevents EOS being appended
             )
 
@@ -274,17 +340,15 @@ class ChatBot:
             # -- FIX 1: Validate token IDs before GPU move -- 
             if 'input_ids' in inputs:
                 input_ids = inputs['input_ids']
-                vocab_size = self.tokenizer.vocab_size
+                vocab_size = _effective_vocab_size(self.tokenizer)
                 max_token_id = input_ids.max().item()
 
-            if max_token_id >= vocab_size:
-                print(f"[WARN] Invalid token IDs detected: max_id={max_token_id}, vocab_size={vocab_size}")
-                print(f"[WARN] Clamping to valid range [0, {vocab_size-1}]")
-
-            clamp_value = self.tokenizer.eos_token_id if self.tokenizer.eos_token_id is not None else vocab_size - 1
-            input_ids = torch.clamp(input_ids, max=clamp_value)
-            inputs['input_ids'] = input_ids
-            print(f"[WARN] After clamping: max_id={input_ids.max().item()}")
+                if max_token_id >= vocab_size:
+                    print(f"[WARN] Invalid token IDs detected: max_id={max_token_id}, vocab_size={vocab_size}")
+                    print(f"[WARN] Clamping to valid range [0, {vocab_size-1}]")
+                    input_ids = torch.clamp(input_ids, max=vocab_size - 1)
+                    inputs['input_ids'] = input_ids
+                    print(f"[WARN] After clamping: max_id={input_ids.max().item()}")
 
             
             # Move to appropriate device
@@ -329,6 +393,8 @@ class ChatBot:
             # FIX: Decode only the generated part (skip input prompt)
             generated_ids = outputs[0][input_length:]  # Use input_length, not shape[1]
             out = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
+            if self.strip_think_output:
+                out = _strip_reasoning_output(out)
             
             assert isinstance(out, str)
             
@@ -341,4 +407,4 @@ class ChatBot:
             print(f"[ERROR] Direct generation failed: {e}")
             import traceback
             traceback.print_exc()
-            return None, None, None, ""
+            raise RuntimeError("Direct generation failed") from e

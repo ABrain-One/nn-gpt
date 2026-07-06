@@ -66,7 +66,7 @@ def _resolve_use_all_visible_gpus(use_all_visible_gpus: Optional[bool]) -> bool:
         return bool(use_all_visible_gpus)
     raw = os.getenv("NNGPT_NNEVAL_USE_ALL_VISIBLE_GPUS")
     if raw is None or raw == "":
-        return True
+        return False
     return str(raw).strip().lower() in {"1", "true", "yes", "on"}
 
 
@@ -148,9 +148,15 @@ def _extract_accuracy_from_eval_payload(payload: Dict[str, Any]) -> Optional[flo
         return None
 
 
-def _load_existing_success_result(model_dir_path: Path) -> Optional[Dict[str, Any]]:
+def _load_existing_success_result(
+    model_dir_path: Path,
+    *,
+    require_eval_checkpoint: bool = False,
+) -> Optional[Dict[str, Any]]:
     eval_info_path = model_dir_path / "eval_info.json"
     if not eval_info_path.exists():
+        return None
+    if require_eval_checkpoint and not (model_dir_path / "eval_checkpoint.pth").exists():
         return None
     try:
         payload = json.loads(eval_info_path.read_text(encoding="utf-8"))
@@ -279,8 +285,9 @@ def _build_eval_request(
     prefix_for_db: Optional[str],
     epoch_limit_minutes: Optional[int],
     lemur_prefix: Optional[str],
+    save_eval_checkpoint: bool = False,
 ) -> Dict[str, Any]:
-    return {
+    request = {
         "model_id": str(model_id),
         "model_dir": str(model_dir_path),
         "code_file": str(code_file_path),
@@ -295,6 +302,10 @@ def _build_eval_request(
         "lemur_prefix": lemur_prefix,
         "use_ast_validation": None,
     }
+    if save_eval_checkpoint:
+        request["save_eval_checkpoint"] = True
+        request["checkpoint_path"] = str(model_dir_path / "eval_checkpoint.pth")
+    return request
 
 
 def _collect_epoch_requests(
@@ -333,10 +344,21 @@ def _collect_epoch_requests(
     num_workers: int,
     pin_memory: bool,
     freeze_gpt2: bool,
+    save_eval_checkpoint: bool = False,
 ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     requests: List[Dict[str, Any]] = []
     immediate_results: List[Dict[str, Any]] = []
     base_nngpt_path = nngpt_dir
+
+    def _display_model_path(path: Path) -> Path:
+        """
+        Return a stable display path for logs without assuming the model path
+        is always inside out/nngpt (mobile iterative flow uses curation_output).
+        """
+        try:
+            return path.relative_to(base_nngpt_path)
+        except ValueError:
+            return path
 
     for model_id in sorted(os.listdir(models_base_dir)):
         model_dir_path = models_base_dir / model_id
@@ -350,16 +372,19 @@ def _collect_epoch_requests(
             print(f"Code file {new_nn_file} not found in {model_dir_path}. Skipping.")
             continue
 
-        existing_result = _load_existing_success_result(model_dir_path)
+        existing_result = _load_existing_success_result(
+            model_dir_path,
+            require_eval_checkpoint=save_eval_checkpoint,
+        )
         if existing_result is not None:
             print(
-                f"  [SKIP] {model_dir_path.relative_to(base_nngpt_path)} already evaluated "
+                f"  [SKIP] {_display_model_path(model_dir_path)} already evaluated "
                 f"({existing_result['accuracy'] * 100:.2f}%)"
             )
             immediate_results.append(existing_result)
             continue
 
-        print(f"\n--- Evaluating Model: {model_dir_path.relative_to(base_nngpt_path)} ---")
+        print(f"\n--- Evaluating Model: {_display_model_path(model_dir_path)} ---")
         if not verify_nn_code(model_dir_path, code_file_path):
             print(f"Code verification failed for {code_file_path}. Skipping evaluation.")
             (model_dir_path / "eval_verification_failed.txt").write_text(
@@ -500,6 +525,7 @@ def _collect_epoch_requests(
                 prefix_for_db=prefix_for_db,
                 epoch_limit_minutes=epoch_limit_minutes,
                 lemur_prefix=nn_name_prefix or orig_pref,
+                save_eval_checkpoint=save_eval_checkpoint,
             )
         )
 
@@ -546,13 +572,16 @@ def main(
     pin_memory: bool = False,
     freeze_gpt2: bool = False,
     force_eval: bool = False,
+    save_eval_checkpoint: bool = False,
 ):
     base_nngpt_path = nngpt_dir
+    custom_synth_path = Path(custom_synth_dir) if custom_synth_dir else None
     if task == 'img-captioning' and metric == 'acc':
         metric = 'bleu,meteor,cider'
-
     if nn_alter_epochs is None:
-        if epoch_dir().is_dir():
+        if custom_synth_path is not None:
+            nn_alter_epochs = 1
+        elif epoch_dir().is_dir():
             nn_alter_epochs = len(os.listdir(epoch_dir()))
         else:
             print(f"Directory {epoch_dir()} doesn't exist", file=sys.stderr)
@@ -571,10 +600,14 @@ def main(
                 current_epoch = i
                 cycle_start_time = time.time()
                 # Path to one NNAlter epoch output, e.g. out/nngpt/llm/epoch/A0.
-                current_alter_epoch_path = epoch_dir(i)
-                # Allow callers to point directly at a synth dir instead of
-                # deriving it from epoch_dir().
-                models_base_dir = Path(custom_synth_dir) if custom_synth_dir else synth_dir(current_alter_epoch_path)
+                # If a caller passes a synth dir directly, do not infer anything
+                # from the default epoch root.
+                if custom_synth_path is not None:
+                    models_base_dir = custom_synth_path
+                    current_alter_epoch_path = custom_synth_path.parent
+                else:
+                    current_alter_epoch_path = epoch_dir(i)
+                    models_base_dir = synth_dir(current_alter_epoch_path)
 
                 if not models_base_dir.exists():
                     print(f"Directory {models_base_dir} for NNAlter epoch {i} not found. Skipping.")
@@ -620,6 +653,7 @@ def main(
                     num_workers=num_workers,
                     pin_memory=pin_memory,
                     freeze_gpt2=freeze_gpt2,
+                    save_eval_checkpoint=save_eval_checkpoint,
                 )
 
                 if requests:

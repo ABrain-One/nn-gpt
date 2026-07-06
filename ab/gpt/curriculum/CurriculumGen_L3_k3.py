@@ -166,7 +166,7 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
          save_total_limit=None, load_best_model_at_end=False, metric_for_best_model=None, warmup_steps=None,
          weight_decay=None,
          per_device_eval_batch_size=None, onnx_run=ONNX_RUN, unsloth_opt=UNSLOTH_OPT, trans_mode=TRANS_MODE,use_agents=USE_AGENTS, use_predictor=USE_PREDICTOR,
-         prompt_batch=PROMPT_BATCH):
+         prompt_batch=PROMPT_BATCH, context_length=None):
     persist_llm_conf(llm_conf, enable_merge)
     # Unsloth conditional import
     # Unsloth should be imported before transformers and peft
@@ -364,7 +364,8 @@ unsloth_opt={unsloth_opt},  trans_mode={trans_mode},  prompt_batch={prompt_batch
             prompt_batch=prompt_batch,
             use_agents=use_agents,
             use_predictor=use_predictor,
-            enable_merge=enable_merge
+            enable_merge=enable_merge,
+            context_length=context_length,
         )
         # Normal completion - auto merge best
         if enable_merge:

@@ -93,7 +93,8 @@ def goal_tag_parser_cues(tags) -> str:
             cues.append("- `branch_reuse`: let one branch explicitly feed or condition another through a reuse, adapter, mixer, or extra merge stage.")
     return "\n".join(cues) if cues else "- No extra parser-visible cues."
 
-skeleton_code = """import torch
+skeleton_code = """import os
+import torch
 import torch.nn as nn
 import numpy as np
 import gc
@@ -110,6 +111,10 @@ class TorchVision(nn.Module):
         self.model_name = str(model)
         self.adapter = nn.Conv2d(in_channels, 3, kernel_size=1) if in_channels != 3 else nn.Identity()
         kwargs = {"aux_logits": False} if "inception" in model.lower() else {}
+        if os.environ.get("NNGPT_SMOKE_PREVALIDATE") == "1":
+            weights = None
+        if isinstance(weights, str) and weights.strip().lower() in {"", "none"}:
+            weights = None
         try:
             if hasattr(torchvision.models, "get_model"):
                 self.m = torchvision.models.get_model(model, weights=weights, **kwargs)
@@ -146,7 +151,7 @@ def make_scaler(enabled=True):
     return GradScaler("cuda", enabled=enabled)
 
 def supported_hyperparameters():
-    return { 'lr', 'dropout', 'momentum' }
+    return { 'lr', 'momentum' }
 
 # ==========================================
 # 2. DYNAMIC COMPONENTS (TO BE IMPLEMENTED)
@@ -191,6 +196,9 @@ class Net(nn.Module):
         
 
     def infer_dimensions_dynamically(self, num_classes):
+        if not hasattr(self, "_input_spec"):
+            raise RuntimeError("_input_spec must be set before infer_dimensions_dynamically")
+        c, h, w = self._input_spec
         self.to(self.device)
         was_training = self.training
         self.eval()
@@ -221,6 +229,7 @@ class Net(nn.Module):
         
     def train_setup(self, prm):
         self.to(self.device)
+        self.use_amp = bool(getattr(self, 'use_amp', False))
         self.freeze_backbones = bool(prm.get('freeze_backbones', getattr(self, 'freeze_backbones', True)))
         for backbone in (self.backbone_a, self.backbone_b):
             for param in backbone.parameters():
@@ -283,6 +292,22 @@ class Net(nn.Module):
         return train_accuracy, train_loss
 """
 
+def _build_prompt_skeleton(code):
+    train_setup_marker = "    def train_setup(self, prm):"
+    if train_setup_marker in code:
+        code = code[:code.index(train_setup_marker)]
+    code = re.sub(
+        r"\n    def _feature_to_input_image\(self, x: torch\.Tensor, adapter_name: str\) -> torch\.Tensor:\n.*?(?=\n    def forward\()",
+        "\n",
+        code,
+        flags=re.DOTALL,
+    )
+    code = re.sub(r"\n# =+\n# .+?\n# =+\n", "\n", code, flags=re.DOTALL)
+    code = re.sub(r"\n{3,}", "\n\n", code)
+    return code.rstrip() + "\n"
+
+prompt_skeleton_code = _build_prompt_skeleton(skeleton_code)
+
 prompt_template="""
 ### Role & Context
 You are a Senior AI Architect. Your task is to implement a **specific** model instance based on a strict skeleton to achieve an accuracy of {accuracy}. 
@@ -294,46 +319,20 @@ Complete the three missing components. **DO NOT** write generic code. You must i
 {skeleton_code}
 [CODE SKELETON END]
 
-### Technical Specifications (MANDATORY REQUIREMENTS)
-
-1. **Target Pattern: `{target_pattern}`**
-   - YOU MUST explicitly set `self.pattern = '{target_pattern}'` inside `__init__`.
-   - YOU MUST implement the logic for this specific pattern throughout the code.
-   - **CRITICAL REQUIREMENT**: DO NOT just blindly copy the standard Parallel_Triple structure. You MUST be highly creative and design a truly unique structural flow in `forward`. Vary your module usage and connection topology!
-
-2. **Component: `drop_conv3x3_block`**
-   - Implement starting with `def drop_conv3x3_block(in_channels, out_channels, stride=1, padding=1, bias=False, dropout_prob=0.0):`.
-   - Return an `nn.Sequential` block (Conv2d -> BatchNorm2d -> Activation -> Dropout2d).
-
-3. **Component: `Net.__init__`**
-   - Implement starting with `def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:`.
-   - **MANDATORY**: `self.pattern = '{target_pattern}'`
-   - **Backbone Selection**: Choose EXACTLY TWO models from [{available_backbones}].
-   - **Initialization**: 
-     - Initialize `self.backbone_a` and `self.backbone_b` using `TorchVision(model='...', in_channels=...)`.
-     - Initialize `self.features` (1-2 `FractalUnit` layers).
-     - Store the image input spec on `self._input_spec` so the provided dynamic sizing helper can probe the classifier dimension.
-     - Finish `__init__` by using the existing `infer_dimensions_dynamically` helper once with the class count from `out_shape`.
-   - **Example Implementation Fragment**:
-     ```python
-     self.pattern = '{target_pattern}'
-     self.backbone_a = TorchVision(model='resnet18', in_channels=in_shape[1]).to(device)
-     ...
-     ```
-
-4. **Component: `Net.forward`**
-   - Implement starting with `def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:`.
-   - **Flow Control**: Implement the data flow for `{target_pattern}`. Use `adaptive_pool_flatten` for module outputs before fusion.
-   - **Fusion Patterns Logic Blueprint**:
-     * `Parallel_Triple`: `Result = Concat(backbone_a(x), backbone_b(x), features(x))`
-     * `Backbone_A_to_Fractal`: `Result = features(backbone_a(x))` (Sequential flow)
-     * `Split_Stem_Parallel_Fuse`: `stem_out = STEM(x); Result = Concat(backbone_a(stem_out), backbone_b(stem_out))`
-   - **CRITICAL - NO GHOSTING**: You MUST use ALL defined components in the `forward` pass.
-   - **CRITICAL RESTRICTION**: You MUST build the computational graph directly without using ANY `if self.pattern == ...` control flow or dynamic loops (like `getattr`/`hasattr`) inside `forward`.
-   - **PARAM REMINDER**: Always pass `in_channels=...` when creating `TorchVision` models.
-
-### Output Requirement (STRICT)
-Output ONLY the implementation within the XML tags. Each tag MUST contain the complete function/method definition (signature and body). No markdown, no conversation.
+### Contract
+- Target pattern: `{target_pattern}`. Set `self.pattern` to this value.
+- Implement only `drop_conv3x3_block`, `Net.__init__`, and `Net.forward`.
+- The `<init>` section must start with the exact `def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:` signature, not `def Net(...)`.
+- Use exactly two `TorchVision` backbones named `self.backbone_a` and `self.backbone_b` from [{available_backbones}].
+- `in_shape` is a 4D batch shape `(B, C, H, W)` during RL/eval. Derive channels as `_, c_in, h_in, w_in = in_shape`; never use `in_shape[0]` as the channel count.
+- Set `self._input_spec = (c_in, h_in, w_in)` in `Net.__init__`; never set it to `in_shape`, `in_shape[:]`, or any 4-tuple.
+- Call `self.infer_dimensions_dynamically(out_shape[0])` exactly once after defining every module used by `forward`, and do not change `self._input_spec` after that call.
+- Do not advertise `dropout` in `supported_hyperparameters()` unless `train_setup` actually reads it from `prm`; this SFT target only requires `lr` and `momentum`.
+- Use `adaptive_pool_flatten(...)` before concatenating branch outputs or feeding `self.classifier`.
+- Do not feed 4D feature maps directly into `nn.Linear` or `self.classifier`.
+- Do not instantiate new `nn.Module` objects inside `forward`; define all trainable modules in `__init__` and move them to `device`.
+- Keep `supported_hyperparameters()` consistent with actual `prm` usage; every advertised parameter must be read in the implementation.
+- Return only the three XML sections below, each containing the complete function or method definition.
 
 <block>
 # Full drop_conv3x3_block implementation
@@ -346,7 +345,16 @@ Output ONLY the implementation within the XML tags. Each tag MUST contain the co
 </forward>
 """
 
-open_discovery_skeleton_code = skeleton_code
+
+def format_backbone_prompt(*, accuracy, target_pattern):
+    return prompt_template.format(
+        accuracy=accuracy,
+        target_pattern=target_pattern,
+        skeleton_code=prompt_skeleton_code,
+        available_backbones=", ".join(available_backbones),
+    )
+
+open_discovery_skeleton_code = prompt_skeleton_code
 
 compact_backbone_rl_prompt_template = """
 ### Role & Goal
@@ -469,6 +477,8 @@ def parse_nn_code(code_str):
         block_code = None
         init_code = None
         forward_code = None
+        init_node = None
+        forward_node = None
 
         def get_source(node):
             return ast.get_source_segment(code_str, node)
@@ -482,13 +492,24 @@ def parse_nn_code(code_str):
                     if isinstance(sub_node, ast.FunctionDef):
                         if sub_node.name == '__init__':
                             init_code = get_source(sub_node)
+                            init_node = sub_node
                         elif sub_node.name == 'forward':
                             forward_code = get_source(sub_node)
+                            forward_node = sub_node
 
         def clean_code(c):
             return textwrap.dedent(c).strip() if c else None
 
-        return clean_code(block_code), clean_code(init_code), clean_code(forward_code)
+        def clean_method_code(node):
+            if node is None:
+                return None
+            return ast.unparse(node).strip()
+
+        return (
+            clean_code(block_code),
+            clean_method_code(init_node),
+            clean_method_code(forward_node),
+        )
 
     except Exception as e:
         print(f"AST Parsing Failed: {e}")

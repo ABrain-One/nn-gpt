@@ -56,6 +56,7 @@ def main(
     llm_conf: str = 'ds_coder_7b_instruct.json',
     test_nn: int = 50,
     skip_epoches: int = -1,
+    context_length: int = 8192,
     **kwargs
 ):
     """
@@ -87,6 +88,7 @@ def main(
         test_nn=test_nn,
         skip_epoches=skip_epoches,
         nn_name_prefix=kwargs.get('nn_name_prefix', defaults['nn_name_prefix']),
+        context_length=context_length,
     )
 
 

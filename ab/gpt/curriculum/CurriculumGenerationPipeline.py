@@ -55,13 +55,25 @@ NNGPT_DIR = Path(__file__).parents[3].resolve()
 OUT_DIR   = NNGPT_DIR / "out"
 
 # ── Base model (original, never modified) ─────────────────────────────────────
-# Short name so LLM.py resolves tokenizer from out/tokenizer/open-r1/OlympicCoder-7B/
+
 BASE_MODEL_NAME = "open-r1/OlympicCoder-7B"
+
+# Dynamic override — use merged model from run_config.json if available
+_run_cfg_path = NNGPT_DIR / "out" / "nngpt" / "run_config.json"
+if _run_cfg_path.exists():
+    try:
+        import json as _json
+        _cfg = _json.loads(_run_cfg_path.read_text())
+        _merged = _cfg.get("base_model_name") or _cfg.get("base_model_name_or_path", "")
+        if _merged and Path(_merged).exists() and _merged != BASE_MODEL_NAME:
+            BASE_MODEL_NAME = _merged
+    except Exception:
+        pass
 BASE_MODEL_PATH = OUT_DIR / "llm" / "open-r1" / "OlympicCoder-7B"
 
 # ── Fixed curriculum sequence ─────────────────────────────────────────────────
 # Order is immutable — each level builds on the merged adapter of all previous.
-# Low band (0.60-0.85) is deliberately skipped — only 1 anchor group for CIFAR-10.
+# The drift is significant from Medium band to very_low_near band — because (0.65 - 0.85) only 1 anchor group for CIFAR-10.
 CURRICULUM_SEQUENCE = [
     {"level": "L1", "band": "high",          "k": 2, "epochs": 10,
      "description": "High-similarity references — establishes LEMUR-compatible code pattern"},
@@ -80,49 +92,129 @@ CURRICULUM_SEQUENCE = [
 # ── Dataset configurations ────────────────────────────────────────────────────
 DATASET_CONFIGS = {
     "cifar-10": {
-        "task":          "img-classification",
-        "metric":        "acc",
-        "transform":     "norm_256_flip",
-        "in_channels":   3,
-        "dummy_size":    224,
-        "viable_bands":  ["high", "medium", "very_low_near"],
-        "note":          "Full curriculum viable — 13,023 NNs, 2,634 acc≥0.85",
+        "task":             "img-classification",
+        "metric":           "acc",
+        "transform":        "norm_256_flip",
+        "in_channels":      3,
+        "dummy_size":       224,
+        "viable_bands":     ["high", "medium", "very_low_near"],
+        "note":             "Full curriculum viable — 13,023 NNs, 2,634 acc≥0.85",
+        # Architecture constraints for prompt generation
+        "anchor_family":    "rl-bb-init",
+        "use_pretrained":   True,
+        "backbone_whitelist": [
+            "resnet50", "densenet169", "mobilenet_v3_large",
+            "efficientnet_b0", "efficientnet_b3",
+        ],
+        "custom_cnn":       False,
+        "out_classes":      10,
+        "batch_hint":       16,
+        "input_size":       256,
+        "transform_value":  "norm_256_flip",
+        "arch_notes": [
+            "Use at most two backbone models total — never three.",
+            "Only use these backbone models: 'resnet50', 'densenet169', "
+            "'mobilenet_v3_large', 'efficientnet_b0', 'efficientnet_b3'.",
+            "Always use weights='DEFAULT' when instantiating TorchVision.",
+            "self.features() must receive raw input x — never backbone output.",
+        ],
     },
     "svhn": {
-        "task":          "img-classification",
-        "metric":        "acc",
-        "transform":     "norm_256_flip",
-        "in_channels":   3,
-        "dummy_size":    224,
-        "viable_bands":  ["very_low_near"],
-        "note":          "L3 only — 4,568 NNs, 1,671 acc≥0.85",
+        "task":             "img-classification",
+        "metric":           "acc",
+        "transform":        "norm_64_flip",
+        "in_channels":      3,
+        "dummy_size":       64,
+        "viable_bands":     ["very_low_near"],
+        "note":             "L3 only — 4,568 NNs, unq-family anchor, max J=0.82",
+        # Architecture constraints for prompt generation
+        "anchor_family":    "unq",
+        "use_pretrained":   False,
+        "backbone_whitelist": [],
+        "custom_cnn":       True,
+        "out_classes":      10,
+        "batch_hint":       512,
+        "input_size":       64,
+        "transform_value":  "norm_64_flip",
+        "arch_notes": [
+            "SVHN contains 32x32 RGB street digit images (10 classes).",
+            "Do NOT use pretrained TorchVision backbones.",
+            "Implement a compact custom CNN from scratch suitable for "
+            "small 32x32 or 64x64 inputs.",
+            "Use batch size 512 or 1024 — SVHN training requires large batches.",
+            "forward() must return a single Tensor of shape (batch, 10).",
+        ],
     },
     "celeba-gender": {
-        "task":          "img-classification",
-        "metric":        "acc",
-        "transform":     "norm_256_flip",
-        "in_channels":   3,
-        "dummy_size":    224,
-        "viable_bands":  ["very_low_near"],
-        "note":          "L3 only — 3,719 NNs, 2,171 acc≥0.85",
+        "task":             "img-classification",
+        "metric":           "acc",
+        "transform":        "norm_32_flip",
+        "in_channels":      3,
+        "dummy_size":       32,
+        "viable_bands":     [],
+        "note":             "Not viable — only 1 unique architecture at high J (ga-352 repeated)",
+        # Architecture constraints for prompt generation
+        "anchor_family":    "InceptionV3",
+        "use_pretrained":   False,
+        "backbone_whitelist": [],
+        "custom_cnn":       True,
+        "out_classes":      2,
+        "batch_hint":       4,
+        "input_size":       32,
+        "transform_value":  "norm_32_flip",
+        "arch_notes": [
+            "CelebA-Gender is a BINARY classification task (2 classes: male/female).",
+            "out_shape will be (batch, 2) — use 2 output neurons, not 10.",
+            "Do NOT use pretrained TorchVision backbones.",
+            "Implement a compact Inception-style custom CNN.",
+            "Use batch size 4 or 8 — CelebA images are large.",
+            "forward() must return a single Tensor of shape (batch, 2).",
+        ],
     },
     "mnist": {
-        "task":          "img-classification",
-        "metric":        "acc",
-        "transform":     "norm_256_flip",
-        "in_channels":   1,
-        "dummy_size":    28,
-        "viable_bands":  [],
-        "note":          "Not viable — only 4 rows in very_low_near",
+        "task":             "img-classification",
+        "metric":           "acc",
+        "transform":        "norm_28",
+        "in_channels":      1,
+        "dummy_size":       28,
+        "viable_bands":     [],
+        "note":             "Not viable — max pairwise J=0.23",
+        "anchor_family":    "unknown",
+        "use_pretrained":   False,
+        "backbone_whitelist": [],
+        "custom_cnn":       True,
+        "out_classes":      10,
+        "batch_hint":       64,
+        "input_size":       28,
+        "transform_value":  "norm_28",
+        "arch_notes": [
+            "MNIST contains 28x28 greyscale digit images (10 classes).",
+            "Input has 1 channel — do not assume 3-channel input.",
+            "Use a simple CNN — no pretrained backbones.",
+        ],
     },
     "cifar-100": {
-        "task":          "img-classification",
-        "metric":        "acc",
-        "transform":     "norm_256_flip",
-        "in_channels":   3,
-        "dummy_size":    224,
-        "viable_bands":  [],
-        "note":          "Not viable — 0 models with acc≥0.85",
+        "task":             "img-classification",
+        "metric":           "acc",
+        "transform":        "norm_256_flip",
+        "in_channels":      3,
+        "dummy_size":       224,
+        "viable_bands":     [],
+        "note":             "Not viable — 0 models above 72.9% accuracy",
+        "anchor_family":    "unknown",
+        "use_pretrained":   True,
+        "backbone_whitelist": [
+            "resnet50", "densenet169", "efficientnet_b3",
+        ],
+        "custom_cnn":       False,
+        "out_classes":      100,
+        "batch_hint":       16,
+        "input_size":       256,
+        "transform_value":  "norm_256_flip",
+        "arch_notes": [
+            "CIFAR-100 contains 32x32 RGB images across 100 classes.",
+            "out_shape will be (batch, 100) — use 100 output neurons.",
+        ],
     },
 }
 
@@ -253,44 +345,141 @@ def check_band_viability(dataset: str, band: str, k: int) -> tuple[bool, int]:
 
 
 # ── Prompt adaptation ─────────────────────────────────────────────────────────
+# Lines in the proven CIFAR-10 prompts that are backbone/architecture-specific
+# and must be REPLACED (not inherited) when adapting to a different dataset.
+_CIFAR10_BACKBONE_LINES = {
+    # The backbone whitelist constraint
+    "Only use these backbone models:",
+    # The pretrained weights instruction
+    "Always use weights='DEFAULT'",
+    # The self.features() instruction (CIFAR-10 specific)
+    "self.features() must receive raw input x",
+    # The maximum backbone count
+    "Use at most two backbone models total",
+    # The TorchVision helper reference
+    "TorchVision helper class",
+    # The transform hardcode
+    "norm_256_flip",
+    # The batch hint
+    "batch size capped at 16",
+}
+
+
+def _is_backbone_line(line: str) -> bool:
+    """Return True if this prompt line is CIFAR-10-specific architecture guidance."""
+    return any(marker in line for marker in _CIFAR10_BACKBONE_LINES)
+
+
 def adapt_prompt(source_cfg: dict, dataset: str, level: str, k: int, is_train: bool) -> dict:
     """
     Adapt a proven CIFAR-10 prompt config for a different dataset.
-    Only three things change: dataset name, transform, dummy tensor size.
-    All structural constraints (fix_param_usage requirements, backbone rules)
-    are inherited automatically from the proven prompt.
+
+    For CIFAR-10: only dataset name substitution (trivial no-op).
+    For other datasets: replace architecture-specific constraints with
+    dataset-appropriate ones derived from DATASET_CONFIGS[dataset].
+
+    This ensures the LLM receives correct guidance about:
+      - Whether to use pretrained TorchVision backbones
+      - Which specific backbone models are allowed
+      - Input image size and number of output classes
+      - Batch size appropriate for the dataset
+      - Transform name
     """
-    cfg = DATASET_CONFIGS.get(dataset, DATASET_CONFIGS["cifar-10"])
+    cfg     = DATASET_CONFIGS.get(dataset, DATASET_CONFIGS["cifar-10"])
     conf_id = get_conf_id(dataset, level, k)
 
     source_conf_id = list(source_cfg.keys())[0]
     source_conf    = source_cfg[source_conf_id]
 
-    new_conf = dict(source_conf)
+    new_conf        = dict(source_conf)
     new_conf["dataset"] = dataset
     new_conf["task"]    = cfg["task"]
     new_conf["metric"]  = cfg["metric"]
 
+    is_cifar10 = (dataset == "cifar-10")
+    transform  = cfg.get("transform_value", cfg.get("transform", "norm_256_flip"))
+    in_size    = cfg.get("input_size", 256)
+    batch_hint = cfg.get("batch_hint", 16)
+    out_cls    = cfg.get("out_classes", 10)
+    arch_notes = cfg.get("arch_notes", [])
+    use_pre    = cfg.get("use_pretrained", True)
+    whitelist  = cfg.get("backbone_whitelist", [])
+
     adapted_prompt = []
+    arch_notes_inserted = False
+
     for line in source_conf.get("prompt", []):
+        # Always substitute dataset name and transform
         line = line.replace("'cifar-10'", f"'{dataset}'")
         line = line.replace("dataset='cifar-10'", f"dataset='{dataset}'")
         line = line.replace('"cifar-10"', f'"{dataset}"')
-        if "norm_256_flip" in line and cfg["transform"] != "norm_256_flip":
-            line = line.replace("norm_256_flip", cfg["transform"])
-        if "224, 224" in line and cfg["dummy_size"] != 224:
-            line = line.replace("224, 224", f"{cfg['dummy_size']}, {cfg['dummy_size']}")
+        line = line.replace("norm_256_flip", transform)
+
+        if is_cifar10:
+            # No architecture substitution needed for CIFAR-10
+            adapted_prompt.append(line)
+            continue
+
+        # For non-CIFAR-10 datasets: skip lines that carry CIFAR-10
+        # architecture constraints and replace with dataset-specific ones
+        if _is_backbone_line(line):
+            if not arch_notes_inserted:
+                # Insert dataset-specific architecture constraints once
+                adapted_prompt.extend(arch_notes)
+                # Insert transform constraint
+                adapted_prompt.append(
+                    f"The 'transform' value in <hp> must be exactly '{transform}'."
+                )
+                # Insert out_classes constraint if binary
+                if out_cls != 10:
+                    adapted_prompt.append(
+                        f"The task has {out_cls} output classes — "
+                        f"use {out_cls} output neurons in the final layer."
+                    )
+                # Insert batch constraint
+                adapted_prompt.append(
+                    f"Use batch size {batch_hint} — appropriate for this dataset."
+                )
+                arch_notes_inserted = True
+            # Skip the original CIFAR-10 backbone line
+            continue
+
+        # Substitute 256x256 size references with dataset input size
+        if "256, 256" in line and in_size != 256:
+            line = line.replace("256, 256", f"{in_size}, {in_size}")
+        if "256x256" in line and in_size != 256:
+            line = line.replace("256x256", f"{in_size}x{in_size}")
+
         adapted_prompt.append(line)
+
+    # If no backbone lines were found to trigger insertion,
+    # append arch_notes at the end before references
+    if not is_cifar10 and not arch_notes_inserted and arch_notes:
+        # Find insertion point — just before "Reference A"
+        insert_idx = next(
+            (i for i, l in enumerate(adapted_prompt)
+             if "Reference A" in l),
+            len(adapted_prompt)
+        )
+        for note in arch_notes:
+            adapted_prompt.insert(insert_idx, note)
+            insert_idx += 1
+        adapted_prompt.insert(insert_idx,
+            f"The 'transform' value in <hp> must be exactly '{transform}'.")
+        if out_cls != 10:
+            adapted_prompt.insert(insert_idx + 1,
+                f"The task has {out_cls} output classes — "
+                f"use {out_cls} output neurons.")
+
     new_conf["prompt"] = adapted_prompt
 
     if is_train:
         adapted_output = []
         for line in source_conf.get("output", []):
             line = line.replace("'cifar-10'", f"'{dataset}'")
-            if "norm_256_flip" in line and cfg["transform"] != "norm_256_flip":
-                line = line.replace("norm_256_flip", cfg["transform"])
+            line = line.replace("norm_256_flip", transform)
             adapted_output.append(line)
-        new_conf["output"] = adapted_output
+        new_conf["output"]       = adapted_output
         new_conf["is_generation"] = False
     else:
         new_conf["output"]       = []
@@ -303,31 +492,56 @@ def adapt_prompt(source_cfg: dict, dataset: str, level: str, k: int, is_train: b
 def write_llm_conf(dataset: str, current_model_path: str, dry_run: bool = False) -> str:
     """
     Write LLM configuration JSON for this curriculum step.
-    Points to the current merged model (or base model for L1).
+    Uses current_model_path — the merged model from the previous step,
+    or the original base model for the first step.
+
     """
     dataset_safe = dataset.replace("-", "_")
     conf_name    = f"ds_coder_7b_olympic_ft_{dataset_safe}.json"
     conf_path    = NNGPT_DIR / "ab" / "gpt" / "conf" / "llm" / conf_name
 
+    # Resolve the model path to write into the conf:
+    # 1. Use current_model_path if it points to an existing directory
+    # 2. Fall back to run_config.json if available
+    # 3. Fall back to BASE_MODEL_NAME as last resort
+    resolved_path = BASE_MODEL_NAME
+    if current_model_path and Path(current_model_path).exists():
+        resolved_path = current_model_path
+        log(f"  Using merged model: {Path(current_model_path).name}")
+    else:
+        # Try run_config.json
+        run_cfg = NNGPT_DIR / "out" / "nngpt" / "run_config.json"
+        if run_cfg.exists():
+            try:
+                cfg = json.loads(run_cfg.read_text())
+                p = cfg.get("base_model_name", "")
+                if p and Path(p).exists() and (Path(p) / "config.json").exists():
+                    resolved_path = p
+                    log(f"  Using model from run_config.json: {Path(p).name}")
+            except Exception:
+                pass
+        if resolved_path == BASE_MODEL_NAME:
+            log(f"  Using base model (no merged model found)")
+
     config = {
-        "base_model_name":  BASE_MODEL_NAME,
-        "num_epochs":       100,
-        "num_test_epochs":  2,
-        "use_deepspeed":    False,
-        "token_from_file":  False,
+        "base_model_name":    resolved_path,
+        "num_epochs":         10,
+        "num_test_epochs":    2,
+        "use_deepspeed":      False,
+        "token_from_file":    False,
         "only_best_accuracy": False,
-        "context_length":   8192,
-        "max_input_length": 8192,
-        "max_new_tokens":   16384,
+        "context_length":     8192,
+        "max_input_length":   8192,
+        "max_new_tokens":     16384,
     }
 
     if not dry_run:
         conf_path.write_text(json.dumps(config, indent=2))
         log(f"Wrote LLM conf → {conf_name}")
-        log(f"  base_model: {BASE_MODEL_PATH}")
+        log(f"  base_model_name: {resolved_path}")
     else:
         log(f"[DRY RUN] Would write LLM conf: {conf_name}")
-        log(f"  base_model: {BASE_MODEL_PATH}")
+        log(f"  base_model_name: {resolved_path}")
 
     return conf_name
 
@@ -416,7 +630,7 @@ def write_entry_script(dataset: str, level: str, k: int,
         f'NN_GEN_CONF_ID  = "{conf_id}"',
         f'LLM_CONF        = "{llm_conf}"',
         f'NN_NAME_PREFIX  = "{nn_prefix}"',
-        f'TEST_NN         = 10',
+        f'TEST_NN         = 20',
         f'NN_TRAIN_EPOCHS = 1',
         f'SKIP_EPOCHS     = 1',
         f'MAX_NEW_TOKENS  = 16384',
@@ -840,7 +1054,7 @@ def main() -> None:
         description="Automatic progressive curriculum fine-tuning pipeline",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
+Examples command lines:
   # Full automatic curriculum — only dataset required
   python -m ab.gpt.CurriculumGenerationPipeline --dataset cifar-10
 

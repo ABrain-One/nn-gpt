@@ -7,7 +7,7 @@ def main():
                    test_nn=2,
                    skip_epoches=0,
                    nn_name_prefix='check_results',
-                   unsloth_opt=False
+                   context_length=8192,
                    )
 
 

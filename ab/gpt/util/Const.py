@@ -15,6 +15,7 @@ conf_prompt_dir = conf_dir / 'prompt'
 conf_test_dir = conf_prompt_dir / 'test'
 conf_train_dir = conf_prompt_dir / 'train'
 conf_llm_dir = conf_dir / 'llm'
+conf_chat_template_dir = conf_dir / 'chat_template'
 
 nngpt_dir = out_dir / 'nngpt'
 
@@ -22,7 +23,7 @@ nngpt_dir = out_dir / 'nngpt'
 # Setting NNGPT_DIR_OVERRIDE env var to redirect all nngpt output to a custom path.
 # Used by CurriculumGenerationPipeline.py to isolate per-dataset/level/k runs.
 import os as _os
-_nngpt_override = _os.environ.get("NNGPT_DIR_OVERRIDE")
+_nngpt_override = _os.environ.get("AB_GPT_NNGPT_DIR") or _os.environ.get("NNGPT_DIR_OVERRIDE")
 if _nngpt_override:
     nngpt_dir = Path(_nngpt_override)
     print(f"[Const] nngpt_dir overridden → {nngpt_dir}")
@@ -49,6 +50,7 @@ huggingface_cache = out_dir / 'llm'
 huggingface_tokenizer_cache = out_dir / 'tokenizer'
 default_huggingface_cache = huggingface_cache
 default_huggingface_tokenizer_cache = huggingface_tokenizer_cache
+
 
 
 def model_dir(base):

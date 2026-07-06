@@ -12,7 +12,8 @@ def main(dry_run=False):
         max_prompts=3 if dry_run else 1024,
         onnx_run=False,
         classification_mode=True,
-        test_nn=30
+        test_nn=30,
+        context_length=8192,
     )
 
 

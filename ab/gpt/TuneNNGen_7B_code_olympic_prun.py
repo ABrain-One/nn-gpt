@@ -21,6 +21,8 @@ def main():
         use_agents=False,
         use_predictor=False,
         num_train_epochs=2,
+        context_length=256,
+        num_cycles=2,
     )
 
 if __name__ == "__main__":

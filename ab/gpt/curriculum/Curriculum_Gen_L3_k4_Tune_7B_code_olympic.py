@@ -11,7 +11,8 @@ def main():
         test_nn=10,
         skip_epoches=1,
         nn_name_prefix='l3_k4',
-        use_agents=False
+        use_agents=False,
+        context_length=8192,
     )
 
 

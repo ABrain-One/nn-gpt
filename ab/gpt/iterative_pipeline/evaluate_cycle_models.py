@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Universal wrapper to evaluate models for any cycle through NNEval.
+Universal wrapper to evaluate models for a cycle through NNEval.
 """
 
 import json
@@ -15,13 +15,24 @@ sys.path.insert(0, str(Path(__file__).parent))
 from ab.gpt import NNEval
 
 
-def evaluate_cycle_models(cycle: int, nneval_dir: Path):
+def evaluate_cycle_models(
+    cycle: int,
+    nneval_dir: Path,
+    *,
+    save_eval_checkpoint: bool = False,
+    save_to_db: bool = True,
+):
     """
     Evaluate all models in a cycle's nneval directory.
     """
+    if save_eval_checkpoint and save_to_db:
+        # Mobile checkpoint export is local-only; skip nn-dataset DB dedup/saves.
+        save_to_db = False
+
     print("=" * 80)
     print(f"EVALUATING CYCLE {cycle} MODELS")
     print("=" * 80)
+    print(f"save_to_db={save_to_db}, save_eval_checkpoint={save_eval_checkpoint}")
     print()
 
     if not nneval_dir.exists():
@@ -40,7 +51,7 @@ def evaluate_cycle_models(cycle: int, nneval_dir: Path):
         nn_name_prefix=None,
         nn_train_epochs=1,
         only_epoch=0,
-        save_to_db=True,
+        save_to_db=save_to_db,
         nn_alter_epochs=1,
         task="img-classification",
         dataset="cifar-10",
@@ -52,7 +63,8 @@ def evaluate_cycle_models(cycle: int, nneval_dir: Path):
         transform="norm_256_flip",
         custom_synth_dir=str(nneval_dir),
         cycle=cycle,
-        use_all_visible_gpus=True,
+        use_all_visible_gpus=False,
+        save_eval_checkpoint=save_eval_checkpoint,
     )
 
     epoch_summaries = list(summary.get("epochs", []) or [])
@@ -112,6 +124,16 @@ def main():
     parser = argparse.ArgumentParser(description="Evaluate models for a cycle via NNEval")
     parser.add_argument("--cycle", type=int, required=True, help="Cycle number")
     parser.add_argument("--nneval_dir", type=str, help="Path to nneval directory (auto-detected if not provided)")
+    parser.add_argument(
+        "--save_eval_checkpoint",
+        action="store_true",
+        help="Save eval_checkpoint.pth after training (mobile deployment pipeline only).",
+    )
+    parser.add_argument(
+        "--no-save-to-db",
+        action="store_true",
+        help="Do not save to nn-dataset DB (mobile re-eval; bypasses duplicate checksum skip).",
+    )
 
     args = parser.parse_args()
 
@@ -120,7 +142,12 @@ def main():
     else:
         nneval_dir = out_dir / "iterative_cycles" / f"cycle_{args.cycle}/nneval"
 
-    evaluate_cycle_models(args.cycle, nneval_dir)
+    evaluate_cycle_models(
+        args.cycle,
+        nneval_dir,
+        save_eval_checkpoint=args.save_eval_checkpoint,
+        save_to_db=not args.no_save_to_db,
+    )
 
 
 if __name__ == "__main__":

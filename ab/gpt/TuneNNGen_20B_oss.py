@@ -71,8 +71,8 @@ if __name__ == '__main__':
                         help=f'Number of training epochs for the generated neural network (default: {NN_TRAIN_EPOCHS}).')
     parser.add_argument('-m', '--max_prompts', type=int, default=TuneNNGen.MAX_PROMPTS,
                         help=f'Max prompts for LLM fine-tuning; excess is truncated (default: {TuneNNGen.MAX_PROMPTS}).')
-    parser.add_argument('--max_new_tokens', type=int, default=TuneNNGen.MAX_NEW_TOKENS,
-                        help=f'Max number of tokens in LLM output (default: {TuneNNGen.MAX_NEW_TOKENS}).')
+    parser.add_argument('--max_new_tokens', type=int, default=3000,
+                        help='Max number of tokens in LLM output (default: 3000).')
     parser.add_argument('--save_llm_output', type=bool, default=TuneNNGen.SAVE_LLM_OUTPUT,
                         help=f'Save full output of LLM in the file {new_out_file} (default: {TuneNNGen.SAVE_LLM_OUTPUT}).')
     parser.add_argument('--use_deepspeed', type=bool, default=TuneNNGen.USE_DEEPSPEED,
@@ -170,4 +170,8 @@ if __name__ == '__main__':
          metric_for_best_model=args.metric_for_best_model,
          warmup_steps=args.warmup_steps,
          weight_decay=args.weight_decay,
+         num_cycles=3,
+         unsloth_opt=True,
+         load_in_4bit=True,
+         context_length=4600,
          )
