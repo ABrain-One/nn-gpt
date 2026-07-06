@@ -11,7 +11,7 @@ This script uses: NN_gen_blip2fastopt.json
 
 Usage:
     python -m ab.gpt.NNAlter_7B_delta_captioning --epochs 8
-    python -m ab.gpt.NNAlter_7B_delta_captioning --epochs 1 --prefix Blip2Fast
+    python -m ab.gpt.NNAlter_7B_delta_captioning --epochs 1 --prefix Blip2FastOpt
 """
 
 import argparse
@@ -81,7 +81,7 @@ def main():
     parser.add_argument(
         "--prefix",
         type=str,
-        default="Blip2Fast",
+        default="Blip2FastOpt",
         help="Prefix of the baseline models to use.",
     )
 
@@ -96,7 +96,7 @@ def main():
     from ab.gpt.util.Chatbot import ChatBot
     from ab.gpt.util.LLMUtil import quantization_config_4bit
 
-    prompt_conf_name = "NN_gen_blip2fastopt.json"
+    prompt_conf_name = "NN_gen_blip2fast.json"
     with open(conf_test_dir / prompt_conf_name) as prompt_file:
         prompt_dict = json.load(prompt_file)
     conf_keys = list(prompt_dict.keys())

@@ -746,11 +746,11 @@ def assemble_nn_code(nn_head_code, prm=None, device="cuda", q_former_hidden=768)
         print("[WARNING] Delta pipeline failed or fallback triggered for Blip2Fast. Returning untouched baseline to prevent syntax errors.")
         import os
         import importlib.util
-        spec = importlib.util.find_spec("ab.nn.nn.Blip2Fast")
+        spec = importlib.util.find_spec("ab.nn.nn.Blip2FastOpt")
         if spec is not None:
             baseline_path = spec.origin
         else:
-            baseline_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../nn-dataset/ab/nn/nn/Blip2Fast.py"))
+            baseline_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../nn-dataset/ab/nn/nn/Blip2FastOpt.py"))
         with open(baseline_path, "r") as f:
             return f.read()
 
@@ -1386,11 +1386,11 @@ def assemble_blip2fastopt_code(llm_code: str, prm: dict = None) -> str:
     # Read Baseline
     import os
     import importlib.util
-    spec = importlib.util.find_spec("ab.nn.nn.Blip2Fast")
+    spec = importlib.util.find_spec("ab.nn.nn.Blip2FastOpt")
     if spec is not None:
         baseline_path = spec.origin
     else:
-        baseline_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../nn-dataset/ab/nn/nn/Blip2Fast.py"))
+        baseline_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../nn-dataset/ab/nn/nn/Blip2FastOpt.py"))
     with open(baseline_path, "r") as f:
         baseline_code = f.read()
 

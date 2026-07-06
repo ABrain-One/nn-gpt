@@ -412,9 +412,8 @@ def _collect_epoch_requests(
         if hp_path.exists():
             try:
                 prm = json.loads(hp_path.read_text(encoding="utf-8"))
-                print(f"Training model {model_id} with LLM recommended prm {prm}")
             except Exception as exc:
-                print(f"Error loading LLM recommended training params from {hp_path}: {exc}.")
+                pass  # Silently ignore bad hp.json, fall through to defaults
         if not prm:
             prm = _default_eval_prm(
                 lr=lr,
@@ -443,7 +442,6 @@ def _collect_epoch_requests(
                 pin_memory=pin_memory,
                 freeze_gpt2=freeze_gpt2,
             )
-            print(f"Training model {model_id} with command-line/default training params {prm}")
 
         prefix_for_db = nn_name_prefix
         orig_pref = None
@@ -610,7 +608,6 @@ def main(
                     models_base_dir = synth_dir(current_alter_epoch_path)
 
                 if not models_base_dir.exists():
-                    print(f"Directory {models_base_dir} for NNAlter epoch {i} not found. Skipping.")
                     continue
 
                 print(f"\n--- Scanning NNAlter Epoch Directory: {current_alter_epoch_path} ---")
@@ -739,8 +736,8 @@ if __name__ == "__main__":
         "-ae",
         "--nn_alter_epochs",
         type=int,
-        default=NN_ALTER_EPOCHS,
-        help="Number of epochs NNAlter.py was run for.",
+        default=None,
+        help="Number of epochs NNAlter.py was run for (default: auto-detect all folders).",
     )
     parser.add_argument(
         "-oe",

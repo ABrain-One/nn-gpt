@@ -1,4 +1,4 @@
-from overrides import override
+def override(func): return func
 from pandas import DataFrame
 from transformers import PreTrainedTokenizerBase
 from datasets import Dataset

@@ -35,7 +35,10 @@ from ab.gpt.util.Const import *
 from ab.gpt.util.Const import nngpt_dir
 
 from ab.gpt.util.LLMUtil import quantization_config_4bit
-from ab.gpt.util.LoRA import LoRA
+try:
+    from ab.gpt.util.LoRA import LoRA
+except ImportError:
+    pass
 from ab.gpt.util.Util import (
     exists,
     extract_delta,
@@ -383,7 +386,15 @@ def nn_gen(
             for (idx, system_text, prompt_text, origdf, output_type), output in zip(batch, batch_outputs):
                 model_dir = models_dir / f"B{idx}"
                 code, hp, tr, full_out = output
-                if use_backbone:
+                if "Blip2Fast" in nn_name_prefix:
+                    from ab.gpt.util.CaptioningUtil import assemble_blip2fastopt_code
+                    try:
+                        code = assemble_blip2fastopt_code(full_out)
+                        print(f"[INFO] Successfully assembled Blip2Fast Delta for model B{idx}")
+                    except Exception as e:
+                        print(f"[ERROR] Failed to assemble Blip2Fast delta: {e}")
+                        code = None
+                elif use_backbone:
                     code = SFTUtil.assemble_backbone_xml_completion(full_out)
                     if code is None:
                         print(f'[ERROR] Missing backbone XML tags for model B{idx}')
@@ -888,25 +899,27 @@ def _finetune_epoch(
         )
         data_processor = NNGenPrompt(length, tokenizer, train_config_path)
 
-    dataset = data_processor.get_dataset(
-        only_best_accuracy,
-        max_prompts=max_prompts,
-        max_new_tokens=max_new_tokens,
-    )
+    if lora_tuner is not None:
+        dataset = data_processor.get_dataset(
+            only_best_accuracy,
+            max_prompts=max_prompts,
+            max_new_tokens=max_new_tokens,
+        )
 
-    print("Dataset length:", len(dataset))
-    model.train()
-    model = lora_tuner.train(
-        dataset,
-        tokenizer,
-        out_path / base_model_name,
-        train_on_completions_only=use_backbone,
-        resume_from_checkpoint=resume_trainer_checkpoint,
-        checkpoint_label="trainer",
-    )
+        print("Dataset length:", len(dataset))
+        model.train()
+        model = lora_tuner.train(
+            dataset,
+            tokenizer,
+            out_path / base_model_name,
+            train_on_completions_only=use_backbone,
+            resume_from_checkpoint=resume_trainer_checkpoint,
+            checkpoint_label="trainer",
+        )
 
-    del dataset
-    release_memory()
+        del dataset
+        release_memory()
+
 
     chat_bot = ChatBot(
         model, tokenizer, temperature=temperature, top_k=top_k, top_p=top_p)
@@ -1088,7 +1101,9 @@ def tune(
     if use_deepspeed:
         deepspeed.initialize(model=model, config_params=ds_conf)
 
-    lora_tuner = LoRA(
+    lora_tuner = None
+    if "LoRA" in globals():
+        lora_tuner = LoRA(
         model,
         tokenizer,
         training_args=training_args,
@@ -1150,8 +1165,12 @@ def tune(
     shutil.rmtree(epoch_root_path, ignore_errors=True)
 
     if use_agents:
-        from ab.gpt.agents.run_agent import run_agent_controller
-        return run_agent_controller(state)
+        try:
+            from ab.gpt.agents.run_agent import run_agent_controller
+            return run_agent_controller(state)
+        except ImportError as e:
+            print(f"[WARNING] Agents requested but dependencies missing ({e}). Falling back to standard pipeline.")
+            pass
 
     for epoch in range(llm_tune_epochs):
         print(f'[INFO]Start Epoch {epoch}')

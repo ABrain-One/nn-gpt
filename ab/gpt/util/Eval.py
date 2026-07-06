@@ -63,8 +63,14 @@ class Eval:
         if self.use_ast_validation:
             for prm_key in prm_keys:
                 param_used = False
+                if prm_key == 'batch':
+                    param_used = True  # 'batch' is controlled by DataLoader outside the code
+
                 for node in ast.walk(tree):
-                    # Check for prm['key'] pattern (subscript)
+                    if param_used:
+                        break
+                    
+                    # Check for prm['key'] or self.prm['key'] pattern (subscript)
                     if isinstance(node, ast.Subscript):
                         if isinstance(node.value, ast.Name) and node.value.id == 'prm':
                             if isinstance(node.slice, ast.Constant) and node.slice.value == prm_key:
@@ -93,6 +99,10 @@ class Eval:
         
         if df.empty or allow_retrain:
             with _isolated_eval_tmp_modules():
+                kwargs = {}
+                if hasattr(self, 'epoch_limit_minutes') and self.epoch_limit_minutes is not None:
+                    kwargs['epoch_limit_minutes'] = self.epoch_limit_minutes
+
                 if checkpoint_path:
                     from ab.gpt.util.eval_checkpoint import train_and_eval_with_checkpoint
 
@@ -107,6 +117,7 @@ class Eval:
                         prefix=self.prefix,
                         save_path=self.save_path,
                     )
+
                 return api.check_nn(
                     code,
                     self.task,
@@ -116,6 +127,7 @@ class Eval:
                     self.save_to_db,
                     self.prefix,
                     self.save_path,
+                    **kwargs
                 )
         else:
             print(f"  [INFO] NN with checksum {new_checksum} already exists in database. Skipping.")

@@ -1,6 +1,6 @@
 import ab.nn as lemur
 
-from overrides import override
+def override(func): return func
 from pandas import DataFrame
 from transformers import PreTrainedTokenizerBase
 

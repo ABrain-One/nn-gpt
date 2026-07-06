@@ -156,7 +156,7 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
         B_index = 0
         for idx, prompt_data in tqdm(enumerate(prompts), desc="Generate Deltas"):
             prompt, origdf = prompt_data
-            model_dir = synth_dir(out_path) / f"Blip2Fast-A{target_epoch}-B{B_index}"
+            model_dir = synth_dir(out_path) / f"Blip2FastOpt-A{target_epoch}-B{B_index}"
             code_file = model_dir / new_nn_file
             df_file = model_dir / 'dataframe.df'
 
@@ -203,6 +203,30 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
                     conversation_history.append({'role': 'user', 'content': error_feedback})
                     print(f"[REFLECTION] No <nn_head> tag found. Sending correction feedback to LLM.")
                     continue
+
+                # ── PERMANENT SANITIZATION (runs on every generated class before saving) ──
+                import re as _re
+
+                # 1. Fix: selfproj1 → self.proj1 (LLM drops the dot+self)
+                nn_head = nn_head.replace('selfproj1', 'self.proj1')
+                nn_head = nn_head.replace('selfproj2', 'self.proj2')
+                nn_head = nn_head.replace('selfproj3', 'self.proj3')
+
+                # 2. Cap hidden_dim / hidden_size literals to 1024 max to prevent OOM.
+                # The OPT-2.7B model already uses ~13 GB; a huge bridge layer will OOM.
+                def _cap_dim(m):
+                    val = int(m.group(1))
+                    return m.group(0).replace(m.group(1), str(min(val, 1024)))
+                nn_head = _re.sub(r'(hidden_dim\s*=\s*)(\d+)', lambda m: m.group(1) + str(min(int(m.group(2)), 1024)), nn_head)
+                nn_head = _re.sub(r'(hidden_size\s*=\s*)(\d+)', lambda m: m.group(1) + str(min(int(m.group(2)), 1024)), nn_head)
+                # Cap the output dim of Linear layers (second arg) to 1024 when > 2048
+                def _cap_linear(m):
+                    out = int(m.group(2))
+                    if out > 2048:
+                        return m.group(0).replace(m.group(2), '1024', 1)
+                    return m.group(0)
+                nn_head = _re.sub(r'(nn\.Linear\s*\(\s*\d+\s*,\s*)(\d+)', _cap_linear, nn_head)
+                # ── END SANITIZATION ────────────────────────────────────────────────────
 
                 if origdf is None:
                     print(f"[WARNING] No baseline dataframe for Model_{B_index}. Skipping.")
@@ -276,17 +300,38 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
                             # Enforce safe lr ceiling
                             if 'lr' in hp_dict and float(hp_dict['lr']) > 0.0005:
                                 hp_dict['lr'] = 0.0001
-                                print(f"[INFO] LLM lr too high — clamped to 0.0001")
                             if 'prm' not in origdf or not isinstance(origdf['prm'], dict):
                                 origdf['prm'] = {}
                             origdf['prm'].update(hp_dict)
-                            # Also save hp.json so NNEval reads LLM's lr/batch directly
-                            hp_json_file = model_dir / 'hp.json'
-                            with open(hp_json_file, 'w') as f:
-                                json.dump(hp_dict, f)
-                            print(f"[INFO] Baked LLM hyperparams: {hp_dict}")
-                        except Exception as e:
-                            print(f"[WARNING] Could not parse LLM <hp> JSON '{hp_str}': {e}")
+                        except Exception:
+                            hp_dict = {}
+                    else:
+                        hp_dict = {}
+
+                    # --- SMART OOM PREVENTION: scale down hp if heavy projection detected ---
+                    import re as _re
+                    # Find all hidden_dim / Linear sizes in the generated class
+                    hidden_sizes = [int(x) for x in _re.findall(r'nn\.Linear\s*\(\s*\d+\s*,\s*(\d+)', nn_head)]
+                    hidden_sizes += [int(x) for x in _re.findall(r'hidden_dim\s*=\s*(\d+)', nn_head)]
+                    hidden_sizes += [int(x) for x in _re.findall(r'hidden_size\s*=\s*(\d+)', nn_head)]
+                    max_hidden = max(hidden_sizes) if hidden_sizes else 0
+
+                    if max_hidden > 2048:
+                        # Very heavy: cut batch and lr aggressively
+                        hp_dict['batch'] = 4
+                        hp_dict['lr'] = 5e-5
+                    elif max_hidden > 1024:
+                        hp_dict['batch'] = 8
+                        hp_dict['lr'] = hp_dict.get('lr', 0.0001)
+
+                    if hp_dict:
+                        if 'prm' not in origdf or not isinstance(origdf['prm'], dict):
+                            origdf['prm'] = {}
+                        origdf['prm'].update(hp_dict)
+                        # Save hp.json so NNEval reads lr/batch directly
+                        hp_json_file = model_dir / 'hp.json'
+                        with open(hp_json_file, 'w') as f:
+                            json.dump(hp_dict, f)
 
                     origdf.to_pickle(df_file)
                     B_index += 1
