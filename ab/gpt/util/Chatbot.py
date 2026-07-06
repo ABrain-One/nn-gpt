@@ -4,6 +4,7 @@ import os
 import re
 
 from transformers import PreTrainedTokenizer, PreTrainedModel, pipeline
+from ab.gpt.util.GenerationDType import align_generation_head_dtype, infer_generation_head_dtype
 from ab.gpt.util.Util import extract_code, extract_hyperparam, extract_transform, extract_all_to_train
 import torch
 
@@ -111,6 +112,14 @@ class ChatBot:
             type(model).__name__ == 'ORTModelForCausalLM' or
             'ORTModel' in type(model).__name__
         )
+
+        if not self.is_onnx:
+            generation_dtype = infer_generation_head_dtype(self.model)
+            align_generation_head_dtype(
+                self.model,
+                generation_dtype,
+                log_prefix="[ChatBot]",
+            )
         
         # Only create pipeline for PyTorch models
         force_direct = os.getenv("NNGPT_FORCE_DIRECT_GENERATE", "").strip().lower() in {"1", "true", "yes", "on"}
@@ -398,4 +407,4 @@ class ChatBot:
             print(f"[ERROR] Direct generation failed: {e}")
             import traceback
             traceback.print_exc()
-            return None, None, None, ""
+            raise RuntimeError("Direct generation failed") from e
