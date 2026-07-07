@@ -193,6 +193,120 @@ def _shim_nneval_kwargs() -> None:
     NNEval.main = _edge_main
 
 
+# Similarity bands (Jaccard vs anchor), matching the lab's curriculum levels.
+_SIM_BANDS = {
+    'high': (0.95, 1.0000001),
+    'medium': (0.85, 0.95),
+    'low': (0.60, 0.85),
+    'very_low': (0.0, 0.60),
+    'very_low_near': (0.30, 0.85),
+}
+
+
+def _install_reference_filter(max_params: int, min_acc: float) -> None:
+    """Constrain the k-reference pool to edge-appropriate models
+    (params <= max_params AND accuracy >= min_acc), as agreed with the advisor.
+
+    The stock anchor-band query ranks the whole DB by accuracy before slicing,
+    so <=6M models (best 0.939 on cifar-10) never surface among the 0.95+
+    heavyweights — post-filtering its output yields zero rows, and JoinConf has
+    no params/accuracy fields to push the filter into SQL. This wrapper
+    intercepts anchor-band reference queries only and rebuilds the result:
+    plain best-accuracy query -> params+accuracy filter -> anchor = best
+    filtered model -> Jaccard vs anchor from the stored nn_minhash signatures
+    -> band selection. Returned frame matches the tall-mode shape the
+    curriculum prompt builder expects (anchor_nn, anchor_jaccard, nn_code,
+    prm, transform_code, ...). All other lemur.data calls pass through.
+    """
+    if not (max_params or min_acc):
+        return
+    import numpy as np
+    import sqlite3
+    import ab.nn.api as lemur
+    from ab.nn.util.Const import db_file
+
+    original = lemur.data
+    aux: dict = {}
+
+    def _load_aux():
+        con = sqlite3.connect(str(db_file))
+        aux['params'] = dict(con.execute(
+            'SELECT nn_name, MIN(total_params) FROM nn_stat GROUP BY nn_name'))
+        aux['sigs'] = {nn: np.frombuffer(hv, dtype=np.uint32)
+                       for nn, hv in con.execute('SELECT nn, hashvalues FROM nn_minhash')}
+        con.close()
+
+    def _filtered_data(*args, **kwargs):
+        sql = kwargs.get('sql')
+        if getattr(sql, 'similarity_mode', None) != 'anchor_band_db_minhash':
+            return original(*args, **kwargs)
+
+        if not aux:
+            _load_aux()
+        k = int(getattr(sql, 'num_joint_nns', 2) or 2)
+        band = getattr(sql, 'similarity_band', None) or 'very_low_near'
+        band_min, band_max = _SIM_BANDS.get(band, (0.0, 1.0000001))
+        max_rows = kwargs.get('max_rows') or 400
+
+        pool = original(
+            only_best_accuracy=True,
+            task=kwargs.get('task'),
+            dataset=kwargs.get('dataset'),
+            metric=kwargs.get('metric'),
+            nn_prefixes=kwargs.get('nn_prefixes') or (),
+            max_rows=100000,
+        )
+        pool = pool[pool['nn'].isin(aux['sigs'])].copy()
+        pool['params'] = pool['nn'].map(aux['params'])
+        if max_params:
+            pool = pool[pool['params'].notna() & (pool['params'] <= max_params)]
+        if min_acc:
+            pool = pool[pool['accuracy'] >= min_acc]
+        if len(pool) <= k:
+            raise ValueError(
+                f'[EDGE] Reference filter left only {len(pool)} models '
+                f'(params<={max_params}, acc>={min_acc}) — relax the thresholds '
+                f'(EDGE_REF_MAX_PARAMS / EDGE_REF_MIN_ACC).')
+
+        # one row per model (best accuracy variant)
+        pool = (pool.sort_values('accuracy', ascending=False)
+                    .drop_duplicates('nn').reset_index(drop=True))
+        anchor = pool.iloc[0]['nn']
+        anchor_sig = aux['sigs'][anchor]
+        pool['anchor_jaccard'] = pool['nn'].map(
+            lambda n: float((aux['sigs'][n] == anchor_sig).mean()))
+
+        # Band selection is RANK-based within the filtered pool, because the
+        # absolute Jaccard bands were calibrated on the unfiltered DB: inside
+        # the edge pool the similarity distribution is bimodal (one family at
+        # >0.85, everything else <0.2, nothing between), so absolute ranges
+        # come up empty. Rank semantics preserve the curriculum meaning:
+        #   high   -> most similar to the anchor (easy imitation)
+        #   medium -> middle of the similarity ranking
+        #   low*   -> most dissimilar (hard synthesis)
+        members = pool[pool['nn'] != anchor].copy()
+        if band == 'high':
+            out = members.sort_values(['anchor_jaccard', 'accuracy'],
+                                      ascending=[False, False])
+        elif band in ('low', 'very_low', 'very_low_near'):
+            out = members.sort_values(['anchor_jaccard', 'accuracy'],
+                                      ascending=[True, False])
+        else:  # medium: closest to the pool's median similarity
+            median_j = members['anchor_jaccard'].median()
+            out = members.assign(_d=(members['anchor_jaccard'] - median_j).abs()) \
+                         .sort_values(['_d', 'accuracy'], ascending=[True, False]) \
+                         .drop(columns=['_d'])
+        out = out.head(max_rows).copy()
+        out['anchor_nn'] = anchor
+        print(f"[EDGE] Reference filter: pool={len(pool)} band[{band}] rows={len(out)} "
+              f"jaccard=[{out['anchor_jaccard'].min():.3f}, {out['anchor_jaccard'].max():.3f}] "
+              f"anchor={anchor} (params<={max_params}, acc>={min_acc})")
+        return out.reset_index(drop=True)
+
+    _filtered_data.cache_clear = getattr(original, 'cache_clear', lambda: None)
+    lemur.data = _filtered_data
+
+
 def _write_run_manifest(config: dict) -> None:
     """Persist the full run configuration + environment for reproducibility
     (report/preprint appendix). One timestamped file per run in out/edge/runs/."""
@@ -257,7 +371,9 @@ def main(llm_conf: str = 'ds_coder_7b_olympic.json',
          tune_layers=range(START_LAYER, END_LAYER),
          peft: str = None,
          enable_merge: bool = False,
-         prompt_batch: int = 1) -> None:
+         prompt_batch: int = 1,
+         ref_max_params: int = 6_000_000,
+         ref_min_acc: float = 0.85) -> None:
 
     persist_run_config(llm_conf, enable_merge)
     _write_run_manifest(dict(
@@ -277,6 +393,7 @@ def main(llm_conf: str = 'ds_coder_7b_olympic.json',
 
     _force_flash_attention()
     _shim_nneval_kwargs()
+    _install_reference_filter(ref_max_params, ref_min_acc)
 
     from peft import LoraConfig
     from trl import SFTConfig
