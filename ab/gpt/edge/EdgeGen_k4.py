@@ -92,6 +92,27 @@ def _force_flash_attention() -> bool:
         print('[EDGE] flash_attn not installed — long-prompt generation may OOM on <40GB GPUs '
               '(install per req-no-isolation.txt)')
         return False
+
+    # transformers verifies flash_attn via package METADATA, which some images
+    # lack even though the module imports. Synthesize a minimal dist-info next
+    # to the working directory (on sys.path when running via python -m).
+    import importlib.metadata as _md
+    try:
+        _md.version('flash_attn')
+    except _md.PackageNotFoundError:
+        import os as _os
+        version = getattr(flash_attn, '__version__', '2.8.3')
+        dist_dir = _os.path.join(_os.getcwd(), f'flash_attn-{version}.dist-info')
+        try:
+            _os.makedirs(dist_dir, exist_ok=True)
+            with open(_os.path.join(dist_dir, 'METADATA'), 'w') as f:
+                f.write(f'Metadata-Version: 2.1\nName: flash_attn\nVersion: {version}\n')
+            _md.version('flash_attn')  # re-check
+            print(f'[EDGE] Synthesized flash_attn dist-info (v{version}) — image lacked package metadata')
+        except Exception as e:
+            print(f'[EDGE] flash_attn metadata unavailable ({e}) — keeping default attention '
+                  '(needs a high-memory GPU for 12k-token prompts)')
+            return False
     from transformers import AutoModelForCausalLM
     original = AutoModelForCausalLM.from_pretrained.__func__
 
