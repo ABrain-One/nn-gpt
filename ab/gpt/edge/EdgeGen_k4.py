@@ -113,6 +113,14 @@ def _force_flash_attention() -> bool:
             print(f'[EDGE] flash_attn metadata unavailable ({e}) — keeping default attention '
                   '(needs a high-memory GPU for 12k-token prompts)')
             return False
+
+    # transformers freezes its availability flag when first imported — this
+    # function must therefore run before anything imports transformers.
+    from transformers.utils import is_flash_attn_2_available
+    if not is_flash_attn_2_available():
+        print('[EDGE] transformers reports FlashAttention-2 unavailable — keeping default '
+              'attention (needs a high-memory GPU for 12k-token prompts)')
+        return False
     from transformers import AutoModelForCausalLM
     original = AutoModelForCausalLM.from_pretrained.__func__
 
@@ -396,6 +404,9 @@ def main(llm_conf: str = 'ds_coder_7b_olympic.json',
          ref_max_params: int = 6_000_000,
          ref_min_acc: float = 0.85) -> None:
 
+    # Must run before anything imports transformers (see _force_flash_attention).
+    _force_flash_attention()
+
     persist_run_config(llm_conf, enable_merge)
     _write_run_manifest(dict(
         llm_conf=llm_conf, llm_tune_conf=llm_tune_conf, nn_gen_conf=nn_gen_conf,
@@ -412,7 +423,6 @@ def main(llm_conf: str = 'ds_coder_7b_olympic.json',
         peft=peft, enable_merge=enable_merge, prompt_batch=prompt_batch,
     ))
 
-    _force_flash_attention()
     _shim_nneval_kwargs()
     _install_reference_filter(ref_max_params, ref_min_acc)
 
