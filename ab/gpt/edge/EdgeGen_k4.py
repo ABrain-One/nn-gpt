@@ -399,7 +399,9 @@ def main(llm_conf: str = 'ds_coder_7b_olympic.json',
     from trl import SFTConfig
     from ab.gpt.util.Tune_Curriculum import tune
 
-    training_args = SFTConfig(
+    import dataclasses
+    sft_fields = {f.name for f in dataclasses.fields(SFTConfig)}
+    sft_kwargs = dict(
         num_train_epochs=num_train_epochs,
         lr_scheduler_type=LR_SCHEDULER,
         max_grad_norm=MAX_GRAD_NORM,
@@ -417,6 +419,21 @@ def main(llm_conf: str = 'ds_coder_7b_olympic.json',
         packing_strategy='wrapped',
         **_dtype_flags(),
     )
+    # trl version adaptation: older releases name the length field
+    # 'max_seq_length' and have no 'packing_strategy' (their packing does not
+    # force padding-free mode, so dropping it is safe there).
+    if 'max_length' not in sft_fields and 'max_seq_length' in sft_fields:
+        sft_kwargs['max_seq_length'] = sft_kwargs.pop('max_length')
+    dropped = [k for k in list(sft_kwargs) if k not in sft_fields]
+    for key in dropped:
+        sft_kwargs.pop(key)
+    if dropped:
+        print(f'[EDGE] SFTConfig ({SFTConfig.__module__}): dropped unsupported fields {sorted(dropped)}')
+
+    training_args = SFTConfig(**sft_kwargs)
+    # The shared trainer reads 'max_length' via getattr regardless of trl
+    # version — pin it so fine-tuning never falls back to its 4096 default.
+    setattr(training_args, 'max_length', sft_max_length)
 
     peft_config = LoraConfig(
         r=int(r),
