@@ -189,6 +189,79 @@ def _pre_eval_novelty_filter(models_dir) -> None:
         print(f'[EDGE] Pre-eval novelty filter: rejected {rejected} model(s) before evaluation')
 
 
+def _install_trl_compat() -> None:
+    """Compatibility layer for older trl (image ships 0.11.x).
+
+    The shared trainer (ab/gpt/util/LoRA.py) targets modern trl:
+      (a) `trl.trainer.sft_trainer.DataCollatorForLanguageModeling` with
+          kwargs (pad_token_id, completion_only_loss, ...) — in old trl that
+          name is transformers' collator with a different signature;
+      (b) `SFTTrainer(processing_class=...)` — old trl uses `tokenizer=`.
+    Inject adapted classes before LoRA.py binds these names. No-ops on
+    modern trl. Must run before ab.gpt.util.Tune_Curriculum is imported.
+    """
+    import inspect
+    import trl
+    import trl.trainer.sft_trainer as st
+
+    collator = getattr(st, 'DataCollatorForLanguageModeling', None)
+    needs_collator = True
+    if collator is not None:
+        try:
+            needs_collator = 'pad_token_id' not in inspect.signature(collator.__init__).parameters
+        except (ValueError, TypeError):
+            pass
+    if needs_collator:
+        import torch
+
+        class _CompatLMCollator:
+            """Right-padding causal-LM collator with the modern-trl signature."""
+
+            def __init__(self, pad_token_id=0, completion_only_loss=True,
+                         pad_to_multiple_of=8, return_tensors='pt', **_):
+                self.pad_token_id = pad_token_id
+                self.pad_to_multiple_of = pad_to_multiple_of
+
+            def __call__(self, examples):
+                ids = [torch.as_tensor(e['input_ids'], dtype=torch.long) for e in examples]
+                max_len = max(len(x) for x in ids)
+                if self.pad_to_multiple_of:
+                    m = self.pad_to_multiple_of
+                    max_len = ((max_len + m - 1) // m) * m
+                batch = len(ids)
+                input_ids = torch.full((batch, max_len), self.pad_token_id, dtype=torch.long)
+                attention = torch.zeros((batch, max_len), dtype=torch.long)
+                labels = torch.full((batch, max_len), -100, dtype=torch.long)
+                for i, x in enumerate(ids):
+                    input_ids[i, :len(x)] = x
+                    attention[i, :len(x)] = 1
+                    labels[i, :len(x)] = x
+                return {'input_ids': input_ids, 'attention_mask': attention, 'labels': labels}
+
+        st.DataCollatorForLanguageModeling = _CompatLMCollator
+        print('[EDGE] trl compat: injected padding LM collator (old trl signature mismatch)')
+
+    trainer_params = inspect.signature(st.SFTTrainer.__init__).parameters
+    if 'processing_class' not in trainer_params:
+        original_trainer = st.SFTTrainer
+        accepted = set(trainer_params)
+
+        class _CompatSFTTrainer(original_trainer):
+            def __init__(self, *args, **kwargs):
+                if 'processing_class' in kwargs:
+                    kwargs['tokenizer'] = kwargs.pop('processing_class')
+                dropped = [k for k in list(kwargs) if k not in accepted]
+                for k in dropped:
+                    kwargs.pop(k)
+                if dropped:
+                    print(f'[EDGE] trl compat: SFTTrainer dropped kwargs {sorted(dropped)}')
+                super().__init__(*args, **kwargs)
+
+        st.SFTTrainer = _CompatSFTTrainer
+        trl.SFTTrainer = _CompatSFTTrainer
+        print('[EDGE] trl compat: SFTTrainer processing_class→tokenizer adapter installed')
+
+
 def _shim_nneval_kwargs() -> None:
     """Route NNEval.main through a wrapper that (a) drops keyword arguments the
     installed signature does not accept (version drift: the shared tuner passes
@@ -406,6 +479,8 @@ def main(llm_conf: str = 'ds_coder_7b_olympic.json',
 
     # Must run before anything imports transformers (see _force_flash_attention).
     _force_flash_attention()
+    # Must run before ab.gpt.util.Tune_Curriculum (and thus LoRA.py) is imported.
+    _install_trl_compat()
 
     persist_run_config(llm_conf, enable_merge)
     _write_run_manifest(dict(
