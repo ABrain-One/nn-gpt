@@ -305,7 +305,8 @@ _SIM_BANDS = {
 }
 
 
-def _install_reference_filter(max_params: int, min_acc: float) -> None:
+def _install_reference_filter(max_params: int, min_acc: float,
+                              prefixes: tuple = ()) -> None:
     """Constrain the k-reference pool to edge-appropriate models
     (params <= max_params AND accuracy >= min_acc), as agreed with the advisor.
 
@@ -355,7 +356,7 @@ def _install_reference_filter(max_params: int, min_acc: float) -> None:
             task=kwargs.get('task'),
             dataset=kwargs.get('dataset'),
             metric=kwargs.get('metric'),
-            nn_prefixes=kwargs.get('nn_prefixes') or (),
+            nn_prefixes=tuple(prefixes) or kwargs.get('nn_prefixes') or (),
             max_rows=100000,
         )
         pool = pool[pool['nn'].isin(aux['sigs'])].copy()
@@ -475,7 +476,8 @@ def main(llm_conf: str = 'ds_coder_7b_olympic.json',
          enable_merge: bool = False,
          prompt_batch: int = 1,
          ref_max_params: int = 6_000_000,
-         ref_min_acc: float = 0.85) -> None:
+         ref_min_acc: float = 0.85,
+         ref_prefixes: tuple = ()) -> None:
 
     # Must run before anything imports transformers (see _force_flash_attention).
     _force_flash_attention()
@@ -499,7 +501,7 @@ def main(llm_conf: str = 'ds_coder_7b_olympic.json',
     ))
 
     _shim_nneval_kwargs()
-    _install_reference_filter(ref_max_params, ref_min_acc)
+    _install_reference_filter(ref_max_params, ref_min_acc, ref_prefixes)
 
     from peft import LoraConfig
     from trl import SFTConfig

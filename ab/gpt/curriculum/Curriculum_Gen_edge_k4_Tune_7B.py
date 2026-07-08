@@ -19,7 +19,7 @@ def main():
         llm_tune_conf=f'Curriculum_edge_{stage}_train.json',
         nn_gen_conf=f'Curriculum_edge_{stage}.json',
         nn_gen_conf_id=f'curriculum_edge_{stage}',
-        nn_name_prefix=f'edge-{stage}',
+        nn_name_prefix=os.environ.get('EDGE_NN_PREFIX') or f'edge-{stage}',
         # Environment overrides allow the same entry point to run on 24GB
         # nodes (EDGE_SFT_MAX_LENGTH=4096) and 80GB nodes (16384) without
         # code changes — set them in the K8s job manifest.
@@ -36,6 +36,9 @@ def main():
         # Set EDGE_REF_MAX_PARAMS=0 to disable.
         ref_max_params=_env_int('EDGE_REF_MAX_PARAMS', 6_000_000),
         ref_min_acc=float(os.environ.get('EDGE_REF_MIN_ACC') or 0.85),
+        # Curated reference regime: comma-separated model-name prefixes,
+        # e.g. EDGE_REF_PREFIXES="EfficientNet,MobileNetV2,MobileNetV3,RegNet"
+        ref_prefixes=tuple(p for p in (os.environ.get('EDGE_REF_PREFIXES') or '').split(',') if p),
     )
 
 
