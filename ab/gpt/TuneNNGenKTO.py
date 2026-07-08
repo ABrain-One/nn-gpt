@@ -110,6 +110,7 @@ def _build_kto_dataset(records: List[Dict[str, Any]], tokenizer) -> Dataset:
     prompts: List[str] = []
     completions: List[str] = []
     labels: List[bool] = []
+    sim_penalties: List[float] = []
 
     skipped = 0
     for rec in records:
@@ -137,6 +138,7 @@ def _build_kto_dataset(records: List[Dict[str, Any]], tokenizer) -> Dataset:
         prompts.append(prompt_str)
         completions.append(completion)
         labels.append(bool(label))
+        sim_penalties.append(float(rec.get("sim_penalty", 0.0) or 0.0))
 
     if skipped > 0:
         print(f"[KTO][WARN] Skipped {skipped} malformed records (missing prompt/completion/label)")
@@ -152,6 +154,7 @@ def _build_kto_dataset(records: List[Dict[str, Any]], tokenizer) -> Dataset:
         "prompt": prompts,
         "completion": completions,
         "label": labels,
+        "sim_penalty": sim_penalties,
     })
 
 
@@ -242,6 +245,7 @@ def run_kto(
     kto_beta: float = KTO_BETA,
     kto_desirable_weight: float = KTO_DESIRABLE_WEIGHT,
     kto_undesirable_weight: float = KTO_UNDESIRABLE_WEIGHT,
+    sim_alpha: float = 0.0,
     max_prompt_length: int = MAX_PROMPT_LENGTH,
     max_completion_length: int = MAX_COMPLETION_LENGTH,
     # Standard training hyperparameters
@@ -373,6 +377,7 @@ def run_kto(
         beta=kto_beta,
         desirable_weight=kto_desirable_weight,
         undesirable_weight=kto_undesirable_weight,
+        sim_alpha=sim_alpha,
         max_prompt_length=max_prompt_length,
         max_completion_length=max_completion_length,
     )
@@ -424,6 +429,8 @@ def main():
     parser.add_argument("--kto_beta", type=float, default=KTO_BETA)
     parser.add_argument("--kto_desirable_weight", type=float, default=KTO_DESIRABLE_WEIGHT)
     parser.add_argument("--kto_undesirable_weight", type=float, default=KTO_UNDESIRABLE_WEIGHT)
+    parser.add_argument("--sim_alpha", type=float, default=0.0,
+                        help="If >0, subtract alpha*sim_penalty from the KTO chosen reward")
     parser.add_argument("--max_prompt_length", type=int, default=MAX_PROMPT_LENGTH)
     parser.add_argument("--max_completion_length", type=int, default=MAX_COMPLETION_LENGTH)
 
@@ -533,6 +540,7 @@ def main():
         kto_beta=args.kto_beta,
         kto_desirable_weight=args.kto_desirable_weight,
         kto_undesirable_weight=args.kto_undesirable_weight,
+        sim_alpha=args.sim_alpha,
         max_prompt_length=args.max_prompt_length,
         max_completion_length=args.max_completion_length,
         num_train_epochs=args.num_train_epochs,

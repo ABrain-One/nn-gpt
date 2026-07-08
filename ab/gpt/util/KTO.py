@@ -51,6 +51,68 @@ except ImportError as e:
     )
 
 
+class _SimPenaltyCollator:
+    """Wrap the trainer's collator to preserve the per-example sim_penalty column
+    (TRL's collator only pads its known fields; this re-attaches sim_penalty,
+    aligned to the same per-example order as 'label')."""
+
+    def __init__(self, base):
+        self.base = base
+
+    def __call__(self, features):
+        batch = self.base(features)
+        if features and "sim_penalty" in features[0]:
+            batch["sim_penalty"] = [float(f.get("sim_penalty", 0.0) or 0.0) for f in features]
+        return batch
+
+
+class KTOSimPenaltyTrainer(KTOTrainer):
+    """KTO with a near-duplicate similarity penalty on the chosen (desirable) reward.
+
+    Implements r̃_chosen = r_chosen − alpha·sim_penalty (prospect-theory value
+    function preserved). Since chosen_logratios = policy_chosen_logps −
+    reference_chosen_logps, we bias reference_chosen_logps by +alpha·sim so the
+    chosen log-ratio drops by alpha·sim — no reimplementation of kto_loss's body,
+    so it stays correct across TRL patch versions (validated vs trl 0.22.2).
+    """
+
+    sim_alpha: float = 0.0
+
+    def get_batch_loss_metrics(self, model, batch):
+        # Align the per-example penalty to the chosen subset, in the SAME order
+        # TRL's forward uses for chosen_idx (label[i] is True), then stash it.
+        self._chosen_sim_penalty = None
+        pen = batch.get("sim_penalty")
+        if pen is not None and self.sim_alpha and self.sim_alpha > 0:
+            labels = batch.get("label", [])
+            chosen = [float(pen[i]) for i in range(len(labels)) if labels[i] is True]
+            if chosen:
+                import torch
+                self._chosen_sim_penalty = torch.tensor(
+                    chosen, dtype=torch.float, device=self.accelerator.device)
+            if not getattr(self, "_sim_logged", False):
+                self._sim_logged = True
+                nz = sum(1 for x in chosen if x > 0.0)
+                print(f"[sim] penalty ACTIVE: alpha={self.sim_alpha}; first batch has "
+                      f"{len(chosen)} chosen, {nz} with nonzero penalty", flush=True)
+        elif self.sim_alpha and self.sim_alpha > 0 and not getattr(self, "_sim_warned", False):
+            self._sim_warned = True
+            print("[sim][WARN] sim_alpha>0 but no 'sim_penalty' column reached the loss "
+                  "(dropped during KTO data processing) — penalty NOT applied.", flush=True)
+        return super().get_batch_loss_metrics(model, batch)
+
+    def kto_loss(self, policy_chosen_logps, policy_rejected_logps, policy_KL_logps,
+                 reference_chosen_logps, reference_rejected_logps, reference_KL_logps):
+        pen = getattr(self, "_chosen_sim_penalty", None)
+        if (pen is not None and self.sim_alpha and self.sim_alpha > 0
+                and tuple(pen.shape) == tuple(reference_chosen_logps.shape)):
+            reference_chosen_logps = reference_chosen_logps + self.sim_alpha * pen.to(
+                reference_chosen_logps.dtype)
+        return super().kto_loss(
+            policy_chosen_logps, policy_rejected_logps, policy_KL_logps,
+            reference_chosen_logps, reference_rejected_logps, reference_KL_logps)
+
+
 def kto_lora_config(target_modules, r=16, lora_alpha=16, lora_dropout=0.05,
                     bias="none", task_type="CAUSAL_LM", layers_to_transform=None):
     """LoRA config for KTO — lower-rank defaults than SFT for drift control."""
@@ -140,6 +202,7 @@ class KTO:
         beta: float = 0.1,
         desirable_weight: float = 1.0,
         undesirable_weight: float = 1.0,
+        sim_alpha: float = 0.0,
         max_prompt_length: int = 2048,
         max_completion_length: int = 2048,
     ):
@@ -165,8 +228,12 @@ class KTO:
         # If the caller passed metadata fields too, strip them now so the trainer
         # doesn't choke on unexpected columns.
         required_cols = {"prompt", "completion", "label"}
+        # Keep sim_penalty when the penalty is active — the trainer reads it in the loss.
+        keep_cols = set(required_cols)
+        if sim_alpha and sim_alpha > 0:
+            keep_cols.add("sim_penalty")
         if hasattr(dataset, "column_names"):
-            extra = [c for c in dataset.column_names if c not in required_cols]
+            extra = [c for c in dataset.column_names if c not in keep_cols]
             if extra:
                 print(f"[KTO] Removing non-KTO columns from dataset: {extra}")
                 dataset = dataset.remove_columns(extra)
@@ -245,7 +312,14 @@ class KTO:
         if "ref_model" in kto_init_sig.parameters:
             kto_kwargs["ref_model"] = None
 
-        trainer = KTOTrainer(**kto_kwargs)
+        if sim_alpha and sim_alpha > 0:
+            trainer = KTOSimPenaltyTrainer(**kto_kwargs)
+            trainer.sim_alpha = float(sim_alpha)
+            trainer.data_collator = _SimPenaltyCollator(trainer.data_collator)
+            print(f"[KTO] similarity penalty enabled: alpha={sim_alpha} "
+                  "(subtracted from chosen reward)")
+        else:
+            trainer = KTOTrainer(**kto_kwargs)
 
         # Verify dtypes before training
         dtypes = {}
