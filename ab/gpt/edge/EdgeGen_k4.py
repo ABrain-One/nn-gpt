@@ -118,9 +118,25 @@ def _force_flash_attention() -> bool:
     # function must therefore run before anything imports transformers.
     from transformers.utils import is_flash_attn_2_available
     if not is_flash_attn_2_available():
-        print('[EDGE] transformers reports FlashAttention-2 unavailable — keeping default '
-              'attention (needs a high-memory GPU for 12k-token prompts)')
-        return False
+        # Some cluster images ship a stub flash_attn AND hard-disable this check
+        # (is_flash_attn_2_available() { return False }). A real installation can
+        # be provided via PYTHONPATH (see k8s manifests: fa2_real + cu13rt mounts).
+        # Trust an override only after the real compiled kernel actually loads —
+        # the stub has no flash_attn_2_cuda, and this import also validates that
+        # libcudart is resolvable via LD_LIBRARY_PATH.
+        try:
+            import flash_attn_2_cuda  # noqa: F401
+        except ImportError:
+            print('[EDGE] transformers reports FlashAttention-2 unavailable and no compiled '
+                  'kernel is loadable — keeping default attention (needs a high-memory GPU '
+                  'for 12k-token prompts)')
+            return False
+        import transformers.utils as _tu
+        import transformers.utils.import_utils as _iu
+        _iu.is_flash_attn_2_available = lambda: True
+        _tu.is_flash_attn_2_available = lambda: True
+        print('[EDGE] Compiled FlashAttention-2 kernel verified — overriding the image\'s '
+              'disabled availability check')
     from transformers import AutoModelForCausalLM
     original = AutoModelForCausalLM.from_pretrained.__func__
 
@@ -448,8 +464,8 @@ def _write_run_manifest(config: dict) -> None:
 
 
 def main(llm_conf: str = 'ds_coder_7b_olympic.json',
-         llm_tune_conf: str = 'Curriculum_edge_k4_train.json',
-         nn_gen_conf: str = 'Curriculum_edge_k4.json',
+         llm_tune_conf: str = 'edge/curriculum_k4_train.json',
+         nn_gen_conf: str = 'edge/curriculum_k4.json',
          nn_gen_conf_id: str = 'curriculum_edge_k4',
          test_nn: int = 5,
          skip_epoches: int = 0,

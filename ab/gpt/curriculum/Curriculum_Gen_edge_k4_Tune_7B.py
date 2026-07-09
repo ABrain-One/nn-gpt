@@ -16,8 +16,8 @@ def main():
     stage = os.environ.get('EDGE_STAGE', 'k4')
     EdgeGen.main(
         llm_conf='ds_coder_7b_olympic.json',
-        llm_tune_conf=f'Curriculum_edge_{stage}_train.json',
-        nn_gen_conf=f'Curriculum_edge_{stage}.json',
+        llm_tune_conf=f'edge/curriculum_{stage}_train.json',
+        nn_gen_conf=f'edge/curriculum_{stage}.json',
         nn_gen_conf_id=f'curriculum_edge_{stage}',
         nn_name_prefix=os.environ.get('EDGE_NN_PREFIX') or f'edge-{stage}',
         # Environment overrides allow the same entry point to run on 24GB

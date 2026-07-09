@@ -36,8 +36,8 @@ All edge-specific behavior is configured from this package:
 | `EdgeBench.py` | Per-model edge metrics: parameter count + 6M gate, TFLite INT8 export, CPU latency (TFLite interpreter, PyTorch fallback), efficiency score |
 | `EdgeScore.py` | Post-run scorer: walks all epoch outputs, benchmarks every generated model, applies novelty flags, writes `out/edge/edge_tracker.json` |
 | `../curriculum/Curriculum_Gen_edge_k4_Tune_7B.py` | Entry script |
-| `../conf/prompt/test/Curriculum_edge_k4.json` | Generation prompt (edge constraints, mobile backbone whitelist) |
-| `../conf/prompt/train/Curriculum_edge_k4_train.json` | Fine-tuning prompt (same edge constraints, `is_generation: false`) |
+| `../conf/prompt/test/edge/curriculum_k4.json` | Generation prompt (edge constraints, mobile backbone whitelist) |
+| `../conf/prompt/train/edge/curriculum_k4_train.json` | Fine-tuning prompt (same edge constraints, `is_generation: false`) |
 
 ## Usage
 
