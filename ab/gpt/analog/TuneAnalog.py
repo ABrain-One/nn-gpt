@@ -887,8 +887,7 @@ def _resolve_prompt_config(base_dir: Path, config_name: str) -> Path:
 
 def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_conf, conf_keys, llm_conf, training_args, peft_config,
          max_prompts=None, save_llm_output=True, max_new_tokens=16 * 1024, nn_name_prefix=None, temperature=1.0, top_k=50, top_p=0.9, test_metric=None,
-         onnx_run=False, trans_mode=False, prompt_batch=1, use_backbone=False, eval_save_to_db=True, context_length=None,
-         post_finetune_generation=False):
+         onnx_run=False, trans_mode=False, prompt_batch=1, use_backbone=False, eval_save_to_db=True, context_length=None):
     if not isinstance(conf_keys, (list, tuple)):
         conf_keys = (conf_keys,)
     with open(conf_llm_dir / llm_conf) as f:
@@ -985,21 +984,16 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
         chat_bot = ChatBot(model, tokenizer, temperature=temperature, top_k=top_k, top_p=top_p) # Only initialize ONCE
 
     shutil.rmtree(epoch_dir(), ignore_errors=True)
-    post_finetune_generation_done = False
-
-    def _run_generation(generation_epoch, generation_out_path):
-        if trans_mode:
-            trans_gen(generation_epoch, generation_out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix)
-        else:
-            nn_gen(generation_epoch, generation_out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix, unsloth_max_input_length, prompt_batch, use_backbone=use_backbone, eval_save_to_db=eval_save_to_db)
-
     for epoch in range(llm_tune_epochs):
         print(f'[INFO]Start Epoch {epoch}')
         out_path = epoch_dir(epoch)
         if epoch < skip_epoch:
             print(f'Skipped generation at epoch {epoch}')
         else:
-            _run_generation(epoch, out_path)
+            if trans_mode:
+                trans_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix)
+            else:
+                nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix, unsloth_max_input_length, prompt_batch, use_backbone=use_backbone, eval_save_to_db=eval_save_to_db)
 
 
         if copy_source_recipe_only or _SKIP_POST_FINETUNE:
@@ -1046,19 +1040,8 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
             train_on_completions_only=True,
             response_template="<|im_start|>assistant\n",
         )
-        chat_bot = ChatBot(model, tokenizer, temperature=temperature, top_k=top_k, top_p=top_p)
         del dataset
         release_memory()
-
-        if post_finetune_generation and not post_finetune_generation_done:
-            post_epoch = epoch + 1
-            if post_epoch >= llm_tune_epochs:
-                print(f'[INFO]Start post-finetune generation at epoch {post_epoch}')
-                _run_generation(post_epoch, epoch_dir(post_epoch))
-                post_finetune_generation_done = True
-            else:
-                print(f'[INFO]Post-finetune generation will run in the next epoch ({post_epoch}).')
-                post_finetune_generation_done = True
 
 
 def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix, unsloth_max_input_length, prompt_batch, use_backbone=False, eval_save_to_db=True):
