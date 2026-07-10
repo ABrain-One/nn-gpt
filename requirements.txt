@@ -2,6 +2,7 @@ packaging
 wheel
 ninja
 nn-dataset>=2.2.11
+deepspeed==0.18.7
 nn-rag>=2.2.4
 nn-dup>=2.2.4
 bitsandbytes>=0.45.0
