@@ -225,6 +225,27 @@ class Net(nn.Module):
             return x.reshape(B * T, C, H, W)
         raise ValueError(f"Expected 4D/5D input, got {tuple(x.shape)}")
 
+    def _feature_to_input_image(self, x: torch.Tensor, adapter_name: str) -> torch.Tensor:
+        if x.dim() == 2:
+            x = x.unsqueeze(-1).unsqueeze(-1)
+        elif x.dim() == 3:
+            x = x.mean(dim=1).unsqueeze(-1).unsqueeze(-1)
+        elif x.dim() != 4:
+            x = x.flatten(1).unsqueeze(-1).unsqueeze(-1)
+
+        c_in, h, w = self._input_spec
+        in_channels = int(x.shape[1])
+        key = f"{adapter_name}_{in_channels}"
+        if not hasattr(self, "_input_adapters"):
+            self._input_adapters = nn.ModuleDict()
+        if key not in self._input_adapters:
+            self._input_adapters[key] = nn.Conv2d(in_channels, c_in, kernel_size=1).to(self.device)
+
+        x = self._input_adapters[key](x)
+        if x.shape[-2:] != (h, w):
+            x = torch.nn.functional.interpolate(x, size=(h, w), mode="bilinear", align_corners=False)
+        return x
+
     def forward(self, x: torch.Tensor, is_probing: bool = False) -> torch.Tensor:
         
     def train_setup(self, prm):
