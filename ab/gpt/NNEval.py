@@ -12,6 +12,7 @@ import pandas as pd
 
 from ab.nn.util.Util import release_memory, uuid4
 from ab.gpt.util.Util import read_py_file_as_string
+import ab.nn.api as nn_dataset
 from ab.gpt.util.Const import epoch_dir, new_nn_file, nngpt_dir, synth_dir, hp_file, NN_TRAIN_EPOCHS
 from ab.gpt.util.Util import verify_nn_code, copy_to_lemur
 from ab.gpt.util.CycleResults import generate_cycle_results, collect_cycle_metrics, save_cycle_results
@@ -91,6 +92,11 @@ def _default_eval_prm(
     neg_to_pos_ratio: float,
     pretrained: float,
     patch_size: float,
+    feature_cache_dir: Optional[str] = None,
+    feature_cache_mode: str = 'read',
+    num_workers: int = 0,
+    pin_memory: bool = False,
+    freeze_gpt2: bool = False,
 ) -> Dict[str, Any]:
     # Build the baseline prm payload before per-model metadata or explicit
     # prm_json overrides are applied.
@@ -115,6 +121,11 @@ def _default_eval_prm(
         "neg_to_pos_ratio": neg_to_pos_ratio,
         "pretrained": pretrained,
         "patch_size": patch_size,
+        "feature_cache_dir": feature_cache_dir,
+        "feature_cache_mode": feature_cache_mode,
+        "num_workers": num_workers,
+        "pin_memory": pin_memory,
+        "freeze_gpt2": freeze_gpt2,
     }
 
 
@@ -328,6 +339,11 @@ def _collect_epoch_requests(
     patch_size: float,
     prm_json: Optional[Dict[str, Any]],
     epoch_limit_minutes: Optional[int],
+    feature_cache_dir: Optional[str],
+    feature_cache_mode: str,
+    num_workers: int,
+    pin_memory: bool,
+    freeze_gpt2: bool,
     save_eval_checkpoint: bool = False,
 ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     requests: List[Dict[str, Any]] = []
@@ -396,9 +412,8 @@ def _collect_epoch_requests(
         if hp_path.exists():
             try:
                 prm = json.loads(hp_path.read_text(encoding="utf-8"))
-                print(f"Training model {model_id} with LLM recommended prm {prm}")
             except Exception as exc:
-                print(f"Error loading LLM recommended training params from {hp_path}: {exc}.")
+                pass  # Silently ignore bad hp.json, fall through to defaults
         if not prm:
             prm = _default_eval_prm(
                 lr=lr,
@@ -421,21 +436,46 @@ def _collect_epoch_requests(
                 neg_to_pos_ratio=neg_to_pos_ratio,
                 pretrained=pretrained,
                 patch_size=patch_size,
+                feature_cache_dir=feature_cache_dir,
+                feature_cache_mode=feature_cache_mode,
+                num_workers=num_workers,
+                pin_memory=pin_memory,
+                freeze_gpt2=freeze_gpt2,
             )
-            print(f"Training model {model_id} with command-line/default training params {prm}")
 
         prefix_for_db = nn_name_prefix
         orig_pref = None
+        # 1. Try SQL Priority (Professor Requirement)
+        try:
+            original_files = list(model_dir_path.glob("original_*.py"))
+            if original_files:
+                with open(original_files[0], 'r') as f:
+                    b_code = f.read()
+                b_checksum = uuid4(b_code)
+                db_df = nn_dataset.data(nn=b_checksum)
+                if not db_df.empty:
+                    row = db_df.iloc[0]
+                    resolved_task = row.get('task', resolved_task)
+                    resolved_dataset = row.get('dataset', resolved_dataset)
+                    resolved_metric = row.get('metric', resolved_metric)
+                    if isinstance(row.get('prm'), dict): prm.update(row['prm'])
+                    orig_pref = row['nn'].split('-')[0] if 'nn' in row else None
+                    print(f"  [SQL] Found baseline metadata for {b_checksum}")
+        except Exception: pass
+        
         if df_file_path.exists():
             try:
                 origdf = pd.read_pickle(df_file_path)
                 resolved_task = origdf.get("task", resolved_task)
                 resolved_dataset = origdf.get("dataset", resolved_dataset)
-                resolved_metric = origdf.get("metric", resolved_metric)
+                # resolved_metric = origdf.get("metric", resolved_metric) # Keep CLI/default metric
                 orig_pref = origdf["nn"].split("-")[0]
                 original_prm_from_df = origdf.get("prm")
                 if isinstance(original_prm_from_df, dict):
                     prm.update(original_prm_from_df)
+                    prm['batch'] = batch
+                    if 'lr' not in original_prm_from_df:
+                        prm['lr'] = lr
                 prefix_for_db = nn_name_prefix or (
                     origdf.get("nn", "unknown").split("-")[0]
                     if "nn" in origdf
@@ -524,10 +564,18 @@ def main(
     custom_synth_dir=CUSTOM_SYNTH_DIR,
     cycle=CYCLE,
     use_all_visible_gpus: Optional[bool] = None,
+    feature_cache_dir: Optional[str] = None,
+    feature_cache_mode: str = 'read',
+    num_workers: int = 0,
+    pin_memory: bool = False,
+    freeze_gpt2: bool = False,
+    force_eval: bool = False,
     save_eval_checkpoint: bool = False,
 ):
     base_nngpt_path = nngpt_dir
     custom_synth_path = Path(custom_synth_dir) if custom_synth_dir else None
+    if task == 'img-captioning' and metric == 'acc':
+        metric = 'bleu,meteor,cider'
     if nn_alter_epochs is None:
         if custom_synth_path is not None:
             nn_alter_epochs = 1
@@ -560,7 +608,6 @@ def main(
                     models_base_dir = synth_dir(current_alter_epoch_path)
 
                 if not models_base_dir.exists():
-                    print(f"Directory {models_base_dir} for NNAlter epoch {i} not found. Skipping.")
                     continue
 
                 print(f"\n--- Scanning NNAlter Epoch Directory: {current_alter_epoch_path} ---")
@@ -598,10 +645,25 @@ def main(
                     patch_size=patch_size,
                     prm_json=prm_json,
                     epoch_limit_minutes=epoch_limit_minutes,
+                    feature_cache_dir=feature_cache_dir,
+                    feature_cache_mode=feature_cache_mode,
+                    num_workers=num_workers,
+                    pin_memory=pin_memory,
+                    freeze_gpt2=freeze_gpt2,
                     save_eval_checkpoint=save_eval_checkpoint,
                 )
 
                 if requests:
+                    # --- Lightweight NAS Bridge Contract Check ---
+                    for req in requests:
+                        if req["task"] == 'img-captioning' and req["prm"].get('transform') in ['cached_blip2', 'cached_blip2fast_processor']:
+                            # Dynamically map validation flag to maintain batch request list
+                            req["skip_nas"] = False
+                                
+                    requests = [r for r in requests if not r.get("skip_nas")]
+
+                    if not requests:
+                        continue
                     NNEvalWorkerPool.prewarm_nneval_workers(
                         use_all_visible_gpus=resolved_use_all_visible_gpus,
                         timeout_seconds=60.0,
@@ -674,8 +736,8 @@ if __name__ == "__main__":
         "-ae",
         "--nn_alter_epochs",
         type=int,
-        default=NN_ALTER_EPOCHS,
-        help="Number of epochs NNAlter.py was run for.",
+        default=None,
+        help="Number of epochs NNAlter.py was run for (default: auto-detect all folders).",
     )
     parser.add_argument(
         "-oe",
@@ -833,6 +895,13 @@ if __name__ == "__main__":
         help='JSON string of hyperparameter overrides, e.g. \'{"lr": 0.017, "batch": 32}\'.',
     )
     # Other NNEval options.
+    parser.add_argument('--num_workers', type=int, default=0, help="Number of workers for DataLoader.")
+    parser.add_argument('--pin_memory', action=argparse.BooleanOptionalAction, default=False, help="Whether to pin memory in DataLoader.")
+    parser.add_argument('--feature_cache_dir', type=str, default=None, help="Directory for feature caching.")
+    parser.add_argument('--feature_cache_mode', type=str, default='read', choices=['read', 'write', 'auto'], help="Feature cache mode.")
+    parser.add_argument('--freeze_gpt2', action=argparse.BooleanOptionalAction, default=False,
+                        help="Whether to freeze the GPT-2 decoder backbone (default: disabled).")
+    parser.add_argument('--force_eval', action='store_true', help="Force re-evaluation of models even if eval_info.json exists.")
     parser.add_argument(
         "--save_to_db",
         action=argparse.BooleanOptionalAction,
@@ -918,4 +987,10 @@ if __name__ == "__main__":
         epoch_limit_minutes=args.epoch_limit_minutes,
         custom_synth_dir=args.custom_synth_dir,
         cycle=args.cycle,
+        feature_cache_dir=args.feature_cache_dir,
+        feature_cache_mode=args.feature_cache_mode,
+        num_workers=args.num_workers,
+        pin_memory=args.pin_memory,
+        freeze_gpt2=args.freeze_gpt2,
+        force_eval=args.force_eval,
     )

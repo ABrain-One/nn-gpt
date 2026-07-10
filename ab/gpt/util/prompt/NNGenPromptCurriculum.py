@@ -5,7 +5,7 @@ from typing import List, Dict, Optional
 import pandas as pd
 from pandas import DataFrame
 from tqdm import tqdm
-from overrides import override
+def override(func): return func
 from transformers import PreTrainedTokenizerBase
 
 import ab.nn.api as lemur

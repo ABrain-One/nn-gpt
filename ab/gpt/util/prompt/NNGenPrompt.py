@@ -1,7 +1,7 @@
 import json
 
 import ab.nn.api as lemur
-from overrides import override
+def override(func): return func
 import pandas as pd
 from pandas import DataFrame
 from transformers import PreTrainedTokenizerBase

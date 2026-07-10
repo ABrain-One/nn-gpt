@@ -143,6 +143,9 @@ class LLM:
             **deepspeed_specific_prm
         )
         
+        if bnb_config is None and load_in_4bit:
+            bnb_config = quantization_config_4bit
+
         if bnb_config is not None:
             model_kwargs["quantization_config"] = bnb_config
         
@@ -166,6 +169,9 @@ class LLM:
             base_model,
             **model_kwargs
         )
+        if len(self.tokenizer) > self.model.config.vocab_size:
+            print(f"[INFO] Resizing model token embeddings from {self.model.config.vocab_size} to {len(self.tokenizer)}")
+            self.model.resize_token_embeddings(len(self.tokenizer))
         if exists(local_path):
             print("Loading Model from local files:", "'" + local_path + "'")
         elif exists(raw_fl_nm):

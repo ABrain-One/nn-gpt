@@ -75,5 +75,5 @@ def llm_tokenizer_dir(base, name):
 def epoch_dir(*args):
     e_dir = llm_dir(nngpt_dir, 'epoch')
     for d in args:
-        e_dir = e_dir / f'A{d}'
+        e_dir = e_dir / f'Epoch_{d}'
     return e_dir

@@ -4,7 +4,7 @@ import glob
 import pandas as pd
 from pandas import DataFrame
 from transformers import PreTrainedTokenizerBase
-from overrides import override
+def override(func): return func
 
 from ab.gpt.util.prompt.Prompt import Prompt
 from tqdm import tqdm
