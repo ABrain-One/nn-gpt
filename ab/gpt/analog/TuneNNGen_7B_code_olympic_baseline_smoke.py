@@ -3,7 +3,7 @@ import ab.gpt.analog.TuneNNGenAnalog as TuneNNGen
 
 def main():
     TuneNNGen.main(
-        llm_conf='ds_coder_7b_olympic_analogical_smoke.json',
+        llm_conf='ds_coder_7b_olympic.json',
         llm_tune_conf='NN_gen.json',
         nn_gen_conf='NN_gen.json',
         nn_gen_conf_id='improve_classification_only',

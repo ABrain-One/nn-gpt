@@ -19,7 +19,7 @@ import ab.gpt.analog.TuneNNGenAnalog as TuneNNGen
 
 def main():
     TuneNNGen.main(
-        llm_conf='ds_coder_7b_olympic_cifar10_smoke.json',
+        llm_conf='ds_coder_7b_olympic.json',
         llm_tune_conf='analog/NN_gen_analogical_cifar100_edit_v15.json',
         nn_gen_conf='analog/NN_gen_analogical_cifar100_edit_v15.json',
         nn_gen_conf_id='improve_classification_only_analogical_cifar100_edit_v15',

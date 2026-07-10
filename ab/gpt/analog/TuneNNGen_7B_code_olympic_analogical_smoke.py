@@ -13,7 +13,7 @@ def main():
         return
 
     TuneNNGen.main(
-        llm_conf='ds_coder_7b_olympic_analogical_smoke.json',
+        llm_conf='ds_coder_7b_olympic.json',
         llm_tune_conf='analog/NN_gen_analogical.json',
         nn_gen_conf='analog/NN_gen_analogical.json',
         nn_gen_conf_id='improve_classification_only_analogical',
