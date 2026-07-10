@@ -17,8 +17,6 @@ langgraph>=1.0.4
 unsloth==2026.3.4
 unsloth-zoo==2026.3.2
 triton>=3.4.0
-# Required for Unsloth with OSS
-triton_kernels @ git+https://github.com/triton-lang/triton.git@v3.5.0#subdirectory=python/triton_kernels
 
 matplotlib
 optimum[onnxruntime-gpu]
