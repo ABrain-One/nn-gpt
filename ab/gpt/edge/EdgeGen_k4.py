@@ -92,6 +92,51 @@ def _force_flash_attention() -> bool:
         print('[EDGE] flash_attn not installed — long-prompt generation may OOM on <40GB GPUs '
               '(install per req-no-isolation.txt)')
         return False
+
+    # transformers verifies flash_attn via package METADATA, which some images
+    # lack even though the module imports. Synthesize a minimal dist-info next
+    # to the working directory (on sys.path when running via python -m).
+    import importlib.metadata as _md
+    try:
+        _md.version('flash_attn')
+    except _md.PackageNotFoundError:
+        import os as _os
+        version = getattr(flash_attn, '__version__', '2.8.3')
+        dist_dir = _os.path.join(_os.getcwd(), f'flash_attn-{version}.dist-info')
+        try:
+            _os.makedirs(dist_dir, exist_ok=True)
+            with open(_os.path.join(dist_dir, 'METADATA'), 'w') as f:
+                f.write(f'Metadata-Version: 2.1\nName: flash_attn\nVersion: {version}\n')
+            _md.version('flash_attn')  # re-check
+            print(f'[EDGE] Synthesized flash_attn dist-info (v{version}) — image lacked package metadata')
+        except Exception as e:
+            print(f'[EDGE] flash_attn metadata unavailable ({e}) — keeping default attention '
+                  '(needs a high-memory GPU for 12k-token prompts)')
+            return False
+
+    # transformers freezes its availability flag when first imported — this
+    # function must therefore run before anything imports transformers.
+    from transformers.utils import is_flash_attn_2_available
+    if not is_flash_attn_2_available():
+        # Some cluster images ship a stub flash_attn AND hard-disable this check
+        # (is_flash_attn_2_available() { return False }). A real installation can
+        # be provided via PYTHONPATH (see k8s manifests: fa2_real + cu13rt mounts).
+        # Trust an override only after the real compiled kernel actually loads —
+        # the stub has no flash_attn_2_cuda, and this import also validates that
+        # libcudart is resolvable via LD_LIBRARY_PATH.
+        try:
+            import flash_attn_2_cuda  # noqa: F401
+        except ImportError:
+            print('[EDGE] transformers reports FlashAttention-2 unavailable and no compiled '
+                  'kernel is loadable — keeping default attention (needs a high-memory GPU '
+                  'for 12k-token prompts)')
+            return False
+        import transformers.utils as _tu
+        import transformers.utils.import_utils as _iu
+        _iu.is_flash_attn_2_available = lambda: True
+        _tu.is_flash_attn_2_available = lambda: True
+        print('[EDGE] Compiled FlashAttention-2 kernel verified — overriding the image\'s '
+              'disabled availability check')
     from transformers import AutoModelForCausalLM
     original = AutoModelForCausalLM.from_pretrained.__func__
 
@@ -160,6 +205,79 @@ def _pre_eval_novelty_filter(models_dir) -> None:
         print(f'[EDGE] Pre-eval novelty filter: rejected {rejected} model(s) before evaluation')
 
 
+def _install_trl_compat() -> None:
+    """Compatibility layer for older trl (image ships 0.11.x).
+
+    The shared trainer (ab/gpt/util/LoRA.py) targets modern trl:
+      (a) `trl.trainer.sft_trainer.DataCollatorForLanguageModeling` with
+          kwargs (pad_token_id, completion_only_loss, ...) — in old trl that
+          name is transformers' collator with a different signature;
+      (b) `SFTTrainer(processing_class=...)` — old trl uses `tokenizer=`.
+    Inject adapted classes before LoRA.py binds these names. No-ops on
+    modern trl. Must run before ab.gpt.util.Tune_Curriculum is imported.
+    """
+    import inspect
+    import trl
+    import trl.trainer.sft_trainer as st
+
+    collator = getattr(st, 'DataCollatorForLanguageModeling', None)
+    needs_collator = True
+    if collator is not None:
+        try:
+            needs_collator = 'pad_token_id' not in inspect.signature(collator.__init__).parameters
+        except (ValueError, TypeError):
+            pass
+    if needs_collator:
+        import torch
+
+        class _CompatLMCollator:
+            """Right-padding causal-LM collator with the modern-trl signature."""
+
+            def __init__(self, pad_token_id=0, completion_only_loss=True,
+                         pad_to_multiple_of=8, return_tensors='pt', **_):
+                self.pad_token_id = pad_token_id
+                self.pad_to_multiple_of = pad_to_multiple_of
+
+            def __call__(self, examples):
+                ids = [torch.as_tensor(e['input_ids'], dtype=torch.long) for e in examples]
+                max_len = max(len(x) for x in ids)
+                if self.pad_to_multiple_of:
+                    m = self.pad_to_multiple_of
+                    max_len = ((max_len + m - 1) // m) * m
+                batch = len(ids)
+                input_ids = torch.full((batch, max_len), self.pad_token_id, dtype=torch.long)
+                attention = torch.zeros((batch, max_len), dtype=torch.long)
+                labels = torch.full((batch, max_len), -100, dtype=torch.long)
+                for i, x in enumerate(ids):
+                    input_ids[i, :len(x)] = x
+                    attention[i, :len(x)] = 1
+                    labels[i, :len(x)] = x
+                return {'input_ids': input_ids, 'attention_mask': attention, 'labels': labels}
+
+        st.DataCollatorForLanguageModeling = _CompatLMCollator
+        print('[EDGE] trl compat: injected padding LM collator (old trl signature mismatch)')
+
+    trainer_params = inspect.signature(st.SFTTrainer.__init__).parameters
+    if 'processing_class' not in trainer_params:
+        original_trainer = st.SFTTrainer
+        accepted = set(trainer_params)
+
+        class _CompatSFTTrainer(original_trainer):
+            def __init__(self, *args, **kwargs):
+                if 'processing_class' in kwargs:
+                    kwargs['tokenizer'] = kwargs.pop('processing_class')
+                dropped = [k for k in list(kwargs) if k not in accepted]
+                for k in dropped:
+                    kwargs.pop(k)
+                if dropped:
+                    print(f'[EDGE] trl compat: SFTTrainer dropped kwargs {sorted(dropped)}')
+                super().__init__(*args, **kwargs)
+
+        st.SFTTrainer = _CompatSFTTrainer
+        trl.SFTTrainer = _CompatSFTTrainer
+        print('[EDGE] trl compat: SFTTrainer processing_class→tokenizer adapter installed')
+
+
 def _shim_nneval_kwargs() -> None:
     """Route NNEval.main through a wrapper that (a) drops keyword arguments the
     installed signature does not accept (version drift: the shared tuner passes
@@ -203,7 +321,8 @@ _SIM_BANDS = {
 }
 
 
-def _install_reference_filter(max_params: int, min_acc: float) -> None:
+def _install_reference_filter(max_params: int, min_acc: float,
+                              prefixes: tuple = ()) -> None:
     """Constrain the k-reference pool to edge-appropriate models
     (params <= max_params AND accuracy >= min_acc), as agreed with the advisor.
 
@@ -253,7 +372,7 @@ def _install_reference_filter(max_params: int, min_acc: float) -> None:
             task=kwargs.get('task'),
             dataset=kwargs.get('dataset'),
             metric=kwargs.get('metric'),
-            nn_prefixes=kwargs.get('nn_prefixes') or (),
+            nn_prefixes=tuple(prefixes) or kwargs.get('nn_prefixes') or (),
             max_rows=100000,
         )
         pool = pool[pool['nn'].isin(aux['sigs'])].copy()
@@ -345,8 +464,8 @@ def _write_run_manifest(config: dict) -> None:
 
 
 def main(llm_conf: str = 'ds_coder_7b_olympic.json',
-         llm_tune_conf: str = 'Curriculum_edge_k4_train.json',
-         nn_gen_conf: str = 'Curriculum_edge_k4.json',
+         llm_tune_conf: str = 'edge/curriculum_k4_train.json',
+         nn_gen_conf: str = 'edge/curriculum_k4.json',
          nn_gen_conf_id: str = 'curriculum_edge_k4',
          test_nn: int = 5,
          skip_epoches: int = 0,
@@ -373,7 +492,13 @@ def main(llm_conf: str = 'ds_coder_7b_olympic.json',
          enable_merge: bool = False,
          prompt_batch: int = 1,
          ref_max_params: int = 6_000_000,
-         ref_min_acc: float = 0.85) -> None:
+         ref_min_acc: float = 0.85,
+         ref_prefixes: tuple = ()) -> None:
+
+    # Must run before anything imports transformers (see _force_flash_attention).
+    _force_flash_attention()
+    # Must run before ab.gpt.util.Tune_Curriculum (and thus LoRA.py) is imported.
+    _install_trl_compat()
 
     persist_run_config(llm_conf, enable_merge)
     _write_run_manifest(dict(
@@ -391,9 +516,8 @@ def main(llm_conf: str = 'ds_coder_7b_olympic.json',
         peft=peft, enable_merge=enable_merge, prompt_batch=prompt_batch,
     ))
 
-    _force_flash_attention()
     _shim_nneval_kwargs()
-    _install_reference_filter(ref_max_params, ref_min_acc)
+    _install_reference_filter(ref_max_params, ref_min_acc, ref_prefixes)
 
     from peft import LoraConfig
     from trl import SFTConfig
