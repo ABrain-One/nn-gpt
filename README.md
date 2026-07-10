@@ -9,52 +9,6 @@ short alias  <a href='https://pypi.python.org/pypi/lmurg'>lmurg</a>
 
 This Python-based <a href='https://github.com/ABrain-One/nn-gpt'>NNGPT</a> project leverages large language models (LLMs) to automate the creation of neural network architectures, streamlining the design process for machine learning practitioners. It leverages various neural networks from the <a href="https://github.com/ABrain-One/nn-dataset">LEMUR Dataset</a> to fine-tune LLMs and provide insights into potential architectures during the creation of new neural network models.
 
-## LangGraph Multi-Agent Workflow
-
-NNGPT supports an optional LangGraph-based multi-agent orchestration mode. The agent system integrates directly inside `tune()` — no separate entry point, no duplicated logic.
-
-### Design Principle
-
-All pipeline logic remains in `ab/gpt/util/Tune.py` as the **single source of truth**. Agent nodes are thin wrappers only — they read from state and call the existing functions. No logic is reimplemented inside any agent file.
-
-### Agent Flow
-
-The professor-specified flow is: **Finetuner → Generator → Evaluator → Predictor**
-
-
-- **manager** — controls routing, checks epoch stop condition, decides next node
-- **generator** — calls `nn_gen()` / `trans_gen()`; skips if epoch < skip_epoch; skips evaluator if no code generated
-- **evaluator** — calls `_evaluate_epoch()`; stores accuracy and all predictor inputs in state
-- **finetuner** — calls `_finetune_epoch()`; increments epoch counter, returns to manager
-- **predictor** — optional; activates after epoch 1 and epoch 2 accuracies are both available
-
-Any future improvement to `nn_gen()`, `trans_gen()`, `_evaluate_epoch()`, or `_finetune_epoch()` automatically applies to both classic and agent modes.
-
-### Crash Recovery
-
-Agent mode uses LangGraph `MemorySaver` checkpointing. If the pipeline crashes mid-epoch (e.g. GPU OOM), re-running with the same `nn_name_prefix` resumes from the last completed node — no restart from epoch 0.
-
-### Usage
-
-The agent mode is enabled by default.
-
-To use the accuracy predictor agent:
-
-```bash
-python -m ab.gpt.TuneNNGen --use_predictor
-```
-
-### Agent Files
-
-| File | Purpose |
-|---|---|
-| `ab/gpt/agents/run_agent.py` | Builds and runs the LangGraph StateGraph |
-| `ab/gpt/agents/manager.py` | Routing logic and epoch stop condition |
-| `ab/gpt/agents/predictor.py` | Optional accuracy prediction node |
-| `ab/gpt/agents/state.py` | Shared `AgentState` TypedDict — field names match LEMUR DB columns |
-| `ab/gpt/util/Tune.py` | Single source of truth: `nn_gen`, `trans_gen`, `_evaluate_epoch`, `_finetune_epoch`, `generate_step`, `evaluate_step`, `finetune_step` |
-| `ab/gpt/AccPredictor.py` | Accuracy predictor: data prep, fine-tuning, and evaluation |
-
 ## Create and Activate a Virtual Environment (recommended)
 For Linux/Mac:
    ```bash
@@ -78,8 +32,9 @@ Create a virtual environment, activate it, and run the following command to inst
 ```bash
 python -m pip install --upgrade pip
 pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu130
-pip install -r req-no-isolation.txt --no-build-isolation --no-cache --extra-index-url https://download.pytorch.org/whl/cu130
+MAX_JOBS=4 NVCC_THREADS=1 pip install -r req-no-isolation.txt --no-build-isolation --no-cache -v --extra-index-url https://download.pytorch.org/whl/cu130
 ```
+Removing the --no-cache parameter allows previously built packages to be retrieved from the cache, but it can lead to problems if the PyTorch version has changed.
 
 If there are installation problems, install the dependencies from the 'requirements.txt' file one by one.
 
@@ -156,6 +111,53 @@ python -m ab.stat.export
   python -m ab.gpt.TuneNNGen_delta
   python -m ab.gpt.TuneNNGen_delta --llm_conf qwen2.5_coder_7b_instruct.json
   ```
+
+## LangGraph Multi-Agent Workflow
+
+NNGPT supports an optional LangGraph-based multi-agent orchestration mode. The agent system integrates directly inside `tune()` — no separate entry point, no duplicated logic.
+
+### Design Principle
+
+All pipeline logic remains in `ab/gpt/util/Tune.py` as the **single source of truth**. Agent nodes are thin wrappers only — they read from state and call the existing functions. No logic is reimplemented inside any agent file.
+
+### Agent Flow
+
+The professor-specified flow is: **Finetuner → Generator → Evaluator → Predictor**
+
+
+- **manager** — controls routing, checks epoch stop condition, decides next node
+- **generator** — calls `nn_gen()` / `trans_gen()`; skips if epoch < skip_epoch; skips evaluator if no code generated
+- **evaluator** — calls `_evaluate_epoch()`; stores accuracy and all predictor inputs in state
+- **finetuner** — calls `_finetune_epoch()`; increments epoch counter, returns to manager
+- **predictor** — optional; activates after epoch 1 and epoch 2 accuracies are both available
+
+Any future improvement to `nn_gen()`, `trans_gen()`, `_evaluate_epoch()`, or `_finetune_epoch()` automatically applies to both classic and agent modes.
+
+### Crash Recovery
+
+Agent mode uses LangGraph `MemorySaver` checkpointing. If the pipeline crashes mid-epoch (e.g. GPU OOM), re-running with the same `nn_name_prefix` resumes from the last completed node — no restart from epoch 0.
+
+### Usage
+
+The agent mode is enabled by default.
+
+To use the accuracy predictor agent:
+
+```bash
+python -m ab.gpt.TuneNNGen --use_predictor
+```
+
+### Agent Files
+
+| File | Purpose |
+|---|---|
+| `ab/gpt/agents/run_agent.py` | Builds and runs the LangGraph StateGraph |
+| `ab/gpt/agents/manager.py` | Routing logic and epoch stop condition |
+| `ab/gpt/agents/predictor.py` | Optional accuracy prediction node |
+| `ab/gpt/agents/state.py` | Shared `AgentState` TypedDict — field names match LEMUR DB columns |
+| `ab/gpt/util/Tune.py` | Single source of truth: `nn_gen`, `trans_gen`, `_evaluate_epoch`, `_finetune_epoch`, `generate_step`, `evaluate_step`, `finetune_step` |
+| `ab/gpt/AccPredictor.py` | Accuracy predictor: data prep, fine-tuning, and evaluation |
+
 
 <a href='https://huggingface.co/ABrain'><strong>Fine-tuned LLMs</strong></a>
 
