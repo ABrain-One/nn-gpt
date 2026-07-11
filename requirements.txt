@@ -1,5 +1,8 @@
+packaging
 wheel
-nn-dataset>=2.2.10
+ninja
+nn-dataset>=2.2.11
+deepspeed==0.18.7
 nn-rag>=2.2.4
 nn-dup>=2.2.4
 bitsandbytes>=0.45.0
@@ -21,3 +24,5 @@ optimum[onnxruntime-gpu]
 onnx>=1.16.0
 onnxruntime-gpu>=1.18.0
 kernels
+
+httpx

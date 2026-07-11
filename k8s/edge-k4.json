@@ -1,0 +1,115 @@
+{
+  "apiVersion": "batch/v1",
+  "kind": "Job",
+  "metadata": {
+    "name": "edge-k4"
+  },
+  "spec": {
+    "parallelism": 1,
+    "ttlSecondsAfterFinished": 86400,
+    "template": {
+      "spec": {
+        "affinity": {
+          "nodeAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+              "nodeSelectorTerms": [
+                {
+                  "matchExpressions": [
+                    {
+                      "key": "kubernetes.io/hostname",
+                      "operator": "In",
+                      "values": [
+                        "w6-mi",
+                        "w8-mi"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "containers": [
+          {
+            "args": [
+              "cd /a/mm && export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True && python3 -u -m ab.gpt.curriculum.Curriculum_Gen_edge_k4_Tune_7B"
+            ],
+            "env": [
+              {
+                "name": "EDGE_TEST_NN",
+                "value": "2"
+              },
+              {
+                "name": "EDGE_NUM_CYCLES",
+                "value": "10"
+              },
+              {
+                "name": "EDGE_SFT_MAX_LENGTH",
+                "value": "4096"
+              },
+              {
+                "name": "EDGE_CONTEXT_LENGTH",
+                "value": "16384"
+              },
+              {
+                "name": "EDGE_MAX_NEW_TOKENS",
+                "value": "16384"
+              }
+            ],
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "runAsUser": "<user id>",
+              "runAsGroup": 1376
+            },
+            "volumeMounts": [
+              {
+                "mountPath": "/dev/shm",
+                "name": "shm"
+              },
+              {
+                "mountPath": "/a/mm",
+                "name": "v0"
+              }
+            ],
+            "name": "ml",
+            "command": [
+              "/bin/bash",
+              "-c"
+            ],
+            "imagePullPolicy": "Always",
+            "image": "ws.ab/shared/ai-linux-nngpt:v1",
+            "resources": {
+              "requests": {
+                "nvidia.com/gpu": 1,
+                "cpu": 8,
+                "memory": "30Gi"
+              },
+              "limits": {
+                "nvidia.com/gpu": 1,
+                "cpu": 64,
+                "memory": "120Gi"
+              }
+            }
+          }
+        ],
+        "restartPolicy": "Never",
+        "volumes": [
+          {
+            "name": "shm",
+            "emptyDir": {
+              "medium": "Memory",
+              "sizeLimit": "16Gi"
+            }
+          },
+          {
+            "name": "v0",
+            "hostPath": {
+              "path": "/shared/ssd/home/<user name>/nn-gpt",
+              "type": "DirectoryOrCreate"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
