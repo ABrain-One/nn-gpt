@@ -69,7 +69,7 @@ python -m ab.stat.export
 
 ## Use
 
-- **`ab.gpt.NNAlter*`** – Generates modified neural network models.  
+- **`ab.gpt.act.alter.*`** – Generates modified neural network models.  
   Use the `-e` argument to set the number of epochs for the initial CV model generation.
 
 - **`ab.gpt.NNEval`** – Evaluates the models generated in the previous step.
