@@ -7,7 +7,7 @@ cd nn-gpt - run only in the root dir
 python ab/gpt/brute/fract/Generate_variants.py
 
 for fetching the files 
-python ab/gpt/act/alter/7B.py
+python -m ab.gpt.act.alter.ds_7B
 
 for fetching the models
 python3 -m ab.gpt.brute.fract.Generate_variants
