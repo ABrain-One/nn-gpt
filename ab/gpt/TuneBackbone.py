@@ -42,7 +42,8 @@ def main():
     parser.add_argument('--num_train_epochs', type=int, default=1, help='Number of LLM fine-tuning epochs')
     parser.add_argument('--num_cycles', type=int, default=None, help='Number of generate/eval/SFT cycles; defaults to llm config num_epochs')
     parser.add_argument('--nn_train_epochs', type=int, default=1, help='Number of training epochs for generated NNs')
-    parser.add_argument('--sft_max_length', type=int, default=4096, help='Maximum SFT sequence length')
+    parser.add_argument('--max_new_tokens', type=int, default=1536, help='Maximum generated tokens per NN completion')
+    parser.add_argument('--sft_max_length', type=int, default=6144, help='Maximum SFT sequence and generation context length')
     parser.add_argument('--sft_batch_size', type=int, default=1, help='Per-device SFT batch size')
     parser.add_argument('--sft_gradient_accumulation', type=int, default=8, help='SFT gradient accumulation steps')
     parser.add_argument('--sft_dataset_limit', type=int, default=None, help='Maximum number of SFT training samples; unset uses all available rows')
@@ -87,7 +88,8 @@ def main():
         max_prompts=args.sft_dataset_limit,
         use_backbone=True,
         only_best_accuracy=True,
-        context_length=4096,
+        max_new_tokens=args.max_new_tokens,
+        context_length=args.sft_max_length,
         sft_nn_prefixes=args.sft_nn_prefixes,
         sft_dataset=args.sft_dataset,
         num_cycles=args.num_cycles,

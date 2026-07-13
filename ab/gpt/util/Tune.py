@@ -183,7 +183,12 @@ def nn_gen(
                 target_pattern = None
                 if "nn_code" in row and isinstance(row["nn_code"], str):
                     target_pattern = SFTUtil.extract_target_pattern_from_code(row["nn_code"])
-                para_dict["target_pattern"] = target_pattern or SFTUtil.available_patterns[len(prompts) % len(SFTUtil.available_patterns)]
+                target_pattern = target_pattern or SFTUtil.available_patterns[len(prompts) % len(SFTUtil.available_patterns)]
+                para_dict["target_pattern"] = target_pattern
+                para_dict["backbone_prompt"] = SFTUtil.format_backbone_prompt(
+                    accuracy=para_dict.get("accuracy", row.get("accuracy", "")),
+                    target_pattern=target_pattern,
+                )
             if nn_code_max_chars and "nn_code" in para_dict and isinstance(para_dict["nn_code"], str):
                 para_dict["nn_code"] = para_dict["nn_code"][:nn_code_max_chars]
 
@@ -195,8 +200,12 @@ def nn_gen(
                         for it in key_config["addon_list"]:
                             para_dict[it["para"]] = addon_row[it["value"]]
 
-            prompts.append((system_text, prompt.format(
-                **para_dict), row, output_type))
+            prompt_text = (
+                para_dict["backbone_prompt"]
+                if use_backbone
+                else prompt.format(**para_dict)
+            )
+            prompts.append((system_text, prompt_text, row, output_type))
 
     models_dir = synth_dir(out_path)
 

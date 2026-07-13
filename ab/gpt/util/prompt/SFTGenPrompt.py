@@ -45,6 +45,7 @@ class SFTGenPrompt(Prompt):
         data_kwargs = {
             "task": "img-classification",
             "nn_prefixes": self.nn_prefixes,
+            "only_best_accuracy": only_best_accuracy,
         }
         if self.dataset:
             data_kwargs["dataset"] = self.dataset
