@@ -2,12 +2,13 @@ cd ../../../..
 
 export RUN_ROOT=.
 export PATTERN=4pattern
-export ADAPTER_DIR=$RUN_ROOT/sft/4pattern/deepseek/A18/deepseek-ai/deepseek-coder-6.7b-instruct
 export SEED=42
 
 export RUN_ID="${PATTERN}_deepseek_cifar10_seed${SEED}"
 
-export NNGPT_SFT_BASE_MODEL_ID=out/sft_full/backbone_struct1_20260716/A3/deepseek-ai/deepseek-coder-6.7b-instruct
+export NNGPT_SFT_BASE_MODEL_ID=deepseek-ai/deepseek-coder-6.7b-instruct
+export NNGPT_SFT_INIT_ADAPTER=out/sft_full/backbone_struct1_20260716/A3/deepseek-ai/deepseek-coder-6.7b-instruct
+
 export NNGPT_SFT_INIT_ADAPTER="$ADAPTER_DIR"
 export NNGPT_SFT_LOAD_INITIAL_ADAPTER=1
 export NNGPT_SFT_INITIAL_ADAPTER_MODE=trainable
