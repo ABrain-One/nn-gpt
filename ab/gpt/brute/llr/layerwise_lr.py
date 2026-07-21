@@ -11,7 +11,7 @@ Target: ~1000 trainable model directories.
 Math: 29 archs × 12 strategies × 3 datasets = 1044 potential; ~1000 after skips.
 
 Usage:
-    python -m ab.gpt.brute.lr.layerwise_lr
+    python -m ab.gpt.brute.llr.layerwise_lr
 """
 
 import ast
@@ -136,12 +136,19 @@ DATASETS = [
 # ---------------------------------------------------------------------------
 LAYERWISE_STRATEGIES = [
     {
+        # Control group. Implemented as a single parameter group at 1.0x LR rather
+        # than "source unchanged", so it is a DISTINCT, self-identifying model (its
+        # code carries the _llr_groups scaffold + strategy comment) instead of being
+        # byte-identical to the plain vanilla architecture. This lets it evaluate as
+        # its own baseline for every arch under our exact conditions, and makes
+        # strategy-vs-uniform isolate the layerwise-LR grouping effect (both share
+        # the scaffold) rather than the scaffold itself. Behaviourally == vanilla.
         'name': 'llr_uniform',
-        'type': 'uniform',
+        'type': 'n_group',
         'n_groups': 1,
         'multipliers': [1.0],
         'split_ratios': [1.0],
-        'description': 'Control: all layers share the same LR.',
+        'description': 'Control: single group, all layers at 1.0x LR (== vanilla baseline).',
     },
     # ── 2-group strategies ──────────────────────────────────────────────────
     {
@@ -478,54 +485,62 @@ def generate_models(output_base_dir: str, prefix: str = 'llr') -> int:
         arch_skip = 0
 
         for strategy in LAYERWISE_STRATEGIES:
-            # Produce modified code (shared across all 3 datasets)
+            # Produce modified code (dataset-independent — the injection does not
+            # depend on the dataset).
             model_code = inject_layerwise_lr(source_code, strategy)
             if model_code is None:
                 reason = 'no self.parameters() or injection failed'
                 print(f"  [SKIP] {arch} / {strategy['name']}: {reason}")
-                arch_skip += len(DATASETS)
-                total_skipped += len(DATASETS)
+                arch_skip += 1
+                total_skipped += 1
                 continue
 
-            # One model directory per dataset
-            for dataset_cfg in DATASETS:
-                model_name = f"{prefix}_{model_idx:04d}"
-                model_dir = output_base / model_name
-                model_dir.mkdir(parents=True, exist_ok=True)
+            # ONE directory per (arch, strategy). Because the code is identical
+            # across datasets, we no longer write a dir per dataset; instead the
+            # single dir is fanned out across datasets at eval time via
+            # `NNEval --datasets imagenette,cifar-10,cifar-100` (one stat row each).
+            # The representative dataset below only feeds dataframe.df/hp as a sane
+            # fallback if NNEval is ever run without --datasets.
+            dataset_cfg = DATASETS[0]
+            model_name = f"{prefix}_{model_idx:04d}"
+            model_dir = output_base / model_name
+            model_dir.mkdir(parents=True, exist_ok=True)
 
-                # new_nn.py
-                (model_dir / 'new_nn.py').write_text(model_code, encoding='utf-8')
+            # new_nn.py
+            (model_dir / 'new_nn.py').write_text(model_code, encoding='utf-8')
 
-                # hp.txt
-                hp_dict = build_hp_dict(arch, dataset_cfg)
-                (model_dir / 'hp.txt').write_text(
-                    json.dumps(hp_dict, indent=2), encoding='utf-8'
-                )
+            # hp.txt
+            hp_dict = build_hp_dict(arch, dataset_cfg)
+            (model_dir / 'hp.txt').write_text(
+                json.dumps(hp_dict, indent=2), encoding='utf-8'
+            )
 
-                # model_meta.txt
-                meta_lines = [
-                    f"architecture: {arch}",
-                    f"strategy: {strategy['name']}",
-                    f"strategy_type: {strategy['type']}",
-                    f"n_groups: {strategy['n_groups']}",
-                    f"multipliers: {strategy['multipliers']}",
-                    f"split_ratios: {[round(r, 6) for r in strategy['split_ratios']]}",
-                    f"dataset: {dataset_cfg['name']}",
-                    f"task: {dataset_cfg['task']}",
-                    f"metric: {dataset_cfg['metric']}",
-                    f"transform: {dataset_cfg['transform']}",
-                    f"description: {strategy['description']}",
-                ]
-                (model_dir / 'model_meta.txt').write_text(
-                    '\n'.join(meta_lines) + '\n', encoding='utf-8'
-                )
+            # model_meta.txt — architecture/strategy is the durable mapping;
+            # the actual per-dataset accuracy comes from the stat table after the
+            # fan-out evaluation, not from this nominal dataset field.
+            meta_lines = [
+                f"architecture: {arch}",
+                f"strategy: {strategy['name']}",
+                f"strategy_type: {strategy['type']}",
+                f"n_groups: {strategy['n_groups']}",
+                f"multipliers: {strategy['multipliers']}",
+                f"split_ratios: {[round(r, 6) for r in strategy['split_ratios']]}",
+                f"dataset: {dataset_cfg['name']}",
+                f"task: {dataset_cfg['task']}",
+                f"metric: {dataset_cfg['metric']}",
+                f"transform: {dataset_cfg['transform']}",
+                f"description: {strategy['description']}",
+            ]
+            (model_dir / 'model_meta.txt').write_text(
+                '\n'.join(meta_lines) + '\n', encoding='utf-8'
+            )
 
-                # dataframe.df (NNEval reads this for task/dataset/metric)
-                write_dataframe_df(model_dir, arch, strategy, dataset_cfg, hp_dict)
+            # dataframe.df — NNEval fallback if --datasets is not passed
+            write_dataframe_df(model_dir, arch, strategy, dataset_cfg, hp_dict)
 
-                model_idx += 1
-                arch_gen += 1
-                total_generated += 1
+            model_idx += 1
+            arch_gen += 1
+            total_generated += 1
 
         arch_stats[arch] = {'generated': arch_gen, 'skipped': arch_skip}
         status = 'OK' if arch_gen > 0 else 'FAIL'

@@ -146,6 +146,7 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
          task_type=TASK_TYPE, bias=BIAS, learning_rate=LEARNING_RATE, llm_tune_conf=LLM_TUNE_CONF, nn_gen_conf=NN_GEN_CONF, nn_gen_conf_id=NN_GEN_CONF_ID,
          llm_conf=LLM_CONF, test_nn=TEST_NN, peft=PEFT, skip_epoches=SKIP_EPOCHES, per_device_train_batch_size=PER_DEVICE_TRAIN_BATCH_SIZE,
          gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS, warmup_ratio=WARMUP_RATIO, logging_steps=LOGGING_STEPS, optimizer=OPTIMIZER,
+         report_to=None, logging_dir=None,
          max_prompts=MAX_PROMPTS, save_llm_output=SAVE_LLM_OUTPUT, max_new_tokens=MAX_NEW_TOKENS, use_deepspeed=USE_DEEPSPEED, nn_name_prefix=NN_NAME_PREFIX,
          nn_train_epochs=NN_TRAIN_EPOCHS, temperature=TEMPERATURE, top_k=TOP_K, top_p=TOP_P, data_dir=None,base_data_dir=None,output_dir=None,
          # Pipeline-specific overrides (for backward compatibility with iterative_finetune.py)
@@ -261,11 +262,17 @@ use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={c
     dtype_flags = _best_dtype_args()
 
     # Build TrainingArguments kwargs
+    # report_to defaults to [] (console print only, via logging_steps) unless the
+    # caller opts in with --report_to (e.g. 'tensorboard') for persisted/visualizable
+    # logs. logging_dir only matters when report_to is non-empty.
+    report_to_list = [r.strip() for r in report_to.split(',') if r.strip()] if report_to else []
+    logging_dir_path = logging_dir or (str(nngpt_dir / 'outputs' / 'runs') if report_to_list else None)
+
     # Pipeline mode (when evaluation_strategy is passed): use step-based eval with pipeline overrides
     # Standalone mode: use epoch-based eval with test_metric
     if evaluation_strategy is not None:
         training_kwargs = {
-            'report_to': [],
+            'report_to': report_to_list,
             'per_device_train_batch_size': per_device_train_batch_size,
             'gradient_accumulation_steps': gradient_accumulation_steps,
             'learning_rate': learning_rate,
@@ -278,6 +285,8 @@ use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={c
             'num_train_epochs': num_train_epochs,
             **dtype_flags,
         }
+        if logging_dir_path:
+            training_kwargs['logging_dir'] = logging_dir_path
 
         # Add warmup - pipeline may pass warmup_steps (override) or use warmup_ratio
         if warmup_steps is not None:
@@ -310,7 +319,7 @@ use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={c
             'num_train_epochs': num_train_epochs,
             'lr_scheduler_type': lr_scheduler,
             'max_grad_norm': max_grad_norm,
-            'report_to': [],
+            'report_to': report_to_list,
             'per_device_train_batch_size': per_device_train_batch_size,
             'gradient_accumulation_steps': gradient_accumulation_steps,
             'warmup_ratio': warmup_ratio,
@@ -323,6 +332,10 @@ use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={c
             **dtype_flags,
             **test_prm
         }
+        if logging_dir_path:
+            training_kwargs['logging_dir'] = logging_dir_path
+        if weight_decay is not None:
+            training_kwargs['weight_decay'] = weight_decay
 
     # Create TrainingArguments with all parameters at once
     training_args = TrainingArguments(**training_kwargs)
@@ -358,6 +371,7 @@ use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={c
             test_nn, nn_train_epochs, skip_epoches, peft,
             llm_tune_conf, nn_gen_conf, nn_gen_conf_id, llm_conf,
             training_args, peft_config,
+            num_cycles=cycles,
             max_prompts=max_prompts,
             save_llm_output=save_llm_output,
             max_new_tokens=max_new_tokens,
@@ -542,6 +556,12 @@ if __name__ == '__main__':
                         help=f'Warmup ratio (default: {WARMUP_RATIO}).')
     parser.add_argument('--logging_steps', type=int, default=LOGGING_STEPS,
                         help=f'Logging steps (default: {LOGGING_STEPS}).')
+    parser.add_argument('--report_to', type=str, default=None,
+                        help="Comma-separated Trainer logging integrations, e.g. 'tensorboard' or "
+                             "'tensorboard,wandb'. Default: none (console print only, via --logging_steps).")
+    parser.add_argument('--logging_dir', type=str, default=None,
+                        help='Directory for Trainer logs (TensorBoard event files, ...). '
+                             'Only used when --report_to is set; defaults to <output_dir>/runs/<timestamp>.')
     parser.add_argument('--optimizer', type=str, default=OPTIMIZER,
                         help=f'Optimizer (default: {OPTIMIZER}).')
     parser.add_argument('-k', '--skip_epoches', type=int, default=SKIP_EPOCHES,
@@ -622,5 +642,17 @@ if __name__ == '__main__':
     # Convert start_layer/end_layer → tune_layers (main() expects a range, not two ints)
     kwargs = vars(args)
     kwargs['tune_layers'] = range(kwargs.pop('start_layer'), kwargs.pop('end_layer'))
+
+    # --num_cycles in argparse maps to cycles= in main()
+    num_cycles = kwargs.pop('num_cycles')
+    if num_cycles is not None:
+        kwargs['cycles'] = num_cycles
+
+    # --nn_gen_conf_id accepts a comma-separated list of prompt keys (e.g. the
+    # LLR Selection + Mechanism buckets). tune()'s conf_keys wraps a bare string
+    # into a 1-tuple, so a single key still works unchanged.
+    if isinstance(kwargs.get('nn_gen_conf_id'), str) and ',' in kwargs['nn_gen_conf_id']:
+        kwargs['nn_gen_conf_id'] = tuple(
+            k.strip() for k in kwargs['nn_gen_conf_id'].split(',') if k.strip())
 
     main(**kwargs)

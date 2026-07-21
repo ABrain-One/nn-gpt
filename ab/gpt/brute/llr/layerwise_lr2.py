@@ -11,7 +11,7 @@ Second batch of layerwise LR strategies extending layerwise_lr.py:
 Math: 29 archs × 13 strategies × 3 datasets = 1131 potential; ~1000 after skips.
 
 Usage:
-    python -m ab.gpt.brute.lr.layerwise_lr2
+    python -m ab.gpt.brute.llr.layerwise_lr2
 """
 
 import ast
@@ -23,7 +23,7 @@ from ab.gpt.brute.lr.schedulers import (
     _find_method_range,
     read_architecture_source,
 )
-from ab.gpt.brute.lr.layerwise_lr import (
+from ab.gpt.brute.llr.layerwise_lr import (
     ARCHITECTURES,
     ARCH_EXTRA_HP_DEFAULTS,
     DATASETS,
@@ -339,11 +339,14 @@ def generate_models(output_base_dir: str, prefix: str = 'llr2') -> int:
             model_code = inject_layerwise_lr(source_code, strategy)
             if model_code is None:
                 print(f"  [SKIP] {arch} / {strategy['name']}: no self.parameters() or injection failed")
-                arch_skip += len(DATASETS)
-                total_skipped += len(DATASETS)
+                arch_skip += 1
+                total_skipped += 1
                 continue
 
-            for dataset_cfg in DATASETS:
+            # ONE dir per (arch, strategy). Code is dataset-independent, so the
+            # evaluator fans it out over datasets via `NNEval --datasets ...`
+            # (one stat row each) instead of duplicating the dir per dataset.
+            for dataset_cfg in DATASETS[:1]:
                 model_name = f"{prefix}_{model_idx:04d}"
                 model_dir = output_base / model_name
                 model_dir.mkdir(parents=True, exist_ok=True)

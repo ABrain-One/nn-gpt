@@ -117,6 +117,69 @@ def compute_delta(baseline_code: str, improved_code: str) -> str:
     return '\n'.join(delta)
 
 
+def shrink_nn_code_for_prompt(code: str, context_lines: int = 3) -> str:
+    """
+    Reduce a LEMUR model file to the parts an LLR prompt actually needs:
+    imports, short module-level assignments, supported_hyperparameters(),
+    the `class Net` header, and train_setup()/learn() with a few verbatim
+    neighbouring lines. Elided regions become '# ...' comment markers.
+
+    Kept lines are copied verbatim and each kept region is contiguous with
+    the real file, so any diff-context window the LLM copies from the shown
+    train_setup region (its edits may only touch train_setup) still matches
+    the full baseline that apply_delta() patches. Falls back to the full
+    code on any parse problem.
+    """
+    import ast
+    try:
+        tree = ast.parse(code)
+    except (SyntaxError, ValueError):
+        return code
+
+    lines = code.splitlines()
+    keep = set()
+
+    def _keep_span(node, before=0, after=0):
+        start = node.lineno
+        for dec in getattr(node, 'decorator_list', []):
+            start = min(start, dec.lineno)
+        keep.update(range(max(0, start - 1 - before),
+                          min(len(lines), node.end_lineno + after)))
+
+    for node in tree.body:
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            _keep_span(node)
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            if node.end_lineno - node.lineno < 5:  # skip huge config blobs
+                _keep_span(node)
+        elif isinstance(node, ast.FunctionDef) and node.name == 'supported_hyperparameters':
+            _keep_span(node)
+        elif isinstance(node, ast.ClassDef) and node.name == 'Net':
+            # class header line(s) only, then the methods we care about
+            keep.update(range(node.lineno - 1, node.body[0].lineno - 1))
+            for sub in node.body:
+                if isinstance(sub, ast.FunctionDef) and sub.name in ('train_setup', 'learn'):
+                    _keep_span(sub, before=context_lines, after=context_lines)
+
+    if not keep:
+        return code
+
+    out = []
+    prev = -1
+    for i in sorted(keep):
+        gap = i - prev - 1
+        if gap > 0 and prev >= 0:
+            out.append(f'# ... ({gap} lines with unchanged model internals omitted) ...')
+        elif prev < 0 and i > 0:
+            out.append(f'# ... ({i} lines omitted) ...')
+        out.append(lines[i])
+        prev = i
+    trailing = len(lines) - 1 - prev
+    if trailing > 0:
+        out.append(f'# ... ({trailing} lines with unchanged model internals omitted) ...')
+    return '\n'.join(out)
+
+
 def apply_delta(baseline_code: str, delta: str) -> Optional[str]:
     """
     Apply unified diff to baseline code to reconstruct improved code.
@@ -136,11 +199,19 @@ def apply_delta(baseline_code: str, delta: str) -> Optional[str]:
     """
     if not baseline_code or not delta:
         return None
-    
+
     # Validate delta format first
     if not validate_delta(delta):
         return None
-    
+
+    # LLMs frequently copy a prompt's example @@ header (line number and/or
+    # old/new counts) verbatim instead of computing their own, which makes
+    # 'patch' reject the hunk outright or misplace it. Recompute the header
+    # from the hunk's actual body content and the real baseline before any
+    # application attempt, so a miscounted/mispositioned header doesn't sink
+    # an otherwise-correct edit.
+    delta = _normalize_delta_headers(baseline_code, delta)
+
     # Try system patch command first (most reliable)
     result = _apply_delta_with_patch(baseline_code, delta)
     if result is not None:
@@ -165,6 +236,88 @@ def apply_delta(baseline_code: str, delta: str) -> Optional[str]:
             return repaired
         print(f"[DELTA] Manual result has syntax error: {error}")
     
+    return None
+
+
+def _normalize_delta_headers(baseline_code: str, delta: str) -> str:
+    """
+    Rewrite each hunk's '@@ -a,b +c,d @@' header using counts/position
+    derived from the hunk's actual body and the real baseline, discarding
+    whatever numbers the LLM wrote.
+
+    Rationale: the old/new counts are fully determined by the body (number
+    of context+removed vs context+added lines) and don't require any
+    reasoning from the model, yet LLMs routinely copy them from a prompt's
+    worked example instead of counting their own hunk. Likewise the start
+    line is looked up by finding where the hunk's old-side content actually
+    occurs in the baseline, rather than trusted as given. If the old-side
+    content can't be found verbatim in the baseline (e.g. the model also
+    wrote incorrect context), the header is left untouched and downstream
+    application will fail safely rather than apply at the wrong location.
+    """
+    baseline_lines = baseline_code.splitlines()
+    delta_lines = delta.splitlines()
+
+    out_lines: List[str] = []
+    i = 0
+    cumulative_offset = 0
+    while i < len(delta_lines):
+        line = delta_lines[i]
+        m = re.match(r'^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@(.*)$', line)
+        if not m:
+            out_lines.append(line)
+            i += 1
+            continue
+
+        declared_start = int(m.group(1))
+        trailer = m.group(5)
+
+        body = []
+        j = i + 1
+        while j < len(delta_lines) and not delta_lines[j].startswith('@@') \
+                and not delta_lines[j].startswith('---') and not delta_lines[j].startswith('+++'):
+            body.append(delta_lines[j])
+            j += 1
+
+        # A body line that is completely empty (no marker at all) is treated
+        # as a blank context line — LLM output frequently has its marker
+        # stripped by trailing-whitespace trimming on blank lines.
+        old_side = [l[1:] for l in body if l[:1] in (' ', '-') or l == '']
+        new_side = [l[1:] for l in body if l[:1] in (' ', '+') or l == '']
+
+        true_start = _find_subsequence(baseline_lines, old_side, hint=declared_start - 1)
+        if true_start is None:
+            out_lines.append(line)
+        else:
+            new_start = true_start + 1 + cumulative_offset
+            out_lines.append(f'@@ -{true_start + 1},{len(old_side)} +{new_start},{len(new_side)} @@{trailer}')
+            cumulative_offset += len(new_side) - len(old_side)
+
+        # Restore the marker on any blank-context line whose leading space
+        # got stripped, so patch/the manual parser both still recognize it
+        # as context instead of silently dropping it.
+        out_lines.extend(' ' if l == '' else l for l in body)
+        i = j
+
+    return '\n'.join(out_lines)
+
+
+def _find_subsequence(haystack: List[str], needle: List[str], hint: int = 0) -> Optional[int]:
+    """
+    Find the start index of `needle` as a contiguous run in `haystack`,
+    searching outward from `hint` first (the LLM's claimed position is
+    usually close when wrong at all) and falling back to a full scan.
+    Returns None if no exact match exists anywhere.
+    """
+    if not needle:
+        return None
+    n = len(needle)
+    max_r = max(hint, len(haystack) - hint) + 1
+
+    for r in range(max_r + 1):
+        for pos in (hint - r, hint + r) if r else (hint,):
+            if 0 <= pos <= len(haystack) - n and haystack[pos:pos + n] == needle:
+                return pos
     return None
 
 
