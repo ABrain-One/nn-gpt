@@ -1,0 +1,299 @@
+{
+  "improve_layerwise_lr": {
+    "type": "change_parameters",
+    "is_generation": false,
+    "task": null,
+    "addon_task": null,
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "epoch",
+        "value": "epoch"
+      },
+      {
+        "para": "dataset",
+        "value": "dataset"
+      },
+      {
+        "para": "task",
+        "value": "task"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "addon_accuracy",
+        "value": "accuracy_2"
+      },
+      {
+        "para": "addon_strategy",
+        "value": "strategy_2"
+      },
+      {
+        "para": "addon_strategy_type",
+        "value": "strategy_type_2"
+      },
+      {
+        "para": "addon_n_groups",
+        "value": "n_groups_2"
+      },
+      {
+        "para": "addon_multipliers",
+        "value": "multipliers_2"
+      },
+      {
+        "para": "addon_split_ratios",
+        "value": "split_ratios_2"
+      },
+      {
+        "para": "addon_description",
+        "value": "description_2"
+      },
+      {
+        "para": "addon_prm",
+        "value": "prm_2"
+      },
+      {
+        "para": "addon_transform_code",
+        "value": "transform_code_2"
+      },
+      {
+        "para": "addon_nn_code",
+        "value": "nn_code_2"
+      }
+    ],
+    "no_repeat": [
+      "nn"
+    ],
+    "keep_same": [
+      "epoch",
+      "metric",
+      "dataset",
+      "task"
+    ],
+    "nn_prefixes": [
+      "llr-",
+      "llr2-",
+      "llr3-"
+    ],
+    "nn_code_max_chars": 24000,
+    "num_joint_nns": 2,
+    "improve": true,
+    "top_k_per_group": 8,
+    "top_k_group_cols": [
+      "nn",
+      "dataset"
+    ],
+    "use_delta": true,
+    "llr_vanilla_generation": true,
+    "system": [
+      "You are a PyTorch expert. You apply layerwise learning-rate strategies to models by editing train_setup(), and you output your edit as a unified diff (<delta>), never a full file.",
+      "Do not think step by step, do not explain your reasoning, do not narrate your approach. Respond immediately with the three required tags and nothing else — your first output characters must be '<hp>'."
+    ],
+    "prompt": [
+      "Baseline on '{dataset}' ({task}, metric {metric}): accuracy {accuracy} at epoch {epoch}.",
+      "Apply this strategy, which reached {addon_accuracy}:",
+      "  {addon_strategy} ({addon_strategy_type}, {addon_n_groups} groups)",
+      "  multipliers: {addon_multipliers}   (backbone -> head)",
+      "  splits: {addon_split_ratios}   (n_group only; ignored for cyclic)",
+      "  {addon_description}",
+      "",
+      "Grouping rule for train_setup, by strategy_type:",
+      "  n_group -> slice named_parameters() into contiguous depth groups sized by the split ratios.",
+      "  cyclic  -> bucket named_parameters() by index modulo len(multipliers) (interleaved, not depth-contiguous).",
+      "Each group's lr = prm['lr'] * its multiplier. Pass the groups to the optimizer instead of self.parameters().",
+      "Build the groups INLINE, directly inside train_setup, as local variables. Do NOT define or call any new method (no self.groups(), no self.get_param_groups(), no helper functions) — every name you introduce must be a local variable built and used within this same train_setup body.",
+      "",
+      "Worked example (2 equal groups, multipliers [0.1, 1.0]) — match this STYLE only. The @@ line/counts and context below belong to a DIFFERENT, hypothetical file and WILL be wrong for your baseline. Derive your own hunk from the actual <nn>{nn_code}</nn> given below: copy its real train_setup context character-for-character (including any blank line before 'def learn'), use its real line number, and set old_count = the unchanged+removed lines you wrote, new_count = the unchanged+added lines you wrote — never reuse the numbers 19/6/19/17 shown here.",
+      "@@ -19,6 +19,17 @@",
+      "     def train_setup(self, prm):",
+      "         self.to(self.device)",
+      "         self.criteria = (nn.CrossEntropyLoss().to(self.device),)",
+      "-        self.optimizer = torch.optim.SGD(self.parameters(), lr=prm['lr'], momentum=prm['momentum'])",
+      "+        _llr_params = list(self.named_parameters())",
+      "+        _llr_n = len(_llr_params)",
+      "+        _llr_ratios = [0.5, 0.5]",
+      "+        _llr_mults = [0.1, 1.0]",
+      "+        _llr_groups = []",
+      "+        _llr_start = 0",
+      "+        for _llr_r, _llr_m in zip(_llr_ratios, _llr_mults):",
+      "+            _llr_size = max(1, round(_llr_n * _llr_r))",
+      "+            _llr_end = min(_llr_start + _llr_size, _llr_n)",
+      "+            _llr_groups.append({{'params': [p for _, p in _llr_params[_llr_start:_llr_end]], 'lr': prm['lr'] * _llr_m}})",
+      "+            _llr_start = _llr_end",
+      "+        self.optimizer = torch.optim.SGD(_llr_groups, lr=prm['lr'], momentum=prm['momentum'])",
+      " ",
+      "     def learn(self, train_data):",
+      "",
+      "Output exactly <hp>...</hp> <tr>...</tr> <delta>...</delta>, nothing else (no markdown/backticks/prose).",
+      "<delta> is a unified diff against the baseline below ('--- baseline.py' / '+++ improved.py' / '@@ -a,b +c,d @@' hunks, ' '/-'/'+' lines).",
+      "Copy the baseline's train_setup context EXACTLY (names, indentation, the self.optimizer=... line) so the diff applies cleanly.",
+      "Touch ONLY train_setup — never __init__, forward, or learn. Use self.device (from __init__), never prm['device'].",
+      "supported_hyperparameters() must list only the prm keys actually used.",
+      "Output exactly ONE <hp>, ONE <tr>, and ONE <delta> block — never repeat a tag.",
+      "",
+      "Baseline model (abridged: '# ...' comment markers replace unchanged internals; all shown lines are verbatim from the real file — copy diff context only from shown lines):",
+      "<nn>{nn_code}</nn>"
+    ],
+    "output": [
+      "<hp>{addon_prm}</hp>",
+      "<tr>{addon_transform_code}</tr>",
+      "<delta>{computed_delta}</delta>"
+    ],
+    "shrink_nn_code": true
+  },
+  "apply_layerwise_lr": {
+    "type": "change_parameters",
+    "is_generation": false,
+    "task": null,
+    "addon_task": null,
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "epoch",
+        "value": "epoch"
+      },
+      {
+        "para": "dataset",
+        "value": "dataset"
+      },
+      {
+        "para": "task",
+        "value": "task"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "addon_strategy",
+        "value": "strategy_2"
+      },
+      {
+        "para": "addon_strategy_type",
+        "value": "strategy_type_2"
+      },
+      {
+        "para": "addon_n_groups",
+        "value": "n_groups_2"
+      },
+      {
+        "para": "addon_multipliers",
+        "value": "multipliers_2"
+      },
+      {
+        "para": "addon_split_ratios",
+        "value": "split_ratios_2"
+      },
+      {
+        "para": "addon_description",
+        "value": "description_2"
+      },
+      {
+        "para": "addon_prm",
+        "value": "prm_2"
+      },
+      {
+        "para": "addon_transform_code",
+        "value": "transform_code_2"
+      },
+      {
+        "para": "addon_nn_code",
+        "value": "nn_code_2"
+      }
+    ],
+    "no_repeat": [
+      "nn"
+    ],
+    "keep_same": [
+      "epoch",
+      "metric",
+      "dataset",
+      "task"
+    ],
+    "nn_prefixes": [
+      "llr-",
+      "llr2-",
+      "llr3-"
+    ],
+    "nn_code_max_chars": 24000,
+    "num_joint_nns": 2,
+    "improve": false,
+    "top_k_per_group": 10,
+    "top_k_group_cols": [
+      "nn"
+    ],
+    "use_delta": true,
+    "llr_vanilla_generation": true,
+    "system": [
+      "You are a PyTorch expert. You apply layerwise learning-rate strategies to models by editing train_setup(), and you output your edit as a unified diff (<delta>), never a full file.",
+      "Do not think step by step, do not explain your reasoning, do not narrate your approach. Respond immediately with the three required tags and nothing else — your first output characters must be '<hp>'."
+    ],
+    "prompt": [
+      "Baseline on '{dataset}' ({task}, metric {metric}): accuracy {accuracy} at epoch {epoch}.",
+      "Apply this strategy:",
+      "  {addon_strategy} ({addon_strategy_type}, {addon_n_groups} groups)",
+      "  multipliers: {addon_multipliers}   (backbone -> head)",
+      "  splits: {addon_split_ratios}   (n_group only; ignored for cyclic)",
+      "  {addon_description}",
+      "",
+      "Grouping rule for train_setup, by strategy_type:",
+      "  n_group -> slice named_parameters() into contiguous depth groups sized by the split ratios.",
+      "  cyclic  -> bucket named_parameters() by index modulo len(multipliers) (interleaved, not depth-contiguous).",
+      "Each group's lr = prm['lr'] * its multiplier. Pass the groups to the optimizer instead of self.parameters().",
+      "Build the groups INLINE, directly inside train_setup, as local variables. Do NOT define or call any new method (no self.groups(), no self.get_param_groups(), no helper functions) — every name you introduce must be a local variable built and used within this same train_setup body.",
+      "",
+      "Worked example (2 equal groups, multipliers [0.1, 1.0]) — match this STYLE only. The @@ line/counts and context below belong to a DIFFERENT, hypothetical file and WILL be wrong for your baseline. Derive your own hunk from the actual <nn>{nn_code}</nn> given below: copy its real train_setup context character-for-character (including any blank line before 'def learn'), use its real line number, and set old_count = the unchanged+removed lines you wrote, new_count = the unchanged+added lines you wrote — never reuse the numbers 19/6/19/17 shown here.",
+      "@@ -19,6 +19,17 @@",
+      "     def train_setup(self, prm):",
+      "         self.to(self.device)",
+      "         self.criteria = (nn.CrossEntropyLoss().to(self.device),)",
+      "-        self.optimizer = torch.optim.SGD(self.parameters(), lr=prm['lr'], momentum=prm['momentum'])",
+      "+        _llr_params = list(self.named_parameters())",
+      "+        _llr_n = len(_llr_params)",
+      "+        _llr_ratios = [0.5, 0.5]",
+      "+        _llr_mults = [0.1, 1.0]",
+      "+        _llr_groups = []",
+      "+        _llr_start = 0",
+      "+        for _llr_r, _llr_m in zip(_llr_ratios, _llr_mults):",
+      "+            _llr_size = max(1, round(_llr_n * _llr_r))",
+      "+            _llr_end = min(_llr_start + _llr_size, _llr_n)",
+      "+            _llr_groups.append({{'params': [p for _, p in _llr_params[_llr_start:_llr_end]], 'lr': prm['lr'] * _llr_m}})",
+      "+            _llr_start = _llr_end",
+      "+        self.optimizer = torch.optim.SGD(_llr_groups, lr=prm['lr'], momentum=prm['momentum'])",
+      " ",
+      "     def learn(self, train_data):",
+      "",
+      "Output exactly <hp>...</hp> <tr>...</tr> <delta>...</delta>, nothing else (no markdown/backticks/prose).",
+      "<delta> is a unified diff against the baseline below ('--- baseline.py' / '+++ improved.py' / '@@ -a,b +c,d @@' hunks, ' '/-'/'+' lines).",
+      "Copy the baseline's train_setup context EXACTLY (names, indentation, the self.optimizer=... line) so the diff applies cleanly.",
+      "Touch ONLY train_setup — never __init__, forward, or learn. Use self.device (from __init__), never prm['device'].",
+      "supported_hyperparameters() must list only the prm keys actually used.",
+      "Output exactly ONE <hp>, ONE <tr>, and ONE <delta> block — never repeat a tag.",
+      "",
+      "Baseline model (abridged: '# ...' comment markers replace unchanged internals; all shown lines are verbatim from the real file — copy diff context only from shown lines):",
+      "<nn>{nn_code}</nn>"
+    ],
+    "output": [
+      "<hp>{addon_prm}</hp>",
+      "<tr>{addon_transform_code}</tr>",
+      "<delta>{computed_delta}</delta>"
+    ],
+    "shrink_nn_code": true
+  }
+}

@@ -132,7 +132,19 @@ def nn_gen(
 
         num_joint_nns = key_config.get("num_joint_nns", 1)
         use_join = num_joint_nns >= 2
-        if use_join:
+
+        # LLR generation candidates need a vanilla architecture + a strategy spec
+        # to apply — NOT the generic self-join over the entire LEMUR stat table
+        # (which has no nn_prefixes filter and would pair arbitrary unrelated
+        # models). Gated by an explicit config flag so every other use_join
+        # consumer (NN_gen.json, Transform_gen.json, ...) is unaffected.
+        if key_config.get("llr_vanilla_generation"):
+            from ab.gpt.brute.llr.llr_generation import build_llr_generation_data
+            data = build_llr_generation_data(key_config, test_nn, epoch=epoch)
+            addon_data = None
+            print(f"[LLR-GEN] key={key}: sampled {len(data)} generation candidates "
+                  f"(mode={'selection' if key_config.get('improve') else 'mechanism'})")
+        elif use_join:
             from ab.nn.util.db.Query import JoinConf
             from ab.gpt.util.lemur_enrichment import patch_join_nn_query, enrich_dataframe
             patch_join_nn_query()
@@ -189,6 +201,12 @@ def nn_gen(
                     accuracy=para_dict.get("accuracy", row.get("accuracy", "")),
                     target_pattern=target_pattern,
                 )
+            if key_config.get("shrink_nn_code") and "nn_code" in para_dict and isinstance(para_dict["nn_code"], str):
+                # Show the LLM only the LLR-relevant slice of the baseline
+                # (train_setup/learn + headers). The delta is still applied
+                # to the FULL baseline from origdf['nn_code'] below.
+                from ab.gpt.util.DeltaUtil import shrink_nn_code_for_prompt
+                para_dict["nn_code"] = shrink_nn_code_for_prompt(para_dict["nn_code"])
             if nn_code_max_chars and "nn_code" in para_dict and isinstance(para_dict["nn_code"], str):
                 para_dict["nn_code"] = para_dict["nn_code"][:nn_code_max_chars]
 

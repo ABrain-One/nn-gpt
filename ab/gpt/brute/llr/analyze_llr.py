@@ -9,8 +9,8 @@ produces:
   - report.txt         : human-readable summary
 
 Usage:
-    python -m ab.gpt.brute.lr.analyze_llr
-    python -m ab.gpt.brute.lr.analyze_llr --synth_dir /path/to/synth_nn --out_dir /path/to/out
+    python -m ab.gpt.brute.llr.analyze_llr
+    python -m ab.gpt.brute.llr.analyze_llr --synth_dir /path/to/synth_nn --out_dir /path/to/out
 """
 
 import argparse
