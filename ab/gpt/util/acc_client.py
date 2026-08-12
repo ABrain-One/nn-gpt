@@ -2,9 +2,8 @@ import json
 import re
 import httpx
 
-from ab.gpt.util.method.zero_cost_proxies import (
-    compute_proxies, normalize_proxy_value, DEFAULT_PROXY_NORM_STATS,
-)
+# torch-based proxy computation is imported lazily inside _proxy_lines, so
+# importing this client stays light (httpx only) until a prediction is made.
 
 # --- Remote vLLM server ---
 VLLM_URL = "http://132.187.14.67:30031/v1/chat/completions"
@@ -34,20 +33,31 @@ Stop immediately after the closing brace }.
 """
 
 
-def _proxy_lines(nn_code: str, dataset: str, prm: dict | None) -> list[str]:
-    """Compute the active zero-cost proxies from nn_code, normalize them with the
-    training stats, and format them as the ZERO_COST_PROXIES block. Returns [] if
-    none compute (block is then omitted, matching training)."""
-    if not (nn_code or "").strip():
-        return []
-    proxies = compute_proxies(nn_code, dataset or "", prm=prm)
-    lines = []
-    for name in ACTIVE_PROXY_NAMES:
-        raw = proxies.get(name)
-        if raw is not None:
-            value = normalize_proxy_value(name, raw, DEFAULT_PROXY_NORM_STATS)
-            if value is not None:
-                lines.append(f"{name}: {round(float(value), 4)}")
+def _proxy_lines(nn_code: str, dataset: str, prm: dict | None,
+                 proxies: dict | None = None) -> list[str]:
+    """Format the ZERO_COST_PROXIES block. If `proxies` (a {name: normalized_value}
+    dict) is passed, use it directly -- no torch needed. Otherwise compute the
+    proxies from nn_code, importing torch lazily only here; on any failure, warn
+    and omit the block so the prediction still proceeds."""
+    values = dict(proxies) if proxies else {}
+    if not values and (nn_code or "").strip():
+        try:
+            from ab.gpt.util.method.zero_cost_proxies import (
+                compute_proxies, normalize_proxy_value, DEFAULT_PROXY_NORM_STATS,
+            )
+            raw = compute_proxies(nn_code, dataset or "", prm=prm)
+            for name in ACTIVE_PROXY_NAMES:
+                if raw.get(name) is not None:
+                    v = normalize_proxy_value(name, raw[name], DEFAULT_PROXY_NORM_STATS)
+                    if v is not None:
+                        values[name] = v
+        except Exception as e:
+            import warnings
+            warnings.warn(f"zero-cost proxy computation unavailable "
+                          f"({type(e).__name__}: {e}); predicting without proxies")
+            return []
+    lines = [f"{name}: {round(float(values[name]), 4)}"
+             for name in ACTIVE_PROXY_NAMES if values.get(name) is not None]
     if not lines:
         return []
     return ["ZERO_COST_PROXIES (training-free, normalized architecture signals)", *lines, ""]
@@ -61,6 +71,7 @@ def _build_user_message(
     epoch_1_accuracy: float,
     epoch_2_accuracy: float,
     prm: dict | None = None,
+    proxies: dict | None = None,
 ) -> str:
     lines = [
         "INPUT",
@@ -75,7 +86,7 @@ def _build_user_message(
         f"epoch_1_accuracy: {round(float(epoch_1_accuracy), 6)}",
         f"epoch_2_accuracy: {round(float(epoch_2_accuracy), 6)}",
         "",
-        *_proxy_lines(nn_code, dataset, prm),
+        *_proxy_lines(nn_code, dataset, prm, proxies),
         "Analyze the training dynamics and optimization hyperparameters to estimate the final training outcome.",
         "",
         "Important signals to consider:",
@@ -129,17 +140,20 @@ def predict_best_accuracy(
     epoch_1_accuracy: float,
     epoch_2_accuracy: float,
     prm: dict | None = None,
+    proxies: dict | None = None,
 ) -> tuple[float, int]:
-    """Predict best_accuracy and best_epoch via the remote vLLM server. Builds the
+    """Predict best_accuracy and best_epoch via the remote vLLM server, building the
     prompt the served model expects (no source code, 2 early epochs, 5 zero-cost
-    proxies computed from nn_code). prm is only used to compute the proxies."""
+    proxies). By default the proxies are computed from nn_code (needs torch); pass
+    a {name: normalized_value} `proxies` dict to skip that. prm only feeds the
+    proxy computation."""
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {
             "role": "user",
             "content": _build_user_message(
                 task, dataset, metric, nn_code,
-                epoch_1_accuracy, epoch_2_accuracy, prm,
+                epoch_1_accuracy, epoch_2_accuracy, prm, proxies,
             ),
         },
     ]
