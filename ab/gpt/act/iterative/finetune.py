@@ -35,8 +35,6 @@ from ab.gpt.act.iterative.gpu_memory_manager import (
     ensure_gpu_memory, clear_gpu_cache, get_gpu_memory_info, check_gpu_memory,
     kill_gpu_processes
 )
-from ab.dup.preprocessing import curate_from_lemur
-from ab.chatprep.prompt_builder import ChatPrepConfig
 from ab.gpt.act.tune.Tune import get_pipeline_defaults
 from ab.nn.util.Const import out_dir
 from ab.gpt.util.Const import nngpt_dir, new_nn_file, DEFAULT_DATASET, DEFAULT_NN_PREFIXES
@@ -198,6 +196,20 @@ class IterativeFinetuner:
         logger.info(f"Target: {curation_chat_data}")
 
         try:
+            # Lazy, guarded imports: these live in externally-provided packages
+            # (not tracked in this repo), so import them here and fail cleanly
+            # if they're missing rather than crashing at module load time.
+            try:
+                from ab.dup.preprocessing import curate_from_lemur
+                from ab.chatprep.prompt_builder import ChatPrepConfig
+            except ImportError as e:
+                logger.error(f"✗ Missing curation dependency: {e}")
+                logger.error("Please ensure ab.dup.preprocessing and ab.chatprep.prompt_builder are available")
+                raise RuntimeError(
+                    "Curation data generation requires ab.dup.preprocessing and "
+                    "ab.chatprep.prompt_builder, which are not installed"
+                ) from e
+
             # Step 1: Curate from LEMUR
             logger.info("Step 1: Curating models from LEMUR...")
             curate_result = curate_from_lemur(
@@ -229,10 +241,6 @@ class IterativeFinetuner:
                 logger.error(f"✗ Curation data creation failed")
                 raise RuntimeError(f"Curation data creation failed")
 
-        except ImportError as e:
-            logger.error(f"✗ Failed to import curation modules: {e}")
-            logger.error("Please ensure ab.dup.preprocessing and ab.chatprep.prompt_builder are available")
-            raise
         except Exception as e:
             logger.error(f"✗ Curation data creation failed: {e}")
             logger.error("Please create curation data manually or fix the issue above")
