@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import pearsonr, spearmanr
 from ab.nn.util.Const import out_dir
-from ab.gpt.util.method.zero_cost_proxies import PROXY_NAMES, normalize_proxy_value, compute_proxies
+from ab.gpt.util.method.zero_cost_proxies import PROXY_NAMES, normalize_proxy_value, compute_proxies, DEFAULT_PROXY_NORM_STATS
 # semantic_retrieval is imported lazily where used (only when USE_SEMANTIC_RETRIEVAL).
 
 try:
@@ -947,19 +947,9 @@ def _attach_proxy_features(record: dict, proxy_cache: dict, norm_stats: dict) ->
 
 _PREDICTOR_PROXY_NORM_STATS: dict | None = None
 
-# Normalization stats the published model was trained with, embedded so
-# inference works without a proxy_norm_stats.json file. A local file, if present,
-# overrides these (see _get_predictor_proxy_norm_stats).
-_DEFAULT_PROXY_NORM_STATS: dict = {
-    "synflow":    {"transform": "log1p", "mean": 28.010968242141725, "std": 28.76250416924666,  "n": 1377},
-    "nwot":       {"transform": "none",  "mean": 91.97849879832741,  "std": 11.345025242202839, "n": 1373},
-    "grad_norm":  {"transform": "log1p", "mean": 1.2624715355820684, "std": 1.5277296957245465, "n": 1359},
-    "log_params": {"transform": "none",  "mean": 14.027992648327869, "std": 3.6699369017614827, "n": 1392},
-    "depth":      {"transform": "log1p", "mean": 3.4690361790519724, "std": 0.8966121575625369, "n": 1392},
-    "snip":       {"transform": "log1p", "mean": 2.6654958255013574, "std": 2.1397100177914203, "n": 1359},
-    "fisher":     {"transform": "log1p", "mean": 0.5598579965866282, "std": 1.789205532349267,  "n": 1354},
-    "grasp":      {"transform": "log1p", "mean": -2.65979787337622,  "std": 3.613374620607079,  "n": 1351},
-}
+# Embedded fallback so inference works without a proxy_norm_stats.json file; a
+# local file, if present, overrides it (see _get_predictor_proxy_norm_stats).
+_DEFAULT_PROXY_NORM_STATS = DEFAULT_PROXY_NORM_STATS
 
 
 def _get_predictor_proxy_norm_stats() -> dict:
