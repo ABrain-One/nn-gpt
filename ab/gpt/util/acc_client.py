@@ -2,12 +2,19 @@ import json
 import re
 import httpx
 
+# torch-based proxy computation is imported lazily inside _proxy_lines, so
+# importing this client stays light (httpx only) until a prediction is made.
+
 # --- Remote vLLM server ---
 VLLM_URL = "http://132.187.14.67:30031/v1/chat/completions"
 MODEL = "accuracy"  # --lora-modules accuracy=ABrain/Accuracy-Prediction
 
 PREDICTOR_DEFAULT_MAX_EPOCHS = 50
 PREDICTOR_MAX_NEW_TOKENS = 64
+
+# Must match the served model's training config (no source code, 2 early epochs,
+# these 5 normalized zero-cost proxies). See AccPredictor.ACTIVE_PROXY_NAMES.
+ACTIVE_PROXY_NAMES = ("synflow", "nwot", "grad_norm", "log_params", "depth")
 
 SYSTEM_PROMPT = """You are a strict JSON generator.
 You must output exactly ONE JSON object and nothing else.
@@ -26,6 +33,36 @@ Stop immediately after the closing brace }.
 """
 
 
+def _proxy_lines(nn_code: str, dataset: str, prm: dict | None,
+                 proxies: dict | None = None) -> list[str]:
+    """Format the ZERO_COST_PROXIES block. If `proxies` (a {name: normalized_value}
+    dict) is passed, use it directly -- no torch needed. Otherwise compute the
+    proxies from nn_code, importing torch lazily only here; on any failure, warn
+    and omit the block so the prediction still proceeds."""
+    values = dict(proxies) if proxies else {}
+    if not values and (nn_code or "").strip():
+        try:
+            from ab.gpt.util.method.zero_cost_proxies import (
+                compute_proxies, normalize_proxy_value, DEFAULT_PROXY_NORM_STATS,
+            )
+            raw = compute_proxies(nn_code, dataset or "", prm=prm)
+            for name in ACTIVE_PROXY_NAMES:
+                if raw.get(name) is not None:
+                    v = normalize_proxy_value(name, raw[name], DEFAULT_PROXY_NORM_STATS)
+                    if v is not None:
+                        values[name] = v
+        except Exception as e:
+            import warnings
+            warnings.warn(f"zero-cost proxy computation unavailable "
+                          f"({type(e).__name__}: {e}); predicting without proxies")
+            return []
+    lines = [f"{name}: {round(float(values[name]), 4)}"
+             for name in ACTIVE_PROXY_NAMES if values.get(name) is not None]
+    if not lines:
+        return []
+    return ["ZERO_COST_PROXIES (training-free, normalized architecture signals)", *lines, ""]
+
+
 def _build_user_message(
     task: str,
     dataset: str,
@@ -33,7 +70,8 @@ def _build_user_message(
     nn_code: str,
     epoch_1_accuracy: float,
     epoch_2_accuracy: float,
-    epoch_3_accuracy: float,
+    prm: dict | None = None,
+    proxies: dict | None = None,
 ) -> str:
     lines = [
         "INPUT",
@@ -47,20 +85,16 @@ def _build_user_message(
         "EARLY_TRAINING_SIGNAL",
         f"epoch_1_accuracy: {round(float(epoch_1_accuracy), 6)}",
         f"epoch_2_accuracy: {round(float(epoch_2_accuracy), 6)}",
-        f"epoch_3_accuracy: {round(float(epoch_3_accuracy), 6)}",
         "",
-        "NEURAL_NETWORK_CODE",
-        "```python",
-        (nn_code or "").strip(),
-        "```",
-        "",
-        "Analyze the training dynamics, architecture complexity, and optimization hyperparameters to estimate the final training outcome.",
+        *_proxy_lines(nn_code, dataset, prm, proxies),
+        "Analyze the training dynamics and optimization hyperparameters to estimate the final training outcome.",
         "",
         "Important signals to consider:",
         "- Early learning progress (epoch accuracies)",
         "- Saturation of improvement across epochs",
-        "- Architecture depth and complexity",
         "- Optimization scale (learning rate, batch size, effective_lr)",
+        "- Zero-cost proxy scores, if present (training-free estimates of architecture quality that generalize across architecture families better than early accuracy alone)",
+        "- Outcomes of similar architectures, if present (real precedents from structurally similar networks)",
         "",
         "Using these signals, estimate the final best validation accuracy and the epoch where it occurs.",
         "",
@@ -105,16 +139,21 @@ def predict_best_accuracy(
     nn_code: str,
     epoch_1_accuracy: float,
     epoch_2_accuracy: float,
-    epoch_3_accuracy: float,
+    prm: dict | None = None,
+    proxies: dict | None = None,
 ) -> tuple[float, int]:
-    """Predict final best_accuracy and best_epoch via the remote vLLM server."""
+    """Predict best_accuracy and best_epoch via the remote vLLM server, building the
+    prompt the served model expects (no source code, 2 early epochs, 5 zero-cost
+    proxies). By default the proxies are computed from nn_code (needs torch); pass
+    a {name: normalized_value} `proxies` dict to skip that. prm only feeds the
+    proxy computation."""
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {
             "role": "user",
             "content": _build_user_message(
                 task, dataset, metric, nn_code,
-                epoch_1_accuracy, epoch_2_accuracy, epoch_3_accuracy,
+                epoch_1_accuracy, epoch_2_accuracy, prm, proxies,
             ),
         },
     ]
@@ -173,14 +212,14 @@ class Net(nn.Module):
         return self.fc2(x)
 """
 
+    # early accuracies on the 0-1 scale, matching the model's training data
     best_accuracy, best_epoch = predict_best_accuracy(
         task="img-classification",
         dataset="cifar-10",
         metric="acc",
         nn_code=nn_code,
-        epoch_1_accuracy=61.2,
-        epoch_2_accuracy=72.4,
-        epoch_3_accuracy=78.1,
+        epoch_1_accuracy=0.612,
+        epoch_2_accuracy=0.724,
     )
     print(f"Predicted best accuracy: {best_accuracy}")
     print(f"Predicted best epoch:    {best_epoch}")
