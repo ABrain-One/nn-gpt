@@ -1,0 +1,1943 @@
+LEMUR root /a/mm
+2026-07-15 15:27:12,453 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-15 15:27:12,454 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-15 15:27:12,454 - INFO - NumExpr defaulting to 16 threads.
+2026-07-15 15:27:13,912 - WARNING - Skipping import of cpp extensions due to incompatible torch version 2.7.1+cu126 for torchao version 0.15.0+cu126             Please see https://github.com/pytorch/ao/issues/2919 for more info
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/historic_runs/run_2026-07-15_15-27-15 for fresh start.
+[Meta] Moved LLM LoRA weights to /a/mm/ab/gpt/brute/ga/meta_evolution/fine_tuned_adapter_cifar100/historic_runs/run_2026-07-15_15-27-15 for fresh start.
+[Config] Loaded model_config.json  (context_length=4096)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-07-15 15:27:16,446 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:04<00:13,  4.38s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:07<00:07,  3.84s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:10<00:03,  3.47s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:11<00:00,  2.16s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:11<00:00,  2.75s/it]
+[LoRA] Adapter directory exists at /a/mm/ab/gpt/brute/ga/meta_evolution/fine_tuned_adapter_cifar100 but no weight files found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+[Meta] Loaded Baseline Score: 0.00%
+[Meta] Running Baseline Benchmark...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+[Meta] Calculated Baseline: 0.0000%
+
+[Meta] Target: 5 SUCCESSFUL evolutions (will retry up to 10 times per component)
+
+=== Attempt 1 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+    if gene_name == "lr":
+        alpha = 0.5  # Weight for the linear combination
+        return alpha * parent1_value + (1 - alpha) * parent2_value
+    elif gene_name == "momentum":
+        beta = 0.5  # Weight for the linear combination
+        return beta * parent1_value + (1 - beta) * parent2_value
+    elif gene_name == "dropout_prob":
+        gamma = 0.5  # Weight for the linear combination
+        return gamma * parent1_value + (1 - gamma) * parent2_value
+    elif gene_name == "fc_dropout":
+        delta = 0.5  # Weight for the linear combination
+        return delta * parent1_value + (1 - delta) * parent2_value
+    elif gene_name == "kernel_size":
+        return random.choice([parent1_value, parent2_value])
+    else:
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '0.30000000000000004' for gene 'dropout_prob', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 1 failed — retrying (failures: 1/10, successes so far: 0/5)
+
+=== Attempt 2 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 2 failed — retrying (failures: 2/10, successes so far: 0/5)
+
+=== Attempt 3 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 3 failed — retrying (failures: 3/10, successes so far: 0/5)
+
+=== Attempt 4 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 4 failed — retrying (failures: 4/10, successes so far: 0/5)
+
+=== Attempt 5 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        else:
+            return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 5 failed — retrying (failures: 5/10, successes so far: 0/5)
+
+=== Attempt 6 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 6 failed — retrying (failures: 6/10, successes so far: 0/5)
+
+=== Attempt 7 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        
+        # Intelligently combine genes based on their type
+        if isinstance(parent1_value, (int, float)):
+            alpha = random.uniform(0.3, 0.7)  # Adjust alpha to control blend intensity
+            return parent1_value * alpha + parent2_value * (1 - alpha)
+        
+        elif isinstance(parent1_value, str):
+            return random.choice([parent1_value, parent2_value])  # Randomly choose between parents
+        
+        else:
+            raise ValueError("Unsupported data type for gene combination")
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '0.19766508580205533' for gene 'fc_dropout', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 7 failed — retrying (failures: 7/10, successes so far: 0/5)
+
+=== Attempt 8 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_name == 'learning_rate':
+            return parent1_value * parent2_value
+        elif gene_name == 'momentum':
+            return (parent1_value + parent2_value) / 2
+        elif gene_name == 'dropout_prob' or gene_name == 'fc_dropout':
+            return (parent1_value + parent2_value) / 2
+        else:
+            if gene_index < crossover_point:
+                return parent1_value
+            return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '0.375' for gene 'fc_dropout', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 8 failed — retrying (failures: 8/10, successes so far: 0/5)
+
+=== Attempt 9 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 9 failed — retrying (failures: 9/10, successes so far: 0/5)
+
+=== Attempt 10 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_name == 'activation':
+            activations = ['ReLU', 'GELU', 'LeakyReLU', 'SiLU']
+            idx1 = activations.index(parent1_value)
+            idx2 = activations.index(parent2_value)
+            mid_idx = (idx1 + idx2) // 2
+            return activations[mid_idx % len(activations)]
+        elif gene_name == 'kernel_size':
+            kernels = [1, 3, 5, 7]
+            idx1 = kernels.index(parent1_value)
+            idx2 = kernels.index(parent2_value)
+            mid_idx = (idx1 + idx2) // 2
+            return kernels[mid_idx % len(kernels)]
+        elif gene_name == 'pooling_type' or gene_name == 'conv_type' or gene_name == 'norm_type' or gene_name == 'optimizer_type':
+            options = list(self.search_space[gene_name])
+            idx1 = options.index(parent1_value)
+            idx2 = options.index(parent2_value)
+            mid_idx = (idx1 + idx2) // 2
+            return options[mid_idx % len(options)]
+        else:
+            if parent1_value in self.search_space[gene_name]:
+                return parent1_value
+            elif parent2_value in self.search_space[gene_name]:
+                return parent2_value
+            else:
+                return random.choice(list(self.search_space[gene_name]))
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 10 failed — retrying (failures: 10/10, successes so far: 0/5)
+[Meta] ⚠️ Reached max consecutive failures (10) for c, o, m, b, i, n, e, _, g, e, n, e, s. Skipping to next component.
+
+=== Attempt 11 | Successes: 0/5 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        mutation_probability = 0.1
+        if random.random() < mutation_probability:
+            if possible_values:
+                return random.choice(possible_values)
+            return current_value
+        return current_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 11 failed — retrying (failures: 1/10, successes so far: 0/5)
+
+=== Attempt 12 | Successes: 0/5 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            current_idx = possible_values.index(current_value) if current_value in possible_values else -1
+            if current_idx == -1:
+                current_idx = random.randint(0, len(possible_values) - 1)
+            new_idx = current_idx + random.choice([-1, 1])
+            new_idx = max(0, min(len(possible_values) - 1, new_idx))
+            return possible_values[new_idx]
+        return current_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 12 failed — retrying (failures: 2/10, successes so far: 0/5)
+
+=== Attempt 13 | Successes: 0/5 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            if isinstance(current_value, str):
+                idx = possible_values.index(current_value)
+                new_idx = (idx + random.randint(-1, 1)) % len(possible_values)
+                return possible_values[new_idx]
+            elif isinstance(current_value, (int, float)):
+                return current_value * random.uniform(0.9, 1.1)
+        return current_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: 'ReLU' is not in list
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 13 failed — retrying (failures: 3/10, successes so far: 0/5)
+
+=== Attempt 14 | Successes: 0/5 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            # Intelligently choose a new value based on similarity to current value
+            closest_values = sorted(possible_values, key=lambda x: abs(x - current_value))
+            mutation_probability = random.random()
+            if mutation_probability < 0.25:
+                return current_value
+            elif mutation_probability < 0.5:
+                return closest_values[1]
+            elif mutation_probability < 0.75:
+                return closest_values[2]
+            else:
+                return random.choice(closest_values)
+        return current_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: list index out of range
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 14 failed — retrying (failures: 4/10, successes so far: 0/5)
+
+=== Attempt 15 | Successes: 0/5 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+def mutate_gene(self, gene_name, current_value, possible_values):
+    if possible_values:
+        mutation_probability = 0.2  # Adjust the mutation probability as needed
+        if random.random() < mutation_probability:
+            new_value = random.choice(possible_values)
+            while new_value == current_value:
+                new_value = random.choice(possible_values)
+            return new_value
+        return current_value
+    return current_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 15 failed — retrying (failures: 5/10, successes so far: 0/5)
+
+=== Attempt 16 | Successes: 0/5 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if not possible_values:
+            return current_value
+        
+        mutation_strength = random.uniform(0.5, 1.5)
+        
+        if isinstance(current_value, int):
+            new_value = int(current_value * mutation_strength)
+        elif isinstance(current_value, float):
+            new_value = current_value * mutation_strength
+        elif isinstance(current_value, str):
+            current_index = possible_values.index(current_value)
+            new_index = (current_index + random.randint(-1, 1)) % len(possible_values)
+            new_value = possible_values[new_index]
+        else:
+            new_value = current_value
+        
+        return new_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: 'GELU' is not in list
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 16 failed — retrying (failures: 6/10, successes so far: 0/5)
+
+=== Attempt 17 | Successes: 0/5 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if not possible_values:
+            return current_value
+        
+        mutation_chance = random.random()
+        if mutation_chance < 0.5:
+            return random.choice(possible_values)
+        
+        mutation_type = random.choice(['uniform', 'gaussian'])
+        if mutation_type == 'uniform':
+            new_value = random.choice(possible_values)
+        elif mutation_type == 'gaussian':
+            mean = current_value
+            std_dev = np.std(possible_values)
+            new_value = int(np.clip(random.normal(mean, std_dev), min(possible_values), max(possible_values)))
+        
+        return new_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: module 'random' has no attribute 'normal'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 17 failed — retrying (failures: 7/10, successes so far: 0/5)
+
+=== Attempt 18 | Successes: 0/5 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+### mutate_gene ###
+def mutate_gene(self, gene_name, current_value, possible_values):
+    if not possible_values:
+        return current_value
+    
+    # Choose a mutation strategy based on the gene type
+    if gene_name in ['n_columns', 'n_blocks', 'base_channels']:
+        # Discrete mutation with uniform probability
+        new_value = random.choice(possible_values)
+    elif gene_name in ['dropout_prob', 'fc_dropout', 'lr', 'momentum']:
+        # Continuous mutation with Gaussian noise
+        scale = 0.1 * abs(current_value)
+        new_value = current_value + np.random.normal(scale=scale)
+        new_value = self._coerce_gene_value(gene_name, new_value)
+    else:
+        # Default discrete mutation
+        new_value = random.choice(possible_values)
+    
+    return new_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 18 failed — retrying (failures: 8/10, successes so far: 0/5)
+
+=== Attempt 19 | Successes: 0/5 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            if isinstance(current_value, str) and ',' in current_value:
+                current_value = [item.strip() for item in current_value.split(',')]
+            elif isinstance(current_value, (list, tuple)):
+                current_value = [str(item) for item in current_value]
+            
+            if isinstance(current_value, list):
+                if all(isinstance(item, str) for item in current_value):
+                    possible_values = [item.strip() for item in possible_values]
+                else:
+                    possible_values = [str(item) for item in possible_values]
+
+            current_value_str = str(current_value).lower()
+            possible_values = [str(item).lower() for item in possible_values]
+            
+            current_index = possible_values.index(current_value_str)
+            new_index = (current_index + random.choice([-1, 1])) % len(possible_values)
+            return possible_values[new_index]
+        
+        return current_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: '3' is not in list
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 19 failed — retrying (failures: 9/10, successes so far: 0/5)
+
+=== Attempt 20 | Successes: 0/5 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+def mutate_gene(self, gene_name, current_value, possible_values):
+    if not possible_values:
+        return current_value
+    
+    mutation_type = random.choice(['uniform', 'gaussian'])
+    
+    if mutation_type == 'uniform':
+        mutation_range = max(possible_values) - min(possible_values)
+        new_value = current_value + random.uniform(-mutation_range / 2, mutation_range / 2)
+        return self._coerce_gene_value(gene_name, new_value)
+    
+    elif mutation_type == 'gaussian':
+        std_dev = (max(possible_values) - min(possible_values)) / 6
+        new_value = current_value + random.gauss(0, std_dev)
+        return self._coerce_gene_value(gene_name, new_value)
+```
+
+This updated `mutate_gene` function introduces two types of mutations: uniform and Gaussian. The choice between these mutations is made randomly. For each type of mutation, the new value is calculated based on the current value and a standard deviation or a range derived from the possible values. The `_coerce_gene_value` method ensures that the new value remains within the valid range for the gene.
+--------------------------
+[Meta] Runtime smoke test FAILED: unsupported operand type(s) for -: 'str' and 'str'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 20 failed — retrying (failures: 10/10, successes so far: 0/5)
+[Meta] ⚠️ Reached max consecutive failures (10) for m, u, t, a, t, e, _, g, e, n, e. Skipping to next component.
+
+=== Attempt 21 | Successes: 0/5 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+def select_competitor(self, competitors):
+    return max(competitors, key=lambda x: (x['fitness'] if x['fitness'] is not None else -1, random.random()))
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 21 failed — retrying (failures: 1/10, successes so far: 0/5)
+
+=== Attempt 22 | Successes: 0/5 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+### select_competitor ###
+def select_competitor(self, competitors):
+    return max(competitors, key=lambda x: (x['fitness'] if x['fitness'] is not None else -1, random.random()))
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 22 failed — retrying (failures: 2/10, successes so far: 0/5)
+
+=== Attempt 23 | Successes: 0/5 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def select_competitor(self, competitors):
+        # Use tournament selection with a small tournament size to avoid local optima
+        tournament_size = min(len(competitors), 3)
+        selected = random.sample(competitors, tournament_size)
+        return max(selected, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 23 failed — retrying (failures: 3/10, successes so far: 0/5)
+
+=== Attempt 24 | Successes: 0/5 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -np.inf)
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 24 failed — retrying (failures: 4/10, successes so far: 0/5)
+
+=== Attempt 25 | Successes: 0/5 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+### select_competitor ###
+def select_competitor(self, competitors):
+    sorted_competitors = sorted(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1, reverse=True)
+    return sorted_competitors[0]
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 25 failed — retrying (failures: 5/10, successes so far: 0/5)
+
+=== Attempt 26 | Successes: 0/5 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+### select_competitor ###
+def select_competitor(self, competitors):
+    return max(competitors, key=lambda x: (x['fitness'] if x['fitness'] is not None else -np.inf, random.random()))
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 26 failed — retrying (failures: 6/10, successes so far: 0/5)
+
+=== Attempt 27 | Successes: 0/5 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: (x['fitness'] if x['fitness'] is not None else -np.inf, random.random()))
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 27 failed — retrying (failures: 7/10, successes so far: 0/5)
+
+=== Attempt 28 | Successes: 0/5 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def select_competitor(self, competitors):
+        if all(ind['fitness'] is None for ind in competitors):
+            return random.choice(competitors)
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 28 failed — retrying (failures: 8/10, successes so far: 0/5)
+
+=== Attempt 29 | Successes: 0/5 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+### select_competitor ###
+def select_competitor(self, competitors):
+    sorted_competitors = sorted(competitors, key=lambda x: (x['fitness'] if x['fitness'] is not None else -1, -random.random()))
+    return sorted_competitors[-1]
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 29 failed — retrying (failures: 9/10, successes so far: 0/5)
+
+=== Attempt 30 | Successes: 0/5 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def select_competitor(self, competitors):
+        sorted_competitors = sorted(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1, reverse=True)
+        return sorted_competitors[0]
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 30 failed — retrying (failures: 10/10, successes so far: 0/5)
+[Meta] ⚠️ Reached max consecutive failures (10) for s, e, l, e, c, t, _, c, o, m, p, e, t, i, t, o, r. Skipping to next component.
+
+=== Attempt 31 | Successes: 0/5 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+def _create_random_chromosome(self):
+    return {key: random.choice(values) for key, values in self.search_space.items()}
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 31 failed — retrying (failures: 1/10, successes so far: 0/5)
+
+=== Attempt 32 | Successes: 0/5 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 32 failed — retrying (failures: 2/10, successes so far: 0/5)
+
+=== Attempt 33 | Successes: 0/5 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+def _create_random_chromosome(self):
+    return {key: random.choice(values) for key, values in self.search_space.items()}
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 33 failed — retrying (failures: 3/10, successes so far: 0/5)
+
+=== Attempt 34 | Successes: 0/5 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+def _create_random_chromosome(self):
+    return {key: random.choice(values) for key, values in self.search_space.items()}
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 34 failed — retrying (failures: 4/10, successes so far: 0/5)
+
+=== Attempt 35 | Successes: 0/5 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 35 failed — retrying (failures: 5/10, successes so far: 0/5)
+
+=== Attempt 36 | Successes: 0/5 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 36 failed — retrying (failures: 6/10, successes so far: 0/5)
+
+=== Attempt 37 | Successes: 0/5 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+def _create_random_chromosome(self):
+    return {key: random.choice(values) for key, values in self.search_space.items()}
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 37 failed — retrying (failures: 7/10, successes so far: 0/5)
+
+=== Attempt 38 | Successes: 0/5 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+def _create_random_chromosome(self):
+    return {key: random.choice(values) for key, values in self.search_space.items()}
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 38 failed — retrying (failures: 8/10, successes so far: 0/5)
+
+=== Attempt 39 | Successes: 0/5 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+def _create_random_chromosome(self):
+    return {key: random.choice(values) for key, values in self.search_space.items()}
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 39 failed — retrying (failures: 9/10, successes so far: 0/5)
+
+=== Attempt 40 | Successes: 0/5 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+def _create_random_chromosome(self):
+    chromosome = {}
+    for key, values in self.search_space.items():
+        chromosome[key] = random.choice(values)
+    return chromosome
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 40 failed — retrying (failures: 10/10, successes so far: 0/5)
+[Meta] ⚠️ Reached max consecutive failures (10) for _, c, r, e, a, t, e, _, r, a, n, d, o, m, _, c, h, r, o, m, o, s, o, m, e. Skipping to next component.
+
+=== Attempt 41 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        
+        # Intelligently combine genes based on their types
+        if isinstance(parent1_value, str) and isinstance(parent2_value, str):
+            return random.choice([parent1_value, parent2_value])
+        
+        elif isinstance(parent1_value, (int, float)) and isinstance(parent2_value, (int, float)):
+            avg = (parent1_value + parent2_value) / 2
+            return round(avg) if isinstance(parent1_value, int) else avg
+        
+        elif isinstance(parent1_value, bool) and isinstance(parent2_value, bool):
+            return random.choice([parent1_value, parent2_value])
+        
+        elif isinstance(parent1_value, list) and isinstance(parent2_value, list):
+            combined = parent1_value + parent2_value
+            return random.sample(combined, len(combined))
+        
+        else:
+            return parent1_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 41 failed — retrying (failures: 1/10, successes so far: 0/5)
+
+=== Attempt 42 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 42 failed — retrying (failures: 2/10, successes so far: 0/5)
+
+=== Attempt 43 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 43 failed — retrying (failures: 3/10, successes so far: 0/5)
+
+=== Attempt 44 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_name == 'dropout_prob' or gene_name == 'fc_dropout':
+            combined_value = (parent1_value + parent2_value) / 2
+            return max(0.0, min(combined_value, 1.0))
+        
+        if gene_name == 'lr' or gene_name == 'momentum':
+            combined_value = (parent1_value + parent2_value) / 2
+            return max(0.0, combined_value)
+        
+        if gene_name == 'kernel_size' or gene_name == 'n_columns' or gene_name == 'n_blocks':
+            combined_value = (parent1_value + parent2_value) // 2
+            return max(1, combined_value)
+        
+        if gene_name == 'pooling_type' or gene_name == 'conv_type' or gene_name == 'norm_type' or gene_name == 'optimizer_type':
+            combined_value = random.choice([parent1_value, parent2_value])
+            return combined_value
+        
+        if gene_name == 'activation':
+            possible_values = ['ReLU', 'GELU', 'LeakyReLU', 'SiLU']
+            combined_value = random.choice([parent1_value, parent2_value])
+            return combined_value
+        
+        if gene_name == 'base_channels':
+            combined_value = (parent1_value + parent2_value) * 2
+            return max(16, combined_value)
+        
+        return parent1_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '128' for gene 'base_channels', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 44 failed — retrying (failures: 4/10, successes so far: 0/5)
+
+=== Attempt 45 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 45 failed — retrying (failures: 5/10, successes so far: 0/5)
+
+=== Attempt 46 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+    if gene_index < crossover_point:
+        return parent1_value
+    else:
+        return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 46 failed — retrying (failures: 6/10, successes so far: 0/5)
+
+=== Attempt 47 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+    if gene_index < crossover_point:
+        return parent1_value
+    
+    if gene_name == 'lr':
+        return self.interpolate_lr(parent1_value, parent2_value, gene_index, total_genes)
+    
+    return parent2_value
+
+def interpolate_lr(self, lr1, lr2, gene_index, total_genes):
+    factor = gene_index / total_genes
+    return lr1 * (1 - factor) + lr2 * factor
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 47 failed — retrying (failures: 7/10, successes so far: 0/5)
+
+=== Attempt 48 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+    if gene_index < crossover_point:
+        return parent1_value
+    if isinstance(parent1_value, str):
+        return random.choice([parent1_value, parent2_value])
+    return parent1_value * parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 48 failed — retrying (failures: 8/10, successes so far: 0/5)
+
+=== Attempt 49 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+    if gene_index < crossover_point:
+        return parent1_value
+    return parent2_value
+```
+
+Since the current implementation of `combine_genes` is already quite straightforward and does not appear to have any obvious room for improvement without additional context or criteria, I am providing the same code. If you have specific criteria or additional requirements for improving this function, please provide them, and I can assist further.
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 49 failed — retrying (failures: 9/10, successes so far: 0/5)
+
+=== Attempt 50 | Successes: 0/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_name == 'dropout_prob' or gene_name == 'fc_dropout':
+            return max(parent1_value, parent2_value)
+        elif gene_name == 'learning_rate' or gene_name == 'momentum':
+            return (parent1_value + parent2_value) / 2
+        elif gene_name == 'activation' or gene_name == 'kernel_size' or gene_name == 'pooling_type' or gene_name == 'conv_type' or gene_name == 'norm_type' or gene_name == 'optimizer_type':
+            return random.choice([parent1_value, parent2_value])
+        else:
+            if gene_index < crossover_point:
+                return parent1_value
+            return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar100.genetic_algorithm_evolved_cifar100 import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 50 failed — retrying (failures: 10/10, successes so far: 0/5)
+[Meta] ⚠️ Reached max consecutive failures (10) for c, o, m, b, i, n, e, _, g, e, n, e, s. Skipping to next component.
+
+[Meta] ⚠️ Reached absolute maximum attempts limit (50). Halting.
+
+=== Meta-Evolution Complete: 0 successful evolutions in 50 total attempts ===
+
+=== Generating Visualizations ===
+
+============================================================
+  visualize_meta_generation.py — run: 2026-07-15_15-27-15
+  Output root: visualizations/run_cifar100_2026-07-15_15-27-15
+============================================================
+
+[1/2] Loading stats records …
+  [WARN]  No ga_evaluations_2026-07-15_15-27-15.jsonl files found
+      Found 0 evaluated model(s).
+
+  Generating GA evolution plots …
+  [WARN]  No stats records found — skipping generation_accuracy.png
+  [WARN]  No stats records found — skipping time_per_generation.png
+  [WARN]  No stats records found — skipping population_diversity.png
+  [WARN]  No stats records found — skipping best_vs_avg_accuracy.png
+
+[2/2] Loading LLM evolution logs …
+  [Info] Loading LLM logs from: LLM-evolution-logs_cifar100_2026-07-15_15-27-15.jsonl
+      Found 50 log entry(ies).
+
+  Generating fine-tuning plots …
+  [saved] visualizations/run_cifar100_2026-07-15_15-27-15/fine_tuning/reward_over_iterations.png
+  [WARN]  No 'score' fields in LLM logs — skipping score_improvement.png
+  [saved] visualizations/run_cifar100_2026-07-15_15-27-15/fine_tuning/meta_peak_accuracy.png
+  [saved] visualizations/run_cifar100_2026-07-15_15-27-15/fine_tuning/llm_success_rates.png
+
+============================================================
+  Saved 3 plot(s):
+    • visualizations/run_cifar100_2026-07-15_15-27-15/fine_tuning/reward_over_iterations.png
+    • visualizations/run_cifar100_2026-07-15_15-27-15/fine_tuning/meta_peak_accuracy.png
+    • visualizations/run_cifar100_2026-07-15_15-27-15/fine_tuning/llm_success_rates.png
+============================================================
+

@@ -1,17 +1,74 @@
+# ============================
 # Python
+# ============================
 __pycache__/
 *.pyc
 .venv/
 
-# Local Experiment Artifacts
-ga_fractal_arch/
-stats/
+# ============================
+# General Artifacts
+# ============================
 out/
-fine_tuned_adapter/
-ga_history_backup/
-# Agent Skills & Metadata
-# .agent/
-.agents/
-# Checkpoints
-fractal_ga_ckpt.pkl
+out_nneval_tmp_pid_*/
+logs/
+*.jsonl
+# visualizations/
+
+# ============================
+# Checkpoints (all .pkl files)
+# ============================
+*.pkl
+
+# ============================
+# Stats & Model Directories
+# (wildcard covers cifar10, cifar100, and legacy suffixes like 1, 1001)
+# ============================
+stats*/
+baseline_stats*/
+best_*stats*/
+ga_fractal_arch*/
+baseline_ga_fractal_arch*/
+
+# ============================
+# Training Adapters & History
+# ============================
+fine_tuned_adapter*/
+ga_history_backup*/
+imagenet100_data/
+
+# ============================
+# Experiment Output Directories
+# ============================
+# logs_cifar*/
+modified_GA_cifar*/
+stats_plain_GA/
+
+# Ignore generated benchmark outputs and stats
+*.pkl
+*.jsonl
+__pycache__/
+
+# ab/gpt/brute/ga/meta_evolution/stats*/
+# ab/gpt/brute/ga/meta_evolution/baseline_stats*/
+# ab/gpt/brute/ga/meta_evolution/best_*_stats*/
+# ab/gpt/brute/ga/meta_evolution/ga_fractal_arch*/
+# ab/gpt/brute/ga/meta_evolution/baseline_ga_fractal_arch*/
+# ab/gpt/brute/ga/meta_evolution/visualizations/
+# ab/gpt/brute/ga/meta_evolution/logs*/
+# ab/gpt/brute/ga/meta_evolution/modified_GA_*/
+stats*/
+baseline_stats*/
+best_*_stats*/
+ga_fractal_arch*/
+baseline_ga_fractal_arch*/
 visualizations/
+# logs*/
+modified_GA_*/
+
+# ============================
+# Pipeline Directories
+# ============================
+# Ignore all dynamically generated output (logs, stats, architectures, history)
+*_pipeline/*
+# But preserve the manual model configuration file inside each pipeline!
+!*_pipeline/model_config.json

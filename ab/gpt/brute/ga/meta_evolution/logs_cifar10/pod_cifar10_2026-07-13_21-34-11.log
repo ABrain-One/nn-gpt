@@ -1,0 +1,3494 @@
+LEMUR root /a/mm
+2026-07-13 21:34:13,186 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 21:34:13,186 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 21:34:13,186 - INFO - NumExpr defaulting to 16 threads.
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar10/historic_runs/run_2026-07-13_21-34-15 for fresh start.
+[Meta] Moved LLM LoRA weights to /a/mm/ab/gpt/brute/ga/meta_evolution/fine_tuned_adapter_cifar10/historic_runs/run_2026-07-13_21-34-15 for fresh start.
+[Config] Loaded model_config.json  (context_length=4096)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-07-13 21:34:17,194 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:02<00:08,  2.97s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:06<00:06,  3.31s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:09<00:03,  3.22s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  2.01s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  2.45s/it]
+[LoRA] Adapter directory exists at /a/mm/ab/gpt/brute/ga/meta_evolution/fine_tuned_adapter_cifar10 but no weight files found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+
+[Meta] Target: 10 SUCCESSFUL evolutions (will retry up to 10 times per component)
+
+=== Attempt 1 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.90
+--- [DEBUG] Raw Response ---
+<thinking>
+To effectively break the Global SOTA peak accuracy and discover novel, high-performing architectures, we need to design `combine_genes` such that it promotes diversity and innovation while preserving some useful traits from the parents. Given the constraints, we can introduce a more sophisticated approach that involves a mix of inheritance and novelty-seeking mechanisms.
+
+1. **Inheritance**: We'll keep a significant portion of each parent's genes to preserve good traits.
+2. **Novelty**: We'll introduce random mutations and variations to ensure diversity and explore new architectural configurations.
+
+Here’s a strategy for `combine_genes`:
+- With a certain probability, inherit the gene entirely from one parent.
+- With another probability, invert the gene to promote novelty.
+- With the remaining probability, take a weighted average (or a simple average) of the two parent genes to blend them together.
+
+This approach balances the exploration-exploitation trade-off and helps in discovering novel architectures while retaining promising ones.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Define probabilities
+        inheritance_probability = 0.6
+        novelty_probability = 0.2
+        blending_probability = 0.2
+
+        # Select a random number to decide how to combine the genes
+        r = random.random()
+
+        if r < inheritance_probability:
+            # Inherit the gene entirely from one parent
+            if random.random() < 0.5:
+                return parent1_value
+            else:
+                return parent2_value
+        elif r < inheritance_probability + novelty_probability:
+            # Introduce novelty by inverting the gene
+            return -parent1_value
+        else:
+            # Blend the genes together
+            return (parent1_value + parent2_value) / 2
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: unsupported operand type(s) for /: 'str' and 'int'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 1 failed — retrying (failures: 1/10, successes so far: 0/10)
+
+=== Attempt 2 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.84
+--- [DEBUG] Raw Response ---
+<thinking>
+To improve the performance of our Genetic Algorithm, we need to enhance the `combine_genes` method to ensure that the offspring inherits the best traits from both parents while introducing enough diversity to explore new areas of the search space. We'll use a combination of inheritance, novelty introduction, and blending to achieve this. Additionally, we'll focus on maintaining robust architectures suitable for fast convergence by avoiding overly aggressive dropout rates.
+
+For each gene, we will:
+1. With a probability of 0.6, inherit the gene entirely from one parent randomly chosen between parent1 and parent2.
+2. With a probability of 0.2, introduce novelty by inverting the gene. This helps in exploring new architectures.
+3. With a probability of 0.2, blend the genes together. This ensures continuity and smooth transitions between parent genes.
+4. Avoid extremely high dropout rates during the fast-converging 1-epoch evaluations.
+
+We'll also ensure that the selected genes are within the valid range specified in the search space.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Define probabilities
+        inheritance_probability = 0.6
+        novelty_probability = 0.2
+        blending_probability = 0.2
+
+        # Select a random number to decide how to combine the genes
+        r = random.random()
+
+        if r < inheritance_probability:
+            # Inherit the gene entirely from one parent
+            if random.random() < 0.5:
+                return parent1_value
+            else:
+                return parent2_value
+        elif r < inheritance_probability + novelty_probability:
+            # Introduce novelty by inverting the gene
+            inverted_value = -parent1_value
+            return self._coerce_gene_value(gene_name, inverted_value)
+        else:
+            # Blend the genes together
+            blended_value = (parent1_value + parent2_value) / 2
+            return self._coerce_gene_value(gene_name, blended_value)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: unsupported operand type(s) for /: 'str' and 'int'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 2 failed — retrying (failures: 2/10, successes so far: 0/10)
+
+=== Attempt 3 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.79
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of diverse and potentially better-performing architectures, we need to modify the `combine_genes` method to introduce more variability and novelty while maintaining some form of inheritance. Here's our plan:
+
+1. **Inheritance**: With a higher probability, inherit the gene entirely from one parent.
+2. **Novelty**: Introduce novelty by inverting the gene or combining it with another gene from the population.
+3. **Blending**: Combine the genes in a way that leverages both parent values but introduces some randomness.
+
+This approach should help in expanding the frontier of explored architectures and potentially breaking the current global SOTA peak accuracy.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Define probabilities
+        inheritance_probability = 0.7
+        novelty_probability = 0.2
+        blending_probability = 0.1
+
+        # Select a random number to decide how to combine the genes
+        r = random.random()
+
+        if r < inheritance_probability:
+            # Inherit the gene entirely from one parent
+            if random.random() < 0.5:
+                return parent1_value
+            else:
+                return parent2_value
+        elif r < inheritance_probability + novelty_probability:
+            # Introduce novelty by inverting the gene
+            inverted_value = -parent1_value
+            return self._coerce_gene_value(gene_name, inverted_value)
+        else:
+            # Blend the genes together
+            blend_factor = random.uniform(0.1, 0.9)
+            combined_value = parent1_value * blend_factor + parent2_value * (1 - blend_factor)
+            return self._coerce_gene_value(gene_name, combined_value)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: can't multiply sequence by non-int of type 'float'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 3 failed — retrying (failures: 3/10, successes so far: 0/10)
+
+=== Attempt 4 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.73
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Genetic Algorithm (GA) for optimizing FractalNet architectures for CIFAR-10, we need to design effective crossover and mutation strategies. Here's our plan:
+
+### Crossover Strategy
+1. **Hybrid Inheritance**: Combine the best aspects of both parents while introducing some randomness to maintain diversity.
+2. **Active Stochastic Depth**: Focus on maintaining robust architectures by ensuring the dropout probability remains high.
+
+### Mutation Strategy
+1. **Inversion and Momentum Tracking**: Introduce novel architectures by inverting existing ones and using momentum to track promising directions.
+2. **Exploration of Novel Hyperparameters**: Explore new values for hyperparameters like `lr`, `momentum`, and `dropout_prob` that are known to perform well.
+
+By implementing these strategies, we aim to break the global SOTA peak accuracy and discover novel, high-performing architectures.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_name == "dropout_prob":
+            # Maintain high dropout probability for robustness
+            return max(parent1_value, parent2_value)
+        
+        if gene_name == "lr":
+            # Blend learning rates while favoring higher values
+            blended_lr = (parent1_value + parent2_value) / 2
+            return min(blended_lr, max(parent1_value, parent2_value))
+        
+        if gene_name == "momentum":
+            # Blend momentums while favoring higher values
+            blended_momentum = (parent1_value + parent2_value) / 2
+            return min(blended_momentum, max(parent1_value, parent2_value))
+        
+        if gene_name == "base_channels" or gene_name == "n_blocks" or gene_name == "n_columns":
+            # Hybrid inheritance for structural parameters
+            if random.random() < 0.5:
+                return parent1_value
+            else:
+                return parent2_value
+        
+        # For other parameters, simple inheritance
+        if random.random() < 0.5:
+            return parent1_value
+        else:
+            return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '0.009000000000000001' for gene 'lr', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 4 failed — retrying (failures: 4/10, successes so far: 0/10)
+
+=== Attempt 5 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.68
+--- [DEBUG] Raw Response ---
+### Thinking
+To break the global SOTA peak accuracy and discover novel, high-performing architectures, we need to ensure that our crossover and mutation operators introduce significant diversity and robustness. Here's how we can achieve this:
+
+#### Crossover Strategy
+1. **Hybridization**: Combine genes from both parents but with a twist to introduce novelty. This ensures that the offspring are neither too similar to either parent nor too different.
+2. **Active DropPath**: Since the search space forces active FractalDropPath, ensure that the combined architecture maintains robustness by preserving at least one dropout layer.
+
+#### Mutation Strategy
+1. **Inversion**: Introduce inversion mutations where certain layers or parameters are flipped. This helps in exploring alternative paths that might lead to better performance.
+2. **Exponential Decay**: Use exponential decay for learning rate and momentum to balance exploration and exploitation.
+
+#### Selection Strategy
+1. **Random Sampling**: Sample heavily from the archive along with the population to ensure that diverse architectures are selected for crossover.
+
+By implementing these strategies, we aim to explore a broader landscape of architectures and find those that might outperform the current SOTA.
+
+### Code Implementation
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_name == "dropout_prob":
+            # Ensure at least one dropout layer remains active
+            return max(parent1_value, parent2_value)
+        
+        if gene_name == "lr":
+            # Exponential decay for learning rate
+            decay_factor = 0.95
+            blended_lr = (parent1_value * decay_factor + parent2_value * decay_factor) / 2
+            return min(blended_lr, max(parent1_value, parent2_value))
+        
+        if gene_name == "momentum":
+            # Exponential decay for momentum
+            decay_factor = 0.95
+            blended_momentum = (parent1_value * decay_factor + parent2_value * decay_factor) / 2
+            return min(blended_momentum, max(parent1_value, parent2_value))
+        
+        if gene_name == "base_channels":
+            # Hybridize base channels but ensure it's not zero
+            blended_base_channels = (parent1_value + parent2_value) // 2
+            return max(blended_base_channels, 1)
+        
+        if gene_name == "n_blocks":
+            # Hybridize number of blocks but ensure it's at least 2
+            blended_n_blocks = (parent1_value + parent2_value) // 2
+            return max(blended_n_blocks, 2)
+        
+        if gene_name == "activation":
+            # Randomly choose between two activations
+            return random.choice([parent1_value, parent2_value])
+        
+        if gene_name == "kernel_size":
+            # Hybridize kernel size but ensure it's odd
+            blended_kernel_size = (parent1_value + parent2_value) // 2
+            return max(blended_kernel_size, 1) if blended_kernel_size % 2 != 0 else blended_kernel_size - 1
+        
+        if gene_name == "pooling_type":
+            # Randomly choose between two pooling types
+            return random.choice([parent1_value, parent2_value])
+        
+        if gene_name == "conv_type":
+            # Randomly choose between two convolution types
+            return random.choice([parent1_value, parent2_value])
+        
+        if gene_name == "norm_type":
+            # Randomly choose between two normalization types
+            return random.choice([parent1_value, parent2_value])
+        
+        if gene_name == "optimizer_type":
+            # Randomly choose between two optimizer types
+            return random.choice([parent1_value, parent2_value])
+        
+        return random.choice([parent1_value, parent2_value])
+```
+
+This code ensures that the combined genes maintain robustness, explore alternative architectures, and blend parameters effectively. By incorporating these strategies, we aim to push the boundaries of performance and discover novel high-performing architectures.
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '40' for gene 'base_channels', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 5 failed — retrying (failures: 5/10, successes so far: 0/10)
+
+=== Attempt 6 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.62
+--- [DEBUG] Raw Response ---
+### Thinking
+
+To enhance the performance of the FractalNet architecture in terms of both accuracy and novelty, we need to design the `combine_genes` function such that it promotes diverse and effective configurations. The function should blend genes from two parent chromosomes in a way that maintains robustness and explores new possibilities. Here’s how we can achieve this:
+
+1. **Maintain Robustness**: For genes like `dropout_prob`, `fc_dropout`, `momentum`, and `lr`, we want to ensure that the combined value remains within a reasonable range. This helps in maintaining the overall stability and robustness of the network.
+
+2. **Explore Novelty**: By combining genes in a non-trivial manner, we can explore new configurations that might lead to better performance. For example, blending `dropout_prob` values can result in intermediate probabilities that are neither too high nor too low.
+
+3. **Favor Effective Activations and Poolings**: Since certain activations and poolings have been found to perform well, we should bias the combination towards these values.
+
+### Implementation
+
+We will use a combination of linear interpolation and exponential decay to blend genes. This ensures that the combined values remain within the valid range and also explore new possibilities.
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        
+        if gene_name == "dropout_prob":
+            # Combine dropout probabilities using exponential decay
+            decay_factor = 0.9
+            blended_dropout = (parent1_value * decay_factor + parent2_value * decay_factor) / 2
+            return min(max(blended_dropout, 0.1), 0.5)
+        
+        if gene_name == "fc_dropout":
+            # Combine fully connected dropout probabilities using linear interpolation
+            alpha = 0.5
+            blended_fc_dropout = alpha * parent1_value + (1 - alpha) * parent2_value
+            return min(max(blended_fc_dropout, 0.05), 0.5)
+        
+        if gene_name == "momentum":
+            # Combine momentums using exponential decay
+            decay_factor = 0.95
+            blended_momentum = (parent1_value * decay_factor + parent2_value * decay_factor) / 2
+            return min(max(blended_momentum, 0.75), 0.98)
+        
+        if gene_name == "lr":
+            # Combine learning rates using exponential decay
+            decay_factor = 0.95
+            blended_lr = (parent1_value * decay_factor + parent2_value * decay_factor) / 2
+            return min(max(blended_lr, 0.001), 0.01)
+        
+        if gene_name in ["activation", "pooling_type"]:
+            # Choose a random activation or pooling type from the set of valid options
+            return random.choice([parent1_value, parent2_value])
+        
+        if gene_name in ["conv_type", "norm_type", "optimizer_type"]:
+            # Choose a random type from the set of valid options
+            return random.choice([parent1_value, parent2_value])
+        
+        return random.choice(self.search_space[gene_name])
+```
+
+This implementation ensures that the combined values for critical genes are blended in a way that maintains robustness while exploring new possibilities. For other genes, it simply chooses a random value from the set of valid options, ensuring diversity.
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+2026-07-13 21:36:55,761 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 21:36:55,761 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 21:36:55,761 - INFO - NumExpr defaulting to 16 threads.
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+LEMUR root /a/mm
+[Init] Loaded 170 existing checksums from stats/ (skipping duplicates)
+[Run] Continuing evolution from gen 0 to 1
+
+
+ >>> GENERATION 1 <<<
+
+  Evaluating Individual 1/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: 376c0a75...)
+Evaluating /a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-376c0a75b5a00327c85396e3da2f9575-53d75f24e96688bc81b3b892c3147e36.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 1/782 [00:00<01:46,  7.34it/s]
+  1%|          | 5/782 [00:00<00:32, 23.68it/s]
+  1%|          | 9/782 [00:00<00:26, 29.26it/s]
+  2%|▏         | 13/782 [00:00<00:24, 31.14it/s]
+  2%|▏         | 17/782 [00:00<00:22, 33.49it/s]
+  3%|▎         | 21/782 [00:00<00:22, 34.09it/s]
+  3%|▎         | 25/782 [00:00<00:21, 34.42it/s]
+  4%|▎         | 29/782 [00:00<00:21, 34.62it/s]
+  4%|▍         | 33/782 [00:01<00:21, 35.00it/s]
+  5%|▍         | 37/782 [00:01<00:21, 35.28it/s]
+  5%|▌         | 41/782 [00:01<00:21, 34.94it/s]
+  6%|▌         | 45/782 [00:01<00:20, 35.31it/s]
+  6%|▋         | 49/782 [00:01<00:20, 35.66it/s]
+  7%|▋         | 53/782 [00:01<00:20, 35.12it/s]
+  7%|▋         | 57/782 [00:01<00:20, 35.78it/s]
+  8%|▊         | 61/782 [00:01<00:20, 35.71it/s]
+  8%|▊         | 65/782 [00:01<00:20, 35.78it/s]
+  9%|▉         | 69/782 [00:02<00:19, 35.72it/s]
+  9%|▉         | 73/782 [00:02<00:19, 35.48it/s]
+ 10%|▉         | 77/782 [00:02<00:19, 35.26it/s]
+ 10%|█         | 81/782 [00:02<00:20, 34.69it/s]
+ 11%|█         | 85/782 [00:02<00:20, 34.58it/s]
+ 11%|█▏        | 89/782 [00:02<00:20, 34.17it/s]
+ 12%|█▏        | 93/782 [00:02<00:19, 34.97it/s]
+ 12%|█▏        | 97/782 [00:02<00:19, 35.52it/s]
+ 13%|█▎        | 101/782 [00:02<00:19, 35.14it/s]
+ 13%|█▎        | 105/782 [00:03<00:19, 35.35it/s]
+ 14%|█▍        | 109/782 [00:03<00:19, 34.94it/s]
+ 14%|█▍        | 113/782 [00:03<00:18, 35.32it/s]
+ 15%|█▍        | 117/782 [00:03<00:19, 34.61it/s]
+ 15%|█▌        | 121/782 [00:03<00:19, 34.73it/s]
+ 16%|█▌        | 125/782 [00:03<00:18, 35.16it/s]
+ 16%|█▋        | 129/782 [00:03<00:18, 34.73it/s]
+ 17%|█▋        | 133/782 [00:03<00:18, 34.63it/s]
+ 18%|█▊        | 137/782 [00:03<00:18, 34.21it/s]
+ 18%|█▊        | 141/782 [00:04<00:18, 34.69it/s]
+ 19%|█▊        | 145/782 [00:04<00:18, 34.56it/s]
+ 19%|█▉        | 149/782 [00:04<00:18, 34.97it/s]
+ 20%|█▉        | 153/782 [00:04<00:18, 34.84it/s]
+ 20%|██        | 157/782 [00:04<00:18, 34.34it/s]
+ 21%|██        | 161/782 [00:04<00:18, 34.08it/s]
+ 21%|██        | 165/782 [00:04<00:18, 33.76it/s]
+ 22%|██▏       | 169/782 [00:04<00:17, 34.19it/s]
+ 22%|██▏       | 173/782 [00:05<00:17, 34.32it/s]
+ 23%|██▎       | 177/782 [00:05<00:18, 33.60it/s]
+ 23%|██▎       | 181/782 [00:05<00:18, 32.70it/s]
+ 24%|██▎       | 185/782 [00:05<00:18, 32.92it/s]
+ 24%|██▍       | 189/782 [00:05<00:18, 32.27it/s]
+ 25%|██▍       | 193/782 [00:05<00:18, 31.84it/s]
+ 25%|██▌       | 197/782 [00:05<00:18, 32.20it/s]
+ 26%|██▌       | 201/782 [00:05<00:18, 32.01it/s]
+ 26%|██▌       | 205/782 [00:06<00:18, 31.35it/s]
+ 27%|██▋       | 209/782 [00:06<00:18, 30.79it/s]
+ 27%|██▋       | 213/782 [00:06<00:18, 30.78it/s]
+ 28%|██▊       | 217/782 [00:06<00:18, 30.99it/s]
+ 28%|██▊       | 221/782 [00:06<00:17, 31.21it/s]
+ 29%|██▉       | 225/782 [00:06<00:17, 30.98it/s]
+ 29%|██▉       | 229/782 [00:06<00:17, 31.48it/s]
+ 30%|██▉       | 233/782 [00:06<00:17, 31.62it/s]
+ 30%|███       | 237/782 [00:07<00:17, 31.34it/s]
+ 31%|███       | 241/782 [00:07<00:17, 31.25it/s]
+ 31%|███▏      | 245/782 [00:07<00:17, 31.09it/s]
+ 32%|███▏      | 249/782 [00:07<00:16, 31.53it/s]
+ 32%|███▏      | 253/782 [00:07<00:16, 32.57it/s]
+ 33%|███▎      | 257/782 [00:07<00:15, 32.93it/s]
+ 33%|███▎      | 261/782 [00:07<00:15, 33.71it/s]
+ 34%|███▍      | 265/782 [00:07<00:15, 33.81it/s]
+ 34%|███▍      | 269/782 [00:08<00:15, 33.95it/s]
+ 35%|███▍      | 273/782 [00:08<00:15, 32.85it/s]
+ 35%|███▌      | 277/782 [00:08<00:15, 32.82it/s]
+ 36%|███▌      | 281/782 [00:08<00:15, 32.57it/s]
+ 36%|███▋      | 285/782 [00:08<00:15, 32.74it/s]
+ 37%|███▋      | 289/782 [00:08<00:14, 33.04it/s]
+ 37%|███▋      | 293/782 [00:08<00:14, 32.70it/s]
+ 38%|███▊      | 297/782 [00:08<00:14, 32.76it/s]
+ 38%|███▊      | 301/782 [00:09<00:14, 33.28it/s]
+ 39%|███▉      | 305/782 [00:09<00:14, 33.24it/s]
+ 40%|███▉      | 309/782 [00:09<00:14, 33.50it/s]
+ 40%|████      | 313/782 [00:09<00:13, 33.56it/s]
+ 41%|████      | 317/782 [00:09<00:14, 32.87it/s]
+ 41%|████      | 321/782 [00:09<00:14, 32.47it/s]
+ 42%|████▏     | 325/782 [00:09<00:14, 32.43it/s]
+ 42%|████▏     | 329/782 [00:09<00:13, 32.52it/s]
+ 43%|████▎     | 333/782 [00:09<00:13, 32.80it/s]
+ 43%|████▎     | 337/782 [00:10<00:13, 32.76it/s]
+ 44%|████▎     | 341/782 [00:10<00:13, 33.17it/s]
+ 44%|████▍     | 345/782 [00:10<00:13, 32.66it/s]
+ 45%|████▍     | 349/782 [00:10<00:13, 32.46it/s]
+ 45%|████▌     | 353/782 [00:10<00:13, 32.89it/s]
+ 46%|████▌     | 357/782 [00:10<00:12, 33.14it/s]
+ 46%|████▌     | 361/782 [00:10<00:12, 33.23it/s]
+ 47%|████▋     | 365/782 [00:10<00:12, 32.78it/s]
+ 47%|████▋     | 369/782 [00:11<00:12, 32.53it/s]
+ 48%|████▊     | 373/782 [00:11<00:12, 33.17it/s]
+ 48%|████▊     | 377/782 [00:11<00:12, 32.94it/s]
+ 49%|████▊     | 381/782 [00:11<00:12, 32.51it/s]
+ 49%|████▉     | 385/782 [00:11<00:12, 32.89it/s]
+ 50%|████▉     | 389/782 [00:11<00:11, 33.06it/s]
+ 50%|█████     | 393/782 [00:11<00:11, 33.51it/s]
+ 51%|█████     | 397/782 [00:11<00:11, 34.01it/s]
+ 51%|█████▏    | 401/782 [00:12<00:11, 33.55it/s]
+ 52%|█████▏    | 405/782 [00:12<00:11, 33.90it/s]
+ 52%|█████▏    | 409/782 [00:12<00:11, 33.60it/s]
+ 53%|█████▎    | 413/782 [00:12<00:11, 33.16it/s]
+ 53%|█████▎    | 417/782 [00:12<00:11, 32.97it/s]
+ 54%|█████▍    | 421/782 [00:12<00:10, 33.03it/s]
+ 54%|█████▍    | 425/782 [00:12<00:10, 32.87it/s]
+ 55%|█████▍    | 429/782 [00:12<00:10, 33.13it/s]
+ 55%|█████▌    | 433/782 [00:13<00:10, 33.17it/s]
+ 56%|█████▌    | 437/782 [00:13<00:10, 33.20it/s]
+ 56%|█████▋    | 441/782 [00:13<00:10, 32.89it/s]
+ 57%|█████▋    | 445/782 [00:13<00:10, 33.56it/s]
+ 57%|█████▋    | 449/782 [00:13<00:09, 33.45it/s]
+ 58%|█████▊    | 453/782 [00:13<00:09, 33.69it/s]
+ 58%|█████▊    | 457/782 [00:13<00:09, 34.20it/s]
+ 59%|█████▉    | 461/782 [00:13<00:09, 33.78it/s]
+ 59%|█████▉    | 465/782 [00:13<00:09, 33.81it/s]
+ 60%|█████▉    | 469/782 [00:14<00:09, 33.51it/s]
+ 60%|██████    | 473/782 [00:14<00:09, 33.32it/s]
+ 61%|██████    | 477/782 [00:14<00:09, 33.69it/s]
+ 62%|██████▏   | 481/782 [00:14<00:08, 33.48it/s]
+ 62%|██████▏   | 485/782 [00:14<00:08, 33.36it/s]
+ 63%|██████▎   | 489/782 [00:14<00:08, 33.35it/s]
+ 63%|██████▎   | 493/782 [00:14<00:08, 33.86it/s]
+ 64%|██████▎   | 497/782 [00:14<00:08, 33.28it/s]
+ 64%|██████▍   | 501/782 [00:15<00:08, 33.20it/s]
+ 65%|██████▍   | 505/782 [00:15<00:08, 33.14it/s]
+ 65%|██████▌   | 509/782 [00:15<00:08, 33.37it/s]
+ 66%|██████▌   | 513/782 [00:15<00:07, 33.70it/s]
+ 66%|██████▌   | 517/782 [00:15<00:08, 33.00it/s]
+ 67%|██████▋   | 521/782 [00:15<00:07, 33.50it/s]
+ 67%|██████▋   | 525/782 [00:15<00:07, 33.39it/s]
+ 68%|██████▊   | 529/782 [00:15<00:07, 33.54it/s]
+ 68%|██████▊   | 533/782 [00:16<00:07, 33.28it/s]
+ 69%|██████▊   | 537/782 [00:16<00:07, 33.06it/s]
+ 69%|██████▉   | 541/782 [00:16<00:07, 33.14it/s]
+ 70%|██████▉   | 545/782 [00:16<00:07, 33.25it/s]
+ 70%|███████   | 549/782 [00:16<00:06, 34.21it/s]
+ 71%|███████   | 553/782 [00:16<00:06, 34.26it/s]
+ 71%|███████   | 557/782 [00:16<00:06, 33.80it/s]
+ 72%|███████▏  | 561/782 [00:16<00:06, 34.09it/s]
+ 72%|███████▏  | 565/782 [00:16<00:06, 33.94it/s]
+ 73%|███████▎  | 569/782 [00:17<00:06, 33.89it/s]
+ 73%|███████▎  | 573/782 [00:17<00:06, 34.15it/s]
+ 74%|███████▍  | 577/782 [00:17<00:06, 34.07it/s]
+ 74%|███████▍  | 581/782 [00:17<00:05, 34.09it/s]
+ 75%|███████▍  | 585/782 [00:17<00:05, 34.22it/s]
+ 75%|███████▌  | 589/782 [00:17<00:05, 33.96it/s]
+ 76%|███████▌  | 593/782 [00:17<00:05, 33.22it/s]
+ 76%|███████▋  | 597/782 [00:17<00:05, 32.93it/s]
+ 77%|███████▋  | 601/782 [00:18<00:05, 33.21it/s]
+ 77%|███████▋  | 605/782 [00:18<00:05, 33.93it/s]
+ 78%|███████▊  | 609/782 [00:18<00:05, 33.57it/s]
+ 78%|███████▊  | 613/782 [00:18<00:05, 33.39it/s]
+ 79%|███████▉  | 617/782 [00:18<00:04, 33.41it/s]
+ 79%|███████▉  | 621/782 [00:18<00:04, 33.35it/s]
+ 80%|███████▉  | 625/782 [00:18<00:04, 33.20it/s]
+ 80%|████████  | 629/782 [00:18<00:04, 32.91it/s]
+ 81%|████████  | 633/782 [00:18<00:04, 34.06it/s]
+ 81%|████████▏ | 637/782 [00:19<00:04, 34.19it/s]
+ 82%|████████▏ | 641/782 [00:19<00:04, 34.17it/s]
+ 82%|████████▏ | 645/782 [00:19<00:04, 33.97it/s]
+ 83%|████████▎ | 649/782 [00:19<00:03, 33.52it/s]
+ 84%|████████▎ | 653/782 [00:19<00:03, 33.79it/s]
+ 84%|████████▍ | 657/782 [00:19<00:03, 33.49it/s]
+ 85%|████████▍ | 661/782 [00:19<00:03, 32.67it/s]
+ 85%|████████▌ | 665/782 [00:19<00:03, 33.05it/s]
+ 86%|████████▌ | 669/782 [00:20<00:03, 33.56it/s]
+ 86%|████████▌ | 673/782 [00:20<00:03, 33.13it/s]
+ 87%|████████▋ | 677/782 [00:20<00:03, 33.29it/s]
+ 87%|████████▋ | 681/782 [00:20<00:03, 33.53it/s]
+ 88%|████████▊ | 685/782 [00:20<00:02, 33.78it/s]
+ 88%|████████▊ | 689/782 [00:20<00:02, 33.59it/s]
+ 89%|████████▊ | 693/782 [00:20<00:02, 33.65it/s]
+ 89%|████████▉ | 697/782 [00:20<00:02, 33.54it/s]
+ 90%|████████▉ | 701/782 [00:20<00:02, 33.84it/s]
+ 90%|█████████ | 705/782 [00:21<00:02, 33.60it/s]
+ 91%|█████████ | 709/782 [00:21<00:02, 33.91it/s]
+ 91%|█████████ | 713/782 [00:21<00:02, 33.84it/s]
+ 92%|█████████▏| 717/782 [00:21<00:01, 33.37it/s]
+ 92%|█████████▏| 721/782 [00:21<00:01, 33.59it/s]
+ 93%|█████████▎| 725/782 [00:21<00:01, 33.57it/s]
+ 93%|█████████▎| 729/782 [00:21<00:01, 34.45it/s]
+ 94%|█████████▎| 733/782 [00:21<00:01, 34.54it/s]
+ 94%|█████████▍| 737/782 [00:22<00:01, 35.12it/s]
+ 95%|█████████▍| 741/782 [00:22<00:01, 34.38it/s]
+ 95%|█████████▌| 745/782 [00:22<00:01, 34.06it/s]
+ 96%|█████████▌| 749/782 [00:22<00:00, 33.75it/s]
+ 96%|█████████▋| 753/782 [00:22<00:00, 33.26it/s]
+ 97%|█████████▋| 757/782 [00:22<00:00, 33.40it/s]
+ 97%|█████████▋| 761/782 [00:22<00:00, 33.08it/s]
+ 98%|█████████▊| 765/782 [00:22<00:00, 32.74it/s]
+ 98%|█████████▊| 769/782 [00:23<00:00, 32.88it/s]
+ 99%|█████████▉| 773/782 [00:23<00:00, 33.03it/s]
+ 99%|█████████▉| 777/782 [00:23<00:00, 33.29it/s]
+100%|█████████▉| 781/782 [00:23<00:00, 32.79it/s]
+100%|██████████| 782/782 [00:23<00:00, 33.32it/s]
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 1.4458, Test Loss: 1.4624
+  Train Acc: 0.4767, Test Acc: 0.4678
+  LR: 0.000001, Grad Norm: 3.2795, Throughput: 1093.5 samples/s
+accuracy_to_time_metric 0.8044005473003365
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-376c0a75b5a00327c85396e3da2f9575/1.json
+  - Model persisted to ga_fractal_arch_cifar10/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 46.78%  (source: hyperparameters.accuracy, checksum: 376c0a75b5a00327c85396e3da2f9575)
+  ========================================
+
+  [Archive] Cell (4, 64) updated with fitness: 46.7800
+  Evaluating Individual 2/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: 8ec30d17...)
+Evaluating /a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-8ec30d171d8566b9d52d42303e477311-9430b81a0e60e9cc007aed97cb23ed96.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 4/782 [00:00<00:20, 37.84it/s]
+  2%|▏         | 16/782 [00:00<00:09, 81.40it/s]
+  4%|▎         | 28/782 [00:00<00:07, 96.16it/s]
+  5%|▌         | 40/782 [00:00<00:07, 103.88it/s]
+  7%|▋         | 52/782 [00:00<00:06, 107.71it/s]
+  8%|▊         | 64/782 [00:00<00:06, 109.70it/s]
+ 10%|▉         | 76/782 [00:00<00:06, 111.82it/s]
+ 11%|█▏        | 88/782 [00:00<00:06, 112.70it/s]
+ 13%|█▎        | 100/782 [00:00<00:06, 112.69it/s]
+ 14%|█▍        | 112/782 [00:01<00:05, 112.89it/s]
+ 16%|█▌        | 124/782 [00:01<00:05, 113.17it/s]
+ 17%|█▋        | 136/782 [00:01<00:05, 113.24it/s]
+ 19%|█▉        | 148/782 [00:01<00:05, 113.38it/s]
+ 20%|██        | 160/782 [00:01<00:05, 112.85it/s]
+ 22%|██▏       | 172/782 [00:01<00:05, 113.92it/s]
+ 24%|██▎       | 184/782 [00:01<00:05, 114.37it/s]
+ 25%|██▌       | 196/782 [00:01<00:05, 114.68it/s]
+ 27%|██▋       | 208/782 [00:01<00:05, 114.74it/s]
+ 28%|██▊       | 220/782 [00:01<00:04, 115.07it/s]
+ 30%|██▉       | 232/782 [00:02<00:04, 116.14it/s]
+ 31%|███       | 244/782 [00:02<00:04, 116.22it/s]
+ 33%|███▎      | 256/782 [00:02<00:04, 115.13it/s]
+ 34%|███▍      | 268/782 [00:02<00:04, 114.52it/s]
+ 36%|███▌      | 280/782 [00:02<00:04, 114.28it/s]
+ 37%|███▋      | 292/782 [00:02<00:04, 114.41it/s]
+ 39%|███▉      | 304/782 [00:02<00:04, 114.04it/s]
+ 40%|████      | 316/782 [00:02<00:04, 114.23it/s]
+ 42%|████▏     | 328/782 [00:02<00:03, 114.06it/s]
+ 43%|████▎     | 340/782 [00:03<00:03, 113.79it/s]
+ 45%|████▌     | 352/782 [00:03<00:03, 114.29it/s]
+ 47%|████▋     | 364/782 [00:03<00:03, 113.98it/s]
+ 48%|████▊     | 376/782 [00:03<00:03, 113.37it/s]
+ 50%|████▉     | 388/782 [00:03<00:03, 113.43it/s]
+ 51%|█████     | 400/782 [00:03<00:03, 113.46it/s]
+ 53%|█████▎    | 412/782 [00:03<00:03, 113.84it/s]
+ 54%|█████▍    | 424/782 [00:03<00:03, 114.56it/s]
+ 56%|█████▌    | 436/782 [00:03<00:03, 114.38it/s]
+ 57%|█████▋    | 448/782 [00:03<00:02, 114.95it/s]
+ 59%|█████▉    | 460/782 [00:04<00:02, 114.84it/s]
+ 60%|██████    | 472/782 [00:04<00:02, 115.26it/s]
+ 62%|██████▏   | 484/782 [00:04<00:02, 115.41it/s]
+ 63%|██████▎   | 496/782 [00:04<00:02, 114.86it/s]
+ 65%|██████▍   | 508/782 [00:04<00:02, 115.30it/s]
+ 66%|██████▋   | 520/782 [00:04<00:02, 115.00it/s]
+ 68%|██████▊   | 532/782 [00:04<00:02, 115.07it/s]
+ 70%|██████▉   | 544/782 [00:04<00:02, 114.50it/s]
+ 71%|███████   | 556/782 [00:04<00:01, 115.47it/s]
+ 73%|███████▎  | 568/782 [00:05<00:01, 115.17it/s]
+ 74%|███████▍  | 580/782 [00:05<00:01, 115.23it/s]
+ 76%|███████▌  | 592/782 [00:05<00:01, 115.19it/s]
+ 77%|███████▋  | 604/782 [00:05<00:01, 114.94it/s]
+ 79%|███████▉  | 616/782 [00:05<00:01, 114.78it/s]
+ 80%|████████  | 628/782 [00:05<00:01, 114.55it/s]
+ 82%|████████▏ | 640/782 [00:05<00:01, 115.02it/s]
+ 83%|████████▎ | 652/782 [00:05<00:01, 114.22it/s]
+ 85%|████████▍ | 664/782 [00:05<00:01, 105.66it/s]
+ 86%|████████▋ | 675/782 [00:06<00:01, 100.75it/s]
+ 88%|████████▊ | 686/782 [00:06<00:00, 97.79it/s] 
+ 89%|████████▉ | 697/782 [00:06<00:00, 100.29it/s]
+ 91%|█████████ | 709/782 [00:06<00:00, 103.94it/s]
+ 92%|█████████▏| 721/782 [00:06<00:00, 107.33it/s]
+ 94%|█████████▎| 733/782 [00:06<00:00, 108.94it/s]
+ 95%|█████████▌| 745/782 [00:06<00:00, 110.35it/s]
+ 97%|█████████▋| 757/782 [00:06<00:00, 111.26it/s]
+ 98%|█████████▊| 769/782 [00:06<00:00, 111.87it/s]
+100%|█████████▉| 781/782 [00:06<00:00, 110.94it/s]
+100%|██████████| 782/782 [00:07<00:00, 110.96it/s]
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 1.4156, Test Loss: 1.4113
+  Train Acc: 0.4916, Test Acc: 0.4863
+  LR: 0.000001, Grad Norm: 2.3519, Throughput: 2409.1 samples/s
+accuracy_to_time_metric 1.8612587496863189
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-8ec30d171d8566b9d52d42303e477311/1.json
+  - Model persisted to ga_fractal_arch_cifar10/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 48.63%  (source: hyperparameters.accuracy, checksum: 8ec30d171d8566b9d52d42303e477311)
+  ========================================
+
+  [Archive] Cell (3, 32) updated with fitness: 48.6300
+  Evaluating Individual 3/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: ac7563d5...)
+Evaluating /a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-ac7563d59b7d0089618327c12423fbf1-b4d9816d6ff91f84ee52f472e4b5713a.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 8/782 [00:00<00:10, 74.98it/s]
+  3%|▎         | 21/782 [00:00<00:07, 103.42it/s]
+  4%|▍         | 33/782 [00:00<00:06, 108.38it/s]
+  6%|▌         | 45/782 [00:00<00:06, 110.34it/s]
+  7%|▋         | 57/782 [00:00<00:06, 112.49it/s]
+  9%|▉         | 69/782 [00:00<00:06, 114.45it/s]
+ 10%|█         | 81/782 [00:00<00:06, 115.80it/s]
+ 12%|█▏        | 93/782 [00:00<00:05, 116.70it/s]
+ 14%|█▎        | 106/782 [00:00<00:05, 119.12it/s]
+ 15%|█▌        | 118/782 [00:01<00:05, 116.91it/s]
+ 17%|█▋        | 131/782 [00:01<00:05, 118.77it/s]
+ 18%|█▊        | 143/782 [00:01<00:05, 115.93it/s]
+ 20%|█▉        | 155/782 [00:01<00:05, 114.10it/s]
+ 21%|██▏       | 167/782 [00:01<00:05, 114.72it/s]
+ 23%|██▎       | 179/782 [00:01<00:05, 115.74it/s]
+ 24%|██▍       | 191/782 [00:01<00:05, 116.44it/s]
+ 26%|██▌       | 203/782 [00:01<00:05, 114.37it/s]
+ 27%|██▋       | 215/782 [00:01<00:04, 115.99it/s]
+ 29%|██▉       | 227/782 [00:01<00:04, 116.47it/s]
+ 31%|███       | 240/782 [00:02<00:04, 117.64it/s]
+ 32%|███▏      | 252/782 [00:02<00:04, 118.25it/s]
+ 34%|███▍      | 265/782 [00:02<00:04, 118.16it/s]
+ 35%|███▌      | 277/782 [00:02<00:04, 118.11it/s]
+ 37%|███▋      | 289/782 [00:02<00:04, 114.76it/s]
+ 38%|███▊      | 301/782 [00:02<00:04, 113.28it/s]
+ 40%|████      | 313/782 [00:02<00:04, 112.84it/s]
+ 42%|████▏     | 325/782 [00:02<00:04, 111.66it/s]
+ 43%|████▎     | 337/782 [00:02<00:03, 111.69it/s]
+ 45%|████▍     | 349/782 [00:03<00:03, 112.19it/s]
+ 46%|████▌     | 361/782 [00:03<00:03, 112.19it/s]
+ 48%|████▊     | 373/782 [00:03<00:03, 114.30it/s]
+ 49%|████▉     | 386/782 [00:03<00:03, 117.56it/s]
+ 51%|█████     | 398/782 [00:03<00:03, 116.83it/s]
+ 52%|█████▏    | 410/782 [00:03<00:03, 115.32it/s]
+ 54%|█████▍    | 423/782 [00:03<00:03, 117.36it/s]
+ 56%|█████▌    | 435/782 [00:03<00:02, 117.28it/s]
+ 57%|█████▋    | 448/782 [00:03<00:02, 119.49it/s]
+ 59%|█████▉    | 460/782 [00:03<00:02, 117.62it/s]
+ 60%|██████    | 472/782 [00:04<00:02, 115.85it/s]
+ 62%|██████▏   | 484/782 [00:04<00:02, 113.26it/s]
+ 63%|██████▎   | 496/782 [00:04<00:02, 111.06it/s]
+ 65%|██████▍   | 508/782 [00:04<00:02, 109.42it/s]
+ 66%|██████▋   | 520/782 [00:04<00:02, 111.89it/s]
+ 68%|██████▊   | 532/782 [00:04<00:02, 111.63it/s]
+ 70%|██████▉   | 544/782 [00:04<00:02, 111.77it/s]
+ 71%|███████   | 557/782 [00:04<00:01, 114.94it/s]
+ 73%|███████▎  | 569/782 [00:04<00:01, 115.97it/s]
+ 74%|███████▍  | 581/782 [00:05<00:01, 115.28it/s]
+ 76%|███████▌  | 593/782 [00:05<00:01, 115.19it/s]
+ 77%|███████▋  | 605/782 [00:05<00:01, 114.65it/s]
+ 79%|███████▉  | 617/782 [00:05<00:01, 113.34it/s]
+ 80%|████████  | 629/782 [00:05<00:01, 111.96it/s]
+ 82%|████████▏ | 641/782 [00:05<00:01, 111.79it/s]
+ 84%|████████▎ | 653/782 [00:05<00:01, 110.23it/s]
+ 85%|████████▌ | 665/782 [00:05<00:01, 109.73it/s]
+ 87%|████████▋ | 678/782 [00:05<00:00, 112.93it/s]
+ 88%|████████▊ | 690/782 [00:06<00:00, 111.15it/s]
+ 90%|████████▉ | 702/782 [00:06<00:00, 109.49it/s]
+ 91%|█████████ | 713/782 [00:06<00:00, 108.61it/s]
+ 93%|█████████▎| 725/782 [00:06<00:00, 109.90it/s]
+ 94%|█████████▍| 737/782 [00:06<00:00, 111.03it/s]
+ 96%|█████████▌| 749/782 [00:06<00:00, 109.47it/s]
+ 97%|█████████▋| 760/782 [00:06<00:00, 108.43it/s]
+ 99%|█████████▊| 771/782 [00:06<00:00, 108.63it/s]
+100%|██████████| 782/782 [00:06<00:00, 108.21it/s]
+100%|██████████| 782/782 [00:06<00:00, 112.89it/s]
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 2.0243, Test Loss: 2.0234
+  Train Acc: 0.2312, Test Acc: 0.2334
+  LR: 0.000001, Grad Norm: 0.2794, Throughput: 2443.4 samples/s
+accuracy_to_time_metric 0.65188344618141
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-ac7563d59b7d0089618327c12423fbf1/1.json
+  - Model persisted to ga_fractal_arch_cifar10/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 23.34%  (source: hyperparameters.accuracy, checksum: ac7563d59b7d0089618327c12423fbf1)
+  ========================================
+
+  [Archive] Cell (2, 32) updated with fitness: 23.3400
+  Evaluating Individual 4/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: 353d1076...)
+Evaluating /a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-353d107662d9d9ee6b858b051e3e74af-451012b4b804494b1a2ccad1e8742928.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 1/782 [00:00<01:35,  8.15it/s]
+  1%|          | 5/782 [00:00<00:36, 21.03it/s]
+  1%|          | 9/782 [00:00<00:27, 28.14it/s]
+  2%|▏         | 14/782 [00:00<00:23, 33.22it/s]
+  2%|▏         | 18/782 [00:00<00:22, 34.64it/s]
+  3%|▎         | 22/782 [00:00<00:21, 36.07it/s]
+  3%|▎         | 26/782 [00:00<00:20, 36.42it/s]
+  4%|▍         | 30/782 [00:00<00:20, 37.10it/s]
+  4%|▍         | 34/782 [00:01<00:19, 37.59it/s]
+  5%|▍         | 38/782 [00:01<00:19, 38.07it/s]
+  5%|▌         | 43/782 [00:01<00:19, 38.87it/s]
+  6%|▌         | 47/782 [00:01<00:19, 38.31it/s]
+  7%|▋         | 51/782 [00:01<00:18, 38.56it/s]
+  7%|▋         | 55/782 [00:01<00:18, 38.50it/s]
+  8%|▊         | 59/782 [00:01<00:18, 38.40it/s]
+  8%|▊         | 63/782 [00:01<00:18, 38.75it/s]
+  9%|▊         | 67/782 [00:01<00:18, 38.89it/s]
+  9%|▉         | 71/782 [00:01<00:18, 39.04it/s]
+ 10%|▉         | 75/782 [00:02<00:18, 38.69it/s]
+ 10%|█         | 79/782 [00:02<00:18, 38.80it/s]
+ 11%|█         | 83/782 [00:02<00:18, 38.80it/s]
+ 11%|█         | 87/782 [00:02<00:17, 38.89it/s]
+ 12%|█▏        | 91/782 [00:02<00:17, 39.15it/s]
+ 12%|█▏        | 95/782 [00:02<00:17, 38.89it/s]
+ 13%|█▎        | 99/782 [00:02<00:17, 38.35it/s]
+ 13%|█▎        | 103/782 [00:02<00:17, 38.30it/s]
+ 14%|█▎        | 107/782 [00:02<00:17, 37.58it/s]
+ 14%|█▍        | 111/782 [00:03<00:18, 37.20it/s]
+ 15%|█▍        | 115/782 [00:03<00:17, 37.73it/s]
+ 15%|█▌        | 119/782 [00:03<00:17, 38.06it/s]
+ 16%|█▌        | 124/782 [00:03<00:17, 38.61it/s]
+ 16%|█▋        | 128/782 [00:03<00:16, 38.52it/s]
+ 17%|█▋        | 132/782 [00:03<00:17, 38.15it/s]
+ 17%|█▋        | 136/782 [00:03<00:16, 38.28it/s]
+ 18%|█▊        | 140/782 [00:03<00:16, 38.40it/s]
+ 19%|█▊        | 145/782 [00:03<00:16, 39.04it/s]
+ 19%|█▉        | 149/782 [00:03<00:16, 38.95it/s]
+ 20%|█▉        | 153/782 [00:04<00:16, 38.66it/s]
+ 20%|██        | 157/782 [00:04<00:16, 38.95it/s]
+ 21%|██        | 161/782 [00:04<00:15, 39.05it/s]
+ 21%|██        | 165/782 [00:04<00:15, 38.88it/s]
+ 22%|██▏       | 169/782 [00:04<00:15, 38.41it/s]
+ 22%|██▏       | 173/782 [00:04<00:15, 38.39it/s]
+ 23%|██▎       | 177/782 [00:04<00:15, 38.50it/s]
+ 23%|██▎       | 181/782 [00:04<00:15, 38.38it/s]
+ 24%|██▍       | 186/782 [00:04<00:15, 38.70it/s]
+ 24%|██▍       | 190/782 [00:05<00:15, 38.00it/s]
+ 25%|██▍       | 194/782 [00:05<00:15, 37.92it/s]
+ 25%|██▌       | 198/782 [00:05<00:15, 37.50it/s]
+ 26%|██▌       | 202/782 [00:05<00:15, 38.02it/s]
+ 26%|██▋       | 206/782 [00:05<00:15, 38.13it/s]
+ 27%|██▋       | 210/782 [00:05<00:14, 38.40it/s]
+ 27%|██▋       | 214/782 [00:05<00:14, 38.45it/s]
+ 28%|██▊       | 218/782 [00:05<00:14, 37.66it/s]
+ 28%|██▊       | 222/782 [00:05<00:14, 37.60it/s]
+ 29%|██▉       | 226/782 [00:06<00:14, 37.71it/s]
+ 29%|██▉       | 230/782 [00:06<00:14, 37.43it/s]
+ 30%|██▉       | 234/782 [00:06<00:14, 37.08it/s]
+ 30%|███       | 238/782 [00:06<00:14, 37.64it/s]
+ 31%|███       | 242/782 [00:06<00:14, 37.83it/s]
+ 31%|███▏      | 246/782 [00:06<00:14, 37.76it/s]
+ 32%|███▏      | 250/782 [00:06<00:14, 37.63it/s]
+ 32%|███▏      | 254/782 [00:06<00:13, 37.90it/s]
+ 33%|███▎      | 258/782 [00:06<00:13, 37.88it/s]
+ 34%|███▎      | 262/782 [00:06<00:13, 37.74it/s]
+ 34%|███▍      | 266/782 [00:07<00:13, 37.91it/s]
+ 35%|███▍      | 270/782 [00:07<00:13, 38.06it/s]
+ 35%|███▌      | 274/782 [00:07<00:13, 38.24it/s]
+ 36%|███▌      | 278/782 [00:07<00:13, 38.14it/s]
+ 36%|███▌      | 283/782 [00:07<00:12, 38.58it/s]
+ 37%|███▋      | 287/782 [00:07<00:12, 38.50it/s]
+ 37%|███▋      | 291/782 [00:07<00:12, 38.68it/s]
+ 38%|███▊      | 295/782 [00:07<00:12, 38.05it/s]
+ 38%|███▊      | 300/782 [00:07<00:12, 38.80it/s]
+ 39%|███▉      | 304/782 [00:08<00:12, 38.30it/s]
+ 39%|███▉      | 308/782 [00:08<00:12, 38.10it/s]
+ 40%|███▉      | 312/782 [00:08<00:12, 37.79it/s]
+ 40%|████      | 316/782 [00:08<00:12, 38.18it/s]
+ 41%|████      | 320/782 [00:08<00:12, 37.77it/s]
+ 41%|████▏     | 324/782 [00:08<00:12, 37.82it/s]
+ 42%|████▏     | 329/782 [00:08<00:11, 38.76it/s]
+ 43%|████▎     | 333/782 [00:08<00:11, 38.68it/s]
+ 43%|████▎     | 337/782 [00:08<00:11, 38.79it/s]
+ 44%|████▎     | 341/782 [00:09<00:11, 38.74it/s]
+ 44%|████▍     | 345/782 [00:09<00:11, 38.72it/s]
+ 45%|████▍     | 349/782 [00:09<00:11, 38.48it/s]
+ 45%|████▌     | 353/782 [00:09<00:11, 37.56it/s]
+ 46%|████▌     | 357/782 [00:09<00:11, 37.50it/s]
+ 46%|████▌     | 361/782 [00:09<00:11, 37.49it/s]
+ 47%|████▋     | 365/782 [00:09<00:10, 38.06it/s]
+ 47%|████▋     | 369/782 [00:09<00:10, 38.37it/s]
+ 48%|████▊     | 373/782 [00:09<00:10, 38.80it/s]
+ 48%|████▊     | 377/782 [00:09<00:10, 38.93it/s]
+ 49%|████▉     | 382/782 [00:10<00:10, 39.43it/s]
+ 49%|████▉     | 386/782 [00:10<00:10, 38.93it/s]
+ 50%|████▉     | 390/782 [00:10<00:10, 38.64it/s]
+ 50%|█████     | 394/782 [00:10<00:10, 38.41it/s]
+ 51%|█████     | 398/782 [00:10<00:10, 38.12it/s]
+ 51%|█████▏    | 402/782 [00:10<00:09, 38.44it/s]
+ 52%|█████▏    | 406/782 [00:10<00:09, 38.21it/s]
+ 52%|█████▏    | 410/782 [00:10<00:09, 38.42it/s]
+ 53%|█████▎    | 414/782 [00:10<00:09, 38.38it/s]
+ 53%|█████▎    | 418/782 [00:11<00:09, 38.04it/s]
+ 54%|█████▍    | 422/782 [00:11<00:09, 37.98it/s]
+ 54%|█████▍    | 426/782 [00:11<00:09, 38.00it/s]
+ 55%|█████▍    | 430/782 [00:11<00:09, 38.26it/s]
+ 55%|█████▌    | 434/782 [00:11<00:09, 38.15it/s]
+ 56%|█████▌    | 438/782 [00:11<00:09, 37.99it/s]
+ 57%|█████▋    | 442/782 [00:11<00:08, 38.41it/s]
+ 57%|█████▋    | 446/782 [00:11<00:08, 38.00it/s]
+ 58%|█████▊    | 450/782 [00:11<00:08, 38.07it/s]
+ 58%|█████▊    | 454/782 [00:11<00:08, 38.00it/s]
+ 59%|█████▊    | 458/782 [00:12<00:08, 38.02it/s]
+ 59%|█████▉    | 462/782 [00:12<00:08, 38.12it/s]
+ 60%|█████▉    | 466/782 [00:12<00:08, 38.09it/s]
+ 60%|██████    | 470/782 [00:12<00:08, 38.05it/s]
+ 61%|██████    | 474/782 [00:12<00:08, 38.18it/s]
+ 61%|██████    | 478/782 [00:12<00:08, 37.91it/s]
+ 62%|██████▏   | 482/782 [00:12<00:07, 38.08it/s]
+ 62%|██████▏   | 486/782 [00:12<00:07, 38.13it/s]
+ 63%|██████▎   | 490/782 [00:12<00:07, 38.61it/s]
+ 63%|██████▎   | 494/782 [00:13<00:07, 38.39it/s]
+ 64%|██████▍   | 499/782 [00:13<00:07, 38.72it/s]
+ 64%|██████▍   | 503/782 [00:13<00:07, 38.52it/s]
+ 65%|██████▍   | 507/782 [00:13<00:07, 38.47it/s]
+ 65%|██████▌   | 511/782 [00:13<00:07, 37.90it/s]
+ 66%|██████▌   | 515/782 [00:13<00:06, 38.17it/s]
+ 66%|██████▋   | 519/782 [00:13<00:06, 38.31it/s]
+ 67%|██████▋   | 523/782 [00:13<00:06, 37.75it/s]
+ 67%|██████▋   | 527/782 [00:13<00:06, 37.83it/s]
+ 68%|██████▊   | 531/782 [00:13<00:06, 38.30it/s]
+ 68%|██████▊   | 535/782 [00:14<00:06, 38.39it/s]
+ 69%|██████▉   | 539/782 [00:14<00:06, 38.49it/s]
+ 69%|██████▉   | 543/782 [00:14<00:06, 38.32it/s]
+ 70%|██████▉   | 547/782 [00:14<00:06, 38.33it/s]
+ 71%|███████   | 552/782 [00:14<00:05, 39.07it/s]
+ 71%|███████   | 556/782 [00:14<00:05, 38.92it/s]
+ 72%|███████▏  | 561/782 [00:14<00:05, 39.49it/s]
+ 72%|███████▏  | 565/782 [00:14<00:05, 39.36it/s]
+ 73%|███████▎  | 569/782 [00:14<00:05, 39.20it/s]
+ 73%|███████▎  | 573/782 [00:15<00:05, 39.32it/s]
+ 74%|███████▍  | 577/782 [00:15<00:05, 38.68it/s]
+ 74%|███████▍  | 581/782 [00:15<00:05, 38.76it/s]
+ 75%|███████▍  | 585/782 [00:15<00:05, 39.07it/s]
+ 75%|███████▌  | 589/782 [00:15<00:04, 38.84it/s]
+ 76%|███████▌  | 594/782 [00:15<00:04, 39.40it/s]
+ 76%|███████▋  | 598/782 [00:15<00:04, 38.90it/s]
+ 77%|███████▋  | 602/782 [00:15<00:04, 38.57it/s]
+ 77%|███████▋  | 606/782 [00:15<00:04, 38.24it/s]
+ 78%|███████▊  | 610/782 [00:16<00:04, 38.22it/s]
+ 79%|███████▊  | 614/782 [00:16<00:04, 37.70it/s]
+ 79%|███████▉  | 618/782 [00:16<00:04, 37.54it/s]
+ 80%|███████▉  | 622/782 [00:16<00:04, 38.10it/s]
+ 80%|████████  | 626/782 [00:16<00:04, 38.43it/s]
+ 81%|████████  | 631/782 [00:16<00:03, 39.36it/s]
+ 81%|████████  | 635/782 [00:16<00:03, 39.52it/s]
+ 82%|████████▏ | 639/782 [00:16<00:03, 39.62it/s]
+ 82%|████████▏ | 643/782 [00:16<00:03, 39.27it/s]
+ 83%|████████▎ | 647/782 [00:16<00:03, 39.37it/s]
+ 83%|████████▎ | 651/782 [00:17<00:03, 38.89it/s]
+ 84%|████████▍ | 655/782 [00:17<00:03, 39.00it/s]
+ 84%|████████▍ | 659/782 [00:17<00:03, 38.92it/s]
+ 85%|████████▍ | 663/782 [00:17<00:03, 38.52it/s]
+ 85%|████████▌ | 667/782 [00:17<00:02, 38.59it/s]
+ 86%|████████▌ | 671/782 [00:17<00:02, 38.21it/s]
+ 86%|████████▋ | 675/782 [00:17<00:02, 38.56it/s]
+ 87%|████████▋ | 679/782 [00:17<00:02, 38.67it/s]
+ 87%|████████▋ | 683/782 [00:17<00:02, 38.29it/s]
+ 88%|████████▊ | 687/782 [00:18<00:02, 38.28it/s]
+ 88%|████████▊ | 691/782 [00:18<00:02, 38.41it/s]
+ 89%|████████▉ | 695/782 [00:18<00:02, 38.05it/s]
+ 89%|████████▉ | 699/782 [00:18<00:02, 36.63it/s]
+ 90%|████████▉ | 703/782 [00:18<00:02, 36.81it/s]
+ 90%|█████████ | 707/782 [00:18<00:02, 37.13it/s]
+ 91%|█████████ | 711/782 [00:18<00:01, 37.62it/s]
+ 91%|█████████▏| 715/782 [00:18<00:01, 38.10it/s]
+ 92%|█████████▏| 719/782 [00:18<00:01, 37.72it/s]
+ 92%|█████████▏| 723/782 [00:18<00:01, 37.81it/s]
+ 93%|█████████▎| 727/782 [00:19<00:01, 38.17it/s]
+ 93%|█████████▎| 731/782 [00:19<00:01, 38.37it/s]
+ 94%|█████████▍| 735/782 [00:19<00:01, 38.11it/s]
+ 95%|█████████▍| 739/782 [00:19<00:01, 37.87it/s]
+ 95%|█████████▌| 743/782 [00:19<00:01, 38.38it/s]
+ 96%|█████████▌| 747/782 [00:19<00:00, 38.01it/s]
+ 96%|█████████▌| 752/782 [00:19<00:00, 39.17it/s]
+ 97%|█████████▋| 756/782 [00:19<00:00, 37.38it/s]
+ 97%|█████████▋| 760/782 [00:19<00:00, 33.16it/s]
+ 98%|█████████▊| 764/782 [00:20<00:00, 30.66it/s]
+ 98%|█████████▊| 768/782 [00:20<00:00, 32.76it/s]
+ 99%|█████████▊| 772/782 [00:20<00:00, 34.37it/s]
+ 99%|█████████▉| 776/782 [00:20<00:00, 35.47it/s]
+100%|█████████▉| 780/782 [00:20<00:00, 36.21it/s]
+100%|██████████| 782/782 [00:20<00:00, 37.82it/s]
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 1.8926, Test Loss: 1.8905
+  Train Acc: 0.2677, Test Acc: 0.2666
+  LR: 0.000001, Grad Norm: 0.4730, Throughput: 1454.0 samples/s
+accuracy_to_time_metric 0.48444003457576
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-353d107662d9d9ee6b858b051e3e74af/1.json
+  - Model persisted to ga_fractal_arch_cifar10/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 26.66%  (source: hyperparameters.accuracy, checksum: 353d107662d9d9ee6b858b051e3e74af)
+  ========================================
+
+  [Archive] Cell (4, 16) updated with fitness: 26.6600
+  Evaluating Individual 5/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: 9df538bb...)
+Evaluating /a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-9df538bb99592e3143f0073b93ddbe1b-700976d35fdb13bf3901e9ec014ca96b.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 2/782 [00:00<00:40, 19.05it/s]
+  1%|          | 9/782 [00:00<00:17, 44.15it/s]
+  2%|▏         | 16/782 [00:00<00:14, 52.14it/s]
+  3%|▎         | 23/782 [00:00<00:13, 56.39it/s]
+  4%|▍         | 30/782 [00:00<00:12, 58.24it/s]
+  5%|▍         | 37/782 [00:00<00:12, 59.31it/s]
+  6%|▌         | 44/782 [00:00<00:12, 60.09it/s]
+  6%|▋         | 50/782 [00:00<00:12, 59.50it/s]
+  7%|▋         | 57/782 [00:01<00:12, 60.14it/s]
+  8%|▊         | 64/782 [00:01<00:11, 60.31it/s]
+  9%|▉         | 71/782 [00:01<00:11, 60.92it/s]
+ 10%|▉         | 78/782 [00:01<00:11, 60.76it/s]
+ 11%|█         | 85/782 [00:01<00:11, 60.74it/s]
+ 12%|█▏        | 92/782 [00:01<00:11, 60.52it/s]
+ 13%|█▎        | 99/782 [00:01<00:11, 60.25it/s]
+ 14%|█▎        | 106/782 [00:01<00:11, 59.59it/s]
+ 14%|█▍        | 113/782 [00:01<00:11, 60.46it/s]
+ 15%|█▌        | 120/782 [00:02<00:10, 61.35it/s]
+ 16%|█▌        | 127/782 [00:02<00:10, 61.70it/s]
+ 17%|█▋        | 134/782 [00:02<00:10, 61.69it/s]
+ 18%|█▊        | 141/782 [00:02<00:10, 61.01it/s]
+ 19%|█▉        | 148/782 [00:02<00:10, 60.97it/s]
+ 20%|█▉        | 155/782 [00:02<00:10, 61.21it/s]
+ 21%|██        | 162/782 [00:02<00:10, 61.28it/s]
+ 22%|██▏       | 169/782 [00:02<00:09, 61.73it/s]
+ 23%|██▎       | 176/782 [00:02<00:09, 61.01it/s]
+ 23%|██▎       | 183/782 [00:03<00:09, 60.59it/s]
+ 24%|██▍       | 190/782 [00:03<00:09, 60.79it/s]
+ 25%|██▌       | 197/782 [00:03<00:09, 60.45it/s]
+ 26%|██▌       | 204/782 [00:03<00:09, 60.86it/s]
+ 27%|██▋       | 211/782 [00:03<00:09, 61.22it/s]
+ 28%|██▊       | 218/782 [00:03<00:09, 62.32it/s]
+ 29%|██▉       | 225/782 [00:03<00:08, 62.01it/s]
+ 30%|██▉       | 232/782 [00:03<00:08, 61.92it/s]
+ 31%|███       | 239/782 [00:03<00:08, 62.27it/s]
+ 31%|███▏      | 246/782 [00:04<00:08, 62.03it/s]
+ 32%|███▏      | 253/782 [00:04<00:08, 61.17it/s]
+ 33%|███▎      | 260/782 [00:04<00:08, 60.86it/s]
+ 34%|███▍      | 267/782 [00:04<00:08, 60.60it/s]
+ 35%|███▌      | 274/782 [00:04<00:08, 61.17it/s]
+ 36%|███▌      | 281/782 [00:04<00:08, 61.47it/s]
+ 37%|███▋      | 288/782 [00:04<00:07, 61.93it/s]
+ 38%|███▊      | 295/782 [00:04<00:08, 60.32it/s]
+ 39%|███▊      | 302/782 [00:05<00:07, 60.91it/s]
+ 40%|███▉      | 309/782 [00:05<00:08, 57.88it/s]
+ 40%|████      | 315/782 [00:05<00:08, 57.72it/s]
+ 41%|████      | 322/782 [00:05<00:07, 59.06it/s]
+ 42%|████▏     | 329/782 [00:05<00:07, 59.41it/s]
+ 43%|████▎     | 335/782 [00:05<00:07, 59.47it/s]
+ 44%|████▎     | 342/782 [00:05<00:07, 59.57it/s]
+ 45%|████▍     | 348/782 [00:05<00:07, 58.99it/s]
+ 45%|████▌     | 355/782 [00:05<00:07, 60.15it/s]
+ 46%|████▋     | 362/782 [00:06<00:06, 60.20it/s]
+ 47%|████▋     | 369/782 [00:06<00:06, 61.23it/s]
+ 48%|████▊     | 376/782 [00:06<00:06, 61.73it/s]
+ 49%|████▉     | 383/782 [00:06<00:06, 61.22it/s]
+ 50%|████▉     | 390/782 [00:06<00:06, 61.62it/s]
+ 51%|█████     | 397/782 [00:06<00:06, 62.74it/s]
+ 52%|█████▏    | 404/782 [00:06<00:06, 62.66it/s]
+ 53%|█████▎    | 411/782 [00:06<00:06, 61.56it/s]
+ 53%|█████▎    | 418/782 [00:06<00:05, 61.32it/s]
+ 54%|█████▍    | 425/782 [00:07<00:05, 61.65it/s]
+ 55%|█████▌    | 432/782 [00:07<00:05, 62.08it/s]
+ 56%|█████▌    | 439/782 [00:07<00:05, 61.20it/s]
+ 57%|█████▋    | 446/782 [00:07<00:05, 62.09it/s]
+ 58%|█████▊    | 453/782 [00:07<00:05, 60.77it/s]
+ 59%|█████▉    | 460/782 [00:07<00:05, 61.23it/s]
+ 60%|█████▉    | 467/782 [00:07<00:05, 62.11it/s]
+ 61%|██████    | 474/782 [00:07<00:04, 61.92it/s]
+ 62%|██████▏   | 481/782 [00:07<00:04, 60.91it/s]
+ 62%|██████▏   | 488/782 [00:08<00:04, 60.48it/s]
+ 63%|██████▎   | 495/782 [00:08<00:04, 61.20it/s]
+ 64%|██████▍   | 502/782 [00:08<00:04, 61.06it/s]
+ 65%|██████▌   | 509/782 [00:08<00:04, 62.14it/s]
+ 66%|██████▌   | 516/782 [00:08<00:04, 61.81it/s]
+ 67%|██████▋   | 523/782 [00:08<00:04, 62.71it/s]
+ 68%|██████▊   | 530/782 [00:08<00:04, 62.20it/s]
+ 69%|██████▊   | 537/782 [00:08<00:03, 62.00it/s]
+ 70%|██████▉   | 544/782 [00:08<00:03, 61.48it/s]
+ 70%|███████   | 551/782 [00:09<00:03, 61.42it/s]
+ 71%|███████▏  | 558/782 [00:09<00:03, 61.14it/s]
+ 72%|███████▏  | 565/782 [00:09<00:03, 61.01it/s]
+ 73%|███████▎  | 572/782 [00:09<00:03, 60.97it/s]
+ 74%|███████▍  | 579/782 [00:09<00:03, 60.34it/s]
+ 75%|███████▍  | 586/782 [00:09<00:03, 59.95it/s]
+ 76%|███████▌  | 593/782 [00:09<00:03, 59.89it/s]
+ 77%|███████▋  | 599/782 [00:09<00:03, 59.42it/s]
+ 77%|███████▋  | 606/782 [00:10<00:02, 59.91it/s]
+ 78%|███████▊  | 612/782 [00:10<00:02, 59.85it/s]
+ 79%|███████▉  | 618/782 [00:10<00:02, 59.52it/s]
+ 80%|███████▉  | 624/782 [00:10<00:02, 59.09it/s]
+ 81%|████████  | 630/782 [00:10<00:02, 59.01it/s]
+ 81%|████████▏ | 637/782 [00:10<00:02, 60.36it/s]
+ 82%|████████▏ | 644/782 [00:10<00:02, 60.82it/s]
+ 83%|████████▎ | 651/782 [00:10<00:02, 60.46it/s]
+ 84%|████████▍ | 658/782 [00:10<00:02, 60.99it/s]
+ 85%|████████▌ | 665/782 [00:10<00:01, 62.57it/s]
+ 86%|████████▌ | 672/782 [00:11<00:01, 62.81it/s]
+ 87%|████████▋ | 679/782 [00:11<00:01, 62.45it/s]
+ 88%|████████▊ | 686/782 [00:11<00:01, 62.10it/s]
+ 89%|████████▊ | 693/782 [00:11<00:01, 63.33it/s]
+ 90%|████████▉ | 700/782 [00:11<00:01, 62.41it/s]
+ 90%|█████████ | 707/782 [00:11<00:01, 61.73it/s]
+ 91%|█████████▏| 714/782 [00:11<00:01, 61.74it/s]
+ 92%|█████████▏| 721/782 [00:11<00:00, 61.90it/s]
+ 93%|█████████▎| 728/782 [00:11<00:00, 61.04it/s]
+ 94%|█████████▍| 735/782 [00:12<00:00, 61.05it/s]
+ 95%|█████████▍| 742/782 [00:12<00:00, 60.05it/s]
+ 96%|█████████▌| 749/782 [00:12<00:00, 60.66it/s]
+ 97%|█████████▋| 756/782 [00:12<00:00, 61.23it/s]
+ 98%|█████████▊| 763/782 [00:12<00:00, 61.75it/s]
+ 98%|█████████▊| 770/782 [00:12<00:00, 61.47it/s]
+ 99%|█████████▉| 777/782 [00:12<00:00, 61.52it/s]
+100%|██████████| 782/782 [00:12<00:00, 60.54it/s]
+  Train Loss: 2.2984, Test Loss: 2.2984
+  Train Acc: 0.1260, Test Acc: 0.1280
+  LR: 0.000000, Grad Norm: 0.1718, Throughput: 1889.2 samples/s
+accuracy_to_time_metric 0.10579239010904436
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-9df538bb99592e3143f0073b93ddbe1b/1.json
+  - Model persisted to ga_fractal_arch_cifar10/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 12.80%  (source: hyperparameters.accuracy, checksum: 9df538bb99592e3143f0073b93ddbe1b)
+  ========================================
+
+  [Archive] Cell (2, 16) updated with fitness: 12.8000
+[Best] Saved best model to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_model.py
+[Best] Copying stats from /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-8ec30d171d8566b9d52d42303e477311...
+[Best] Saved best stats to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-8ec30d171d8566b9d52d42303e477311
+[Best] Saved best info metadata to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_info.json
+PEAK_ACCURACY: 48.6300
+TOP3_MEAN: 16.2100
+ARCHIVE_SIZE: 5
+[Meta] Median Top-3 Quality over 1 runs: 16.2100
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] PRIMARY: +48.63% SOTA Improvement! Bonus: 19.5230
+   [RL] SECONDARY: Top-3 Quality (16.21%). Bonus: 0.2432
+   [RL] TERTIARY: Archive Novelty (5 cells updated). Bonus: 2.5000
+   [RL] Total Reward: 15.0000
+[Meta] --> NEW GLOBAL SOTA! 48.63% (was 0.00%)
+[Meta] --> ARCHIVE EXPANDED! 5 cells (was 0)
+--> SUCCESS. Updating Baseline (EMA) & Fine-tuning on Success.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+[LoRA] Fine-tune start (replay buffer: 1 items, batch: 1)
+[LoRA] Training on 1 examples...
+`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`.
+/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/_dynamo/eval_frame.py:838: UserWarning: torch.utils.checkpoint: the use_reentrant parameter should be passed explicitly. In version 2.5 we will raise an exception if use_reentrant is not passed. use_reentrant=False is recommended, but if you need to preserve the current default behavior, you can pass use_reentrant=True. Refer to docs for more details on the differences between the two variants.
+  return fn(*args, **kwargs)
+[LoRA] Epoch 1/1 - Loss: 0.2328
+[LoRA] Fine-tune complete
+[LoRA] Adapter save start
+[LoRA] Adapter save complete
+--> Saved version history with accuracy: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar10/genetic_algorithm_attempt6_combine_genes_acc_48.63.py
+--> Saved CoT trace: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar10/genetic_algorithm_attempt6_combine_genes_acc_48.63_thinking.txt
+[Meta] ✓ Success #1/10 achieved on attempt 6
+
+=== Attempt 7 | Successes: 1/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.57
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and avoid getting stuck in local optima, we need to introduce more diversity in our mutation strategy. Instead of simply choosing a random value from the possible values, we can use techniques like inversion, momentum tracking, or hybridization to generate new values that are likely to be closer to the current value but still diverse enough to escape local optima.
+
+For the `mutate_gene` method, we will implement a simple momentum-based mutation strategy. This strategy keeps track of the previous mutations and uses them to guide future mutations. We will also introduce inversion to ensure that the new value is diverse and unlikely to be the same as the current value.
+
+Here's the plan:
+1. Track the previous mutation direction for each gene.
+2. Use the previous mutation direction to guide the next mutation.
+3. Introduce inversion to ensure diversity.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if not possible_values:
+            return current_value
+
+        # Initialize history if it doesn't exist
+        if not hasattr(self, 'mutation_history'):
+            self.mutation_history = {}
+
+        if gene_name not in self.mutation_history:
+            self.mutation_history[gene_name] = {'direction': None, 'value': current_value}
+
+        # Get the previous mutation direction and value
+        prev_direction = self.mutation_history[gene_name]['direction']
+        prev_value = self.mutation_history[gene_name]['value']
+
+        # Calculate the new value using momentum
+        if prev_direction is not None:
+            new_value = current_value + prev_direction * 0.1
+        else:
+            new_value = current_value
+
+        # Invert the new value if it is too close to the previous value
+        if abs(new_value - prev_value) < 0.1:
+            new_value = current_value + (-prev_direction) * 0.1
+
+        # Snap the new value to the nearest valid value
+        new_value = min(max(new_value, min(possible_values)), max(possible_values))
+
+        # Update the mutation history
+        self.mutation_history[gene_name]['direction'] = new_value - current_value
+        self.mutation_history[gene_name]['value'] = new_value
+
+        return new_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: bad operand type for unary -: 'NoneType'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 7 failed — retrying (failures: 1/10, successes so far: 1/10)
+
+=== Attempt 8 | Successes: 1/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.51
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (MAP-Elites) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to focus on creating diverse and effective mutations. Given the constraints, we should avoid inventing new values and instead leverage existing values from the search space. Additionally, we should prioritize mutations that lead to architectures capable of surviving heavy path-dropping during the short 1-epoch evaluation.
+
+For the `mutate_gene` function, we can introduce a strategy that combines elements of momentum tracking and inversion to ensure diversity and robustness. This approach will help us explore new architectures while maintaining a balance between exploration and exploitation.
+
+Let's break down the steps:
+1. **Momentum Tracking**: Use a history of previous mutations to guide future mutations in a consistent direction.
+2. **Gene Inversion**: Occasionally invert the gene to explore opposite directions in the search space.
+3. **Fallback Mechanism**: If no valid possible values are available, revert to a safe fallback mechanism.
+
+By combining these techniques, we can ensure that the mutation process is both diverse and effective in finding new, high-performing architectures.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            # Use momentum tracking to guide mutations
+            if not hasattr(self, 'mutation_history'):
+                self.mutation_history = {}
+            
+            if gene_name not in self.mutation_history:
+                self.mutation_history[gene_name] = {'direction': None, 'value': current_value}
+            
+            prev_direction = self.mutation_history[gene_name]['direction']
+            prev_value = self.mutation_history[gene_name]['value']
+            
+            if prev_direction is not None:
+                new_value = current_value + prev_direction * 0.1
+            else:
+                new_value = random.choice(possible_values)
+            
+            # Update the history with the new value and direction
+            self.mutation_history[gene_name]['value'] = new_value
+            
+            # Introduce a small probability of inverting the gene
+            if random.random() < 0.1:
+                new_value = 2 * current_value - new_value
+            
+            return new_value
+        
+        # Fallback mechanism if no possible values are available
+        return random.choice(self.search_space[gene_name])
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: unsupported operand type(s) for -: 'str' and 'str'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 8 failed — retrying (failures: 2/10, successes so far: 1/10)
+
+=== Attempt 9 | Successes: 1/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.46
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the mutation strategy, we aim to introduce more diversity while maintaining the robustness of the architectures. Given that we are working with discrete values, we can leverage momentum tracking to guide mutations towards promising areas of the search space. Additionally, we will introduce a mechanism to avoid getting stuck in local optima by occasionally exploring completely random values.
+
+Here's our plan:
+1. **Momentum Tracking**: Maintain a history of mutations for each gene. Use this history to guide future mutations, either by slightly adjusting the current value or choosing a completely random value.
+2. **Random Exploration**: Occasionally, allow mutations to explore entirely new values to ensure the GA does not get trapped in local optima.
+3. **Adaptive Mutation Rate**: Adjust the mutation rate dynamically based on the success of recent mutations to balance exploration and exploitation.
+
+We will store the mutation history in a class attribute and update it after each mutation. This ensures that the history is preserved across generations.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if not possible_values:
+            return current_value
+
+        # Initialize history if it doesn't exist
+        if not hasattr(self, 'mutation_history'):
+            self.mutation_history = {}
+        
+        if gene_name not in self.mutation_history:
+            self.mutation_history[gene_name] = {'direction': None, 'value': current_value}
+
+        # Get the previous mutation direction and value
+        prev_direction = self.mutation_history[gene_name]['direction']
+        prev_value = self.mutation_history[gene_name]['value']
+
+        # Determine whether to use momentum or random exploration
+        if random.random() < 0.7:  # 70% chance to use momentum
+            if prev_direction is not None:
+                new_value = current_value + prev_direction * 0.1
+            else:
+                new_value = current_value
+        else:  # 30% chance to explore randomly
+            new_value = random.choice(possible_values)
+
+        # Ensure the new value is within the allowed range
+        if isinstance(current_value, int) or isinstance(current_value, float):
+            new_value = min(max(new_value, min(possible_values)), max(possible_values))
+
+        # Update the mutation history
+        if new_value != current_value:
+            if prev_direction is None:
+                direction = 1 if new_value > current_value else -1
+            else:
+                direction = (new_value - current_value) / abs(new_value - current_value)
+            self.mutation_history[gene_name]['direction'] = direction
+            self.mutation_history[gene_name]['value'] = new_value
+
+        return new_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '0.27' for gene 'dropout_prob', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 9 failed — retrying (failures: 3/10, successes so far: 1/10)
+
+=== Attempt 10 | Successes: 1/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the diversity and performance of the FractalNet architectures, we need to develop more sophisticated mutation strategies that favor robustness and convergence speed. Given the constraints, we'll focus on the following approaches:
+
+1. **Momentum-based Mutation**: This strategy will use historical mutation directions to guide future mutations, potentially leading to faster convergence.
+2. **Random Exploration**: Occasionally, the algorithm should explore new areas of the search space to discover novel architectures.
+3. **Gene Inversion**: For some genes, such as dropout probabilities, inverting the current value can sometimes lead to better performance.
+
+We'll implement these strategies while ensuring that no invented values are used and that the code adheres to the provided guidelines.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if not possible_values:
+            return current_value
+
+        # Initialize history if it doesn't exist
+        if not hasattr(self, 'mutation_history'):
+            self.mutation_history = {}
+
+        if gene_name not in self.mutation_history:
+            self.mutation_history[gene_name] = {'direction': None, 'value': current_value}
+
+        # Get the previous mutation direction and value
+        prev_direction = self.mutation_history[gene_name]['direction']
+        prev_value = self.mutation_history[gene_name]['value']
+
+        # Determine whether to use momentum or random exploration
+        if random.random() < 0.7:  # 70% chance to use momentum
+            if prev_direction is not None:
+                new_value = current_value + prev_direction * 0.1
+            else:
+                new_value = random.choice(possible_values)
+        else:
+            new_value = random.choice(possible_values)
+
+        # Update history
+        if new_value != current_value:
+            if prev_direction is None:
+                prev_direction = np.sign(new_value - current_value)
+            else:
+                prev_direction = (prev_direction + np.sign(new_value - current_value)) / 2
+            self.mutation_history[gene_name]['direction'] = prev_direction
+            self.mutation_history[gene_name]['value'] = new_value
+
+        # Special handling for dropout probabilities
+        if gene_name == 'dropout_prob':
+            if new_value == 0.0:
+                new_value = 0.5
+            elif new_value == 1.0:
+                new_value = 0.0
+
+        return new_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: unsupported operand type(s) for -: 'str' and 'str'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 10 failed — retrying (failures: 4/10, successes so far: 1/10)
+
+=== Attempt 11 | Successes: 1/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the quality and diversity of the generated architectures, we need to introduce more sophisticated mutation strategies. Specifically, we should leverage momentum-based updates to guide mutations towards promising regions of the search space. This will help in breaking through local optima and discovering novel architectures.
+
+We will maintain a history of mutations for each gene to track the direction of change. During mutation, we will either follow the previous mutation direction (with some probability) or explore randomly. This balance between momentum and exploration helps in maintaining diversity while also leveraging historical information.
+
+Additionally, we will ensure that mutations do not result in invalid values by snapping them to the nearest valid value in the search space. This prevents the algorithm from getting stuck in invalid configurations.
+
+Finally, we will incorporate a mechanism to avoid duplicating existing architectures in the MAP-Elites archive. This can be done by sampling from both the population and the archive when selecting competitors for mutation.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if not possible_values:
+            return current_value
+
+        # Initialize history if it doesn't exist
+        if not hasattr(self, 'mutation_history'):
+            self.mutation_history = {}
+
+        if gene_name not in self.mutation_history:
+            self.mutation_history[gene_name] = {'direction': None, 'value': current_value}
+
+        # Get the previous mutation direction and value
+        prev_direction = self.mutation_history[gene_name]['direction']
+        prev_value = self.mutation_history[gene_name]['value']
+
+        # Determine whether to use momentum or random exploration
+        if random.random() < 0.7:  # 70% chance to use momentum
+            if prev_direction is not None:
+                new_value = prev_value + prev_direction * 0.1
+            else:
+                new_value = current_value
+        else:
+            new_value = random.choice(possible_values)
+
+        # Snap to the nearest valid value
+        valid_values = self.search_space[gene_name]
+        closest_value = min(valid_values, key=lambda x: abs(x - new_value))
+
+        # Update the mutation history
+        self.mutation_history[gene_name]['direction'] = new_value - closest_value
+        self.mutation_history[gene_name]['value'] = closest_value
+
+        return closest_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: unsupported operand type(s) for -: 'str' and 'str'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 11 failed — retrying (failures: 5/10, successes so far: 1/10)
+
+=== Attempt 12 | Successes: 1/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (MAP-Elites) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to focus on creating more diverse and robust architectures. Specifically, we aim to break the global state-of-the-art (SOTA) peak accuracy and discover novel, high-performing architectures.
+
+**Key Strategies:**
+1. **Momentum-Based Mutation:** Use momentum to guide mutations towards previously successful regions in the search space.
+2. **Random Exploration:** Introduce randomness to explore uncharted areas of the search space.
+3. **Adaptive Learning Rates:** Adjust learning rates dynamically to accelerate convergence while avoiding overshooting.
+4. **Hybrid Parent Selection:** Combine the best traits from multiple parents to create more promising offspring.
+
+**Implementation Details:**
+- **History Tracking:** Maintain a history of mutations for each gene to track the direction of change.
+- **Momentum Calculation:** Calculate a weighted average of the current and previous values to introduce momentum.
+- **Random Exploration:** Randomly choose values within a specified range around the current value.
+- **Parent Selection:** Select multiple parents and combine their traits to create a more diverse offspring.
+
+By implementing these strategies, we can effectively explore the search space, discover new architectures, and potentially break the SOTA peak accuracy.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if not possible_values:
+            return current_value
+
+        # Initialize history if it doesn't exist
+        if not hasattr(self, 'mutation_history'):
+            self.mutation_history = {}
+
+        if gene_name not in self.mutation_history:
+            self.mutation_history[gene_name] = {'direction': None, 'value': current_value}
+
+        # Get the previous mutation direction and value
+        prev_direction = self.mutation_history[gene_name]['direction']
+        prev_value = self.mutation_history[gene_name]['value']
+
+        # Determine whether to use momentum or random exploration
+        if random.random() < 0.7:  # 70% chance to use momentum
+            if prev_direction is not None:
+                # Calculate momentum
+                momentum = 0.9
+                new_value = prev_value + momentum * (current_value - prev_value)
+                # Clamp the new value within the possible values
+                new_value = min(max(new_value, min(possible_values)), max(possible_values))
+                return new_value
+            else:
+                # If no previous direction, use random exploration
+                return random.choice(possible_values)
+        else:
+            # Random exploration
+            return random.choice(possible_values)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '0.375' for gene 'fc_dropout', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 12 failed — retrying (failures: 6/10, successes so far: 1/10)
+
+=== Attempt 13 | Successes: 1/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (MAP-Elites) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to focus on strategies that promote diversity, robustness, and fast convergence. Given the constraints and objectives, we will modify the `mutate_gene` method to introduce more diverse mutations while ensuring that the mutations are within the provided search space.
+
+**Key Points:**
+1. **Diversity:** Introduce mutations that explore different parts of the search space.
+2. **Robustness:** Favor mutations that lead to architectures capable of surviving heavy path-dropping during the short 1-epoch evaluation.
+3. **Fast Convergence:** Ensure that mutations do not significantly deviate from the current solution but still introduce enough variation to escape local optima.
+
+**Approach:**
+1. **Random Mutation:** Use random choices from the possible values to ensure diversity.
+2. **Momentum-based Mutation:** Introduce a momentum term to guide mutations towards previously successful areas of the search space.
+3. **Hybrid Mutation:** Combine random mutations with momentum-based mutations to balance exploration and exploitation.
+
+By implementing these strategies, we aim to break the Global SOTA peak accuracy and discover novel, high-performing architectures.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if not possible_values:
+            return current_value
+
+        # Initialize history if it doesn't exist
+        if not hasattr(self, 'mutation_history'):
+            self.mutation_history = {}
+
+        if gene_name not in self.mutation_history:
+            self.mutation_history[gene_name] = {'direction': None, 'value': current_value}
+
+        # Get the previous mutation direction and value
+        prev_direction = self.mutation_history[gene_name]['direction']
+        prev_value = self.mutation_history[gene_name]['value']
+
+        # Determine whether to use momentum or random exploration
+        if random.random() < 0.7:  # 70% chance to use momentum
+            if prev_direction is not None:
+                # Calculate the next value based on momentum
+                next_value = prev_value + prev_direction * 0.1
+                # Snap to the closest valid value
+                next_value = min(max(next_value, possible_values[0]), possible_values[-1])
+                # Update the mutation history
+                self.mutation_history[gene_name]['value'] = next_value
+                return next_value
+            else:
+                # If no previous direction, fall back to random mutation
+                return random.choice(possible_values)
+        else:
+            # Randomly choose a new value
+            return random.choice(possible_values)
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+2026-07-13 21:43:25,356 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 21:43:25,356 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 21:43:25,356 - INFO - NumExpr defaulting to 16 threads.
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+LEMUR root /a/mm
+[Init] Loaded 183 existing checksums from stats/ (skipping duplicates)
+[Run] Continuing evolution from gen 2 to 3
+
+
+ >>> GENERATION 3 <<<
+
+  Evaluating Individual 2/5 ---- Generation: 3/3
+  - Evaluating unique arch (checksum: 2d16ed5e...)
+Evaluating /a/mm/out_nneval_tmp_pid_688/nn/tmp/GenFractalNet-2d16ed5eeca38af5d109e8e5a352a03b-6b47a332e08e322b2fca88ec66f70ade.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 2/782 [00:00<00:39, 19.57it/s]
+  1%|▏         | 11/782 [00:00<00:13, 56.62it/s]
+  2%|▏         | 19/782 [00:00<00:11, 66.67it/s]
+  3%|▎         | 27/782 [00:00<00:10, 70.37it/s]
+  5%|▍         | 36/782 [00:00<00:10, 74.02it/s]
+  6%|▌         | 44/782 [00:00<00:09, 74.18it/s]
+  7%|▋         | 52/782 [00:00<00:09, 75.15it/s]
+  8%|▊         | 60/782 [00:00<00:09, 75.64it/s]
+  9%|▊         | 68/782 [00:00<00:09, 76.83it/s]
+ 10%|▉         | 76/782 [00:01<00:09, 77.24it/s]
+ 11%|█         | 84/782 [00:01<00:09, 77.37it/s]
+ 12%|█▏        | 93/782 [00:01<00:08, 78.89it/s]
+ 13%|█▎        | 102/782 [00:01<00:08, 79.15it/s]
+ 14%|█▍        | 110/782 [00:01<00:08, 78.21it/s]
+ 15%|█▌        | 118/782 [00:01<00:08, 78.19it/s]
+ 16%|█▌        | 126/782 [00:01<00:08, 78.53it/s]
+ 17%|█▋        | 134/782 [00:01<00:08, 78.76it/s]
+ 18%|█▊        | 143/782 [00:01<00:08, 79.03it/s]
+ 19%|█▉        | 152/782 [00:02<00:07, 80.22it/s]
+ 21%|██        | 161/782 [00:02<00:07, 81.15it/s]
+ 22%|██▏       | 170/782 [00:02<00:07, 80.93it/s]
+ 23%|██▎       | 179/782 [00:02<00:07, 79.97it/s]
+ 24%|██▍       | 188/782 [00:02<00:07, 79.36it/s]
+ 25%|██▌       | 196/782 [00:02<00:07, 78.34it/s]
+ 26%|██▌       | 204/782 [00:02<00:07, 77.34it/s]
+ 27%|██▋       | 212/782 [00:02<00:07, 76.99it/s]
+ 28%|██▊       | 221/782 [00:02<00:07, 79.22it/s]
+ 29%|██▉       | 229/782 [00:02<00:07, 77.97it/s]
+ 30%|███       | 237/782 [00:03<00:07, 77.79it/s]
+ 31%|███▏      | 246/782 [00:03<00:06, 78.74it/s]
+ 33%|███▎      | 255/782 [00:03<00:06, 80.54it/s]
+ 34%|███▍      | 264/782 [00:03<00:06, 80.51it/s]
+ 35%|███▍      | 273/782 [00:03<00:06, 79.87it/s]
+ 36%|███▌      | 281/782 [00:03<00:06, 79.84it/s]
+ 37%|███▋      | 290/782 [00:03<00:06, 79.88it/s]
+ 38%|███▊      | 298/782 [00:03<00:06, 79.71it/s]
+ 39%|███▉      | 306/782 [00:03<00:06, 78.53it/s]
+ 40%|████      | 315/782 [00:04<00:05, 78.76it/s]
+ 41%|████▏     | 323/782 [00:04<00:05, 78.03it/s]
+ 42%|████▏     | 331/782 [00:04<00:05, 78.53it/s]
+ 43%|████▎     | 339/782 [00:04<00:05, 77.92it/s]
+ 45%|████▍     | 348/782 [00:04<00:05, 80.05it/s]
+ 46%|████▌     | 357/782 [00:04<00:05, 81.28it/s]
+ 47%|████▋     | 366/782 [00:04<00:05, 79.89it/s]
+ 48%|████▊     | 374/782 [00:04<00:05, 79.21it/s]
+ 49%|████▉     | 382/782 [00:04<00:05, 78.73it/s]
+ 50%|█████     | 391/782 [00:05<00:04, 80.49it/s]
+ 51%|█████     | 400/782 [00:05<00:04, 79.06it/s]
+ 52%|█████▏    | 409/782 [00:05<00:04, 79.81it/s]
+ 53%|█████▎    | 417/782 [00:05<00:04, 79.84it/s]
+ 54%|█████▍    | 426/782 [00:05<00:04, 80.16it/s]
+ 56%|█████▌    | 435/782 [00:05<00:04, 80.08it/s]
+ 57%|█████▋    | 444/782 [00:05<00:04, 80.77it/s]
+ 58%|█████▊    | 453/782 [00:05<00:04, 81.85it/s]
+ 59%|█████▉    | 462/782 [00:05<00:03, 80.38it/s]
+ 60%|██████    | 471/782 [00:06<00:03, 79.97it/s]
+ 61%|██████▏   | 480/782 [00:06<00:03, 79.79it/s]
+ 62%|██████▏   | 488/782 [00:06<00:03, 79.60it/s]
+ 64%|██████▎   | 497/782 [00:06<00:03, 80.12it/s]
+ 65%|██████▍   | 506/782 [00:06<00:03, 79.29it/s]
+ 66%|██████▌   | 514/782 [00:06<00:03, 79.43it/s]
+ 67%|██████▋   | 523/782 [00:06<00:03, 80.93it/s]
+ 68%|██████▊   | 532/782 [00:06<00:03, 81.50it/s]
+ 69%|██████▉   | 541/782 [00:06<00:02, 81.71it/s]
+ 70%|███████   | 550/782 [00:07<00:02, 80.46it/s]
+ 71%|███████▏  | 559/782 [00:07<00:02, 79.89it/s]
+ 73%|███████▎  | 567/782 [00:07<00:02, 78.93it/s]
+ 74%|███████▎  | 575/782 [00:07<00:02, 78.10it/s]
+ 75%|███████▍  | 583/782 [00:07<00:02, 78.28it/s]
+ 76%|███████▌  | 591/782 [00:07<00:02, 78.75it/s]
+ 77%|███████▋  | 599/782 [00:07<00:02, 77.47it/s]
+ 78%|███████▊  | 608/782 [00:07<00:02, 80.23it/s]
+ 79%|███████▉  | 617/782 [00:07<00:02, 80.90it/s]
+ 80%|████████  | 626/782 [00:07<00:01, 80.70it/s]
+ 81%|████████  | 635/782 [00:08<00:01, 80.93it/s]
+ 82%|████████▏ | 644/782 [00:08<00:01, 80.23it/s]
+ 84%|████████▎ | 653/782 [00:08<00:01, 78.82it/s]
+ 85%|████████▍ | 661/782 [00:08<00:01, 78.37it/s]
+ 86%|████████▌ | 670/782 [00:08<00:01, 79.11it/s]
+ 87%|████████▋ | 678/782 [00:08<00:01, 78.67it/s]
+ 88%|████████▊ | 686/782 [00:08<00:01, 77.78it/s]
+ 89%|████████▊ | 694/782 [00:08<00:01, 77.82it/s]
+ 90%|████████▉ | 703/782 [00:08<00:00, 79.61it/s]
+ 91%|█████████ | 711/782 [00:09<00:00, 79.21it/s]
+ 92%|█████████▏| 719/782 [00:09<00:00, 78.68it/s]
+ 93%|█████████▎| 727/782 [00:09<00:00, 78.21it/s]
+ 94%|█████████▍| 736/782 [00:09<00:00, 79.46it/s]
+ 95%|█████████▌| 745/782 [00:09<00:00, 79.65it/s]
+ 96%|█████████▋| 753/782 [00:09<00:00, 79.04it/s]
+ 97%|█████████▋| 761/782 [00:09<00:00, 78.01it/s]
+ 98%|█████████▊| 770/782 [00:09<00:00, 79.21it/s]
+100%|█████████▉| 779/782 [00:09<00:00, 80.72it/s]
+100%|██████████| 782/782 [00:09<00:00, 78.41it/s]
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 1.3654, Test Loss: 1.3687
+  Train Acc: 0.5131, Test Acc: 0.5100
+  LR: 0.000001, Grad Norm: 2.0817, Throughput: 2015.6 samples/s
+accuracy_to_time_metric 1.6527205267358858
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-2d16ed5eeca38af5d109e8e5a352a03b/1.json
+  - Model persisted to ga_fractal_arch_cifar10/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 51.00%  (source: hyperparameters.accuracy, checksum: 2d16ed5eeca38af5d109e8e5a352a03b)
+  ========================================
+
+  [Archive] Cell (3, 16) updated with fitness: 51.0000
+  Evaluating Individual 3/5 ---- Generation: 3/3
+  - Evaluating unique arch (checksum: 9c99eb41...)
+Evaluating /a/mm/out_nneval_tmp_pid_688/nn/tmp/GenFractalNet-9c99eb41b83607a2ec5657617e918979-93815f91d5555df3b6bb57183ed83e09.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 4/782 [00:00<00:20, 37.37it/s]
+  1%|▏         | 10/782 [00:00<00:15, 48.27it/s]
+  2%|▏         | 16/782 [00:00<00:14, 52.90it/s]
+  3%|▎         | 22/782 [00:00<00:13, 55.30it/s]
+  4%|▎         | 28/782 [00:00<00:13, 55.86it/s]
+  4%|▍         | 34/782 [00:00<00:13, 56.02it/s]
+  5%|▌         | 40/782 [00:00<00:13, 56.70it/s]
+  6%|▌         | 46/782 [00:00<00:12, 57.42it/s]
+  7%|▋         | 53/782 [00:00<00:12, 58.41it/s]
+  8%|▊         | 59/782 [00:01<00:12, 58.38it/s]
+  8%|▊         | 65/782 [00:01<00:12, 58.53it/s]
+  9%|▉         | 71/782 [00:01<00:12, 57.71it/s]
+ 10%|▉         | 77/782 [00:01<00:12, 57.15it/s]
+ 11%|█         | 83/782 [00:01<00:12, 57.55it/s]
+ 11%|█▏        | 89/782 [00:01<00:12, 56.73it/s]
+ 12%|█▏        | 95/782 [00:01<00:12, 55.62it/s]
+ 13%|█▎        | 101/782 [00:01<00:12, 56.60it/s]
+ 14%|█▎        | 107/782 [00:01<00:12, 55.43it/s]
+ 14%|█▍        | 113/782 [00:02<00:11, 56.11it/s]
+ 15%|█▌        | 119/782 [00:02<00:11, 56.04it/s]
+ 16%|█▌        | 125/782 [00:02<00:11, 55.20it/s]
+ 17%|█▋        | 131/782 [00:02<00:11, 56.09it/s]
+ 18%|█▊        | 137/782 [00:02<00:11, 55.88it/s]
+ 18%|█▊        | 143/782 [00:02<00:11, 56.59it/s]
+ 19%|█▉        | 149/782 [00:02<00:11, 56.86it/s]
+ 20%|█▉        | 155/782 [00:02<00:10, 57.20it/s]
+ 21%|██        | 161/782 [00:02<00:10, 57.63it/s]
+ 21%|██▏       | 167/782 [00:02<00:10, 58.28it/s]
+ 22%|██▏       | 173/782 [00:03<00:10, 58.64it/s]
+ 23%|██▎       | 180/782 [00:03<00:10, 59.26it/s]
+ 24%|██▍       | 186/782 [00:03<00:10, 57.93it/s]
+ 25%|██▍       | 192/782 [00:03<00:10, 57.81it/s]
+ 25%|██▌       | 198/782 [00:03<00:10, 57.12it/s]
+ 26%|██▌       | 204/782 [00:03<00:10, 57.47it/s]
+ 27%|██▋       | 210/782 [00:03<00:09, 57.75it/s]
+ 28%|██▊       | 216/782 [00:03<00:10, 56.46it/s]
+ 28%|██▊       | 222/782 [00:03<00:09, 56.15it/s]
+ 29%|██▉       | 228/782 [00:04<00:09, 56.01it/s]
+ 30%|██▉       | 234/782 [00:04<00:09, 55.81it/s]
+ 31%|███       | 240/782 [00:04<00:09, 55.57it/s]
+ 31%|███▏      | 246/782 [00:04<00:09, 55.32it/s]
+ 32%|███▏      | 252/782 [00:04<00:09, 55.35it/s]
+ 33%|███▎      | 258/782 [00:04<00:09, 55.66it/s]
+ 34%|███▍      | 264/782 [00:04<00:09, 55.33it/s]
+ 35%|███▍      | 270/782 [00:04<00:09, 55.94it/s]
+ 35%|███▌      | 276/782 [00:04<00:08, 56.61it/s]
+ 36%|███▌      | 282/782 [00:04<00:08, 57.51it/s]
+ 37%|███▋      | 289/782 [00:05<00:08, 58.73it/s]
+ 38%|███▊      | 295/782 [00:05<00:08, 58.32it/s]
+ 38%|███▊      | 301/782 [00:05<00:08, 58.24it/s]
+ 39%|███▉      | 307/782 [00:05<00:08, 57.81it/s]
+ 40%|████      | 313/782 [00:05<00:08, 57.37it/s]
+ 41%|████      | 319/782 [00:05<00:08, 56.58it/s]
+ 42%|████▏     | 325/782 [00:05<00:08, 55.02it/s]
+ 42%|████▏     | 331/782 [00:05<00:08, 56.09it/s]
+ 43%|████▎     | 337/782 [00:05<00:08, 55.10it/s]
+ 44%|████▍     | 343/782 [00:06<00:07, 55.34it/s]
+ 45%|████▍     | 349/782 [00:06<00:07, 56.23it/s]
+ 45%|████▌     | 355/782 [00:06<00:07, 55.85it/s]
+ 46%|████▌     | 361/782 [00:06<00:07, 55.26it/s]
+ 47%|████▋     | 367/782 [00:06<00:07, 56.35it/s]
+ 48%|████▊     | 374/782 [00:06<00:07, 57.26it/s]
+ 49%|████▊     | 380/782 [00:06<00:06, 57.69it/s]
+ 49%|████▉     | 387/782 [00:06<00:06, 58.37it/s]
+ 50%|█████     | 393/782 [00:06<00:06, 57.56it/s]
+ 51%|█████     | 399/782 [00:07<00:06, 57.04it/s]
+ 52%|█████▏    | 406/782 [00:07<00:06, 58.52it/s]
+ 53%|█████▎    | 412/782 [00:07<00:06, 57.42it/s]
+ 53%|█████▎    | 418/782 [00:07<00:06, 56.87it/s]
+ 54%|█████▍    | 424/782 [00:07<00:06, 56.83it/s]
+ 55%|█████▍    | 430/782 [00:07<00:06, 55.96it/s]
+ 56%|█████▌    | 436/782 [00:07<00:06, 55.83it/s]
+ 57%|█████▋    | 442/782 [00:07<00:06, 54.86it/s]
+ 57%|█████▋    | 448/782 [00:07<00:05, 56.17it/s]
+ 58%|█████▊    | 454/782 [00:08<00:05, 56.84it/s]
+ 59%|█████▉    | 460/782 [00:08<00:05, 55.72it/s]
+ 60%|█████▉    | 466/782 [00:08<00:05, 56.01it/s]
+ 60%|██████    | 472/782 [00:08<00:05, 55.42it/s]
+ 61%|██████    | 478/782 [00:08<00:05, 55.94it/s]
+ 62%|██████▏   | 484/782 [00:08<00:05, 55.76it/s]
+ 63%|██████▎   | 490/782 [00:08<00:05, 56.51it/s]
+ 63%|██████▎   | 496/782 [00:08<00:05, 55.67it/s]
+ 64%|██████▍   | 502/782 [00:08<00:04, 56.12it/s]
+ 65%|██████▌   | 509/782 [00:09<00:04, 57.45it/s]
+ 66%|██████▌   | 515/782 [00:09<00:04, 57.52it/s]
+ 67%|██████▋   | 521/782 [00:09<00:04, 56.28it/s]
+ 67%|██████▋   | 527/782 [00:09<00:04, 56.59it/s]
+ 68%|██████▊   | 533/782 [00:09<00:04, 57.24it/s]
+ 69%|██████▉   | 539/782 [00:09<00:04, 55.71it/s]
+ 70%|██████▉   | 545/782 [00:09<00:04, 55.48it/s]
+ 70%|███████   | 551/782 [00:09<00:04, 54.69it/s]
+ 71%|███████   | 557/782 [00:09<00:04, 53.21it/s]
+ 72%|███████▏  | 563/782 [00:09<00:04, 53.97it/s]
+ 73%|███████▎  | 569/782 [00:10<00:03, 54.07it/s]
+ 74%|███████▎  | 575/782 [00:10<00:03, 53.50it/s]
+ 74%|███████▍  | 581/782 [00:10<00:03, 53.95it/s]
+ 75%|███████▌  | 587/782 [00:10<00:03, 53.35it/s]
+ 76%|███████▌  | 593/782 [00:10<00:03, 53.54it/s]
+ 77%|███████▋  | 599/782 [00:10<00:03, 52.79it/s]
+ 77%|███████▋  | 605/782 [00:10<00:03, 54.15it/s]
+ 78%|███████▊  | 611/782 [00:10<00:03, 54.27it/s]
+ 79%|███████▉  | 617/782 [00:10<00:03, 54.29it/s]
+ 80%|███████▉  | 623/782 [00:11<00:02, 54.37it/s]
+ 80%|████████  | 629/782 [00:11<00:02, 54.73it/s]
+ 81%|████████  | 635/782 [00:11<00:02, 54.18it/s]
+ 82%|████████▏ | 641/782 [00:11<00:02, 53.82it/s]
+ 83%|████████▎ | 647/782 [00:11<00:02, 54.77it/s]
+ 84%|████████▎ | 653/782 [00:11<00:02, 53.66it/s]
+ 84%|████████▍ | 659/782 [00:11<00:02, 54.27it/s]
+ 85%|████████▌ | 665/782 [00:11<00:02, 54.59it/s]
+ 86%|████████▌ | 671/782 [00:11<00:02, 54.39it/s]
+ 87%|████████▋ | 677/782 [00:12<00:01, 55.03it/s]
+ 87%|████████▋ | 683/782 [00:12<00:01, 53.80it/s]
+ 88%|████████▊ | 689/782 [00:12<00:01, 54.62it/s]
+ 89%|████████▉ | 695/782 [00:12<00:01, 54.29it/s]
+ 90%|████████▉ | 701/782 [00:12<00:01, 54.80it/s]
+ 90%|█████████ | 707/782 [00:12<00:01, 55.15it/s]
+ 91%|█████████ | 713/782 [00:12<00:01, 54.35it/s]
+ 92%|█████████▏| 719/782 [00:12<00:01, 54.68it/s]
+ 93%|█████████▎| 725/782 [00:12<00:01, 55.35it/s]
+ 93%|█████████▎| 731/782 [00:13<00:00, 54.22it/s]
+ 94%|█████████▍| 737/782 [00:13<00:00, 55.14it/s]
+ 95%|█████████▌| 743/782 [00:13<00:00, 55.40it/s]
+ 96%|█████████▌| 749/782 [00:13<00:00, 56.51it/s]
+ 97%|█████████▋| 755/782 [00:13<00:00, 56.46it/s]
+ 97%|█████████▋| 761/782 [00:13<00:00, 56.25it/s]
+ 98%|█████████▊| 767/782 [00:13<00:00, 56.73it/s]
+ 99%|█████████▉| 773/782 [00:13<00:00, 57.31it/s]
+100%|█████████▉| 780/782 [00:13<00:00, 57.97it/s]
+100%|██████████| 782/782 [00:13<00:00, 55.88it/s]
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 1.8215, Test Loss: 1.8171
+  Train Acc: 0.3082, Test Acc: 0.3124
+  LR: 0.000001, Grad Norm: 1.2881, Throughput: 1582.0 samples/s
+accuracy_to_time_metric 0.6720056742761972
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-9c99eb41b83607a2ec5657617e918979/1.json
+  - Model persisted to ga_fractal_arch_cifar10/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 31.24%  (source: hyperparameters.accuracy, checksum: 9c99eb41b83607a2ec5657617e918979)
+  ========================================
+
+  Evaluating Individual 4/5 ---- Generation: 3/3
+  - Evaluating unique arch (checksum: 0d13f5d0...)
+Evaluating /a/mm/out_nneval_tmp_pid_688/nn/tmp/GenFractalNet-0d13f5d003fef8cbc8922ba291ce933c-ff8c7955ef324c30328542fe7b50ab4a.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 2/782 [00:00<00:42, 18.17it/s]
+  1%|          | 5/782 [00:00<00:31, 24.75it/s]
+  1%|          | 8/782 [00:00<00:29, 26.43it/s]
+  1%|▏         | 11/782 [00:00<00:28, 26.74it/s]
+  2%|▏         | 14/782 [00:00<00:28, 26.69it/s]
+  2%|▏         | 17/782 [00:00<00:27, 27.68it/s]
+  3%|▎         | 20/782 [00:00<00:27, 27.65it/s]
+  3%|▎         | 23/782 [00:00<00:27, 27.65it/s]
+  3%|▎         | 26/782 [00:00<00:28, 26.27it/s]
+  4%|▎         | 29/782 [00:01<00:28, 26.49it/s]
+  4%|▍         | 32/782 [00:01<00:29, 25.33it/s]
+  4%|▍         | 35/782 [00:01<00:30, 24.42it/s]
+  5%|▍         | 38/782 [00:01<00:29, 25.06it/s]
+  5%|▌         | 41/782 [00:01<00:29, 25.20it/s]
+  6%|▌         | 44/782 [00:01<00:29, 24.79it/s]
+  6%|▌         | 47/782 [00:01<00:29, 24.78it/s]
+  6%|▋         | 50/782 [00:01<00:30, 24.28it/s]
+  7%|▋         | 53/782 [00:02<00:31, 23.45it/s]
+  7%|▋         | 56/782 [00:02<00:31, 23.08it/s]
+  8%|▊         | 59/782 [00:02<00:32, 21.96it/s]
+  8%|▊         | 62/782 [00:02<00:33, 21.76it/s]
+  8%|▊         | 65/782 [00:02<00:34, 20.73it/s]
+  9%|▊         | 68/782 [00:02<00:34, 20.90it/s]
+  9%|▉         | 71/782 [00:02<00:34, 20.64it/s]
+  9%|▉         | 74/782 [00:03<00:38, 18.41it/s]
+ 10%|▉         | 76/782 [00:03<00:40, 17.32it/s]
+ 10%|▉         | 78/782 [00:03<00:41, 17.08it/s]
+ 10%|█         | 80/782 [00:03<00:43, 16.00it/s]
+ 10%|█         | 82/782 [00:03<00:42, 16.52it/s]
+ 11%|█         | 84/782 [00:03<00:42, 16.56it/s]
+ 11%|█         | 86/782 [00:03<00:42, 16.38it/s]
+ 11%|█▏        | 88/782 [00:04<00:45, 15.31it/s]
+ 12%|█▏        | 90/782 [00:04<00:43, 15.84it/s]
+ 12%|█▏        | 92/782 [00:04<00:43, 16.01it/s]
+ 12%|█▏        | 95/782 [00:04<00:39, 17.47it/s]
+ 12%|█▏        | 97/782 [00:04<00:39, 17.27it/s]
+ 13%|█▎        | 99/782 [00:04<00:40, 16.82it/s]
+ 13%|█▎        | 101/782 [00:04<00:40, 16.88it/s]
+ 13%|█▎        | 103/782 [00:04<00:38, 17.49it/s]
+ 13%|█▎        | 105/782 [00:05<00:38, 17.53it/s]
+ 14%|█▎        | 107/782 [00:05<00:38, 17.60it/s]
+ 14%|█▍        | 109/782 [00:05<00:37, 18.14it/s]
+ 14%|█▍        | 112/782 [00:05<00:35, 18.94it/s]
+ 15%|█▍        | 114/782 [00:05<00:37, 17.60it/s]
+ 15%|█▍        | 116/782 [00:05<00:38, 17.36it/s]
+ 15%|█▌        | 118/782 [00:05<00:38, 17.25it/s]
+ 15%|█▌        | 120/782 [00:05<00:37, 17.66it/s]
+ 16%|█▌        | 122/782 [00:06<00:36, 17.98it/s]
+ 16%|█▌        | 124/782 [00:06<00:37, 17.77it/s]
+ 16%|█▌        | 126/782 [00:06<00:36, 17.95it/s]
+ 16%|█▋        | 129/782 [00:06<00:34, 18.75it/s]
+ 17%|█▋        | 132/782 [00:06<00:33, 19.34it/s]
+ 17%|█▋        | 135/782 [00:06<00:32, 19.96it/s]
+ 18%|█▊        | 137/782 [00:06<00:32, 19.90it/s]
+ 18%|█▊        | 140/782 [00:06<00:32, 19.99it/s]
+ 18%|█▊        | 142/782 [00:07<00:32, 19.76it/s]
+ 18%|█▊        | 144/782 [00:07<00:32, 19.45it/s]
+ 19%|█▊        | 146/782 [00:07<00:33, 18.86it/s]
+ 19%|█▉        | 148/782 [00:07<00:34, 18.52it/s]
+ 19%|█▉        | 150/782 [00:07<00:33, 18.79it/s]
+ 19%|█▉        | 152/782 [00:07<00:33, 18.68it/s]
+ 20%|█▉        | 154/782 [00:07<00:33, 18.74it/s]
+ 20%|█▉        | 156/782 [00:07<00:33, 18.66it/s]
+ 20%|██        | 159/782 [00:07<00:31, 19.79it/s]
+ 21%|██        | 161/782 [00:08<00:31, 19.83it/s]
+ 21%|██        | 164/782 [00:08<00:30, 20.26it/s]
+ 21%|██▏       | 167/782 [00:08<00:31, 19.53it/s]
+ 22%|██▏       | 170/782 [00:08<00:30, 19.98it/s]
+ 22%|██▏       | 172/782 [00:08<00:31, 19.28it/s]
+ 22%|██▏       | 174/782 [00:08<00:31, 19.44it/s]
+ 23%|██▎       | 177/782 [00:08<00:30, 20.11it/s]
+ 23%|██▎       | 180/782 [00:08<00:28, 21.22it/s]
+ 23%|██▎       | 183/782 [00:09<00:28, 20.76it/s]
+ 24%|██▍       | 186/782 [00:09<00:28, 20.86it/s]
+ 24%|██▍       | 189/782 [00:09<00:29, 20.32it/s]
+ 25%|██▍       | 192/782 [00:09<00:29, 19.93it/s]
+ 25%|██▍       | 194/782 [00:09<00:29, 19.84it/s]
+ 25%|██▌       | 197/782 [00:09<00:28, 20.52it/s]
+ 26%|██▌       | 200/782 [00:09<00:29, 19.91it/s]
+ 26%|██▌       | 203/782 [00:10<00:28, 20.17it/s]
+ 26%|██▋       | 206/782 [00:10<00:30, 19.09it/s]
+ 27%|██▋       | 208/782 [00:10<00:30, 18.60it/s]
+ 27%|██▋       | 210/782 [00:10<00:31, 18.43it/s]
+ 27%|██▋       | 213/782 [00:10<00:29, 19.37it/s]
+ 28%|██▊       | 216/782 [00:10<00:29, 19.39it/s]
+ 28%|██▊       | 218/782 [00:10<00:29, 19.22it/s]
+ 28%|██▊       | 221/782 [00:11<00:28, 19.38it/s]
+ 29%|██▊       | 223/782 [00:11<00:29, 19.09it/s]
+ 29%|██▉       | 226/782 [00:11<00:28, 19.57it/s]
+ 29%|██▉       | 229/782 [00:11<00:26, 20.64it/s]
+ 30%|██▉       | 232/782 [00:11<00:27, 20.22it/s]
+ 30%|███       | 235/782 [00:11<00:25, 21.57it/s]
+ 30%|███       | 238/782 [00:11<00:24, 21.92it/s]
+ 31%|███       | 241/782 [00:12<00:25, 21.64it/s]
+ 31%|███       | 244/782 [00:12<00:25, 21.13it/s]
+ 32%|███▏      | 247/782 [00:12<00:25, 20.82it/s]
+ 32%|███▏      | 250/782 [00:12<00:24, 21.32it/s]
+ 32%|███▏      | 253/782 [00:12<00:25, 21.12it/s]
+ 33%|███▎      | 256/782 [00:12<00:24, 21.66it/s]
+ 33%|███▎      | 259/782 [00:12<00:23, 22.03it/s]
+ 34%|███▎      | 262/782 [00:12<00:23, 22.19it/s]
+ 34%|███▍      | 265/782 [00:13<00:24, 20.96it/s]
+ 34%|███▍      | 268/782 [00:13<00:24, 20.88it/s]
+ 35%|███▍      | 271/782 [00:13<00:26, 19.24it/s]
+ 35%|███▍      | 273/782 [00:13<00:26, 19.14it/s]
+ 35%|███▌      | 275/782 [00:13<00:27, 18.68it/s]
+ 35%|███▌      | 277/782 [00:13<00:27, 18.38it/s]
+ 36%|███▌      | 280/782 [00:13<00:26, 18.81it/s]
+ 36%|███▌      | 282/782 [00:14<00:26, 18.58it/s]
+ 36%|███▋      | 284/782 [00:14<00:27, 18.31it/s]
+ 37%|███▋      | 287/782 [00:14<00:26, 18.91it/s]
+ 37%|███▋      | 289/782 [00:14<00:27, 18.19it/s]
+ 37%|███▋      | 291/782 [00:14<00:27, 17.95it/s]
+ 38%|███▊      | 294/782 [00:14<00:25, 19.43it/s]
+ 38%|███▊      | 296/782 [00:14<00:24, 19.51it/s]
+ 38%|███▊      | 299/782 [00:14<00:24, 19.89it/s]
+ 38%|███▊      | 301/782 [00:15<00:25, 19.01it/s]
+ 39%|███▊      | 303/782 [00:15<00:24, 19.17it/s]
+ 39%|███▉      | 306/782 [00:15<00:23, 19.91it/s]
+ 40%|███▉      | 309/782 [00:15<00:23, 20.02it/s]
+ 40%|███▉      | 311/782 [00:15<00:23, 19.67it/s]
+ 40%|████      | 313/782 [00:15<00:24, 18.84it/s]
+ 40%|████      | 315/782 [00:15<00:24, 18.77it/s]
+ 41%|████      | 318/782 [00:15<00:24, 18.92it/s]
+ 41%|████      | 321/782 [00:16<00:23, 19.92it/s]
+ 41%|████▏     | 323/782 [00:16<00:24, 18.86it/s]
+ 42%|████▏     | 326/782 [00:16<00:23, 19.70it/s]
+ 42%|████▏     | 328/782 [00:16<00:23, 19.48it/s]
+ 42%|████▏     | 331/782 [00:16<00:23, 19.30it/s]
+ 43%|████▎     | 333/782 [00:16<00:23, 19.16it/s]
+ 43%|████▎     | 336/782 [00:16<00:22, 19.86it/s]
+ 43%|████▎     | 338/782 [00:16<00:22, 19.87it/s]
+ 43%|████▎     | 340/782 [00:17<00:22, 19.53it/s]
+ 44%|████▍     | 343/782 [00:17<00:22, 19.91it/s]
+ 44%|████▍     | 346/782 [00:17<00:21, 20.62it/s]
+ 45%|████▍     | 349/782 [00:17<00:21, 20.00it/s]
+ 45%|████▌     | 352/782 [00:17<00:21, 19.95it/s]
+ 45%|████▌     | 355/782 [00:17<00:21, 19.76it/s]
+ 46%|████▌     | 357/782 [00:17<00:21, 19.39it/s]
+ 46%|████▌     | 359/782 [00:18<00:22, 18.96it/s]
+ 46%|████▋     | 362/782 [00:18<00:22, 18.99it/s]
+ 47%|████▋     | 364/782 [00:18<00:21, 19.15it/s]
+ 47%|████▋     | 366/782 [00:18<00:22, 18.74it/s]
+ 47%|████▋     | 369/782 [00:18<00:21, 19.40it/s]
+ 47%|████▋     | 371/782 [00:18<00:21, 18.92it/s]
+ 48%|████▊     | 373/782 [00:18<00:22, 18.58it/s]
+ 48%|████▊     | 375/782 [00:18<00:22, 18.03it/s]
+ 48%|████▊     | 378/782 [00:19<00:21, 18.70it/s]
+ 49%|████▊     | 381/782 [00:19<00:20, 19.71it/s]
+ 49%|████▉     | 383/782 [00:19<00:21, 18.81it/s]
+ 49%|████▉     | 385/782 [00:19<00:21, 18.81it/s]
+ 50%|████▉     | 388/782 [00:19<00:19, 20.38it/s]
+ 50%|█████     | 391/782 [00:19<00:19, 20.08it/s]
+ 50%|█████     | 394/782 [00:19<00:18, 20.60it/s]
+ 51%|█████     | 397/782 [00:19<00:18, 20.54it/s]
+ 51%|█████     | 400/782 [00:20<00:19, 19.87it/s]
+ 51%|█████▏    | 402/782 [00:20<00:19, 19.36it/s]
+ 52%|█████▏    | 404/782 [00:20<00:19, 19.04it/s]
+ 52%|█████▏    | 406/782 [00:20<00:20, 18.80it/s]
+ 52%|█████▏    | 408/782 [00:20<00:19, 18.91it/s]
+ 53%|█████▎    | 411/782 [00:20<00:19, 19.07it/s]
+ 53%|█████▎    | 414/782 [00:20<00:19, 18.93it/s]
+ 53%|█████▎    | 416/782 [00:20<00:19, 18.93it/s]
+ 53%|█████▎    | 418/782 [00:21<00:19, 18.41it/s]
+ 54%|█████▎    | 420/782 [00:21<00:19, 18.56it/s]
+ 54%|█████▍    | 423/782 [00:21<00:18, 18.97it/s]
+ 54%|█████▍    | 425/782 [00:21<00:18, 19.09it/s]
+ 55%|█████▍    | 428/782 [00:21<00:17, 19.74it/s]
+ 55%|█████▌    | 431/782 [00:21<00:16, 20.81it/s]
+ 55%|█████▌    | 434/782 [00:21<00:16, 21.03it/s]
+ 56%|█████▌    | 437/782 [00:22<00:17, 19.84it/s]
+ 56%|█████▋    | 440/782 [00:22<00:16, 20.29it/s]
+ 57%|█████▋    | 443/782 [00:22<00:17, 19.76it/s]
+ 57%|█████▋    | 445/782 [00:22<00:17, 19.04it/s]
+ 57%|█████▋    | 447/782 [00:22<00:17, 19.15it/s]
+ 57%|█████▋    | 449/782 [00:22<00:17, 18.94it/s]
+ 58%|█████▊    | 452/782 [00:22<00:17, 18.99it/s]
+ 58%|█████▊    | 454/782 [00:22<00:17, 18.61it/s]
+ 58%|█████▊    | 456/782 [00:23<00:17, 18.92it/s]
+ 59%|█████▊    | 458/782 [00:23<00:17, 18.66it/s]
+ 59%|█████▉    | 461/782 [00:23<00:16, 19.44it/s]
+ 59%|█████▉    | 463/782 [00:23<00:16, 18.99it/s]
+ 59%|█████▉    | 465/782 [00:23<00:17, 18.48it/s]
+ 60%|█████▉    | 467/782 [00:23<00:16, 18.53it/s]
+ 60%|██████    | 470/782 [00:23<00:15, 20.26it/s]
+ 60%|██████    | 473/782 [00:23<00:15, 20.57it/s]
+ 61%|██████    | 476/782 [00:24<00:16, 18.89it/s]
+ 61%|██████▏   | 479/782 [00:24<00:15, 20.02it/s]
+ 62%|██████▏   | 482/782 [00:24<00:14, 20.81it/s]
+ 62%|██████▏   | 485/782 [00:24<00:14, 20.69it/s]
+ 62%|██████▏   | 488/782 [00:24<00:15, 19.15it/s]
+ 63%|██████▎   | 491/782 [00:24<00:14, 19.82it/s]
+ 63%|██████▎   | 494/782 [00:25<00:15, 18.49it/s]
+ 63%|██████▎   | 496/782 [00:25<00:15, 18.46it/s]
+ 64%|██████▍   | 499/782 [00:25<00:14, 19.21it/s]
+ 64%|██████▍   | 501/782 [00:25<00:15, 18.69it/s]
+ 64%|██████▍   | 503/782 [00:25<00:15, 18.38it/s]
+ 65%|██████▍   | 506/782 [00:25<00:14, 18.69it/s]
+ 65%|██████▌   | 509/782 [00:25<00:13, 19.84it/s]
+ 65%|██████▌   | 512/782 [00:25<00:13, 20.15it/s]
+ 66%|██████▌   | 515/782 [00:26<00:14, 18.82it/s]
+ 66%|██████▌   | 517/782 [00:26<00:14, 18.76it/s]
+ 66%|██████▋   | 519/782 [00:26<00:14, 18.53it/s]
+ 67%|██████▋   | 522/782 [00:26<00:13, 19.19it/s]
+ 67%|██████▋   | 525/782 [00:26<00:13, 19.77it/s]
+ 68%|██████▊   | 528/782 [00:26<00:12, 19.90it/s]
+ 68%|██████▊   | 530/782 [00:26<00:12, 19.76it/s]
+ 68%|██████▊   | 532/782 [00:26<00:13, 18.84it/s]
+ 68%|██████▊   | 535/782 [00:27<00:12, 19.16it/s]
+ 69%|██████▉   | 538/782 [00:27<00:12, 19.69it/s]
+ 69%|██████▉   | 540/782 [00:27<00:12, 19.10it/s]
+ 69%|██████▉   | 542/782 [00:27<00:12, 19.22it/s]
+ 70%|██████▉   | 544/782 [00:27<00:13, 18.10it/s]
+ 70%|██████▉   | 546/782 [00:27<00:12, 18.21it/s]
+ 70%|███████   | 549/782 [00:27<00:11, 19.63it/s]
+ 71%|███████   | 552/782 [00:28<00:11, 20.51it/s]
+ 71%|███████   | 555/782 [00:28<00:11, 20.54it/s]
+ 71%|███████▏  | 558/782 [00:28<00:10, 20.87it/s]
+ 72%|███████▏  | 561/782 [00:28<00:10, 21.72it/s]
+ 72%|███████▏  | 564/782 [00:28<00:09, 21.96it/s]
+ 73%|███████▎  | 567/782 [00:28<00:10, 20.89it/s]
+ 73%|███████▎  | 570/782 [00:28<00:10, 20.61it/s]
+ 73%|███████▎  | 573/782 [00:29<00:10, 19.72it/s]
+ 74%|███████▎  | 575/782 [00:29<00:10, 19.05it/s]
+ 74%|███████▍  | 578/782 [00:29<00:10, 19.00it/s]
+ 74%|███████▍  | 580/782 [00:29<00:10, 18.87it/s]
+ 75%|███████▍  | 583/782 [00:29<00:09, 20.03it/s]
+ 75%|███████▍  | 586/782 [00:29<00:09, 19.88it/s]
+ 75%|███████▌  | 588/782 [00:29<00:09, 19.66it/s]
+ 75%|███████▌  | 590/782 [00:29<00:09, 19.50it/s]
+ 76%|███████▌  | 592/782 [00:30<00:09, 19.37it/s]
+ 76%|███████▌  | 594/782 [00:30<00:09, 18.92it/s]
+ 76%|███████▋  | 597/782 [00:30<00:09, 19.53it/s]
+ 77%|███████▋  | 600/782 [00:30<00:09, 19.86it/s]
+ 77%|███████▋  | 602/782 [00:30<00:09, 19.52it/s]
+ 77%|███████▋  | 605/782 [00:30<00:08, 19.94it/s]
+ 78%|███████▊  | 607/782 [00:30<00:09, 19.22it/s]
+ 78%|███████▊  | 609/782 [00:30<00:09, 18.38it/s]
+ 78%|███████▊  | 612/782 [00:31<00:08, 19.07it/s]
+ 79%|███████▊  | 615/782 [00:31<00:08, 20.15it/s]
+ 79%|███████▉  | 618/782 [00:31<00:08, 20.11it/s]
+ 79%|███████▉  | 621/782 [00:31<00:08, 19.52it/s]
+ 80%|███████▉  | 623/782 [00:31<00:08, 19.37it/s]
+ 80%|███████▉  | 625/782 [00:31<00:08, 18.99it/s]
+ 80%|████████  | 628/782 [00:31<00:08, 19.22it/s]
+ 81%|████████  | 631/782 [00:32<00:07, 19.17it/s]
+ 81%|████████  | 633/782 [00:32<00:07, 18.87it/s]
+ 81%|████████▏ | 636/782 [00:32<00:07, 19.49it/s]
+ 82%|████████▏ | 638/782 [00:32<00:07, 19.43it/s]
+ 82%|████████▏ | 641/782 [00:32<00:07, 20.13it/s]
+ 82%|████████▏ | 644/782 [00:32<00:07, 18.78it/s]
+ 83%|████████▎ | 647/782 [00:32<00:07, 19.09it/s]
+ 83%|████████▎ | 649/782 [00:32<00:07, 18.75it/s]
+ 83%|████████▎ | 652/782 [00:33<00:06, 19.40it/s]
+ 84%|████████▎ | 654/782 [00:33<00:06, 19.34it/s]
+ 84%|████████▍ | 657/782 [00:33<00:06, 19.72it/s]
+ 84%|████████▍ | 659/782 [00:33<00:06, 18.85it/s]
+ 85%|████████▍ | 661/782 [00:33<00:06, 18.23it/s]
+ 85%|████████▍ | 663/782 [00:33<00:06, 18.15it/s]
+ 85%|████████▌ | 666/782 [00:33<00:06, 19.01it/s]
+ 85%|████████▌ | 668/782 [00:33<00:05, 19.01it/s]
+ 86%|████████▌ | 670/782 [00:34<00:06, 18.42it/s]
+ 86%|████████▌ | 673/782 [00:34<00:05, 19.11it/s]
+ 86%|████████▋ | 676/782 [00:34<00:05, 20.22it/s]
+ 87%|████████▋ | 679/782 [00:34<00:05, 19.94it/s]
+ 87%|████████▋ | 682/782 [00:34<00:04, 20.13it/s]
+ 88%|████████▊ | 685/782 [00:34<00:05, 19.34it/s]
+ 88%|████████▊ | 687/782 [00:34<00:04, 19.36it/s]
+ 88%|████████▊ | 690/782 [00:35<00:04, 19.70it/s]
+ 89%|████████▊ | 693/782 [00:35<00:04, 19.81it/s]
+ 89%|████████▉ | 695/782 [00:35<00:04, 19.58it/s]
+ 89%|████████▉ | 697/782 [00:35<00:04, 19.33it/s]
+ 90%|████████▉ | 700/782 [00:35<00:04, 19.92it/s]
+ 90%|████████▉ | 702/782 [00:35<00:04, 19.68it/s]
+ 90%|█████████ | 704/782 [00:35<00:03, 19.75it/s]
+ 90%|█████████ | 707/782 [00:35<00:03, 20.73it/s]
+ 91%|█████████ | 710/782 [00:36<00:03, 20.86it/s]
+ 91%|█████████ | 713/782 [00:36<00:03, 21.36it/s]
+ 92%|█████████▏| 716/782 [00:36<00:03, 21.40it/s]
+ 92%|█████████▏| 719/782 [00:36<00:03, 20.54it/s]
+ 92%|█████████▏| 722/782 [00:36<00:02, 20.78it/s]
+ 93%|█████████▎| 725/782 [00:36<00:02, 20.59it/s]
+ 93%|█████████▎| 728/782 [00:36<00:02, 21.14it/s]
+ 93%|█████████▎| 731/782 [00:37<00:02, 20.70it/s]
+ 94%|█████████▍| 734/782 [00:37<00:02, 19.33it/s]
+ 94%|█████████▍| 736/782 [00:37<00:02, 19.00it/s]
+ 94%|█████████▍| 738/782 [00:37<00:02, 18.99it/s]
+ 95%|█████████▍| 741/782 [00:37<00:01, 20.58it/s]
+ 95%|█████████▌| 744/782 [00:37<00:01, 21.00it/s]
+ 96%|█████████▌| 747/782 [00:37<00:01, 20.45it/s]
+ 96%|█████████▌| 750/782 [00:38<00:01, 19.85it/s]
+ 96%|█████████▌| 752/782 [00:38<00:01, 19.56it/s]
+ 96%|█████████▋| 754/782 [00:38<00:01, 19.19it/s]
+ 97%|█████████▋| 757/782 [00:38<00:01, 19.38it/s]
+ 97%|█████████▋| 759/782 [00:38<00:01, 19.43it/s]
+ 97%|█████████▋| 761/782 [00:38<00:01, 19.08it/s]
+ 98%|█████████▊| 764/782 [00:38<00:00, 19.59it/s]
+ 98%|█████████▊| 766/782 [00:38<00:00, 18.93it/s]
+ 98%|█████████▊| 769/782 [00:39<00:00, 20.20it/s]
+ 99%|█████████▊| 772/782 [00:39<00:00, 19.32it/s]
+ 99%|█████████▉| 775/782 [00:39<00:00, 19.85it/s]
+ 99%|█████████▉| 778/782 [00:39<00:00, 21.04it/s]
+100%|█████████▉| 781/782 [00:39<00:00, 20.90it/s]
+100%|██████████| 782/782 [00:39<00:00, 19.71it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 352, in fitness_function
+    os.rename(tmp_filepath, final_filepath)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar10/_tmp_GenFractalNet-0d13f5d003fef8cbc8922ba291ce933c.py' -> '/a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar10/GenFractalNet-0d13f5d003fef8cbc8922ba291ce933c.py'
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 1.9550, Test Loss: 1.9495
+  Train Acc: 0.2877, Test Acc: 0.2981
+  LR: 0.000000, Grad Norm: 0.1904, Throughput: 604.1 samples/s
+accuracy_to_time_metric 0.23935525336808536
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-0d13f5d003fef8cbc8922ba291ce933c/1.json
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar10/_tmp_GenFractalNet-0d13f5d003fef8cbc8922ba291ce933c.py' -> '/a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar10/GenFractalNet-0d13f5d003fef8cbc8922ba291ce933c.py'
+  - Cleaned up partial stats: /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-0d13f5d003fef8cbc8922ba291ce933c
+  Evaluating Individual 5/5 ---- Generation: 3/3
+  - Evaluating unique arch (checksum: cc4eb2d9...)
+Evaluating /a/mm/out_nneval_tmp_pid_688/nn/tmp/GenFractalNet-cc4eb2d99e9a2c2c3c97cf98e837f058-f92451a9b3d63425312b3043c90375d2.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 7/782 [00:00<00:11, 67.21it/s]
+  3%|▎         | 22/782 [00:00<00:06, 112.08it/s]
+  5%|▍         | 37/782 [00:00<00:05, 126.27it/s]
+  7%|▋         | 52/782 [00:00<00:05, 133.23it/s]
+  9%|▊         | 67/782 [00:00<00:05, 137.39it/s]
+ 10%|█         | 82/782 [00:00<00:04, 140.04it/s]
+ 12%|█▏        | 97/782 [00:00<00:04, 141.68it/s]
+ 14%|█▍        | 112/782 [00:00<00:04, 142.73it/s]
+ 16%|█▌        | 127/782 [00:00<00:04, 143.45it/s]
+ 18%|█▊        | 142/782 [00:01<00:04, 144.06it/s]
+ 20%|██        | 157/782 [00:01<00:04, 144.40it/s]
+ 22%|██▏       | 172/782 [00:01<00:04, 144.46it/s]
+ 24%|██▍       | 187/782 [00:01<00:04, 144.50it/s]
+ 26%|██▌       | 202/782 [00:01<00:04, 144.53it/s]
+ 28%|██▊       | 217/782 [00:01<00:03, 144.39it/s]
+ 30%|██▉       | 232/782 [00:01<00:03, 144.80it/s]
+ 32%|███▏      | 247/782 [00:01<00:03, 144.86it/s]
+ 34%|███▎      | 262/782 [00:01<00:03, 145.07it/s]
+ 35%|███▌      | 277/782 [00:01<00:03, 144.81it/s]
+ 37%|███▋      | 292/782 [00:02<00:03, 145.01it/s]
+ 39%|███▉      | 307/782 [00:02<00:03, 145.25it/s]
+ 41%|████      | 322/782 [00:02<00:03, 144.76it/s]
+ 43%|████▎     | 337/782 [00:02<00:03, 144.71it/s]
+ 45%|████▌     | 352/782 [00:02<00:02, 144.38it/s]
+ 47%|████▋     | 367/782 [00:02<00:02, 144.40it/s]
+ 49%|████▉     | 382/782 [00:02<00:02, 144.51it/s]
+ 51%|█████     | 397/782 [00:02<00:02, 144.30it/s]
+ 53%|█████▎    | 412/782 [00:02<00:02, 144.12it/s]
+ 55%|█████▍    | 427/782 [00:03<00:02, 144.00it/s]
+ 57%|█████▋    | 442/782 [00:03<00:02, 144.35it/s]
+ 58%|█████▊    | 457/782 [00:03<00:02, 144.42it/s]
+ 60%|██████    | 472/782 [00:03<00:02, 143.88it/s]
+ 62%|██████▏   | 487/782 [00:03<00:02, 143.95it/s]
+ 64%|██████▍   | 502/782 [00:03<00:01, 143.89it/s]
+ 66%|██████▌   | 517/782 [00:03<00:01, 144.05it/s]
+ 68%|██████▊   | 532/782 [00:03<00:01, 143.84it/s]
+ 70%|██████▉   | 547/782 [00:03<00:01, 143.78it/s]
+ 72%|███████▏  | 562/782 [00:03<00:01, 143.79it/s]
+ 74%|███████▍  | 577/782 [00:04<00:01, 143.87it/s]
+ 76%|███████▌  | 592/782 [00:04<00:01, 144.09it/s]
+ 78%|███████▊  | 607/782 [00:04<00:01, 144.14it/s]
+ 80%|███████▉  | 622/782 [00:04<00:01, 144.26it/s]
+ 81%|████████▏ | 637/782 [00:04<00:01, 144.03it/s]
+ 83%|████████▎ | 652/782 [00:04<00:00, 144.67it/s]
+ 85%|████████▌ | 667/782 [00:04<00:00, 144.19it/s]
+ 87%|████████▋ | 682/782 [00:04<00:00, 144.58it/s]
+ 89%|████████▉ | 697/782 [00:04<00:00, 144.54it/s]
+ 91%|█████████ | 712/782 [00:04<00:00, 144.40it/s]
+ 93%|█████████▎| 727/782 [00:05<00:00, 144.49it/s]
+ 95%|█████████▍| 742/782 [00:05<00:00, 143.80it/s]
+ 97%|█████████▋| 757/782 [00:05<00:00, 143.54it/s]
+ 99%|█████████▊| 772/782 [00:05<00:00, 143.89it/s]
+100%|██████████| 782/782 [00:05<00:00, 141.75it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 352, in fitness_function
+    os.rename(tmp_filepath, final_filepath)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar10/_tmp_GenFractalNet-cc4eb2d99e9a2c2c3c97cf98e837f058.py' -> '/a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar10/GenFractalNet-cc4eb2d99e9a2c2c3c97cf98e837f058.py'
+  Train Loss: 1.1574, Test Loss: 1.1695
+  Train Acc: 0.5981, Test Acc: 0.5938
+  LR: 0.000001, Grad Norm: 2.3132, Throughput: 2634.2 samples/s
+accuracy_to_time_metric 2.6015415862569746
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-cc4eb2d99e9a2c2c3c97cf98e837f058/1.json
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar10/_tmp_GenFractalNet-cc4eb2d99e9a2c2c3c97cf98e837f058.py' -> '/a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar10/GenFractalNet-cc4eb2d99e9a2c2c3c97cf98e837f058.py'
+  - Cleaned up partial stats: /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-cc4eb2d99e9a2c2c3c97cf98e837f058
+[Best] Saved best model to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_model.py
+[Best] Copying stats from /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-2d16ed5eeca38af5d109e8e5a352a03b...
+[Best] Saved best stats to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-2d16ed5eeca38af5d109e8e5a352a03b
+[Best] Saved best info metadata to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_info.json
+PEAK_ACCURACY: 51.0000
+TOP3_MEAN: 17.0000
+ARCHIVE_SIZE: 7
+[Meta] Median Top-3 Quality over 1 runs: 17.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] PRIMARY: +2.37% SOTA Improvement! Bonus: 6.0746
+   [RL] SECONDARY: Top-3 Quality (17.00%). Bonus: 0.2550
+   [RL] TERTIARY: Archive Novelty (2 cells updated). Bonus: 1.0000
+   [RL] Total Reward: 7.3296
+[Meta] --> NEW GLOBAL SOTA! 51.00% (was 48.63%)
+[Meta] --> ARCHIVE EXPANDED! 7 cells (was 5)
+--> SUCCESS. Updating Baseline (EMA) & Fine-tuning on Success.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+[LoRA] Fine-tune start (replay buffer: 2 items, batch: 2)
+[LoRA] Training on 2 examples...
+[LoRA] Epoch 1/1 - Loss: 0.1909
+[LoRA] Fine-tune complete
+[LoRA] Adapter save start
+[LoRA] Adapter save complete
+--> Saved version history with accuracy: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar10/genetic_algorithm_attempt13_mutate_gene_acc_51.00.py
+--> Saved CoT trace: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar10/genetic_algorithm_attempt13_mutate_gene_acc_51.00_thinking.txt
+[Meta] ✓ Success #2/10 achieved on attempt 13
+
+=== Attempt 14 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To improve the `select_competitor` method, we need to ensure that it diversifies the selection process beyond just choosing the competitor with the highest fitness. This can help in exploring more diverse parts of the search space, potentially leading to better architectures. We can achieve this by sampling from both the current population and the archive, ensuring that the selected competitor is not always the best but also includes some variability.
+
+We will modify the `select_competitor` method to sample from both the population and the archive, giving more weight to the archive entries to encourage exploration. Additionally, we will introduce a mechanism to balance between exploitation and exploration by considering the novelty of the competitors.
+
+1. Sample from the population and the archive.
+2. Assign weights to each competitor based on their fitness and novelty.
+3. Select the competitor with the highest weighted score.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Combine population and archive competitors
+        combined_competitors = self.population + list(self.archive.values())
+
+        # Calculate weights for each competitor
+        weights = []
+        for competitor in combined_competitors:
+            fitness = competitor.get('fitness', -1)
+            novelty = self.calculate_novelty(competitor)
+            weight = fitness * novelty
+            weights.append(weight)
+
+        # Normalize weights
+        total_weight = sum(weights)
+        normalized_weights = [weight / total_weight for weight in weights]
+
+        # Select competitor based on weighted probabilities
+        selected_index = np.random.choice(range(len(combined_competitors)), p=normalized_weights)
+        return combined_competitors[selected_index]
+
+    def calculate_novelty(self, competitor):
+        # Calculate novelty based on distance from other competitors in the archive
+        distances = []
+        for archived_competitor in self.archive.values():
+            distance = self.calculate_distance(competitor, archived_competitor)
+            distances.append(distance)
+        average_distance = sum(distances) / len(distances)
+        return 1 / (average_distance + 1)
+
+    def calculate_distance(self, competitor1, competitor2):
+        # Calculate Euclidean distance between two competitors
+        keys = set(competitor1.keys()).union(set(competitor2.keys()))
+        squared_diffs = [(competitor1.get(key, 0) - competitor2.get(key, 0)) ** 2 for key in keys]
+        return sum(squared_diffs) ** 0.5
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '0.175' for gene 'fc_dropout', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 14 failed — retrying (failures: 1/10, successes so far: 2/10)
+
+=== Attempt 15 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and potentially break the global SOTA peak accuracy, we need to design a selection mechanism that encourages diversity and innovation. The current implementation simply selects the competitor with the highest fitness, which can lead to premature convergence. Instead, we will introduce a more sophisticated selection strategy that balances exploitation and exploration.
+
+**Key Points:**
+1. **Combine Population and Archive:** By combining the population and archive, we ensure that both recent and historically discovered solutions are considered.
+2. **Weighted Selection:** Assign weights to each competitor based on both fitness and novelty. Fitness rewards solutions that perform well, while novelty encourages exploration of unseen regions of the search space.
+3. **Normalization:** Normalize the weights to ensure they sum up to 1, allowing us to use them as probabilities in a weighted random selection.
+4. **Fallback Mechanism:** In case all competitors have zero fitness, randomly select one to avoid infinite looping.
+
+This approach ensures that the algorithm not only exploits known good solutions but also explores uncharted territories, increasing the chances of discovering novel, high-performing architectures.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Combine population and archive competitors
+        combined_competitors = self.population + list(self.archive.values())
+
+        # Calculate weights for each competitor
+        weights = []
+        for competitor in combined_competitors:
+            fitness = competitor.get('fitness', -1)
+            novelty = self.calculate_novelty(competitor)
+            weight = fitness * novelty
+            weights.append(weight)
+
+        # Normalize weights
+        total_weight = sum(weights)
+        if total_weight <= 0:
+            return random.choice(combined_competitors)
+        normalized_weights = [weight / total_weight for weight in weights]
+
+        # Select competitor based on weighted probabilities
+        selected_index = np.random.choice(range(len(combined_competitors)), p=normalized_weights)
+        return combined_competitors[selected_index]
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '0.22500000000000003' for gene 'dropout_prob', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 15 failed — retrying (failures: 2/10, successes so far: 2/10)
+
+=== Attempt 16 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (MAP-Elites) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to focus on diversifying the selection process while prioritizing architectures that show promise for breaking the global SOTA peak accuracy.
+
+**Key Points:**
+1. **Diversification:** We need to ensure that the selection process does not prematurely converge to a single optimal solution but instead maintains a diverse set of architectures.
+2. **Fast Convergence:** Since we are running a 1-epoch speedrun, the selection should favor architectures that can quickly converge despite heavy dropout.
+3. **Robustness:** Architectures should be able to handle significant dropout without compromising their overall performance.
+
+**Approach:**
+1. **Combine Population and Archive:** By combining the population and archive, we can introduce more diversity into the selection pool.
+2. **Weighted Selection:** Assign weights to competitors based on both fitness and novelty. This ensures that higher-fitness solutions are given priority, but novelty also plays a role to maintain diversity.
+3. **Normalized Probabilities:** Use normalized probabilities to select competitors, ensuring that the selection process is stochastic yet guided towards promising solutions.
+
+**Implementation Details:**
+- **Combining Competitors:** We combine the current population and the archive to ensure a broader range of architectures is considered.
+- **Fitness and Novelty:** Fitness measures how well an architecture performs, while novelty measures how unique it is relative to other architectures.
+- **Weight Calculation:** We calculate weights as a product of fitness and novelty. Higher-fitness solutions get higher weights, and solutions with higher novelty also receive higher weights.
+- **Selection:** We then select a competitor based on these weights using normalized probabilities.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Combine population and archive competitors
+        combined_competitors = self.population + list(self.archive.values())
+
+        # Calculate weights for each competitor
+        weights = []
+        for competitor in combined_competitors:
+            fitness = competitor.get('fitness', -1)
+            novelty = self.calculate_novelty(competitor)
+            weight = fitness * novelty
+            weights.append(weight)
+
+        # Normalize weights
+        total_weight = sum(weights)
+        if total_weight <= 0:
+            return random.choice(combined_competitors)
+        normalized_weights = [weight / total_weight for weight in weights]
+
+        # Select competitor based on weighted probabilities
+        selected_index = np.random.choice(range(len(combined_competitors)), p=normalized_weights)
+        return combined_competitors[selected_index]
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '0.007124999999999999' for gene 'lr', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 16 failed — retrying (failures: 3/10, successes so far: 2/10)
+
+=== Attempt 17 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (MAP-Elites) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to focus on strategies that promote both high accuracy and diversity. Given the constraints, we should avoid inventing new values and instead leverage existing values from the `SEARCH_SPACE`.
+
+### Key Considerations:
+1. **Active Stochastic Depth**: Since the search space enforces active FractalDropPath (`dropout_prob` > 0.0), our operators should favor robust architectures capable of surviving heavy path-dropping during the short 1-epoch evaluation.
+2. **Break Global SOTA**: We need to explore novel architectures and hyperparameter combinations that can potentially break the current global state-of-the-art (SOTA) accuracy.
+3. **Prevent Premature Convergence**: Our operators should actively inject diversity to ensure the algorithm does not converge prematurely.
+
+### Strategy:
+1. **Combine Genes**: Use a hybridization strategy to combine genes from two parents while ensuring diversity. This can involve averaging values or selecting from a set of predefined options.
+2. **Mutate Gene**: Introduce mutations that are likely to result in novel architectures and hyperparameter combinations. This can involve snapping to nearby valid values or choosing from a set of predefined options.
+3. **Select Competitor**: Combine the population and archive competitors to increase diversity. Use a weighted selection mechanism that considers both fitness and novelty.
+
+### Implementation:
+We will modify the `select_competitor` method to combine the population and archive competitors and use a weighted selection mechanism to choose the best competitor.
+
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Combine population and archive competitors
+        combined_competitors = self.population + list(self.archive.values())
+
+        # Calculate weights for each competitor
+        weights = []
+        for competitor in combined_competitors:
+            fitness = competitor.get('fitness', -1)
+            novelty = self.calculate_novelty(competitor)
+            weight = fitness * novelty
+            weights.append(weight)
+
+        # Normalize weights
+        total_weight = sum(weights)
+        if total_weight <= 0:
+            return random.choice(combined_competitors)
+        normalized_weights = [weight / total_weight for weight in weights]
+
+        # Select competitor based on weighted probabilities
+        selected_index = np.random.choice(range(len(combined_competitors)), p=normalized_weights)
+        return combined_competitors[selected_index]
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '0.002375' for gene 'lr', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 17 failed — retrying (failures: 4/10, successes so far: 2/10)
+
+=== Attempt 18 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and avoid premature convergence, we need to modify the `select_competitor` method to consider both fitness and novelty. This will ensure that the algorithm not only focuses on high-performing architectures but also encourages diversity by selecting competitors from both the population and the archive.
+
+We can achieve this by combining the population and archive competitors and then selecting one based on a weighted sum of fitness and novelty. The fitness will give priority to high-performing architectures, while the novelty will encourage exploration of less common configurations.
+
+To calculate novelty, we can use a simple distance metric such as Euclidean distance between the competitor's chromosome and the centroid of the archive. This will help us identify architectures that are significantly different from those already discovered.
+
+By incorporating both fitness and novelty, we aim to balance exploitation and exploration, potentially leading to higher performance and more diverse solutions.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Combine population and archive competitors
+        combined_competitors = self.population + list(self.archive.values())
+
+        # Calculate centroids for the archive
+        archive_centroids = {}
+        for cell in self.archive:
+            if cell not in archive_centroids:
+                archive_centroids[cell] = np.mean([competitor['chromosome'] for competitor in self.archive[cell]], axis=0)
+
+        # Calculate weights for each competitor
+        weights = []
+        for competitor in combined_competitors:
+            fitness = competitor.get('fitness', -1)
+            novelty = self.calculate_novelty(competitor, archive_centroids)
+            weight = fitness * novelty
+            weights.append(weight)
+
+        # Normalize weights
+        total_weight = sum(weights)
+        if total_weight <= 0:
+            return random.choice(combined_competitors)
+        normalized_weights = [weight / total_weight for weight in weights]
+
+        # Select competitor based on weighted probabilities
+        selected_index = np.random.choice(range(len(combined_competitors)), p=normalized_weights)
+        return combined_competitors[selected_index]
+
+    def calculate_novelty(self, competitor, archive_centroids):
+        chromosome = competitor['chromosome']
+        distances = []
+        for cell in archive_centroids:
+            centroid = archive_centroids[cell]
+            distance = np.linalg.norm(np.array(chromosome) - centroid)
+            distances.append(distance)
+        return 1 / (1 + np.mean(distances))
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '0.0038' for gene 'lr', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 18 failed — retrying (failures: 5/10, successes so far: 2/10)
+
+=== Attempt 19 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (QD-GA) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to focus on selecting competitors that maximize both fitness and novelty. Given the constraints, we will modify the `select_competitor` method to consider both the fitness and the novelty of the competitors. We will also ensure that the selection process is biased towards architectures that have shown promise in the past, particularly those that achieve high accuracy.
+
+Here's the plan:
+1. **Combine Population and Archive Competitors**: This ensures that we are considering both the current population and previously discovered architectures.
+2. **Calculate Novelty**: We will calculate the novelty of each competitor by comparing it to the existing cells in the MAP-Elites archive. Novelty can be calculated using various metrics such as the Euclidean distance between the competitor's chromosome and the centroid of the closest cell in the archive.
+3. **Weighted Selection**: We will assign weights to each competitor based on their fitness and novelty. Higher weights will be assigned to competitors that have higher fitness and lower novelty, ensuring that we explore diverse architectures while still focusing on promising ones.
+4. **Randomized Selection**: In case of ties or low novelty, we will randomly select a competitor to avoid premature convergence.
+
+By implementing these changes, we aim to break the global SOTA peak accuracy and discover novel, high-performing architectures to populate empty cells in the MAP-Elites Behavioral Archive.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Combine population and archive competitors
+        combined_competitors = self.population + list(self.archive.values())
+
+        # Calculate centroids for the archive
+        archive_centroids = {}
+        for cell in self.archive:
+            if cell not in archive_centroids:
+                archive_centroids[cell] = np.mean([competitor['chromosome'] for competitor in self.archive[cell]], axis=0)
+
+        # Calculate weights for each competitor
+        weights = []
+        for competitor in combined_competitors:
+            fitness = competitor.get('fitness', -1)
+            novelty = self.calculate_novelty(competitor, archive_centroids)
+            weight = fitness * novelty
+            weights.append(weight)
+
+        # Normalize weights
+        total_weight = sum(weights)
+        if total_weight <= 0:
+            return random.choice(combined_competitors)
+        normalized_weights = [weight / total_weight for weight in weights]
+
+        # Select competitor based on weighted probabilities
+        selected_index = np.random.choice(range(len(combined_competitors)), p=normalized_weights)
+        return combined_competitors[selected_index]
+
+    def calculate_novelty(self, competitor, archive_centroids):
+        chromosome = competitor['chromosome']
+        distances = [np.linalg.norm(chromosome - centroid) for centroid in archive_centroids.values()]
+        return 1 / (1 + np.min(distances))
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: string indices must be integers, not 'str'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 19 failed — retrying (failures: 6/10, successes so far: 2/10)
+
+=== Attempt 20 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and avoid premature convergence, we can incorporate a more sophisticated selection mechanism. Instead of simply selecting the competitor with the highest fitness, we can consider both fitness and novelty. This approach encourages the algorithm to explore diverse solutions while still prioritizing high-performing ones.
+
+We will calculate a weighted score for each competitor, where the weight is a product of fitness and novelty. Novelty can be estimated by comparing the competitor's chromosome to the centroid of the archive. Competitors closer to the centroid are considered less novel.
+
+This method ensures that the algorithm balances exploitation (focusing on high-performing solutions) and exploration (discovering new and potentially better solutions).
+
+### Steps:
+1. **Calculate Centroid**: Compute the centroid of the archive.
+2. **Calculate Novelty**: Determine the distance between each competitor's chromosome and the centroid.
+3. **Compute Weighted Score**: Multiply fitness by novelty to get a weighted score.
+4. **Select Competitor**: Choose the competitor with the highest weighted score.
+
+### Key Points:
+- **Centroid Calculation**: Use the mean of chromosomes in each archive cell.
+- **Novelty Calculation**: Minimize the Euclidean distance between the competitor's chromosome and the centroid.
+- **Weighted Score**: Higher scores indicate more promising competitors.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Combine population and archive competitors
+        combined_competitors = self.population + list(self.archive.values())
+
+        # Calculate centroids for the archive
+        archive_centroids = {}
+        for cell in self.archive:
+            if cell not in archive_centroids:
+                archive_centroids[cell] = np.mean([competitor['chromosome'] for competitor in self.archive[cell]], axis=0)
+
+        # Calculate weights for each competitor
+        weights = []
+        for competitor in combined_competitors:
+            fitness = competitor.get('fitness', -1)
+            novelty = self.calculate_novelty(competitor, archive_centroids)
+            weight = fitness * novelty
+            weights.append(weight)
+
+        # Normalize weights
+        total_weight = sum(weights)
+        normalized_weights = [weight / total_weight for weight in weights]
+
+        # Select competitor based on normalized weights
+        selected_index = np.random.choice(range(len(combined_competitors)), p=normalized_weights)
+        return combined_competitors[selected_index]
+
+    def calculate_novelty(self, competitor, archive_centroids):
+        closest_distance = float('inf')
+        for cell in archive_centroids:
+            centroid = archive_centroids[cell]
+            distance = np.linalg.norm(np.array(competitor['chromosome']) - centroid)
+            if distance < closest_distance:
+                closest_distance = distance
+        return 1 / (closest_distance + 1)  # Avoid division by zero
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: string indices must be integers, not 'str'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 20 failed — retrying (failures: 7/10, successes so far: 2/10)
+
+=== Attempt 21 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (MAP-Elites), we need to focus on selecting competitors that balance both high fitness and novelty. The current implementation simply selects the competitor with the highest fitness, which can lead to premature convergence and lack of exploration. By incorporating novelty, we can ensure that the algorithm explores diverse solutions and avoids getting stuck in local optima.
+
+We will modify the `select_competitor` method to calculate a weighted score for each competitor, combining their fitness and novelty. This will help the algorithm to explore more diverse solutions while still prioritizing high-performing architectures.
+
+To achieve this, we will:
+1. Calculate the centroid of the archive cells.
+2. Compute the distance between each competitor's chromosome and the archive centroid.
+3. Use this distance as a measure of novelty.
+4. Combine fitness and novelty to determine the overall score of each competitor.
+5. Select the competitor with the highest combined score.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Combine population and archive competitors
+        combined_competitors = self.population + list(self.archive.values())
+
+        # Calculate centroids for the archive
+        archive_centroids = {}
+        for cell in self.archive:
+            if cell not in archive_centroids:
+                archive_centroids[cell] = np.mean([competitor['chromosome'] for competitor in self.archive[cell]], axis=0)
+
+        # Calculate weights for each competitor
+        weights = []
+        for competitor in combined_competitors:
+            fitness = competitor.get('fitness', -1)
+            novelty = self.calculate_novelty(competitor, archive_centroids)
+            weight = fitness * novelty
+            weights.append(weight)
+
+        # Normalize weights
+        total_weight = sum(weights)
+        normalized_weights = [weight / total_weight for weight in weights]
+
+        # Select competitor based on normalized weights
+        selected_index = np.random.choice(range(len(combined_competitors)), p=normalized_weights)
+        return combined_competitors[selected_index]
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '0.27' for gene 'dropout_prob', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 21 failed — retrying (failures: 8/10, successes so far: 2/10)
+
+=== Attempt 22 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and avoid premature convergence, we need to modify the `select_competitor` method. Instead of simply selecting the competitor with the highest fitness, we can introduce a mechanism that encourages diversity while still favoring higher fitness scores. This can be achieved by combining elements from both the population and the archive, and then applying a weighted selection process that considers both fitness and novelty.
+
+Here's the plan:
+1. Combine the population and archive competitors.
+2. Calculate centroids for the archive cells.
+3. Compute a fitness-weighted distance for each competitor.
+4. Select the competitor with the lowest weighted distance, which balances exploration and exploitation.
+
+This approach ensures that the algorithm continues to explore new areas of the search space while also leveraging the best solutions found so far.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Combine population and archive competitors
+        combined_competitors = self.population + list(self.archive.values())
+
+        # Calculate centroids for the archive
+        archive_centroids = {}
+        for cell in self.archive:
+            if cell not in archive_centroids:
+                archive_centroids[cell] = np.mean([competitor['chromosome'] for competitor in self.archive[cell]], axis=0)
+
+        # Calculate weights for each competitor
+        weights = []
+        for competitor in combined_competitors:
+            fitness = competitor.get('fitness', -1)
+            novelty = self.calculate_novelty(competitor, archive_centroids)
+            weight = fitness * novelty
+            weights.append(weight)
+
+        # Normalize weights
+        total_weight = sum(weights)
+        normalized_weights = [w / total_weight for w in weights]
+
+        # Select competitor based on normalized weights
+        selected_index = np.random.choice(range(len(combined_competitors)), p=normalized_weights)
+        return combined_competitors[selected_index]
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: string indices must be integers, not 'str'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 22 failed — retrying (failures: 9/10, successes so far: 2/10)
+
+=== Attempt 23 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To improve the performance of the Quality-Diversity Genetic Algorithm (MAP-Elites) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to enhance the selection process to ensure that it diversifies the search space effectively while also prioritizing high-performing architectures. Here's our plan:
+
+1. **Combine Population and Archive Competitors**: We will combine the current population with the archive to ensure that both diverse and promising solutions are considered.
+2. **Calculate Novelty**: We will calculate the novelty of each competitor relative to the existing archive to encourage exploration of uncharted areas of the search space.
+3. **Weight Fitness and Novelty**: We will assign weights to each competitor based on their fitness and novelty scores. This will help balance exploitation and exploration.
+4. **Normalize Weights**: We will normalize the weights to ensure that the selection process is fair and unbiased.
+
+By combining these steps, we can ensure that the algorithm not only finds high-performing architectures but also explores the search space more thoroughly, leading to better overall performance.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Combine population and archive competitors
+        combined_competitors = self.population + list(self.archive.values())
+
+        # Calculate centroids for the archive
+        archive_centroids = {}
+        for cell in self.archive:
+            if cell not in archive_centroids:
+                archive_centroids[cell] = np.mean([competitor['chromosome'] for competitor in self.archive[cell]], axis=0)
+
+        # Calculate weights for each competitor
+        weights = []
+        for competitor in combined_competitors:
+            fitness = competitor.get('fitness', -1)
+            novelty = self.calculate_novelty(competitor, archive_centroids)
+            weight = fitness * novelty
+            weights.append(weight)
+
+        # Normalize weights
+        total_weight = sum(weights)
+        normalized_weights = [weight / total_weight for weight in weights]
+
+        # Select competitor based on normalized weights
+        selected_index = np.random.choice(range(len(combined_competitors)), p=normalized_weights)
+        return combined_competitors[selected_index]
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: string indices must be integers, not 'str'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 23 failed — retrying (failures: 10/10, successes so far: 2/10)
+[Meta] ⚠️ Reached max consecutive failures (10) for s, e, l, e, c, t, _, c, o, m, p, e, t, i, t, o, r. Skipping to next component.
+
+=== Attempt 24 | Successes: 2/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of diverse architectures and avoid premature convergence, we can introduce some strategic biases in the random chromosome creation process. Specifically, we can favor architectures that have shown promise in past evaluations. This can be done by incorporating a weighted random selection where more frequently encountered genes are given higher probabilities of being selected again. Additionally, we can ensure that the dropout probability is always greater than 0.0 to maintain robustness against heavy path-dropping during the short 1-epoch evaluation.
+
+We will also initialize a history dictionary to keep track of the frequency of each gene value across the population. This history will be used to adjust the probabilities of selecting each gene value when creating a new chromosome.
+</thinking>
+
+```python
+    def _create_random_chromosome(self):
+        chromosome = {}
+        if not hasattr(self, 'gene_frequency'):
+            self.gene_frequency = {key: {} for key in self.search_space}
+        
+        for gene_name in self.search_space:
+            possible_values = self.search_space[gene_name]
+            if gene_name == 'dropout_prob':
+                # Ensure dropout_prob is always greater than 0.0
+                possible_values = [p for p in possible_values if p > 0.0]
+            
+            # Calculate weights based on gene frequency
+            weights = [self.gene_frequency[gene_name].get(value, 1) for value in possible_values]
+            total_weight = sum(weights)
+            cumulative_weights = [sum(weights[:i+1]) for i in range(len(weights))]
+            
+            # Select a value based on weighted probabilities
+            rand_val = random.random() * total_weight
+            selected_idx = bisect.bisect_left(cumulative_weights, rand_val)
+            selected_value = possible_values[selected_idx]
+            
+            # Update gene frequency
+            if gene_name not in self.gene_frequency:
+                self.gene_frequency[gene_name][selected_value] = 1
+            else:
+                self.gene_frequency[gene_name][selected_value] += 1
+            
+            chromosome[gene_name] = selected_value
+        
+        return chromosome
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: name 'bisect' is not defined
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 24 failed — retrying (failures: 1/10, successes so far: 2/10)
+
+=== Attempt 25 | Successes: 2/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (MAP-Elites) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to carefully design the `_create_random_chromosome` method. This method should generate diverse and promising architectures by leveraging the best-known hyperparameters and exploring their neighborhoods.
+
+Given the current SOTA architecture, we can observe that certain hyperparameters like `activation="GELU"`, `pooling_type="Avg"`, and `optimizer_type="SGD"` are performing well. We can use these insights to guide our random chromosome creation process. Specifically, we can favor these parameters while ensuring diversity through strategic mutations.
+
+**Approach:**
+1. **Favor Known Good Parameters:** Start by selecting values close to the known good parameters.
+2. **Ensure Diversity:** Introduce randomness to explore other parts of the search space while maintaining a focus on the promising areas.
+
+By combining these approaches, we aim to create chromosomes that are both competitive and diverse, thereby expanding the frontier of what the GA has seen.
+</thinking>
+
+```python
+    def _create_random_chromosome(self):
+        chromosome = {}
+        for gene_name in self.search_space:
+            possible_values = self.search_space[gene_name]
+            if gene_name == 'dropout_prob':
+                # Ensure dropout_prob is always greater than 0.0
+                possible_values = [p for p in possible_values if p > 0.0]
+            
+            # Calculate weights based on gene frequency
+            weights = [self.gene_frequency.get(gene_name, {}).get(value, 1) for value in possible_values]
+            total_weight = sum(weights)
+            cumulative_weights = [sum(weights[:i+1]) for i in range(len(weights))]
+            
+            # Select a value based on weighted probabilities
+            rand_val = random.random() * total_weight
+            selected_idx = bisect.bisect_left(cumulative_weights, rand_val)
+            selected_value = possible_values[selected_idx]
+            
+            # Apply a small mutation to introduce diversity
+            if random.random() < 0.1:
+                if selected_value == possible_values[0]:
+                    selected_value = possible_values[1]
+                elif selected_value == possible_values[-1]:
+                    selected_value = possible_values[-2]
+                else:
+                    selected_value = random.choice([possible_values[possible_values.index(selected_value) - 1], possible_values[possible_values.index(selected_value) + 1]])
+            
+            chromosome[gene_name] = selected_value
+        
+        return chromosome
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: 'GeneticAlgorithm' object has no attribute 'gene_frequency'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 25 failed — retrying (failures: 2/10, successes so far: 2/10)
+
+=== Attempt 26 | Successes: 2/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (MAP-Elites) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to focus on creating diverse and competitive chromosomes. Given the constraints and objectives, we should aim to generate architectures that can survive heavy path-dropping during the short 1-epoch evaluation and potentially break the Global SOTA peak accuracy.
+
+We will achieve this by implementing a `_create_random_chromosome` method that ensures the creation of diverse and competitive chromosomes. We will also ensure that the method adheres to the given constraints and avoids inventing new values or importing unnecessary modules.
+
+Here's the plan:
+1. **Ensure Diversity**: We will use a combination of random selection and biased sampling to ensure that the generated chromosomes are diverse and competitive.
+2. **Avoid Inventing Values**: We will use the provided `search_space` keys and `possible_values` list to ensure that the generated values are within the allowed range.
+3. **Active Stochastic Depth**: We will prioritize architectures that can survive heavy path-dropping during the short 1-epoch evaluation.
+
+Let's proceed with the implementation.
+</thinking>
+
+```python
+    def _create_random_chromosome(self):
+        chromosome = {}
+        for gene_name in self.search_space:
+            possible_values = self.search_space[gene_name]
+            if gene_name == 'dropout_prob':
+                # Ensure dropout_prob is always greater than 0.0
+                possible_values = [p for p in possible_values if p > 0.0]
+            
+            # Calculate weights based on gene frequency
+            weights = [self.gene_frequency.get(gene_name, {}).get(value, 1) for value in possible_values]
+            total_weight = sum(weights)
+            cumulative_weights = [sum(weights[:i+1]) for i in range(len(weights))]
+            
+            # Select a value based on weighted probabilities
+            rand_val = random.random() * total_weight
+            selected_idx = bisect.bisect_left(cumulative_weights, rand_val)
+            selected_value = possible_values[selected_idx]
+            
+            chromosome[gene_name] = selected_value
+        
+        return chromosome
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: 'GeneticAlgorithm' object has no attribute 'gene_frequency'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 26 failed — retrying (failures: 3/10, successes so far: 2/10)
+
+=== Attempt 27 | Successes: 2/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the quality and diversity of the generated architectures, we need to focus on creating more robust and diverse initial chromosomes. Given the constraints, we can leverage the existing search space and ensure that the generated architectures are likely to perform well within the first epoch. Here's a strategy to achieve this:
+
+1. **Prioritize High-Performing Architectures**: Since we know that some architectures have performed well in the past, we should prioritize these in our random selection process.
+2. **Ensure Diversity**: We need to ensure that the generated architectures are diverse enough to explore new regions of the search space.
+3. **Focus on Robust Hyperparameters**: We should focus on hyperparameters that contribute to robustness, such as higher dropout probabilities and lower learning rates.
+
+We will implement a custom random choice mechanism that prioritizes high-performing architectures while ensuring diversity.
+</thinking>
+
+```python
+    def _create_random_chromosome(self):
+        chromosome = {}
+        for gene_name in self.search_space:
+            possible_values = self.search_space[gene_name]
+            if gene_name == 'dropout_prob':
+                # Ensure dropout_prob is always greater than 0.0
+                possible_values = [p for p in possible_values if p > 0.0]
+            
+            # Prioritize high-performing architectures
+            if gene_name == 'dropout_prob' or gene_name == 'fc_dropout' or gene_name == 'lr':
+                top_values = sorted(possible_values, reverse=True)[:len(possible_values)//2]
+                bottom_values = sorted(possible_values)[:len(possible_values)//2]
+                values_to_choose_from = top_values + bottom_values
+            else:
+                values_to_choose_from = possible_values
+            
+            # Calculate weights based on gene frequency
+            weights = [self.gene_frequency.get(gene_name, {}).get(value, 1) for value in values_to_choose_from]
+            total_weight = sum(weights)
+            cumulative_weights = [sum(weights[:i+1]) for i in range(len(weights))]
+            
+            # Select a value based on weighted probabilities
+            rand_val = random.random() * total_weight
+            selected_i = bisect.bisect_left(cumulative_weights, rand_val)
+            chromosome[gene_name] = values_to_choose_from[selected_i]
+        
+        return chromosome
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: 'GeneticAlgorithm' object has no attribute 'gene_frequency'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 27 failed — retrying (failures: 4/10, successes so far: 2/10)
+
+=== Attempt 28 | Successes: 2/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the quality and diversity of the generated architectures, we need to ensure that the random chromosomes created are both competitive and diverse. Given that the current SOTA architecture uses GELU activation, Avg pooling, and a learning rate of 0.006, we should prioritize these values while still introducing enough diversity to explore other promising areas of the search space.
+
+We can achieve this by:
+1. Ensuring that the dropout probability is always greater than 0.0 to maintain robustness.
+2. Prioritizing high-performing architectures but also allowing some randomness to explore other parts of the search space.
+3. Using a weighted selection mechanism to favor high-performing values but still introduce diversity.
+
+Let's implement these ideas in the `_create_random_chromosome` method.
+</thinking>
+
+```python
+    def _create_random_chromosome(self):
+        chromosome = {}
+        for gene_name in self.search_space:
+            possible_values = self.search_space[gene_name]
+            if gene_name == 'dropout_prob':
+                # Ensure dropout_prob is always greater than 0.0
+                possible_values = [p for p in possible_values if p > 0.0]
+            
+            # Prioritize high-performing architectures
+            if gene_name == 'dropout_prob' or gene_name == 'fc_dropout' or gene_name == 'lr':
+                top_values = sorted(possible_values, reverse=True)[:len(possible_values)//2]
+                bottom_values = sorted(possible_values)[:len(possible_values)//2]
+                values_to_choose_from = top_values + bottom_values
+            else:
+                values_to_choose_from = possible_values
+            
+            # Use weighted selection to favor high-performing values
+            weights = [self.gene_frequency.get(gene_name, {}).get(value, 1) for value in values_to_choose_from]
+            total_weight = sum(weights)
+            cumulative_weights = [sum(weights[:i+1]) for i in range(len(weights))]
+            
+            # Select a value based on weighted probabilities
+            rand_val = random.random() * total_weight
+            selected_index = bisect.bisect_left(cumulative_weights, rand_val)
+            chromosome[gene_name] = values_to_choose_from[selected_index]
+        
+        return chromosome
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: 'GeneticAlgorithm' object has no attribute 'gene_frequency'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 28 failed — retrying (failures: 5/10, successes so far: 2/10)
+
+=== Attempt 29 | Successes: 2/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (QD-GA) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to strategically generate diverse and promising chromosomes. Given the constraints, we should focus on creating a balance between exploration and exploitation while ensuring that the generated architectures are robust and capable of surviving heavy path-dropping during the short 1-epoch evaluation.
+
+### Key Strategies:
+1. **Prioritize High-Performing Architectures**: Since we know that some architectures have performed well in the past, we can prioritize these configurations when generating new chromosomes.
+2. **Ensure Diversity**: To avoid premature convergence, we should introduce diversity in the generated chromosomes. This can be done by sampling from both the current population and the archive.
+3. **Robust Architecture Design**: We should design the architecture such that it can handle heavy path-dropping, which is enforced by active FractalDropPath (`dropout_prob` > 0.0).
+
+### Implementation Plan:
+1. **Combine Population and Archive**: Sample genes from both the current population and the archive to ensure diversity.
+2. **Prioritize High-Performing Configurations**: Use the best-known architecture as a template and modify its parameters slightly to explore nearby configurations.
+3. **Ensure Robustness**: Adjust parameters like `dropout_prob` and `fc_dropout` to ensure the architecture can survive heavy path-dropping.
+
+</thinking>
+
+```python
+    def _create_random_chromosome(self):
+        chromosome = {}
+        best_architecture = {
+            "n_columns": 3,
+            "base_channels": 16,
+            "n_blocks": 3,
+            "dropout_prob": 0.15,
+            "fc_dropout": 0.2,
+            "lr": 0.006,
+            "momentum": 0.75,
+            "activation": "GELU",
+            "kernel_size": 7,
+            "pooling_type": "Avg",
+            "conv_type": "Standard",
+            "norm_type": "BatchNorm",
+            "optimizer_type": "SGD"
+        }
+        
+        for gene_name in self.search_space:
+            possible_values = self.search_space[gene_name]
+            if gene_name == 'dropout_prob':
+                # Ensure dropout_prob is always greater than 0.0
+                possible_values = [p for p in possible_values if p > 0.0]
+                
+                # Prioritize high-performing architectures
+                if gene_name == 'dropout_prob':
+                    top_values = sorted(possible_values, reverse=True)[:len(possible_values)//2]
+                    bottom_values = sorted(possible_values)[:len(possible_values)//2]
+                    values_to_choose_from = top_values + bottom_values
+                else:
+                    values_to_choose_from = possible_values
+                
+                # Combine population and archive samples
+                combined_samples = self.population + list(self.archive.values())
+                combined_values = set()
+                for sample in combined_samples:
+                    if gene_name in sample:
+                        combined_values.add(sample[gene_name])
+                
+                # Choose from combined samples
+                selected_value = random.choice(list(combined_values))
+                chromosome[gene_name] = selected_value
+            elif gene_name == 'fc_dropout':
+                # Ensure fc_dropout is within a reasonable range
+                possible_values = [p for p in possible_values if 0.05 <= p <= 0.5]
+                
+                # Prioritize high-performing architectures
+                if gene_name == 'fc_dropout':
+                    top_values = sorted(possible_values, reverse=True)[:len(possible_values)//2]
+                    bottom_values = sorted(possible_values)[:len(possible_values)//2]
+                    values_to_choose_from = top_values + bottom_values
+                else:
+                    values_to_choose_from = possible_values
+                
+                # Combine population and archive samples
+                combined_samples = self.population + list(self.archive.values())
+                combined_values = set()
+                for sample in combined_samples:
+                    if gene_name in sample:
+                        combined_values.add(sample[gene_name])
+                
+                # Choose from combined samples
+                selected_value = random.choice(list(combined_values))
+                chromosome[gene_name] = selected_value
+            elif gene_name == 'momentum':
+                # Ensure momentum is within a reasonable range
+                possible_values = [p for p in possible_values if 0.75 <= p <= 0.98]
+                
+                # Prioritize high-performing architectures
+                if gene_name == 'momentum':
+                    top_values = sorted(possible_values, reverse=True)[:len(possible_values)//2]
+                    bottom_values = sorted(possible_values)[:len(possible_values)//2]
+                    values_to_choose_from = top_values + bottom_values
+                else:
+                    values_to_choose_from = possible_values
+                
+                # Combine population and archive samples
+                combined_samples = self.population + list(self.archive.values())
+                combined_values = set()
+                for sample in combined_samples:
+                    if gene_name in sample:
+                        combined_values.add(sample[gene_name])
+                
+                # Choose from combined samples
+                selected_value = random.choice(list(combined_values))
+                chromosome[gene_name] = selected_value
+            elif gene_name == 'lr':
+                # Ensure lr is within a reasonable range
+                possible_values = [p for p in possible_values if 0.001 <= p <= 0.01]
+                
+                # Prioritize high-performing architectures
+                if gene_name == 'lr':
+                    top_values = sorted(possible_values, reverse=True)[:len(possible_values)//2]
+                    bottom_values = sorted(possible_values)[:len(possible_values)//2]
+                    values_to_choose_from = top_values + bottom_values
+                else:
+                    values_to_choose_from = possible_values
+                
+                # Combine population and archive samples
+                combined_samples = self.population + list(self.archive.values())
+                combined_values = set()
+                for sample in combined_samples:
+                    if gene_name in sample:
+                        combined_values.add(sample[gene_name])
+                
+                # Choose from combined samples
+                selected_value = random.choice(list(combined_values))
+                chromosome[gene_name] = selected_value
+            else:
+                # Randomly choose from possible values
+                chromosome[gene_name] = random.choice(possible_values)
+        
+        return chromosome
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Cannot choose from an empty sequence
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 29 failed — retrying (failures: 6/10, successes so far: 2/10)
+
+=== Attempt 30 | Successes: 2/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+[WARN] Prompt is very large (3523 tokens). Nearing 4096 limit, which may cause truncation and mode collapse.

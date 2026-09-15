@@ -1,0 +1,22 @@
+{
+    "timestamp": "2026-08-29T15:26:35.392368",
+    "checksum": "d6779072add9a898ccd5e898b0b395f5",
+    "fitness": 0.0,
+    "chromosome": {
+        "n_columns": 4,
+        "base_channels": 16,
+        "n_blocks": 2,
+        "dropout_prob": 0.3,
+        "fc_dropout": 0.3,
+        "lr": 0.004,
+        "momentum": 0.8,
+        "activation": "LeakyReLU",
+        "kernel_size": 1,
+        "pooling_type": "Max",
+        "conv_type": "Depthwise",
+        "norm_type": "BatchNorm",
+        "optimizer_type": "RMSprop"
+    },
+    "source_stats_dir": "/shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt/ab/gpt/brute/ga/meta_evolution/stats/img-classification_cifar-10_acc_GenFractalNet-d6779072add9a898ccd5e898b0b395f5",
+    "copied_stats_dir": "/shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt/ab/gpt/brute/ga/meta_evolution/best_baseline_stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-d6779072add9a898ccd5e898b0b395f5"
+}

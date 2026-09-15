@@ -36,7 +36,7 @@ from ab.gpt.brute.trans.TransformEval import run_eval
 from ab.gpt.util.prompt.TransformGenPrompt import TransformGenPrompt, load_data_from_folders
 from ab.gpt.act.agents.state import AgentState
 
-from ab.gpt.util.prompt.NNGenPromptCurriculum import NNGenPrompt
+from ab.gpt.util.prompt.NNGenPrompt import NNGenPrompt
 
 # from datasets import load_from_disk
 

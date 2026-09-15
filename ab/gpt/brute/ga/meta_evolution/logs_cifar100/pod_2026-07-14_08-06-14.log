@@ -1,0 +1,2379 @@
+LEMUR root /a/mm
+2026-07-14 08:06:15,898 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-14 08:06:15,898 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-14 08:06:15,898 - INFO - NumExpr defaulting to 16 threads.
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/historic_runs/run_2026-07-14_08-06-18 for fresh start.
+[Meta] Moved LLM LoRA weights to /a/mm/ab/gpt/brute/ga/meta_evolution/fine_tuned_adapter_cifar100/historic_runs/run_2026-07-14_08-06-18 for fresh start.
+[Config] Loaded model_config.json  (context_length=4096)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-07-14 08:06:19,917 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:02<00:08,  2.86s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:06<00:06,  3.26s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:09<00:03,  3.17s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  1.98s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  2.40s/it]
+[LoRA] Adapter directory exists at /a/mm/ab/gpt/brute/ga/meta_evolution/fine_tuned_adapter_cifar100 but no weight files found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+
+[Meta] Target: 10 SUCCESSFUL evolutions (will retry up to 10 times per component)
+
+=== Attempt 1 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.60
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (MAP-Elites) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to focus on two key aspects: ensuring rapid convergence and maintaining diversity in the population. 
+
+1. **Rapid Convergence**: Since each architecture is evaluated for only one epoch, we should aim to produce architectures that can achieve good initial performance quickly. This can be facilitated by combining genes from highly performing parents while also introducing some randomness to explore new configurations.
+
+2. **Maintaining Diversity**: To avoid premature convergence, we need to ensure that the offspring produced by crossover and mutation are sufficiently diverse. This can be achieved by intelligently mixing genes from different parents and applying mutations that introduce significant changes.
+
+Given these considerations, we will modify the `combine_genes` function to balance exploration and exploitation. We will use a weighted average approach to combine genes, where the weights are determined by the fitness of the parents. Additionally, we will introduce a small probability of selecting a completely random gene to maintain diversity.
+
+Here's the revised implementation:
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Use a weighted average of the parent genes based on their fitness
+        weight1 = parent1_value['fitness'] if parent1_value['fitness'] is not None else 0
+        weight2 = parent2_value['fitness'] if parent2_value['fitness'] is not None else 0
+        total_weight = weight1 + weight2
+        
+        if total_weight > 0:
+            combined_value = (weight1 * parent1_value[gene_name] + weight2 * parent2_value[gene_name]) / total_weight
+        else:
+            combined_value = random.choice([parent1_value[gene_name], parent2_value[gene_name]])
+        
+        # Introduce a small probability of selecting a completely random gene
+        if random.random() < 0.1:
+            combined_value = random.choice(self.search_space[gene_name])
+        
+        return combined_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: 'int' object is not subscriptable
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 1 failed — retrying (failures: 1/10, successes so far: 0/10)
+
+=== Attempt 2 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.64
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (MAP-Elites) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to focus on creating more diverse and competitive architectures. This involves ensuring that the crossover and mutation operations introduce significant variability while also maintaining some form of coherence between parent and offspring genes.
+
+For the `combine_genes` method, we can implement a strategy that combines the strengths of both parents while introducing randomness to explore new configurations. Specifically, we can use a hybrid approach where we interpolate between parent values but also randomly select from a set of predefined options. This should help in breaking through local optima and discovering novel architectures.
+
+We will also ensure that the method is robust against stochastic depth, which means that the dropout probability should be preserved or slightly adjusted to maintain the architecture's ability to handle heavy path-dropping during the short 1-epoch evaluations.
+
+Let's define the `combine_genes` method accordingly.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Define a set of possible values for each gene
+        possible_values = {
+            "n_columns": [2, 3, 4],
+            "base_channels": [16, 32, 64],
+            "n_blocks": [2, 3, 4],
+            "dropout_prob": [0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5],
+            "fc_dropout": [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5],
+            "lr": [0.01, 0.008, 0.006, 0.005, 0.004, 0.003, 0.002, 0.001],
+            "momentum": [0.75, 0.8, 0.85, 0.88, 0.9, 0.92, 0.95, 0.98],
+            "activation": ["ReLU", "GELU", "LeakyReLU", "SiLU"],
+            "kernel_size": [1, 3, 5, 7],
+            "pooling_type": ["Max", "Avg"],
+            "conv_type": ["Standard", "Depthwise"],
+            "norm_type": ["BatchNorm", "InstanceNorm"],
+            "optimizer_type": ["SGD", "AdamW", "RMSprop"]
+        }
+
+        # Get the possible values for the current gene
+        gene_values = possible_values.get(gene_name, [])
+
+        # Interpolate between parent values
+        if gene_index < crossover_point:
+            combined_value = parent1_value
+        else:
+            combined_value = parent2_value
+
+        # Randomly select from possible values if needed
+        if combined_value not in gene_values:
+            combined_value = random.choice(gene_values)
+
+        return combined_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+2026-07-14 08:07:18,313 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-14 08:07:18,313 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-14 08:07:18,313 - INFO - NumExpr defaulting to 16 threads.
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+LEMUR root /a/mm
+[Init] Loaded 380 existing checksums from stats/ (skipping duplicates)
+[Run] Continuing evolution from gen 0 to 5
+
+
+ >>> GENERATION 1 <<<
+
+  Evaluating Individual 1/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: 1e2a083a...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-1e2a083a6c7350d690d5ef5997ec6a7b-58677560b70b0877e5f82f4cd1605c29.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 3/782 [00:00<00:26, 28.89it/s]
+  2%|▏         | 15/782 [00:00<00:09, 81.39it/s]
+  4%|▎         | 28/782 [00:00<00:07, 102.55it/s]
+  5%|▌         | 41/782 [00:00<00:06, 111.69it/s]
+  7%|▋         | 54/782 [00:00<00:06, 117.04it/s]
+  9%|▊         | 67/782 [00:00<00:05, 120.30it/s]
+ 10%|█         | 80/782 [00:00<00:05, 122.40it/s]
+ 12%|█▏        | 93/782 [00:00<00:05, 122.95it/s]
+ 14%|█▎        | 106/782 [00:00<00:05, 119.56it/s]
+ 15%|█▌        | 119/782 [00:01<00:05, 121.33it/s]
+ 17%|█▋        | 132/782 [00:01<00:05, 121.85it/s]
+ 19%|█▊        | 145/782 [00:01<00:05, 121.64it/s]
+ 20%|██        | 158/782 [00:01<00:05, 120.76it/s]
+ 22%|██▏       | 171/782 [00:01<00:05, 121.15it/s]
+ 24%|██▎       | 184/782 [00:01<00:04, 121.45it/s]
+ 25%|██▌       | 197/782 [00:01<00:04, 121.23it/s]
+ 27%|██▋       | 210/782 [00:01<00:04, 121.35it/s]
+ 29%|██▊       | 223/782 [00:01<00:04, 122.01it/s]
+ 30%|███       | 236/782 [00:02<00:04, 122.27it/s]
+ 32%|███▏      | 249/782 [00:02<00:04, 121.99it/s]
+ 34%|███▎      | 262/782 [00:02<00:04, 121.99it/s]
+ 35%|███▌      | 275/782 [00:02<00:04, 121.56it/s]
+ 37%|███▋      | 288/782 [00:02<00:04, 120.92it/s]
+ 38%|███▊      | 301/782 [00:02<00:03, 121.60it/s]
+ 40%|████      | 314/782 [00:02<00:03, 121.19it/s]
+ 42%|████▏     | 327/782 [00:02<00:03, 121.39it/s]
+ 43%|████▎     | 340/782 [00:02<00:03, 121.29it/s]
+ 45%|████▌     | 353/782 [00:02<00:03, 121.86it/s]
+ 47%|████▋     | 366/782 [00:03<00:03, 121.67it/s]
+ 48%|████▊     | 379/782 [00:03<00:03, 121.12it/s]
+ 50%|█████     | 392/782 [00:03<00:03, 121.65it/s]
+ 52%|█████▏    | 405/782 [00:03<00:03, 121.24it/s]
+ 53%|█████▎    | 418/782 [00:03<00:02, 121.81it/s]
+ 55%|█████▌    | 431/782 [00:03<00:02, 121.93it/s]
+ 57%|█████▋    | 444/782 [00:03<00:02, 122.04it/s]
+ 58%|█████▊    | 457/782 [00:03<00:02, 122.29it/s]
+ 60%|██████    | 470/782 [00:03<00:02, 121.46it/s]
+ 62%|██████▏   | 483/782 [00:04<00:02, 122.41it/s]
+ 63%|██████▎   | 496/782 [00:04<00:02, 122.88it/s]
+ 65%|██████▌   | 509/782 [00:04<00:02, 121.85it/s]
+ 67%|██████▋   | 522/782 [00:04<00:02, 121.08it/s]
+ 68%|██████▊   | 535/782 [00:04<00:02, 121.34it/s]
+ 70%|███████   | 548/782 [00:04<00:01, 121.51it/s]
+ 72%|███████▏  | 561/782 [00:04<00:01, 121.76it/s]
+ 73%|███████▎  | 574/782 [00:04<00:01, 121.50it/s]
+ 75%|███████▌  | 587/782 [00:04<00:01, 121.77it/s]
+ 77%|███████▋  | 600/782 [00:04<00:01, 122.97it/s]
+ 78%|███████▊  | 613/782 [00:05<00:01, 122.36it/s]
+ 80%|████████  | 626/782 [00:05<00:01, 122.28it/s]
+ 82%|████████▏ | 639/782 [00:05<00:01, 121.94it/s]
+ 83%|████████▎ | 652/782 [00:05<00:01, 120.62it/s]
+ 85%|████████▌ | 665/782 [00:05<00:00, 120.87it/s]
+ 87%|████████▋ | 678/782 [00:05<00:00, 121.07it/s]
+ 88%|████████▊ | 691/782 [00:05<00:00, 120.78it/s]
+ 90%|█████████ | 704/782 [00:05<00:00, 120.44it/s]
+ 92%|█████████▏| 717/782 [00:05<00:00, 120.75it/s]
+ 93%|█████████▎| 730/782 [00:06<00:00, 121.25it/s]
+ 95%|█████████▌| 743/782 [00:06<00:00, 120.90it/s]
+ 97%|█████████▋| 756/782 [00:06<00:00, 119.05it/s]
+ 98%|█████████▊| 769/782 [00:06<00:00, 119.70it/s]
+100%|█████████▉| 781/782 [00:06<00:00, 118.36it/s]
+100%|██████████| 782/782 [00:06<00:00, 119.25it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-1e2a083a6c7350d690d5ef5997ec6a7b-58677560b70b0877e5f82f4cd1605c29.py'
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 4.4593, Test Loss: 4.4564
+  Train Acc: 0.0376, Test Acc: 0.0373
+  LR: 0.000000, Grad Norm: 1.5725, Throughput: 2499.9 samples/s
+accuracy_to_time_metric 0.13649203586032257
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-1e2a083a6c7350d690d5ef5997ec6a7b-58677560b70b0877e5f82f4cd1605c29.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-1e2a083a6c7350d690d5ef5997ec6a7b.py
+  [Archive] Cell (3, 32) updated with fitness: 0.0000
+  Evaluating Individual 2/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: 48923b7e...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-48923b7e4ae17086a4dc2ea347f47468-69821b5eb567cbd63ae2b115fddfa82f.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 2/782 [00:00<00:40, 19.31it/s]
+  1%|          | 8/782 [00:00<00:19, 40.70it/s]
+  2%|▏         | 14/782 [00:00<00:16, 46.42it/s]
+  3%|▎         | 20/782 [00:00<00:15, 49.32it/s]
+  3%|▎         | 26/782 [00:00<00:14, 50.79it/s]
+  4%|▍         | 32/782 [00:00<00:14, 52.25it/s]
+  5%|▍         | 38/782 [00:00<00:14, 52.75it/s]
+  6%|▌         | 44/782 [00:00<00:13, 53.30it/s]
+  6%|▋         | 50/782 [00:00<00:13, 53.08it/s]
+  7%|▋         | 56/782 [00:01<00:13, 52.99it/s]
+  8%|▊         | 62/782 [00:01<00:13, 54.11it/s]
+  9%|▊         | 68/782 [00:01<00:13, 54.62it/s]
+  9%|▉         | 74/782 [00:01<00:13, 54.40it/s]
+ 10%|█         | 80/782 [00:01<00:13, 53.88it/s]
+ 11%|█         | 86/782 [00:01<00:12, 54.19it/s]
+ 12%|█▏        | 92/782 [00:01<00:12, 54.55it/s]
+ 13%|█▎        | 98/782 [00:01<00:12, 54.55it/s]
+ 13%|█▎        | 104/782 [00:01<00:12, 55.18it/s]
+ 14%|█▍        | 110/782 [00:02<00:12, 54.37it/s]
+ 15%|█▍        | 116/782 [00:02<00:12, 54.72it/s]
+ 16%|█▌        | 122/782 [00:02<00:12, 54.83it/s]
+ 16%|█▋        | 128/782 [00:02<00:12, 54.41it/s]
+ 17%|█▋        | 134/782 [00:02<00:11, 54.85it/s]
+ 18%|█▊        | 140/782 [00:02<00:11, 54.80it/s]
+ 19%|█▊        | 146/782 [00:02<00:11, 54.84it/s]
+ 19%|█▉        | 152/782 [00:02<00:11, 54.08it/s]
+ 20%|██        | 158/782 [00:02<00:11, 54.60it/s]
+ 21%|██        | 164/782 [00:03<00:11, 55.38it/s]
+ 22%|██▏       | 170/782 [00:03<00:11, 54.95it/s]
+ 23%|██▎       | 176/782 [00:03<00:11, 54.82it/s]
+ 23%|██▎       | 182/782 [00:03<00:10, 55.37it/s]
+ 24%|██▍       | 188/782 [00:03<00:10, 55.66it/s]
+ 25%|██▍       | 194/782 [00:03<00:10, 55.45it/s]
+ 26%|██▌       | 200/782 [00:03<00:10, 54.95it/s]
+ 26%|██▋       | 206/782 [00:03<00:10, 53.83it/s]
+ 27%|██▋       | 212/782 [00:03<00:10, 53.42it/s]
+ 28%|██▊       | 218/782 [00:04<00:10, 54.54it/s]
+ 29%|██▊       | 224/782 [00:04<00:10, 54.77it/s]
+ 29%|██▉       | 230/782 [00:04<00:10, 54.32it/s]
+ 30%|███       | 236/782 [00:04<00:10, 54.14it/s]
+ 31%|███       | 242/782 [00:04<00:09, 54.04it/s]
+ 32%|███▏      | 248/782 [00:04<00:10, 53.01it/s]
+ 32%|███▏      | 254/782 [00:04<00:09, 53.21it/s]
+ 33%|███▎      | 260/782 [00:04<00:09, 54.08it/s]
+ 34%|███▍      | 266/782 [00:04<00:09, 53.93it/s]
+ 35%|███▍      | 272/782 [00:05<00:09, 54.26it/s]
+ 36%|███▌      | 278/782 [00:05<00:09, 53.45it/s]
+ 36%|███▋      | 284/782 [00:05<00:09, 52.95it/s]
+ 37%|███▋      | 290/782 [00:05<00:09, 54.07it/s]
+ 38%|███▊      | 296/782 [00:05<00:09, 53.89it/s]
+ 39%|███▊      | 302/782 [00:05<00:09, 52.97it/s]
+ 39%|███▉      | 308/782 [00:05<00:09, 52.29it/s]
+ 40%|████      | 314/782 [00:05<00:08, 52.77it/s]
+ 41%|████      | 320/782 [00:05<00:08, 53.30it/s]
+ 42%|████▏     | 326/782 [00:06<00:08, 54.00it/s]
+ 42%|████▏     | 332/782 [00:06<00:08, 54.50it/s]
+ 43%|████▎     | 338/782 [00:06<00:08, 54.44it/s]
+ 44%|████▍     | 344/782 [00:06<00:08, 53.93it/s]
+ 45%|████▍     | 350/782 [00:06<00:08, 53.77it/s]
+ 46%|████▌     | 356/782 [00:06<00:08, 51.00it/s]
+ 46%|████▋     | 362/782 [00:06<00:08, 50.35it/s]
+ 47%|████▋     | 368/782 [00:06<00:07, 52.27it/s]
+ 48%|████▊     | 374/782 [00:07<00:07, 52.27it/s]
+ 49%|████▊     | 380/782 [00:07<00:07, 51.60it/s]
+ 49%|████▉     | 386/782 [00:07<00:07, 51.54it/s]
+ 50%|█████     | 392/782 [00:07<00:07, 50.97it/s]
+ 51%|█████     | 398/782 [00:07<00:07, 50.13it/s]
+ 52%|█████▏    | 404/782 [00:07<00:07, 51.08it/s]
+ 52%|█████▏    | 410/782 [00:07<00:07, 52.07it/s]
+ 53%|█████▎    | 416/782 [00:07<00:06, 52.96it/s]
+ 54%|█████▍    | 422/782 [00:07<00:06, 53.44it/s]
+ 55%|█████▍    | 428/782 [00:08<00:06, 53.57it/s]
+ 55%|█████▌    | 434/782 [00:08<00:06, 53.56it/s]
+ 56%|█████▋    | 440/782 [00:08<00:06, 53.50it/s]
+ 57%|█████▋    | 446/782 [00:08<00:06, 54.00it/s]
+ 58%|█████▊    | 452/782 [00:08<00:06, 54.35it/s]
+ 59%|█████▊    | 458/782 [00:08<00:05, 54.35it/s]
+ 59%|█████▉    | 464/782 [00:08<00:05, 54.79it/s]
+ 60%|██████    | 470/782 [00:08<00:05, 54.92it/s]
+ 61%|██████    | 476/782 [00:08<00:05, 54.28it/s]
+ 62%|██████▏   | 482/782 [00:09<00:05, 54.62it/s]
+ 62%|██████▏   | 488/782 [00:09<00:05, 55.34it/s]
+ 63%|██████▎   | 494/782 [00:09<00:05, 55.85it/s]
+ 64%|██████▍   | 500/782 [00:09<00:05, 55.25it/s]
+ 65%|██████▍   | 506/782 [00:09<00:05, 54.95it/s]
+ 65%|██████▌   | 512/782 [00:09<00:04, 54.70it/s]
+ 66%|██████▌   | 518/782 [00:09<00:04, 54.26it/s]
+ 67%|██████▋   | 524/782 [00:09<00:04, 52.78it/s]
+ 68%|██████▊   | 530/782 [00:09<00:04, 51.48it/s]
+ 69%|██████▊   | 536/782 [00:10<00:04, 49.38it/s]
+ 69%|██████▉   | 541/782 [00:10<00:04, 49.04it/s]
+ 70%|██████▉   | 547/782 [00:10<00:04, 49.32it/s]
+ 71%|███████   | 553/782 [00:10<00:04, 50.72it/s]
+ 71%|███████▏  | 559/782 [00:10<00:04, 49.31it/s]
+ 72%|███████▏  | 565/782 [00:10<00:04, 49.52it/s]
+ 73%|███████▎  | 571/782 [00:10<00:04, 49.83it/s]
+ 74%|███████▍  | 577/782 [00:10<00:04, 49.62it/s]
+ 75%|███████▍  | 583/782 [00:11<00:04, 49.46it/s]
+ 75%|███████▌  | 588/782 [00:11<00:03, 49.34it/s]
+ 76%|███████▌  | 593/782 [00:11<00:03, 48.65it/s]
+ 77%|███████▋  | 599/782 [00:11<00:03, 49.27it/s]
+ 77%|███████▋  | 605/782 [00:11<00:03, 50.23it/s]
+ 78%|███████▊  | 611/782 [00:11<00:03, 50.97it/s]
+ 79%|███████▉  | 617/782 [00:11<00:03, 52.06it/s]
+ 80%|███████▉  | 623/782 [00:11<00:02, 53.40it/s]
+ 80%|████████  | 629/782 [00:11<00:02, 53.59it/s]
+ 81%|████████  | 635/782 [00:11<00:02, 53.83it/s]
+ 82%|████████▏ | 641/782 [00:12<00:02, 54.74it/s]
+ 83%|████████▎ | 647/782 [00:12<00:02, 54.84it/s]
+ 84%|████████▎ | 653/782 [00:12<00:02, 54.92it/s]
+ 84%|████████▍ | 659/782 [00:12<00:02, 54.36it/s]
+ 85%|████████▌ | 665/782 [00:12<00:02, 55.79it/s]
+ 86%|████████▌ | 671/782 [00:12<00:01, 55.60it/s]
+ 87%|████████▋ | 677/782 [00:12<00:01, 55.38it/s]
+ 87%|████████▋ | 683/782 [00:12<00:01, 54.66it/s]
+ 88%|████████▊ | 689/782 [00:12<00:01, 54.89it/s]
+ 89%|████████▉ | 695/782 [00:13<00:01, 54.55it/s]
+ 90%|████████▉ | 701/782 [00:13<00:01, 54.05it/s]
+ 90%|█████████ | 707/782 [00:13<00:01, 53.70it/s]
+ 91%|█████████ | 713/782 [00:13<00:01, 53.50it/s]
+ 92%|█████████▏| 719/782 [00:13<00:01, 53.98it/s]
+ 93%|█████████▎| 725/782 [00:13<00:01, 54.02it/s]
+ 93%|█████████▎| 731/782 [00:13<00:00, 53.71it/s]
+ 94%|█████████▍| 737/782 [00:13<00:00, 54.02it/s]
+ 95%|█████████▌| 743/782 [00:13<00:00, 54.82it/s]
+ 96%|█████████▌| 749/782 [00:14<00:00, 54.74it/s]
+ 97%|█████████▋| 755/782 [00:14<00:00, 54.92it/s]
+ 97%|█████████▋| 761/782 [00:14<00:00, 55.68it/s]
+ 98%|█████████▊| 767/782 [00:14<00:00, 54.60it/s]
+ 99%|█████████▉| 773/782 [00:14<00:00, 54.59it/s]
+100%|█████████▉| 779/782 [00:14<00:00, 54.55it/s]
+100%|██████████| 782/782 [00:14<00:00, 53.08it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-48923b7e4ae17086a4dc2ea347f47468-69821b5eb567cbd63ae2b115fddfa82f.py'
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 4.4113, Test Loss: 4.4190
+  Train Acc: 0.0278, Test Acc: 0.0282
+  LR: 0.000000, Grad Norm: 0.2599, Throughput: 1764.1 samples/s
+accuracy_to_time_metric 0.06420952445595346
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-48923b7e4ae17086a4dc2ea347f47468-69821b5eb567cbd63ae2b115fddfa82f.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-48923b7e4ae17086a4dc2ea347f47468.py
+  [Archive] Cell (2, 16) updated with fitness: 0.0000
+  Evaluating Individual 3/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: 0007dea7...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-0007dea72f12fbcb1bece64bdb2c1a8d-e4ba243ec9fbd6c82d98117258e76731.py...
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-0007dea72f12fbcb1bece64bdb2c1a8d-e4ba243ec9fbd6c82d98117258e76731'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-0007dea72f12fbcb1bece64bdb2c1a8d-e4ba243ec9fbd6c82d98117258e76731.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9b05356c94df517e209647090909487f-ea4e57ae2497b485e612ce0242712077.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-0007dea72f12fbcb1bece64bdb2c1a8d-e4ba243ec9fbd6c82d98117258e76731'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-0007dea72f12fbcb1bece64bdb2c1a8d-e4ba243ec9fbd6c82d98117258e76731.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-0007dea72f12fbcb1bece64bdb2c1a8d.py
+  [Archive] Cell (2, 64) updated with fitness: 0.0000
+  Evaluating Individual 4/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: 9b05356c...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9b05356c94df517e209647090909487f-ea4e57ae2497b485e612ce0242712077.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9b05356c94df517e209647090909487f-ea4e57ae2497b485e612ce0242712077.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9b05356c94df517e209647090909487f-ea4e57ae2497b485e612ce0242712077.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-9b05356c94df517e209647090909487f-ea4e57ae2497b485e612ce0242712077'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9b05356c94df517e209647090909487f-ea4e57ae2497b485e612ce0242712077.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-2539e81f0e65d24a5b6d23c1f8393cb7-7e895a7d12c0ee4e20ad023f9a570943.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-9b05356c94df517e209647090909487f-ea4e57ae2497b485e612ce0242712077'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9b05356c94df517e209647090909487f-ea4e57ae2497b485e612ce0242712077.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-9b05356c94df517e209647090909487f.py
+  [Archive] Cell (2, 32) updated with fitness: 0.0000
+  Evaluating Individual 5/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: 2539e81f...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-2539e81f0e65d24a5b6d23c1f8393cb7-7e895a7d12c0ee4e20ad023f9a570943.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-2539e81f0e65d24a5b6d23c1f8393cb7-7e895a7d12c0ee4e20ad023f9a570943.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-2539e81f0e65d24a5b6d23c1f8393cb7-7e895a7d12c0ee4e20ad023f9a570943.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-2539e81f0e65d24a5b6d23c1f8393cb7-7e895a7d12c0ee4e20ad023f9a570943'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-2539e81f0e65d24a5b6d23c1f8393cb7-7e895a7d12c0ee4e20ad023f9a570943.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9faf086e34999542e883ed5e09c99f1d-67303bc43f98af9f2eff4943d28935f9.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-2539e81f0e65d24a5b6d23c1f8393cb7-7e895a7d12c0ee4e20ad023f9a570943'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-2539e81f0e65d24a5b6d23c1f8393cb7-7e895a7d12c0ee4e20ad023f9a570943.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-2539e81f0e65d24a5b6d23c1f8393cb7.py
+  Evaluating Individual 6/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: 9faf086e...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9faf086e34999542e883ed5e09c99f1d-67303bc43f98af9f2eff4943d28935f9.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9faf086e34999542e883ed5e09c99f1d-67303bc43f98af9f2eff4943d28935f9.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9faf086e34999542e883ed5e09c99f1d-67303bc43f98af9f2eff4943d28935f9.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-9faf086e34999542e883ed5e09c99f1d-67303bc43f98af9f2eff4943d28935f9'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9faf086e34999542e883ed5e09c99f1d-67303bc43f98af9f2eff4943d28935f9.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-cef1ebd121bea7b3e06accdbdf138765-69fef36f77c514ab3278e07a94f7bb51.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-9faf086e34999542e883ed5e09c99f1d-67303bc43f98af9f2eff4943d28935f9'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9faf086e34999542e883ed5e09c99f1d-67303bc43f98af9f2eff4943d28935f9.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-9faf086e34999542e883ed5e09c99f1d.py
+  Evaluating Individual 7/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: cef1ebd1...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-cef1ebd121bea7b3e06accdbdf138765-69fef36f77c514ab3278e07a94f7bb51.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-cef1ebd121bea7b3e06accdbdf138765-69fef36f77c514ab3278e07a94f7bb51.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-cef1ebd121bea7b3e06accdbdf138765-69fef36f77c514ab3278e07a94f7bb51.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-cef1ebd121bea7b3e06accdbdf138765-69fef36f77c514ab3278e07a94f7bb51'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-cef1ebd121bea7b3e06accdbdf138765-69fef36f77c514ab3278e07a94f7bb51.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-db427c5b3701564a24d9b18fc670231a-30f570f4d7f7f10a631565432f7722b1.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-cef1ebd121bea7b3e06accdbdf138765-69fef36f77c514ab3278e07a94f7bb51'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-cef1ebd121bea7b3e06accdbdf138765-69fef36f77c514ab3278e07a94f7bb51.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-cef1ebd121bea7b3e06accdbdf138765.py
+  [Archive] Cell (4, 16) updated with fitness: 0.0000
+  Evaluating Individual 8/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: db427c5b...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-db427c5b3701564a24d9b18fc670231a-30f570f4d7f7f10a631565432f7722b1.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-db427c5b3701564a24d9b18fc670231a-30f570f4d7f7f10a631565432f7722b1.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-db427c5b3701564a24d9b18fc670231a-30f570f4d7f7f10a631565432f7722b1.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-db427c5b3701564a24d9b18fc670231a-30f570f4d7f7f10a631565432f7722b1'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-db427c5b3701564a24d9b18fc670231a-30f570f4d7f7f10a631565432f7722b1.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4dae6c4a42a668eb35ebe007b6d8b40f-863e6a0bfb396a9c3edfd77e6d2e6095.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-db427c5b3701564a24d9b18fc670231a-30f570f4d7f7f10a631565432f7722b1'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-db427c5b3701564a24d9b18fc670231a-30f570f4d7f7f10a631565432f7722b1.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-db427c5b3701564a24d9b18fc670231a.py
+  [Archive] Cell (4, 32) updated with fitness: 0.0000
+  Evaluating Individual 9/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: 4dae6c4a...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4dae6c4a42a668eb35ebe007b6d8b40f-863e6a0bfb396a9c3edfd77e6d2e6095.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4dae6c4a42a668eb35ebe007b6d8b40f-863e6a0bfb396a9c3edfd77e6d2e6095.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4dae6c4a42a668eb35ebe007b6d8b40f-863e6a0bfb396a9c3edfd77e6d2e6095.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-4dae6c4a42a668eb35ebe007b6d8b40f-863e6a0bfb396a9c3edfd77e6d2e6095'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4dae6c4a42a668eb35ebe007b6d8b40f-863e6a0bfb396a9c3edfd77e6d2e6095.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-7baf95f8e4a205d3770699eab13b38e5-67ee2d550e2c8d7d0fe6ffd64f431a21.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-4dae6c4a42a668eb35ebe007b6d8b40f-863e6a0bfb396a9c3edfd77e6d2e6095'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4dae6c4a42a668eb35ebe007b6d8b40f-863e6a0bfb396a9c3edfd77e6d2e6095.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-4dae6c4a42a668eb35ebe007b6d8b40f.py
+  [Archive] Cell (4, 64) updated with fitness: 0.0000
+  Evaluating Individual 10/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: 7baf95f8...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-7baf95f8e4a205d3770699eab13b38e5-67ee2d550e2c8d7d0fe6ffd64f431a21.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-7baf95f8e4a205d3770699eab13b38e5-67ee2d550e2c8d7d0fe6ffd64f431a21.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-7baf95f8e4a205d3770699eab13b38e5-67ee2d550e2c8d7d0fe6ffd64f431a21.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-7baf95f8e4a205d3770699eab13b38e5-67ee2d550e2c8d7d0fe6ffd64f431a21'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-7baf95f8e4a205d3770699eab13b38e5-67ee2d550e2c8d7d0fe6ffd64f431a21.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-dd45b38fb8af120db9e13933f67ad0f2-c1b067b4a6dd4b2dae1d5d08cff517b7.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-7baf95f8e4a205d3770699eab13b38e5-67ee2d550e2c8d7d0fe6ffd64f431a21'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-7baf95f8e4a205d3770699eab13b38e5-67ee2d550e2c8d7d0fe6ffd64f431a21.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-7baf95f8e4a205d3770699eab13b38e5.py
+  [Archive] Cell (3, 64) updated with fitness: 0.0000
+  Evaluating Individual 11/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: dd45b38f...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-dd45b38fb8af120db9e13933f67ad0f2-c1b067b4a6dd4b2dae1d5d08cff517b7.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-dd45b38fb8af120db9e13933f67ad0f2-c1b067b4a6dd4b2dae1d5d08cff517b7.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-dd45b38fb8af120db9e13933f67ad0f2-c1b067b4a6dd4b2dae1d5d08cff517b7.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-dd45b38fb8af120db9e13933f67ad0f2-c1b067b4a6dd4b2dae1d5d08cff517b7'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-dd45b38fb8af120db9e13933f67ad0f2-c1b067b4a6dd4b2dae1d5d08cff517b7.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-42c219ad633da2d0e0d68672eacd7718-2d4e9db2502b62ce1e2ae46722045978.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-dd45b38fb8af120db9e13933f67ad0f2-c1b067b4a6dd4b2dae1d5d08cff517b7'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-dd45b38fb8af120db9e13933f67ad0f2-c1b067b4a6dd4b2dae1d5d08cff517b7.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-dd45b38fb8af120db9e13933f67ad0f2.py
+  Evaluating Individual 12/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: 42c219ad...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-42c219ad633da2d0e0d68672eacd7718-2d4e9db2502b62ce1e2ae46722045978.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-42c219ad633da2d0e0d68672eacd7718-2d4e9db2502b62ce1e2ae46722045978.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-42c219ad633da2d0e0d68672eacd7718-2d4e9db2502b62ce1e2ae46722045978.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-42c219ad633da2d0e0d68672eacd7718-2d4e9db2502b62ce1e2ae46722045978'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-42c219ad633da2d0e0d68672eacd7718-2d4e9db2502b62ce1e2ae46722045978.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-ebfb677cc4fb11418a8045defa52d204-f5ebb673ea38c246ee0512e8284cedbe.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-42c219ad633da2d0e0d68672eacd7718-2d4e9db2502b62ce1e2ae46722045978'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-42c219ad633da2d0e0d68672eacd7718-2d4e9db2502b62ce1e2ae46722045978.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-42c219ad633da2d0e0d68672eacd7718.py
+  Evaluating Individual 13/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: ebfb677c...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-ebfb677cc4fb11418a8045defa52d204-f5ebb673ea38c246ee0512e8284cedbe.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-ebfb677cc4fb11418a8045defa52d204-f5ebb673ea38c246ee0512e8284cedbe.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-ebfb677cc4fb11418a8045defa52d204-f5ebb673ea38c246ee0512e8284cedbe.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-ebfb677cc4fb11418a8045defa52d204-f5ebb673ea38c246ee0512e8284cedbe'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-ebfb677cc4fb11418a8045defa52d204-f5ebb673ea38c246ee0512e8284cedbe.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-5825796f5837496fb4d9d0cbaec0b5c2-641f13bb63a9667b2b9d8ba5fde40c8c.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-ebfb677cc4fb11418a8045defa52d204-f5ebb673ea38c246ee0512e8284cedbe'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-ebfb677cc4fb11418a8045defa52d204-f5ebb673ea38c246ee0512e8284cedbe.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-ebfb677cc4fb11418a8045defa52d204.py
+  Evaluating Individual 14/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: 5825796f...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-5825796f5837496fb4d9d0cbaec0b5c2-641f13bb63a9667b2b9d8ba5fde40c8c.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-5825796f5837496fb4d9d0cbaec0b5c2-641f13bb63a9667b2b9d8ba5fde40c8c.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-5825796f5837496fb4d9d0cbaec0b5c2-641f13bb63a9667b2b9d8ba5fde40c8c.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-5825796f5837496fb4d9d0cbaec0b5c2-641f13bb63a9667b2b9d8ba5fde40c8c'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-5825796f5837496fb4d9d0cbaec0b5c2-641f13bb63a9667b2b9d8ba5fde40c8c.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4997cea25e733cd590f920d2922c0b95-f6c888fdfc163a6d75b5afe23dd42514.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-5825796f5837496fb4d9d0cbaec0b5c2-641f13bb63a9667b2b9d8ba5fde40c8c'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-5825796f5837496fb4d9d0cbaec0b5c2-641f13bb63a9667b2b9d8ba5fde40c8c.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-5825796f5837496fb4d9d0cbaec0b5c2.py
+  Evaluating Individual 15/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: 4997cea2...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4997cea25e733cd590f920d2922c0b95-f6c888fdfc163a6d75b5afe23dd42514.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4997cea25e733cd590f920d2922c0b95-f6c888fdfc163a6d75b5afe23dd42514.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4997cea25e733cd590f920d2922c0b95-f6c888fdfc163a6d75b5afe23dd42514.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-4997cea25e733cd590f920d2922c0b95-f6c888fdfc163a6d75b5afe23dd42514'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4997cea25e733cd590f920d2922c0b95-f6c888fdfc163a6d75b5afe23dd42514.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-21e89c5fcbc9b401de855dcd2a1d6357-848c74f7970bb76e12dd94e7cb7d46c9.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-4997cea25e733cd590f920d2922c0b95-f6c888fdfc163a6d75b5afe23dd42514'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4997cea25e733cd590f920d2922c0b95-f6c888fdfc163a6d75b5afe23dd42514.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-4997cea25e733cd590f920d2922c0b95.py
+  Evaluating Individual 16/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: 21e89c5f...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-21e89c5fcbc9b401de855dcd2a1d6357-848c74f7970bb76e12dd94e7cb7d46c9.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-21e89c5fcbc9b401de855dcd2a1d6357-848c74f7970bb76e12dd94e7cb7d46c9.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-21e89c5fcbc9b401de855dcd2a1d6357-848c74f7970bb76e12dd94e7cb7d46c9.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-21e89c5fcbc9b401de855dcd2a1d6357-848c74f7970bb76e12dd94e7cb7d46c9'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-21e89c5fcbc9b401de855dcd2a1d6357-848c74f7970bb76e12dd94e7cb7d46c9.py'
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-21e89c5fcbc9b401de855dcd2a1d6357-848c74f7970bb76e12dd94e7cb7d46c9'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-21e89c5fcbc9b401de855dcd2a1d6357-848c74f7970bb76e12dd94e7cb7d46c9.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-21e89c5fcbc9b401de855dcd2a1d6357.py
+  Evaluating Individual 17/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: 17354c87...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-17354c87dc700b31fc5e9b5095a5859e-53be13f1cef4257f7c3efea91c24637c.py...
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-17354c87dc700b31fc5e9b5095a5859e-53be13f1cef4257f7c3efea91c24637c'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-17354c87dc700b31fc5e9b5095a5859e-53be13f1cef4257f7c3efea91c24637c.py'
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-17354c87dc700b31fc5e9b5095a5859e-53be13f1cef4257f7c3efea91c24637c'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-17354c87dc700b31fc5e9b5095a5859e-53be13f1cef4257f7c3efea91c24637c.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-17354c87dc700b31fc5e9b5095a5859e.py
+  Evaluating Individual 18/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: 3f3a8b73...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-3f3a8b737b33627337d328d231288bf4-2220acfed850e7ae7c1becf476c1a3c6.py...
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-3f3a8b737b33627337d328d231288bf4-2220acfed850e7ae7c1becf476c1a3c6'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-3f3a8b737b33627337d328d231288bf4-2220acfed850e7ae7c1becf476c1a3c6.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-d6e7eb055914bb8e314e4600f1a6c490-112820e54f85c2b480a4dd355d4f4452.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-3f3a8b737b33627337d328d231288bf4-2220acfed850e7ae7c1becf476c1a3c6'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-3f3a8b737b33627337d328d231288bf4-2220acfed850e7ae7c1becf476c1a3c6.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-3f3a8b737b33627337d328d231288bf4.py
+  [Archive] Cell (3, 16) updated with fitness: 0.0000
+  Evaluating Individual 19/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: d6e7eb05...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-d6e7eb055914bb8e314e4600f1a6c490-112820e54f85c2b480a4dd355d4f4452.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-d6e7eb055914bb8e314e4600f1a6c490-112820e54f85c2b480a4dd355d4f4452.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-d6e7eb055914bb8e314e4600f1a6c490-112820e54f85c2b480a4dd355d4f4452.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-d6e7eb055914bb8e314e4600f1a6c490-112820e54f85c2b480a4dd355d4f4452'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-d6e7eb055914bb8e314e4600f1a6c490-112820e54f85c2b480a4dd355d4f4452.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-6794972bc9d150fff20dd4d951102911-5f0301747b758d54430438f3ea948f5e.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-d6e7eb055914bb8e314e4600f1a6c490-112820e54f85c2b480a4dd355d4f4452'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-d6e7eb055914bb8e314e4600f1a6c490-112820e54f85c2b480a4dd355d4f4452.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-d6e7eb055914bb8e314e4600f1a6c490.py
+  Evaluating Individual 20/20 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: 6794972b...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-6794972bc9d150fff20dd4d951102911-5f0301747b758d54430438f3ea948f5e.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-6794972bc9d150fff20dd4d951102911-5f0301747b758d54430438f3ea948f5e.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-6794972bc9d150fff20dd4d951102911-5f0301747b758d54430438f3ea948f5e.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-6794972bc9d150fff20dd4d951102911-5f0301747b758d54430438f3ea948f5e'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-6794972bc9d150fff20dd4d951102911-5f0301747b758d54430438f3ea948f5e.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-817d477695bd972e3bd5210f685d4323-bc2434225fa5fa5b0c7fbd1eb29aa8aa.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-6794972bc9d150fff20dd4d951102911-5f0301747b758d54430438f3ea948f5e'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-6794972bc9d150fff20dd4d951102911-5f0301747b758d54430438f3ea948f5e.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-6794972bc9d150fff20dd4d951102911.py
+
+
+ >>> GENERATION 2 <<<
+
+  Evaluating Individual 6/20 ---- Generation: 2/5
+  - Evaluating unique arch (checksum: 817d4776...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-817d477695bd972e3bd5210f685d4323-bc2434225fa5fa5b0c7fbd1eb29aa8aa.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-817d477695bd972e3bd5210f685d4323-bc2434225fa5fa5b0c7fbd1eb29aa8aa.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-817d477695bd972e3bd5210f685d4323-bc2434225fa5fa5b0c7fbd1eb29aa8aa.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-817d477695bd972e3bd5210f685d4323-bc2434225fa5fa5b0c7fbd1eb29aa8aa'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-817d477695bd972e3bd5210f685d4323-bc2434225fa5fa5b0c7fbd1eb29aa8aa.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9bf2c3742cf388f1acd5ebc4661cb39e-6d32f800b99b490f40490a11706668cd.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-817d477695bd972e3bd5210f685d4323-bc2434225fa5fa5b0c7fbd1eb29aa8aa'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-817d477695bd972e3bd5210f685d4323-bc2434225fa5fa5b0c7fbd1eb29aa8aa.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-817d477695bd972e3bd5210f685d4323.py
+  Evaluating Individual 7/20 ---- Generation: 2/5
+  - Evaluating unique arch (checksum: 9bf2c374...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9bf2c3742cf388f1acd5ebc4661cb39e-6d32f800b99b490f40490a11706668cd.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9bf2c3742cf388f1acd5ebc4661cb39e-6d32f800b99b490f40490a11706668cd.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9bf2c3742cf388f1acd5ebc4661cb39e-6d32f800b99b490f40490a11706668cd.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-9bf2c3742cf388f1acd5ebc4661cb39e-6d32f800b99b490f40490a11706668cd'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9bf2c3742cf388f1acd5ebc4661cb39e-6d32f800b99b490f40490a11706668cd.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-b7d2d0d0b93d885acd3b025628fdf23b-a718697453a81144f3d8938175e10409.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-9bf2c3742cf388f1acd5ebc4661cb39e-6d32f800b99b490f40490a11706668cd'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-9bf2c3742cf388f1acd5ebc4661cb39e-6d32f800b99b490f40490a11706668cd.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-9bf2c3742cf388f1acd5ebc4661cb39e.py
+  Evaluating Individual 8/20 ---- Generation: 2/5
+  - Evaluating unique arch (checksum: b7d2d0d0...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-b7d2d0d0b93d885acd3b025628fdf23b-a718697453a81144f3d8938175e10409.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-b7d2d0d0b93d885acd3b025628fdf23b-a718697453a81144f3d8938175e10409.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-b7d2d0d0b93d885acd3b025628fdf23b-a718697453a81144f3d8938175e10409.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-b7d2d0d0b93d885acd3b025628fdf23b-a718697453a81144f3d8938175e10409'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-b7d2d0d0b93d885acd3b025628fdf23b-a718697453a81144f3d8938175e10409.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-600d746f9c4cb67ed7823668a217e1fb-6b6b8603ddbd032ec36e721153cccf4c.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-b7d2d0d0b93d885acd3b025628fdf23b-a718697453a81144f3d8938175e10409'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-b7d2d0d0b93d885acd3b025628fdf23b-a718697453a81144f3d8938175e10409.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-b7d2d0d0b93d885acd3b025628fdf23b.py
+  Evaluating Individual 9/20 ---- Generation: 2/5
+  - Evaluating unique arch (checksum: 600d746f...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-600d746f9c4cb67ed7823668a217e1fb-6b6b8603ddbd032ec36e721153cccf4c.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-600d746f9c4cb67ed7823668a217e1fb-6b6b8603ddbd032ec36e721153cccf4c.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-600d746f9c4cb67ed7823668a217e1fb-6b6b8603ddbd032ec36e721153cccf4c.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-600d746f9c4cb67ed7823668a217e1fb-6b6b8603ddbd032ec36e721153cccf4c'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-600d746f9c4cb67ed7823668a217e1fb-6b6b8603ddbd032ec36e721153cccf4c.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-1968dd060770d25eab2e2a1c6a01f941-a90b485324d3b1c282b1a867dc1fdfab.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-600d746f9c4cb67ed7823668a217e1fb-6b6b8603ddbd032ec36e721153cccf4c'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-600d746f9c4cb67ed7823668a217e1fb-6b6b8603ddbd032ec36e721153cccf4c.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-600d746f9c4cb67ed7823668a217e1fb.py
+  Evaluating Individual 10/20 ---- Generation: 2/5
+  - Evaluating unique arch (checksum: 1968dd06...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-1968dd060770d25eab2e2a1c6a01f941-a90b485324d3b1c282b1a867dc1fdfab.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-1968dd060770d25eab2e2a1c6a01f941-a90b485324d3b1c282b1a867dc1fdfab.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-1968dd060770d25eab2e2a1c6a01f941-a90b485324d3b1c282b1a867dc1fdfab.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-1968dd060770d25eab2e2a1c6a01f941-a90b485324d3b1c282b1a867dc1fdfab'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-1968dd060770d25eab2e2a1c6a01f941-a90b485324d3b1c282b1a867dc1fdfab.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-cd2e469e7d141cf6cff49d292638c97a-959a7e7f7daa486d4a4d77130fe0fce8.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-1968dd060770d25eab2e2a1c6a01f941-a90b485324d3b1c282b1a867dc1fdfab'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-1968dd060770d25eab2e2a1c6a01f941-a90b485324d3b1c282b1a867dc1fdfab.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-1968dd060770d25eab2e2a1c6a01f941.py
+  Evaluating Individual 11/20 ---- Generation: 2/5
+  - Evaluating unique arch (checksum: cd2e469e...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-cd2e469e7d141cf6cff49d292638c97a-959a7e7f7daa486d4a4d77130fe0fce8.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-cd2e469e7d141cf6cff49d292638c97a-959a7e7f7daa486d4a4d77130fe0fce8.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-cd2e469e7d141cf6cff49d292638c97a-959a7e7f7daa486d4a4d77130fe0fce8.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-cd2e469e7d141cf6cff49d292638c97a-959a7e7f7daa486d4a4d77130fe0fce8'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-cd2e469e7d141cf6cff49d292638c97a-959a7e7f7daa486d4a4d77130fe0fce8.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-1ce1351f877a0689ada05bb733bc99e9-540316a80acfd90f0f73e8db790dd5ef.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-cd2e469e7d141cf6cff49d292638c97a-959a7e7f7daa486d4a4d77130fe0fce8'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-cd2e469e7d141cf6cff49d292638c97a-959a7e7f7daa486d4a4d77130fe0fce8.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-cd2e469e7d141cf6cff49d292638c97a.py
+  Evaluating Individual 12/20 ---- Generation: 2/5
+  - Evaluating unique arch (checksum: 1ce1351f...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-1ce1351f877a0689ada05bb733bc99e9-540316a80acfd90f0f73e8db790dd5ef.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-1ce1351f877a0689ada05bb733bc99e9-540316a80acfd90f0f73e8db790dd5ef.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-1ce1351f877a0689ada05bb733bc99e9-540316a80acfd90f0f73e8db790dd5ef.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-1ce1351f877a0689ada05bb733bc99e9-540316a80acfd90f0f73e8db790dd5ef'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-1ce1351f877a0689ada05bb733bc99e9-540316a80acfd90f0f73e8db790dd5ef.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-8da845154d25beb70db06f59d3964244-8fff4a7c67976cc8a2aa175038fdedd1.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-1ce1351f877a0689ada05bb733bc99e9-540316a80acfd90f0f73e8db790dd5ef'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-1ce1351f877a0689ada05bb733bc99e9-540316a80acfd90f0f73e8db790dd5ef.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-1ce1351f877a0689ada05bb733bc99e9.py
+  Evaluating Individual 13/20 ---- Generation: 2/5
+  - Evaluating unique arch (checksum: 8da84515...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-8da845154d25beb70db06f59d3964244-8fff4a7c67976cc8a2aa175038fdedd1.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-8da845154d25beb70db06f59d3964244-8fff4a7c67976cc8a2aa175038fdedd1.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-8da845154d25beb70db06f59d3964244-8fff4a7c67976cc8a2aa175038fdedd1.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-8da845154d25beb70db06f59d3964244-8fff4a7c67976cc8a2aa175038fdedd1'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-8da845154d25beb70db06f59d3964244-8fff4a7c67976cc8a2aa175038fdedd1.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4dbf517cf07c39c38b167f82a9288eb4-d029e3924923ba6850f11cfd5f89f854.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-8da845154d25beb70db06f59d3964244-8fff4a7c67976cc8a2aa175038fdedd1'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-8da845154d25beb70db06f59d3964244-8fff4a7c67976cc8a2aa175038fdedd1.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-8da845154d25beb70db06f59d3964244.py
+  Evaluating Individual 14/20 ---- Generation: 2/5
+  - Evaluating unique arch (checksum: 4dbf517c...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4dbf517cf07c39c38b167f82a9288eb4-d029e3924923ba6850f11cfd5f89f854.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4dbf517cf07c39c38b167f82a9288eb4-d029e3924923ba6850f11cfd5f89f854.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4dbf517cf07c39c38b167f82a9288eb4-d029e3924923ba6850f11cfd5f89f854.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-4dbf517cf07c39c38b167f82a9288eb4-d029e3924923ba6850f11cfd5f89f854'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4dbf517cf07c39c38b167f82a9288eb4-d029e3924923ba6850f11cfd5f89f854.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-88b8121cecaf18de0830d112b4a43f07-c85ef3e9c636cf5501c0743946cf2a7d.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-4dbf517cf07c39c38b167f82a9288eb4-d029e3924923ba6850f11cfd5f89f854'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4dbf517cf07c39c38b167f82a9288eb4-d029e3924923ba6850f11cfd5f89f854.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-4dbf517cf07c39c38b167f82a9288eb4.py
+  Evaluating Individual 15/20 ---- Generation: 2/5
+  - Evaluating unique arch (checksum: 88b8121c...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-88b8121cecaf18de0830d112b4a43f07-c85ef3e9c636cf5501c0743946cf2a7d.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-88b8121cecaf18de0830d112b4a43f07-c85ef3e9c636cf5501c0743946cf2a7d.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-88b8121cecaf18de0830d112b4a43f07-c85ef3e9c636cf5501c0743946cf2a7d.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-88b8121cecaf18de0830d112b4a43f07-c85ef3e9c636cf5501c0743946cf2a7d'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-88b8121cecaf18de0830d112b4a43f07-c85ef3e9c636cf5501c0743946cf2a7d.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-a410cdb9ed9f7a834170398a3c7d6741-ed1e3549f8dc286d2fbb7b7f53ffcc41.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-88b8121cecaf18de0830d112b4a43f07-c85ef3e9c636cf5501c0743946cf2a7d'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-88b8121cecaf18de0830d112b4a43f07-c85ef3e9c636cf5501c0743946cf2a7d.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-88b8121cecaf18de0830d112b4a43f07.py
+  Evaluating Individual 16/20 ---- Generation: 2/5
+  - Evaluating unique arch (checksum: a410cdb9...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-a410cdb9ed9f7a834170398a3c7d6741-ed1e3549f8dc286d2fbb7b7f53ffcc41.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-a410cdb9ed9f7a834170398a3c7d6741-ed1e3549f8dc286d2fbb7b7f53ffcc41.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-a410cdb9ed9f7a834170398a3c7d6741-ed1e3549f8dc286d2fbb7b7f53ffcc41.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-a410cdb9ed9f7a834170398a3c7d6741-ed1e3549f8dc286d2fbb7b7f53ffcc41'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-a410cdb9ed9f7a834170398a3c7d6741-ed1e3549f8dc286d2fbb7b7f53ffcc41.py'
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-a410cdb9ed9f7a834170398a3c7d6741-ed1e3549f8dc286d2fbb7b7f53ffcc41'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-a410cdb9ed9f7a834170398a3c7d6741-ed1e3549f8dc286d2fbb7b7f53ffcc41.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-a410cdb9ed9f7a834170398a3c7d6741.py
+  Evaluating Individual 17/20 ---- Generation: 2/5
+  - Evaluating unique arch (checksum: c5fab51c...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-c5fab51c830b37f7bc2adb94aeb7e75d-1bd065781de3859fe43fd2c8d74a1469.py...
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-c5fab51c830b37f7bc2adb94aeb7e75d-1bd065781de3859fe43fd2c8d74a1469'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-c5fab51c830b37f7bc2adb94aeb7e75d-1bd065781de3859fe43fd2c8d74a1469.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-85c3fdfbc8f68230750d813d4bc2d25c-5535b6d1aa4e597c13382af5cd4f1511.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-c5fab51c830b37f7bc2adb94aeb7e75d-1bd065781de3859fe43fd2c8d74a1469'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-c5fab51c830b37f7bc2adb94aeb7e75d-1bd065781de3859fe43fd2c8d74a1469.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-c5fab51c830b37f7bc2adb94aeb7e75d.py
+  Evaluating Individual 18/20 ---- Generation: 2/5
+  - Evaluating unique arch (checksum: 85c3fdfb...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-85c3fdfbc8f68230750d813d4bc2d25c-5535b6d1aa4e597c13382af5cd4f1511.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-85c3fdfbc8f68230750d813d4bc2d25c-5535b6d1aa4e597c13382af5cd4f1511.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-85c3fdfbc8f68230750d813d4bc2d25c-5535b6d1aa4e597c13382af5cd4f1511.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-85c3fdfbc8f68230750d813d4bc2d25c-5535b6d1aa4e597c13382af5cd4f1511'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-85c3fdfbc8f68230750d813d4bc2d25c-5535b6d1aa4e597c13382af5cd4f1511.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-23dfbdd349d1f3cbfdf503e6c7bd3927-7e9cccecf81e1082ca24c7704c14891b.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-85c3fdfbc8f68230750d813d4bc2d25c-5535b6d1aa4e597c13382af5cd4f1511'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-85c3fdfbc8f68230750d813d4bc2d25c-5535b6d1aa4e597c13382af5cd4f1511.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-85c3fdfbc8f68230750d813d4bc2d25c.py
+  Evaluating Individual 19/20 ---- Generation: 2/5
+  - Evaluating unique arch (checksum: 23dfbdd3...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-23dfbdd349d1f3cbfdf503e6c7bd3927-7e9cccecf81e1082ca24c7704c14891b.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-23dfbdd349d1f3cbfdf503e6c7bd3927-7e9cccecf81e1082ca24c7704c14891b.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-23dfbdd349d1f3cbfdf503e6c7bd3927-7e9cccecf81e1082ca24c7704c14891b.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-23dfbdd349d1f3cbfdf503e6c7bd3927-7e9cccecf81e1082ca24c7704c14891b'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-23dfbdd349d1f3cbfdf503e6c7bd3927-7e9cccecf81e1082ca24c7704c14891b.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-d710f8c9a199a8244582e875bc749839-5a17ada85eb1755aedf0cb81c88a9178.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-23dfbdd349d1f3cbfdf503e6c7bd3927-7e9cccecf81e1082ca24c7704c14891b'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-23dfbdd349d1f3cbfdf503e6c7bd3927-7e9cccecf81e1082ca24c7704c14891b.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-23dfbdd349d1f3cbfdf503e6c7bd3927.py
+  Evaluating Individual 20/20 ---- Generation: 2/5
+  - Evaluating unique arch (checksum: d710f8c9...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-d710f8c9a199a8244582e875bc749839-5a17ada85eb1755aedf0cb81c88a9178.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-d710f8c9a199a8244582e875bc749839-5a17ada85eb1755aedf0cb81c88a9178.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-d710f8c9a199a8244582e875bc749839-5a17ada85eb1755aedf0cb81c88a9178.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-d710f8c9a199a8244582e875bc749839-5a17ada85eb1755aedf0cb81c88a9178'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-d710f8c9a199a8244582e875bc749839-5a17ada85eb1755aedf0cb81c88a9178.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-12a76afd9b516d583981e107428879d6-bf52f44825e8f850bac44a880322f719.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-d710f8c9a199a8244582e875bc749839-5a17ada85eb1755aedf0cb81c88a9178'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-d710f8c9a199a8244582e875bc749839-5a17ada85eb1755aedf0cb81c88a9178.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-d710f8c9a199a8244582e875bc749839.py
+
+
+ >>> GENERATION 3 <<<
+
+  Evaluating Individual 6/20 ---- Generation: 3/5
+  - Evaluating unique arch (checksum: 12a76afd...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-12a76afd9b516d583981e107428879d6-bf52f44825e8f850bac44a880322f719.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-12a76afd9b516d583981e107428879d6-bf52f44825e8f850bac44a880322f719.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-12a76afd9b516d583981e107428879d6-bf52f44825e8f850bac44a880322f719.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-12a76afd9b516d583981e107428879d6-bf52f44825e8f850bac44a880322f719'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-12a76afd9b516d583981e107428879d6-bf52f44825e8f850bac44a880322f719.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-bb970cc532725f278afaa8e25c241ba7-cefe8a926cd80e170ed20134cb6ba0d6.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-12a76afd9b516d583981e107428879d6-bf52f44825e8f850bac44a880322f719'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-12a76afd9b516d583981e107428879d6-bf52f44825e8f850bac44a880322f719.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-12a76afd9b516d583981e107428879d6.py
+  Evaluating Individual 7/20 ---- Generation: 3/5
+  - Evaluating unique arch (checksum: bb970cc5...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-bb970cc532725f278afaa8e25c241ba7-cefe8a926cd80e170ed20134cb6ba0d6.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-bb970cc532725f278afaa8e25c241ba7-cefe8a926cd80e170ed20134cb6ba0d6.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-bb970cc532725f278afaa8e25c241ba7-cefe8a926cd80e170ed20134cb6ba0d6.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-bb970cc532725f278afaa8e25c241ba7-cefe8a926cd80e170ed20134cb6ba0d6'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-bb970cc532725f278afaa8e25c241ba7-cefe8a926cd80e170ed20134cb6ba0d6.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-da5d522fae810b28533733a67fb9d654-c8063d892a7f1f871049e66e9c63a9de.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-bb970cc532725f278afaa8e25c241ba7-cefe8a926cd80e170ed20134cb6ba0d6'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-bb970cc532725f278afaa8e25c241ba7-cefe8a926cd80e170ed20134cb6ba0d6.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-bb970cc532725f278afaa8e25c241ba7.py
+  Evaluating Individual 8/20 ---- Generation: 3/5
+  - Evaluating unique arch (checksum: da5d522f...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-da5d522fae810b28533733a67fb9d654-c8063d892a7f1f871049e66e9c63a9de.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-da5d522fae810b28533733a67fb9d654-c8063d892a7f1f871049e66e9c63a9de.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-da5d522fae810b28533733a67fb9d654-c8063d892a7f1f871049e66e9c63a9de.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-da5d522fae810b28533733a67fb9d654-c8063d892a7f1f871049e66e9c63a9de'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-da5d522fae810b28533733a67fb9d654-c8063d892a7f1f871049e66e9c63a9de.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-7b2b65e632ea5f7d684cbc340e43c4e9-a1eefde844451325a5589a7528756644.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-da5d522fae810b28533733a67fb9d654-c8063d892a7f1f871049e66e9c63a9de'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-da5d522fae810b28533733a67fb9d654-c8063d892a7f1f871049e66e9c63a9de.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-da5d522fae810b28533733a67fb9d654.py
+  Evaluating Individual 9/20 ---- Generation: 3/5
+  - Evaluating unique arch (checksum: 7b2b65e6...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-7b2b65e632ea5f7d684cbc340e43c4e9-a1eefde844451325a5589a7528756644.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-7b2b65e632ea5f7d684cbc340e43c4e9-a1eefde844451325a5589a7528756644.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-7b2b65e632ea5f7d684cbc340e43c4e9-a1eefde844451325a5589a7528756644.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-7b2b65e632ea5f7d684cbc340e43c4e9-a1eefde844451325a5589a7528756644'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-7b2b65e632ea5f7d684cbc340e43c4e9-a1eefde844451325a5589a7528756644.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-3edf2b9d1e7b3278b600eb61d53fd475-23133710cf6db85753bc4abdde10a515.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-7b2b65e632ea5f7d684cbc340e43c4e9-a1eefde844451325a5589a7528756644'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-7b2b65e632ea5f7d684cbc340e43c4e9-a1eefde844451325a5589a7528756644.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-7b2b65e632ea5f7d684cbc340e43c4e9.py
+  Evaluating Individual 10/20 ---- Generation: 3/5
+  - Evaluating unique arch (checksum: 3edf2b9d...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-3edf2b9d1e7b3278b600eb61d53fd475-23133710cf6db85753bc4abdde10a515.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-3edf2b9d1e7b3278b600eb61d53fd475-23133710cf6db85753bc4abdde10a515.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-3edf2b9d1e7b3278b600eb61d53fd475-23133710cf6db85753bc4abdde10a515.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-3edf2b9d1e7b3278b600eb61d53fd475-23133710cf6db85753bc4abdde10a515'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-3edf2b9d1e7b3278b600eb61d53fd475-23133710cf6db85753bc4abdde10a515.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-acdb647200fdb7e2992228021963b6ef-934c1c062e6e3e0e2e2cc1aba88bd208.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-3edf2b9d1e7b3278b600eb61d53fd475-23133710cf6db85753bc4abdde10a515'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-3edf2b9d1e7b3278b600eb61d53fd475-23133710cf6db85753bc4abdde10a515.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-3edf2b9d1e7b3278b600eb61d53fd475.py
+  Evaluating Individual 11/20 ---- Generation: 3/5
+  - Evaluating unique arch (checksum: acdb6472...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-acdb647200fdb7e2992228021963b6ef-934c1c062e6e3e0e2e2cc1aba88bd208.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-acdb647200fdb7e2992228021963b6ef-934c1c062e6e3e0e2e2cc1aba88bd208.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-acdb647200fdb7e2992228021963b6ef-934c1c062e6e3e0e2e2cc1aba88bd208.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-acdb647200fdb7e2992228021963b6ef-934c1c062e6e3e0e2e2cc1aba88bd208'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-acdb647200fdb7e2992228021963b6ef-934c1c062e6e3e0e2e2cc1aba88bd208.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4c9d3920cceb16914ce4aa49a7439677-00dfbb1ecfc74232dc65bea6f8563a13.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-acdb647200fdb7e2992228021963b6ef-934c1c062e6e3e0e2e2cc1aba88bd208'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-acdb647200fdb7e2992228021963b6ef-934c1c062e6e3e0e2e2cc1aba88bd208.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-acdb647200fdb7e2992228021963b6ef.py
+  Evaluating Individual 12/20 ---- Generation: 3/5
+  - Evaluating unique arch (checksum: 4c9d3920...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4c9d3920cceb16914ce4aa49a7439677-00dfbb1ecfc74232dc65bea6f8563a13.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4c9d3920cceb16914ce4aa49a7439677-00dfbb1ecfc74232dc65bea6f8563a13.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4c9d3920cceb16914ce4aa49a7439677-00dfbb1ecfc74232dc65bea6f8563a13.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-4c9d3920cceb16914ce4aa49a7439677-00dfbb1ecfc74232dc65bea6f8563a13'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4c9d3920cceb16914ce4aa49a7439677-00dfbb1ecfc74232dc65bea6f8563a13.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-bb10cf43017e22683cc0ca4d3358dea3-a7e5a50b9195706d6d000913b1e3c48d.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-4c9d3920cceb16914ce4aa49a7439677-00dfbb1ecfc74232dc65bea6f8563a13'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-4c9d3920cceb16914ce4aa49a7439677-00dfbb1ecfc74232dc65bea6f8563a13.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-4c9d3920cceb16914ce4aa49a7439677.py
+  Evaluating Individual 13/20 ---- Generation: 3/5
+  - Evaluating unique arch (checksum: bb10cf43...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-bb10cf43017e22683cc0ca4d3358dea3-a7e5a50b9195706d6d000913b1e3c48d.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-bb10cf43017e22683cc0ca4d3358dea3-a7e5a50b9195706d6d000913b1e3c48d.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-bb10cf43017e22683cc0ca4d3358dea3-a7e5a50b9195706d6d000913b1e3c48d.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-bb10cf43017e22683cc0ca4d3358dea3-a7e5a50b9195706d6d000913b1e3c48d'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-bb10cf43017e22683cc0ca4d3358dea3-a7e5a50b9195706d6d000913b1e3c48d.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-b3da93c14bc308e65e61b4d35fb97a18-f11f60ee43ead82c3bb98d473b92e176.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-bb10cf43017e22683cc0ca4d3358dea3-a7e5a50b9195706d6d000913b1e3c48d'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-bb10cf43017e22683cc0ca4d3358dea3-a7e5a50b9195706d6d000913b1e3c48d.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-bb10cf43017e22683cc0ca4d3358dea3.py
+  Evaluating Individual 14/20 ---- Generation: 3/5
+  - Evaluating unique arch (checksum: b3da93c1...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-b3da93c14bc308e65e61b4d35fb97a18-f11f60ee43ead82c3bb98d473b92e176.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-b3da93c14bc308e65e61b4d35fb97a18-f11f60ee43ead82c3bb98d473b92e176.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-b3da93c14bc308e65e61b4d35fb97a18-f11f60ee43ead82c3bb98d473b92e176.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-b3da93c14bc308e65e61b4d35fb97a18-f11f60ee43ead82c3bb98d473b92e176'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-b3da93c14bc308e65e61b4d35fb97a18-f11f60ee43ead82c3bb98d473b92e176.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e292f9f89191a2ca24da691b0f6d8f87-83412ecdc823f26d555c63ec706dc436.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-b3da93c14bc308e65e61b4d35fb97a18-f11f60ee43ead82c3bb98d473b92e176'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-b3da93c14bc308e65e61b4d35fb97a18-f11f60ee43ead82c3bb98d473b92e176.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-b3da93c14bc308e65e61b4d35fb97a18.py
+  Evaluating Individual 15/20 ---- Generation: 3/5
+  - Evaluating unique arch (checksum: e292f9f8...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e292f9f89191a2ca24da691b0f6d8f87-83412ecdc823f26d555c63ec706dc436.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e292f9f89191a2ca24da691b0f6d8f87-83412ecdc823f26d555c63ec706dc436.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e292f9f89191a2ca24da691b0f6d8f87-83412ecdc823f26d555c63ec706dc436.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-e292f9f89191a2ca24da691b0f6d8f87-83412ecdc823f26d555c63ec706dc436'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e292f9f89191a2ca24da691b0f6d8f87-83412ecdc823f26d555c63ec706dc436.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e1ac31df5699b5f265fd325d174e12df-a97dc618f46f9ec66777d12fc427f571.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-e292f9f89191a2ca24da691b0f6d8f87-83412ecdc823f26d555c63ec706dc436'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e292f9f89191a2ca24da691b0f6d8f87-83412ecdc823f26d555c63ec706dc436.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-e292f9f89191a2ca24da691b0f6d8f87.py
+  Evaluating Individual 16/20 ---- Generation: 3/5
+  - Evaluating unique arch (checksum: e1ac31df...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e1ac31df5699b5f265fd325d174e12df-a97dc618f46f9ec66777d12fc427f571.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e1ac31df5699b5f265fd325d174e12df-a97dc618f46f9ec66777d12fc427f571.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e1ac31df5699b5f265fd325d174e12df-a97dc618f46f9ec66777d12fc427f571.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-e1ac31df5699b5f265fd325d174e12df-a97dc618f46f9ec66777d12fc427f571'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e1ac31df5699b5f265fd325d174e12df-a97dc618f46f9ec66777d12fc427f571.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-0a70c6f1a079463cbc91f59146dab0ce-e96162b8a5e28530bda458ea8a879f4f.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-e1ac31df5699b5f265fd325d174e12df-a97dc618f46f9ec66777d12fc427f571'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e1ac31df5699b5f265fd325d174e12df-a97dc618f46f9ec66777d12fc427f571.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-e1ac31df5699b5f265fd325d174e12df.py
+  Evaluating Individual 17/20 ---- Generation: 3/5
+  - Evaluating unique arch (checksum: 0a70c6f1...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-0a70c6f1a079463cbc91f59146dab0ce-e96162b8a5e28530bda458ea8a879f4f.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-0a70c6f1a079463cbc91f59146dab0ce-e96162b8a5e28530bda458ea8a879f4f.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-0a70c6f1a079463cbc91f59146dab0ce-e96162b8a5e28530bda458ea8a879f4f.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-0a70c6f1a079463cbc91f59146dab0ce-e96162b8a5e28530bda458ea8a879f4f'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-0a70c6f1a079463cbc91f59146dab0ce-e96162b8a5e28530bda458ea8a879f4f.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e2ad554c2dfc365c7a05701241844e4b-81df037472822a00b5c887c06214eb14.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-0a70c6f1a079463cbc91f59146dab0ce-e96162b8a5e28530bda458ea8a879f4f'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-0a70c6f1a079463cbc91f59146dab0ce-e96162b8a5e28530bda458ea8a879f4f.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-0a70c6f1a079463cbc91f59146dab0ce.py
+  Evaluating Individual 18/20 ---- Generation: 3/5
+  - Evaluating unique arch (checksum: e2ad554c...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e2ad554c2dfc365c7a05701241844e4b-81df037472822a00b5c887c06214eb14.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e2ad554c2dfc365c7a05701241844e4b-81df037472822a00b5c887c06214eb14.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e2ad554c2dfc365c7a05701241844e4b-81df037472822a00b5c887c06214eb14.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-e2ad554c2dfc365c7a05701241844e4b-81df037472822a00b5c887c06214eb14'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e2ad554c2dfc365c7a05701241844e4b-81df037472822a00b5c887c06214eb14.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-f8893824c7caceafe6bc3d2bbcdbfafb-7e22c4a36d2786a3fc25afada8ed2419.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-e2ad554c2dfc365c7a05701241844e4b-81df037472822a00b5c887c06214eb14'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-e2ad554c2dfc365c7a05701241844e4b-81df037472822a00b5c887c06214eb14.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-e2ad554c2dfc365c7a05701241844e4b.py
+  Evaluating Individual 19/20 ---- Generation: 3/5
+  - Evaluating unique arch (checksum: f8893824...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-f8893824c7caceafe6bc3d2bbcdbfafb-7e22c4a36d2786a3fc25afada8ed2419.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-f8893824c7caceafe6bc3d2bbcdbfafb-7e22c4a36d2786a3fc25afada8ed2419.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-f8893824c7caceafe6bc3d2bbcdbfafb-7e22c4a36d2786a3fc25afada8ed2419.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-f8893824c7caceafe6bc3d2bbcdbfafb-7e22c4a36d2786a3fc25afada8ed2419'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-f8893824c7caceafe6bc3d2bbcdbfafb-7e22c4a36d2786a3fc25afada8ed2419.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-261b86475f3aaf2e4dfa96dee2db5607-1731707c5644246068472664bdaf4f61.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-f8893824c7caceafe6bc3d2bbcdbfafb-7e22c4a36d2786a3fc25afada8ed2419'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-f8893824c7caceafe6bc3d2bbcdbfafb-7e22c4a36d2786a3fc25afada8ed2419.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-f8893824c7caceafe6bc3d2bbcdbfafb.py
+  Evaluating Individual 20/20 ---- Generation: 3/5
+  - Evaluating unique arch (checksum: 261b8647...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-261b86475f3aaf2e4dfa96dee2db5607-1731707c5644246068472664bdaf4f61.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-261b86475f3aaf2e4dfa96dee2db5607-1731707c5644246068472664bdaf4f61.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-261b86475f3aaf2e4dfa96dee2db5607-1731707c5644246068472664bdaf4f61.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-261b86475f3aaf2e4dfa96dee2db5607-1731707c5644246068472664bdaf4f61'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-261b86475f3aaf2e4dfa96dee2db5607-1731707c5644246068472664bdaf4f61.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-0873ffcbfc9d7f5d7b827727ac5bff79-dd1f12b928d6b12141b65a6815adb2ed.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-261b86475f3aaf2e4dfa96dee2db5607-1731707c5644246068472664bdaf4f61'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-261b86475f3aaf2e4dfa96dee2db5607-1731707c5644246068472664bdaf4f61.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-261b86475f3aaf2e4dfa96dee2db5607.py
+
+
+ >>> GENERATION 4 <<<
+
+  Evaluating Individual 6/20 ---- Generation: 4/5
+  - Evaluating unique arch (checksum: 0873ffcb...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-0873ffcbfc9d7f5d7b827727ac5bff79-dd1f12b928d6b12141b65a6815adb2ed.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-0873ffcbfc9d7f5d7b827727ac5bff79-dd1f12b928d6b12141b65a6815adb2ed.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-0873ffcbfc9d7f5d7b827727ac5bff79-dd1f12b928d6b12141b65a6815adb2ed.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-0873ffcbfc9d7f5d7b827727ac5bff79-dd1f12b928d6b12141b65a6815adb2ed'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-0873ffcbfc9d7f5d7b827727ac5bff79-dd1f12b928d6b12141b65a6815adb2ed.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-fc4bf68e31bcdefc328b273c0905c32b-37f75e16a88999d792f7bef1ab23639b.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-0873ffcbfc9d7f5d7b827727ac5bff79-dd1f12b928d6b12141b65a6815adb2ed'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-0873ffcbfc9d7f5d7b827727ac5bff79-dd1f12b928d6b12141b65a6815adb2ed.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-0873ffcbfc9d7f5d7b827727ac5bff79.py
+  Evaluating Individual 7/20 ---- Generation: 4/5
+  - Evaluating unique arch (checksum: fc4bf68e...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-fc4bf68e31bcdefc328b273c0905c32b-37f75e16a88999d792f7bef1ab23639b.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-fc4bf68e31bcdefc328b273c0905c32b-37f75e16a88999d792f7bef1ab23639b.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-fc4bf68e31bcdefc328b273c0905c32b-37f75e16a88999d792f7bef1ab23639b.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-fc4bf68e31bcdefc328b273c0905c32b-37f75e16a88999d792f7bef1ab23639b'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-fc4bf68e31bcdefc328b273c0905c32b-37f75e16a88999d792f7bef1ab23639b.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-6cf8d23316ac8214abf9fd793770d8f2-1c5a02c7b95e4fdb1cbd1b8a524837b6.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-fc4bf68e31bcdefc328b273c0905c32b-37f75e16a88999d792f7bef1ab23639b'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-fc4bf68e31bcdefc328b273c0905c32b-37f75e16a88999d792f7bef1ab23639b.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-fc4bf68e31bcdefc328b273c0905c32b.py
+  Evaluating Individual 8/20 ---- Generation: 4/5
+  - Evaluating unique arch (checksum: 6cf8d233...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-6cf8d23316ac8214abf9fd793770d8f2-1c5a02c7b95e4fdb1cbd1b8a524837b6.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-6cf8d23316ac8214abf9fd793770d8f2-1c5a02c7b95e4fdb1cbd1b8a524837b6.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-6cf8d23316ac8214abf9fd793770d8f2-1c5a02c7b95e4fdb1cbd1b8a524837b6.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-6cf8d23316ac8214abf9fd793770d8f2-1c5a02c7b95e4fdb1cbd1b8a524837b6'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-6cf8d23316ac8214abf9fd793770d8f2-1c5a02c7b95e4fdb1cbd1b8a524837b6.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-029e331156980f756110a2e9f4fb05a8-8100524e03f8716ffa8009984bfab0c3.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-6cf8d23316ac8214abf9fd793770d8f2-1c5a02c7b95e4fdb1cbd1b8a524837b6'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-6cf8d23316ac8214abf9fd793770d8f2-1c5a02c7b95e4fdb1cbd1b8a524837b6.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-6cf8d23316ac8214abf9fd793770d8f2.py
+  Evaluating Individual 9/20 ---- Generation: 4/5
+  - Evaluating unique arch (checksum: 029e3311...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-029e331156980f756110a2e9f4fb05a8-8100524e03f8716ffa8009984bfab0c3.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-029e331156980f756110a2e9f4fb05a8-8100524e03f8716ffa8009984bfab0c3.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-029e331156980f756110a2e9f4fb05a8-8100524e03f8716ffa8009984bfab0c3.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-029e331156980f756110a2e9f4fb05a8-8100524e03f8716ffa8009984bfab0c3'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-029e331156980f756110a2e9f4fb05a8-8100524e03f8716ffa8009984bfab0c3.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-c1247c88e60ffadb2fc5d321b7f3b7b4-89d5268961b86481cd085de3c8fbc8b8.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-029e331156980f756110a2e9f4fb05a8-8100524e03f8716ffa8009984bfab0c3'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-029e331156980f756110a2e9f4fb05a8-8100524e03f8716ffa8009984bfab0c3.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-029e331156980f756110a2e9f4fb05a8.py
+  Evaluating Individual 10/20 ---- Generation: 4/5
+  - Evaluating unique arch (checksum: c1247c88...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-c1247c88e60ffadb2fc5d321b7f3b7b4-89d5268961b86481cd085de3c8fbc8b8.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-c1247c88e60ffadb2fc5d321b7f3b7b4-89d5268961b86481cd085de3c8fbc8b8.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-c1247c88e60ffadb2fc5d321b7f3b7b4-89d5268961b86481cd085de3c8fbc8b8.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-c1247c88e60ffadb2fc5d321b7f3b7b4-89d5268961b86481cd085de3c8fbc8b8'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-c1247c88e60ffadb2fc5d321b7f3b7b4-89d5268961b86481cd085de3c8fbc8b8.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-f76b5983131c6e7ba9c8407e5f47f2f8-b78219c6211da53be95730426c0d6bbe.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-c1247c88e60ffadb2fc5d321b7f3b7b4-89d5268961b86481cd085de3c8fbc8b8'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-c1247c88e60ffadb2fc5d321b7f3b7b4-89d5268961b86481cd085de3c8fbc8b8.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-c1247c88e60ffadb2fc5d321b7f3b7b4.py
+  Evaluating Individual 11/20 ---- Generation: 4/5
+  - Evaluating unique arch (checksum: f76b5983...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-f76b5983131c6e7ba9c8407e5f47f2f8-b78219c6211da53be95730426c0d6bbe.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-f76b5983131c6e7ba9c8407e5f47f2f8-b78219c6211da53be95730426c0d6bbe.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-f76b5983131c6e7ba9c8407e5f47f2f8-b78219c6211da53be95730426c0d6bbe.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-f76b5983131c6e7ba9c8407e5f47f2f8-b78219c6211da53be95730426c0d6bbe'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-f76b5983131c6e7ba9c8407e5f47f2f8-b78219c6211da53be95730426c0d6bbe.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-fc897d5f0d6b907eb6225bd578bcf4f9-2ba2054042b9055e760b6e05e285bdbe.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-f76b5983131c6e7ba9c8407e5f47f2f8-b78219c6211da53be95730426c0d6bbe'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-f76b5983131c6e7ba9c8407e5f47f2f8-b78219c6211da53be95730426c0d6bbe.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-f76b5983131c6e7ba9c8407e5f47f2f8.py
+  Evaluating Individual 12/20 ---- Generation: 4/5
+  - Evaluating unique arch (checksum: fc897d5f...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-fc897d5f0d6b907eb6225bd578bcf4f9-2ba2054042b9055e760b6e05e285bdbe.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-fc897d5f0d6b907eb6225bd578bcf4f9-2ba2054042b9055e760b6e05e285bdbe.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-fc897d5f0d6b907eb6225bd578bcf4f9-2ba2054042b9055e760b6e05e285bdbe.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-fc897d5f0d6b907eb6225bd578bcf4f9-2ba2054042b9055e760b6e05e285bdbe'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-fc897d5f0d6b907eb6225bd578bcf4f9-2ba2054042b9055e760b6e05e285bdbe.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-a3e5abe40be3fedf25805f08ef5f9866-87253038d747798c3efd5ce6d72a3d33.py'
+Error during training: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-fc897d5f0d6b907eb6225bd578bcf4f9-2ba2054042b9055e760b6e05e285bdbe'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-fc897d5f0d6b907eb6225bd578bcf4f9-2ba2054042b9055e760b6e05e285bdbe.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-fc897d5f0d6b907eb6225bd578bcf4f9.py
+  Evaluating Individual 13/20 ---- Generation: 4/5
+  - Evaluating unique arch (checksum: a3e5abe4...)
+Evaluating /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-a3e5abe40be3fedf25805f08ef5f9866-87253038d747798c3efd5ce6d72a3d33.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-a3e5abe40be3fedf25805f08ef5f9866-87253038d747798c3efd5ce6d72a3d33.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-a3e5abe40be3fedf25805f08ef5f9866-87253038d747798c3efd5ce6d72a3d33.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_306.nn.tmp.GenFractalNet-a3e5abe40be3fedf25805f08ef5f9866-87253038d747798c3efd5ce6d72a3d33'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_306/nn/tmp/GenFractalNet-a3e5abe40be3fedf25805f08ef5f9866-87253038d747798c3efd5ce6d72a3d33.py'

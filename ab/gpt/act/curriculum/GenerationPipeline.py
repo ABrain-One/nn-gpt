@@ -662,7 +662,10 @@ def write_entry_script(dataset: str, level: str, k: int,
     """
     dataset_safe = dataset.replace("-", "_")
     script_name  = f"CurriculumGen_{dataset_safe}_{level}_k{k}.py"
-    script_path  = CURRICULUM_DIR / script_name
+
+    curr_script_path = out_dir / 'curriculum'
+    curr_script_path.mkdir(parents=True, exist_ok=True)
+    script_path  = curr_script_path / script_name
 
     conf_id    = get_conf_id(dataset, level, k)
     gen_name   = get_prompt_name(dataset, level, k, is_train=False)
