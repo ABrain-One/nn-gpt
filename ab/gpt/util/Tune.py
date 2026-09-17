@@ -936,8 +936,14 @@ def _finetune_epoch(
         )
         data_processor = NNGenPrompt(length, tokenizer, train_config_path, data_dir=data_dir)
 
+    # Reproducibility fix (2026-09-08): get_dataset()'s internal dataset.shuffle()
+    # defaults to an unseeded, non-reproducible shuffle unless a seed is passed
+    # explicitly -- nothing in this pipeline previously did. Reuse the same seed
+    # already governing the Trainer's own reproducibility (TrainingArguments.seed,
+    # default 42) so the training example order is exactly reproducible too.
     dataset = data_processor.get_dataset(
         only_best_accuracy,
+        seed=lora_tuner.training_args.seed,
         max_prompts=max_prompts,
         max_new_tokens=max_new_tokens,
     )
