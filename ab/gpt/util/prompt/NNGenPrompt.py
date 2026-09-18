@@ -33,6 +33,24 @@ class NNGenPrompt(Prompt):
         # fine-tuning uses its growing curated corpus, closing the feedback loop.
         self.data_dir = data_dir
 
+    def get_config_seed(self):
+        """
+        Optional reproducibility seed read from the prompt config JSON, next to
+        the other per-experiment values (task, dataset, min_accuracy, etc.), so
+        each experiment config fully owns its own seed instead of only getting
+        one indirectly from the LLM's own TrainingArguments default. Returns the
+        first 'seed' found among the config's keys, or None if none is set --
+        callers should fall back to their own default in that case.
+        """
+        if self.data_dir is not None:
+            return None
+        with open(self.prompts_path) as prompt_file:
+            prompt_dict = json.load(prompt_file)
+        for key_dict in prompt_dict.values():
+            if 'seed' in key_dict and key_dict['seed'] is not None:
+                return key_dict['seed']
+        return None
+
     def _raw_dataset_from_disk(self, n_training_prompts=None) -> DataFrame:
         """Build the SFT frame from a pipeline corpus of chat 'messages' rows
         (data_dir/train.jsonl), instead of LEMUR. Produces the exact same
@@ -125,14 +143,12 @@ class NNGenPrompt(Prompt):
                     patch_join_nn_query() # # TODO: Generalize for all scenarios - SQL query implementation in the NN Dataset project
 
                 # Accuracy-filtered training pools (added 2026-09-08 for the
-                # professor's Experiment A/B/C plan). When min_accuracy is set,
-                # fetch the FULL matching pool (max_rows=None) rather than
-                # truncating at the DB level first -- otherwise "keep the top
-                # N by accuracy" would silently become "keep the top N among
-                # whatever rows the query happened to return first", which is
-                # wrong regardless of the DB's default row order.
+                # professor's Experiment A/B/C plan). min_accuracy is applied as
+                # a SQL WHERE condition inside lemur.data() (2026-09-18 fix, per
+                # professor feedback on PR #237) rather than as a post-hoc
+                # DataFrame filter, so it composes correctly with max_rows -- the
+                # LIMIT now applies to the already-filtered set.
                 min_accuracy = key_dict.get('min_accuracy')
-                fetch_max_rows = None if min_accuracy is not None else n_training_prompts
 
                 data = lemur.data(
                     only_best_accuracy=only_best_accuracy,
@@ -147,7 +163,8 @@ class NNGenPrompt(Prompt):
                     # = ('ga-', 'GenFractalNet') only. Caught via validate_accfilter.py
                     # returning 13,797 rows instead of the real 48,988-row pool.
                     nn_prefixes=tuple(key_dict['nn_prefixes']) if 'nn_prefixes' in key_dict else DEFAULT_NN_PREFIXES,
-                    max_rows=fetch_max_rows,
+                    min_accuracy=min_accuracy,
+                    max_rows=n_training_prompts,
                     sql=None if not use_join else JoinConf(
                         num_joint_nns=num_joint_nns,
                         same_columns=tuple(key_dict.get('keep_same', [])),
@@ -157,11 +174,7 @@ class NNGenPrompt(Prompt):
                 )
 
                 if min_accuracy is not None:
-                    before = len(data)
-                    data = data[data['accuracy'] >= min_accuracy].reset_index(drop=True)
-                    print(f"[ACCFILTER] min_accuracy={min_accuracy}: kept {len(data)} of {before} rows for key: {key}")
-                    if n_training_prompts is not None:
-                        data = data.iloc[:n_training_prompts].reset_index(drop=True)
+                    print(f"[ACCFILTER] min_accuracy={min_accuracy}: {len(data)} rows for key: {key} (filtered in SQL)")
 
                 # For classification tasks, enrich the DataFrame with normalised
                 # accuracy and dataset-metadata columns needed for the prompt.

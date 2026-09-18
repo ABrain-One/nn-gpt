@@ -938,12 +938,21 @@ def _finetune_epoch(
 
     # Reproducibility fix (2026-09-08): get_dataset()'s internal dataset.shuffle()
     # defaults to an unseeded, non-reproducible shuffle unless a seed is passed
-    # explicitly -- nothing in this pipeline previously did. Reuse the same seed
-    # already governing the Trainer's own reproducibility (TrainingArguments.seed,
-    # default 42) so the training example order is exactly reproducible too.
+    # explicitly -- nothing in this pipeline previously did.
+    #
+    # Seed source (updated 2026-09-18 per professor feedback on PR #237): prefer
+    # an explicit "seed" from the prompt config JSON, read next to the config's
+    # other values (task, dataset, min_accuracy, etc.), so each experiment fully
+    # owns its own reproducibility settings instead of only inheriting one
+    # indirectly from the LLM's own TrainingArguments default. Config-less data
+    # processors (e.g. SFTGenPrompt) don't define get_config_seed(), and a
+    # config can simply omit "seed" -- both fall back to the Trainer's own seed
+    # (TrainingArguments.seed, default 42).
+    config_seed = data_processor.get_config_seed() if hasattr(data_processor, 'get_config_seed') else None
+    seed = config_seed if config_seed is not None else lora_tuner.training_args.seed
     dataset = data_processor.get_dataset(
         only_best_accuracy,
-        seed=lora_tuner.training_args.seed,
+        seed=seed,
         max_prompts=max_prompts,
         max_new_tokens=max_new_tokens,
     )
