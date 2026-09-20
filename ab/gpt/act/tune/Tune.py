@@ -173,7 +173,7 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
         print("--- Initiating Iterative Fine-Tuning Pipeline ---")
         try:
             if mobile_deployment:
-                from ab.gpt.act.mobile.iterative_finetune import MobileDeploymentFinetuner as IterativeFinetuner
+                from ab.gpt.act.edge.iterative_finetune import MobileDeploymentFinetuner as IterativeFinetuner
             else:
                 from ab.gpt.act.tune.iterative.finetune import IterativeFinetuner
         except ImportError as e:
