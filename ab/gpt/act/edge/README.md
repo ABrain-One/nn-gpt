@@ -45,7 +45,7 @@ All edge-specific behavior is configured from this package:
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # 1. Run the generate/evaluate/finetune loop (10 outer epochs, 5 models each)
-python -m ab.gpt.act.curriculum.Gen_edge_k4_Tune_7B
+python -m ab.gpt.act.tune.curriculum.Gen_edge_k4_Tune_7B
 
 # 2. Score all generated models by efficiency — run BEFORE relaunching step 1,
 #    because the tuner clears the epoch output directory at the start of a run

@@ -711,7 +711,7 @@ def _evaluate_epoch(
                 print(f'[WARN] postprocess_nn skipped: {exc}', flush=True)
 
         if classification_mode:
-            from ab.gpt.act.classification.Eval import evaluate_epoch as cls_eval
+            from ab.gpt.act.tune.classification.Eval import evaluate_epoch as cls_eval
 
             cls_result = cls_eval(models_dir)
             results[f"epoch_{epoch + 1}_accuracy"] = cls_result["accuracy"]
