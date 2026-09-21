@@ -19,7 +19,7 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 import torch
-import ab.gpt.util.DatasetSplit as DatasetSplit
+import ab.gpt.util.data.DatasetSplit as DatasetSplit
 import ab.gpt.act.rl.reward_payload as RewardPayload
 import torch.nn as nn
 import torch.nn.functional as F
@@ -897,7 +897,7 @@ class _PersistentEvalWorkerSession:
             sys.executable,
             "-u",
             "-m",
-            "ab.gpt.util.reward_worker_bootstrap",
+            "ab.gpt.util.eval.reward_worker_bootstrap",
             "--conn-fd",
             str(child_fd),
             "--assigned-gpu",

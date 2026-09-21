@@ -9,7 +9,7 @@ from ab.gpt.util.Const import ab_root_path
 REPO_ROOT = ab_root_path
 
 
-from ab.gpt.util.CycleResults import collect_cycle_metrics, generate_cycle_results, save_cycle_results
+from ab.gpt.util.data.CycleResults import collect_cycle_metrics, generate_cycle_results, save_cycle_results
 
 DEFAULT_OUT = REPO_ROOT / 'out' / 'benchmarks' / 'tunenngen_cifar10_adaptive_science' / 'analogical_adaptive_peak_eval16'
 DEFAULT_MARGIN = 0.02

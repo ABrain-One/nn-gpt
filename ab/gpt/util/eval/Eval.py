@@ -96,7 +96,7 @@ class Eval:
         if new_checksum not in ids_list or allow_retrain:
             with _isolated_eval_tmp_modules():
                 if checkpoint_path:
-                    from ab.gpt.util.eval_checkpoint import train_and_eval_with_checkpoint
+                    from ab.gpt.util.eval.eval_checkpoint import train_and_eval_with_checkpoint
 
                     return train_and_eval_with_checkpoint(
                         code,

@@ -72,8 +72,8 @@ class Pipeline:
                 UNSLOTH_AVAILABLE = True
                 
                 # ================= Dynamic injection of FastModel into LLM module =================
-                import ab.gpt.util.LLM
-                ab.gpt.util.LLM.FastModel = FastModel
+                import ab.gpt.util.llm.LLM
+                ab.gpt.util.llm.LLM.FastModel = FastModel
                 # ================================================
             except ImportError:
                 UNSLOTH_AVAILABLE = False

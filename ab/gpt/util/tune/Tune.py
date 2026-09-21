@@ -30,12 +30,12 @@ from peft import PeftModel
 from tqdm import tqdm
 
 import ab.gpt.act.eval.Eval as NNEval
-from ab.gpt.util.Chatbot import ChatBot
+from ab.gpt.util.llm.Chatbot import ChatBot
 from ab.gpt.util.Const import *
 from ab.gpt.util.Const import nngpt_dir
 
-from ab.gpt.util.LLMUtil import quantization_config_4bit
-from ab.gpt.util.LoRA import LoRA
+from ab.gpt.util.llm.LLMUtil import quantization_config_4bit
+from ab.gpt.util.llm.LoRA import LoRA
 from ab.gpt.util.Util import (
     exists,
     extract_delta,
@@ -45,9 +45,9 @@ from ab.gpt.util.Util import (
     is_nn_model_code,
 )
 from ab.gpt.util.prompt.NNGenPrompt import NNGenPrompt
-from ab.gpt.util.DeltaUtil import apply_delta, validate_delta, repair_code
+from ab.gpt.util.nn.DeltaUtil import apply_delta, validate_delta, repair_code
 from ab.gpt.util.Const import nngpt_upload, DEFAULT_DATASET, DEFAULT_NN_PREFIXES
-import ab.gpt.util.SFTUtil as SFTUtil
+import ab.gpt.util.llm.SFTUtil as SFTUtil
 from ab.gpt.brute.trans.TransformEval import run_eval
 from ab.gpt.util.prompt.TransformGenPrompt import TransformGenPrompt, load_data_from_folders
 from ab.gpt.act.agents.state import AgentState
@@ -141,7 +141,7 @@ def nn_gen(
         gen_nn_prefixes = tuple(key_config.get("nn_prefixes") or DEFAULT_NN_PREFIXES)
         if use_join:
             from ab.nn.util.db.Query import JoinConf
-            from ab.gpt.util.lemur_enrichment import patch_join_nn_query, enrich_dataframe
+            from ab.gpt.util.data.lemur_enrichment import patch_join_nn_query, enrich_dataframe
             patch_join_nn_query()
             data = lemur.data(
                 only_best_accuracy=True,
@@ -206,7 +206,7 @@ def nn_gen(
                 # Show the LLM only the LLR-relevant slice of the baseline
                 # (train_setup/learn + headers). The delta is still applied
                 # to the FULL baseline from origdf['nn_code'] below.
-                from ab.gpt.util.DeltaUtil import shrink_nn_code_for_prompt
+                from ab.gpt.util.nn.DeltaUtil import shrink_nn_code_for_prompt
                 para_dict["nn_code"] = shrink_nn_code_for_prompt(para_dict["nn_code"])
             if nn_code_max_chars and "nn_code" in para_dict and isinstance(para_dict["nn_code"], str):
                 para_dict["nn_code"] = para_dict["nn_code"][:nn_code_max_chars]
@@ -258,7 +258,7 @@ def nn_gen(
                 prompt_text, engineer_prompt=False, max_new_tokens=max_new_tokens)
 
             if use_backbone:
-                from ab.gpt.util.SFTUtil import skeleton_code
+                from ab.gpt.util.llm.SFTUtil import skeleton_code
                 from ab.gpt.util.Util import extract_str
                 import textwrap
                 block_code = extract_str(full_out, '<block>', '</block>')
@@ -711,7 +711,7 @@ def _evaluate_epoch(
         # before evaluation so near-miss candidates are not lost.
         if not trans_mode:
             try:
-                from ab.gpt.util.PostprocessNN import postprocess_directory
+                from ab.gpt.util.nn.PostprocessNN import postprocess_directory
                 postprocess_directory(models_dir)
             except Exception as exc:
                 print(f'[WARN] postprocess_nn skipped: {exc}', flush=True)
@@ -1116,7 +1116,7 @@ def tune(
         prompt_dict = json.load(prompt_file)
     assert isinstance(prompt_dict, dict)
 
-    from ab.gpt.util.LLM import LLM
+    from ab.gpt.util.llm.LLM import LLM
 
     model_loader = LLM(
         base_model_name,

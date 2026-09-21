@@ -28,15 +28,15 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from ab.rag.extract_blocks import BlockExtractor
-from ..util.Const import (
+from ..Const import (
     conf_test_dir,
     epoch_dir,
     synth_dir,
     new_out_file,
     new_nn_file,
 )
-from ..util.Code import *
-from ..util.Util import extract_code
+from .Code import *
+from ..Util import extract_code
 from ab.nn.util.Util import create_file
 
 # ────────────────────────────────────────────────────────────────

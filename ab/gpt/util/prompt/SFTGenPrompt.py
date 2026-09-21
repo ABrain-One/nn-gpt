@@ -5,7 +5,7 @@ from datasets import Dataset
 
 from ab.gpt.util.prompt.Prompt import Prompt
 import ab.nn.api as lemur
-import ab.gpt.util.SFTUtil as SFTUtil
+import ab.gpt.util.llm.SFTUtil as SFTUtil
 
 def _normalize_nn_prefixes(nn_prefixes):
     if nn_prefixes is None:

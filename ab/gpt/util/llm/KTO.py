@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Optional
 
 from ab.nn.util.Util import release_memory
-from ab.gpt.util.LoRA import find_all_linear_names, print_trainable_parameters
+from ab.gpt.util.llm.LoRA import find_all_linear_names, print_trainable_parameters
 import ab.gpt.util.training_runtime as TrainingRuntime
 from datasets import Dataset
 from peft import (
@@ -111,6 +111,79 @@ class KTOSimPenaltyTrainer(KTOTrainer):
         return super().kto_loss(
             policy_chosen_logps, policy_rejected_logps, policy_KL_logps,
             reference_chosen_logps, reference_rejected_logps, reference_KL_logps)
+
+
+class _GradedRewardCollator:
+    """Wrap the trainer's collator to preserve the per-example grade_weight column
+    (an accuracy-derived weight, aligned to the same per-example order as 'label')."""
+
+    def __init__(self, base):
+        self.base = base
+
+    def __call__(self, features):
+        batch = self.base(features)
+        if features and "grade_weight" in features[0]:
+            batch["grade_weight"] = [float(f.get("grade_weight", 1.0) or 1.0) for f in features]
+        return batch
+
+
+class KTOGradedTrainer(KTOTrainer):
+    """KTO with an accuracy-scaled reward on the desirable side.
+
+    Each desirable (chosen) example carries a precomputed grade_weight (>= 1, larger
+    for higher eval accuracy). We scale the chosen slice of the stock kto_loss output
+    by that weight, so higher-accuracy models get proportionally stronger reward
+    pressure (a larger gradient pushing the policy toward them). Undesirable weighting
+    is untouched. Scaling the loss output (not the reward) keeps the effect monotonic
+    in accuracy and needs no reimplementation of kto_loss's body (robust across TRL
+    patch versions; the chosen examples are the first n_chosen rows of the loss vector,
+    matching reference_chosen_logps).
+    """
+
+    def get_batch_loss_metrics(self, model, batch):
+        # Align grade_weight to the chosen subset, in the SAME order TRL's forward
+        # uses for chosen_idx (label[i] is True), then stash it for kto_loss.
+        self._chosen_grade_weight = None
+        gws = batch.get("grade_weight")
+        if gws is not None:
+            labels = batch.get("label", [])
+            chosen = [float(gws[i]) for i in range(len(labels)) if labels[i] is True]
+            if chosen:
+                import torch
+                self._chosen_grade_weight = torch.tensor(
+                    chosen, dtype=torch.float, device=self.accelerator.device)
+                if not getattr(self, "_grade_logged", False):
+                    self._grade_logged = True
+                    print(f"[grade] accuracy-scaled reward ACTIVE: first batch has "
+                          f"{len(chosen)} chosen, weights [{min(chosen):.2f}, {max(chosen):.2f}]",
+                          flush=True)
+        elif not getattr(self, "_grade_warned", False):
+            self._grade_warned = True
+            print("[grade][WARN] graded reward on but no 'grade_weight' column reached the "
+                  "loss (dropped in KTO data processing) — reward NOT scaled.", flush=True)
+        return super().get_batch_loss_metrics(model, batch)
+
+    def kto_loss(self, policy_chosen_logps, policy_rejected_logps, policy_KL_logps,
+                 reference_chosen_logps, reference_rejected_logps, reference_KL_logps):
+        result = super().kto_loss(
+            policy_chosen_logps, policy_rejected_logps, policy_KL_logps,
+            reference_chosen_logps, reference_rejected_logps, reference_KL_logps)
+        gw = getattr(self, "_chosen_grade_weight", None)
+        if gw is None:
+            return result
+        losses = result[0] if isinstance(result, tuple) else result
+        n_chosen = int(reference_chosen_logps.shape[0])
+        try:
+            if (hasattr(losses, "dim") and losses.dim() == 1
+                    and gw.shape[0] == n_chosen and losses.shape[0] >= n_chosen):
+                losses = losses.clone()
+                losses[:n_chosen] = losses[:n_chosen] * gw.to(losses.dtype)
+                return ((losses,) + tuple(result[1:])) if isinstance(result, tuple) else losses
+        except Exception as e:  # noqa: BLE001 — never break training on a shape hiccup
+            if not getattr(self, "_grade_err", False):
+                self._grade_err = True
+                print(f"[grade][WARN] could not apply grade weights: {e}", flush=True)
+        return result
 
 
 def kto_lora_config(target_modules, r=16, lora_alpha=16, lora_dropout=0.05,
@@ -203,6 +276,7 @@ class KTO:
         desirable_weight: float = 1.0,
         undesirable_weight: float = 1.0,
         sim_alpha: float = 0.0,
+        graded: bool = False,
         max_prompt_length: int = 2048,
         max_completion_length: int = 2048,
     ):
@@ -228,10 +302,12 @@ class KTO:
         # If the caller passed metadata fields too, strip them now so the trainer
         # doesn't choke on unexpected columns.
         required_cols = {"prompt", "completion", "label"}
-        # Keep sim_penalty when the penalty is active — the trainer reads it in the loss.
+        # Keep the extra per-example columns the active trainer reads in the loss.
         keep_cols = set(required_cols)
         if sim_alpha and sim_alpha > 0:
             keep_cols.add("sim_penalty")
+        if graded:
+            keep_cols.add("grade_weight")
         if hasattr(dataset, "column_names"):
             extra = [c for c in dataset.column_names if c not in keep_cols]
             if extra:
@@ -312,7 +388,12 @@ class KTO:
         if "ref_model" in kto_init_sig.parameters:
             kto_kwargs["ref_model"] = None
 
-        if sim_alpha and sim_alpha > 0:
+        if graded:
+            trainer = KTOGradedTrainer(**kto_kwargs)
+            trainer.data_collator = _GradedRewardCollator(trainer.data_collator)
+            print("[KTO] accuracy-scaled reward enabled: per-example desirable weight "
+                  "from grade_weight (higher accuracy → stronger reward)")
+        elif sim_alpha and sim_alpha > 0:
             trainer = KTOSimPenaltyTrainer(**kto_kwargs)
             trainer.sim_alpha = float(sim_alpha)
             trainer.data_collator = _SimPenaltyCollator(trainer.data_collator)

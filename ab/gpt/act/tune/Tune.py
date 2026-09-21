@@ -174,7 +174,7 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
         print("--- Initiating Iterative Fine-Tuning Pipeline ---")
         try:
             if mobile_deployment:
-                from ab.gpt.act.mobile.iterative_finetune import MobileDeploymentFinetuner as IterativeFinetuner
+                from ab.gpt.act.edge.iterative_finetune import MobileDeploymentFinetuner as IterativeFinetuner
             else:
                 from ab.gpt.act.iterative.finetune import IterativeFinetuner
         except ImportError as e:
@@ -260,15 +260,15 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
 
     if onnx_run:
         try:
-            from ab.gpt.util.Tune_Onnx import tune, ds_conf
+            from ab.gpt.util.tune.Tune_Onnx import tune, ds_conf
         except ImportError as e:
-            print(f"[ERROR] ONNX mode requires ab.gpt.util.Tune_Onnx: {e}")
+            print(f"[ERROR] ONNX mode requires ab.gpt.util.tune.Tune_Onnx: {e}")
             sys.exit(1)
     else:
         try:
-            from ab.gpt.util.Tune import tune, ds_conf
+            from ab.gpt.util.tune.Tune import tune, ds_conf
         except ImportError as e:
-            print(f"[ERROR] Failed to import ab.gpt.util.Tune: {e}")
+            print(f"[ERROR] Failed to import ab.gpt.util.tune.Tune: {e}")
             sys.exit(1)
 
     print(f'''All hyperparameters:
@@ -436,7 +436,7 @@ use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={c
         if enable_merge:
             print("\n[MERGE] Training complete - running auto merge...\n")
             try:
-                from ab.gpt.util.MergeLLM import rebuild_from_lineage
+                from ab.gpt.util.llm.MergeLLM import rebuild_from_lineage
                 rebuild_from_lineage()
                 print("[MERGE] Completed successfully.\n")
             except ImportError as e:
@@ -454,7 +454,7 @@ use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={c
         if enable_merge:
             print("\n[MERGE] Running emergency merge (interrupted)...\n")
             try:
-                from ab.gpt.util.MergeLLM import rebuild_from_lineage
+                from ab.gpt.util.llm.MergeLLM import rebuild_from_lineage
                 rebuild_from_lineage()
                 print("[MERGE] Emergency merge completed.\n")
             except ImportError as e:

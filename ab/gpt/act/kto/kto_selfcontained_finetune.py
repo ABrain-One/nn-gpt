@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from ab.gpt.act.kto.kto_generator import build_prompt_messages
 from ab.gpt.act.iterative.novelty_checker import NoveltyChecker
 from ab.gpt.util.Const import conf_llm_dir, nngpt_dir
-from ab.gpt.util.CycleResults import save_cycle_results
+from ab.gpt.util.data.CycleResults import save_cycle_results
 
 logger = logging.getLogger("kto_selfcontained")
 
@@ -98,6 +98,34 @@ class SelfContainedKTOPipeline:
         sim_shape: str = "exponential",
         sim_db_task: str = "img-classification",
         sim_db_dataset: str = "cifar-10",
+        # Check novelty via similarity vs LEMUR DB + ALL prior generations (Jaccard),
+        # instead of the structural-hash-vs-accepted-gens default. On its own, non-novel
+        # models are DISCARDED (like the baseline); with nonnovel_undesirable they
+        # become hard negatives instead. No reward change either way.
+        novelty_db: bool = False,
+        # Bucket near-duplicates (vs DB + prior gens) as undesirable (implies novelty_db).
+        nonnovel_undesirable: bool = False,
+        # Train on every undesirable example (skip the undesirable_ratio cap; still
+        # capped by max_undesirable_total) — pair with class_weight_mode=auto to
+        # rebalance an imbalanced desirable:undesirable split by weight, not subsampling.
+        use_all_undesirable: bool = False,
+        # Accuracy-scaled reward: weight each desirable example's KTO loss by a factor
+        # that grows continuously with its eval accuracy above the threshold (higher
+        # accuracy → stronger reward). No effect on undesirable examples.
+        graded_reward: bool = False,
+        graded_scale: float = 2.0,
+        graded_shape: str = "linear",
+        # Graph-canonicalization novelty gate (opt-in). When on, an architecture is
+        # novel only if Jaccard-novel AND its canonical graph (torch.fx make_fx aten
+        # trace + Weisfeiler-Lehman hash) was not generated in an earlier cycle. Default
+        # off → the Jaccard-only novelty path is byte-identical, so existing runs and
+        # resumes are unaffected.
+        graph_gate: bool = False,
+        graph_gate_granularity: str = "topology",
+        graph_gate_sizes: str = "32,64,96,224,256",
+        graph_gate_wl_rounds: int = 3,
+        graph_gate_num_classes: int = 10,
+        graph_gate_in_channels: int = 3,
         # KTO hyperparameters
         kto_beta: float = 0.1,
         kto_desirable_weight: float = 1.0,
@@ -129,6 +157,11 @@ class SelfContainedKTOPipeline:
         eval_batch: int = 10,
         eval_dropout: float = 0.2,
         eval_train_epochs: int = 1,
+        # Multi-GPU evaluation (opt-in). When on, evaluation is distributed across
+        # ALL visible GPUs via NNEval's worker pool, and generation/training are pinned
+        # to a single GPU so they stay identical to a 1-GPU run. Default off → eval is
+        # sequential on one GPU and nothing about existing runs changes.
+        eval_multi_gpu: bool = False,
         params_limit: int = 500_000,
         save_to_db: bool = False,
         # plumbing
@@ -165,6 +198,15 @@ class SelfContainedKTOPipeline:
         self.sim_shape = sim_shape
         self.sim_db_task = sim_db_task
         self.sim_db_dataset = sim_db_dataset
+        self.novelty_db = novelty_db
+        self.nonnovel_undesirable = nonnovel_undesirable
+        # nonnovel_undesirable implies DB-similarity novelty; both go through the
+        # SimilarityIndex pre-filter (skip eval of near-duplicates).
+        self.use_db_novelty = novelty_db or nonnovel_undesirable
+        self.use_all_undesirable = use_all_undesirable
+        self.graded_reward = graded_reward
+        self.graded_scale = graded_scale
+        self.graded_shape = graded_shape
 
         self.kto_beta = kto_beta
         self.kto_desirable_weight = kto_desirable_weight
@@ -194,6 +236,7 @@ class SelfContainedKTOPipeline:
         self.eval_batch = eval_batch
         self.eval_dropout = eval_dropout
         self.eval_train_epochs = eval_train_epochs
+        self.eval_multi_gpu = bool(eval_multi_gpu)
         self.params_limit = params_limit
         self.save_to_db = save_to_db
 
@@ -211,21 +254,46 @@ class SelfContainedKTOPipeline:
         self.desirable: List[Dict[str, Any]] = _read_jsonl(self.desirable_cache_file)
         self.undesirable: List[Dict[str, Any]] = _read_jsonl(self.undesirable_cache_file)
 
+        # Graph-canonicalization novelty gate state (off by default; the seen-hash
+        # file is loaded only when enabled so non-gate runs create no extra files).
+        self.graph_gate = bool(graph_gate)
+        self.graph_gate_granularity = graph_gate_granularity
+        self.graph_gate_sizes = [int(s) for s in str(graph_gate_sizes).split(",") if s.strip()]
+        self.graph_gate_wl_rounds = int(graph_gate_wl_rounds)
+        self.graph_gate_num_classes = int(graph_gate_num_classes)
+        self.graph_gate_in_channels = int(graph_gate_in_channels)
+        self._graph_seen_records: List[Dict[str, Any]] = []
+        if self.graph_gate:
+            self._graph_seen_file = self.output_dir / "graph_gate_seen.jsonl"
+            self._graph_seen_records = _read_jsonl(self._graph_seen_file)
+
         # Novelty checker — starts EMPTY (no dataset); grows as we accept models.
         self.novelty_checker = NoveltyChecker(self.output_dir / "seen_models.json")
 
-        # Similarity-penalty index (#3): LEMUR DB code + our own prior generations.
-        # Built once; new generations are added as they're accepted (cumulative).
+        # Similarity index: LEMUR DB code + our own prior generations. Shared by two
+        # (mutually exclusive) modes — the reward penalty (sim_penalty) scores against
+        # accepted generations only; the novelty-as-hard-negative mode
+        # (nonnovel_undesirable) scores against ALL prior generations (desirable +
+        # undesirable) so near-duplicates get bucketed as undesirable, no reward change.
         self.sim_index = None
-        if self.sim_penalty:
+        if self.sim_penalty or self.use_db_novelty:
             from ab.gpt.act.kto.similarity_penalty import SimilarityIndex
             self.sim_index = SimilarityIndex(threshold=self.sim_threshold)
             n_db = self.sim_index.add_db(self.sim_db_task, self.sim_db_dataset)
-            n_prev = self.sim_index.add_codes(
-                [_unfenced(r.get("completion", "")) for r in self.desirable])
+            prior = [_unfenced(r.get("completion", "")) for r in self.desirable]
+            if self.use_db_novelty:
+                # DB-novelty compares against ALL prior generations, so seed from the
+                # undesirable cache too (reward-penalty mode scores vs accepted only).
+                prior += [_unfenced(r.get("completion", "")) for r in self.undesirable]
+            n_prev = self.sim_index.add_codes(prior)
+            if self.sim_penalty:
+                mode = f"reward-penalty alpha={self.sim_alpha} shape={self.sim_shape}"
+            elif self.nonnovel_undesirable:
+                mode = "db-novelty; non-novel -> undesirable"
+            else:
+                mode = "db-novelty; non-novel -> discarded"
             logger.info(f"[sim] index built: {n_db} DB models + {n_prev} prior generations "
-                        f"(alpha={self.sim_alpha}, threshold={self.sim_threshold}, "
-                        f"shape={self.sim_shape})")
+                        f"(mode={mode}, threshold={self.sim_threshold})")
 
         self._setup_logging()
         self.cycle_results: List[Dict[str, Any]] = []
@@ -315,6 +383,20 @@ class SelfContainedKTOPipeline:
         if self.threshold_mode == "linear":
             return min(floor + self.threshold_slope * max(0, cycle - 1), self.threshold_ceil)
         return floor
+
+    def _grade_weight(self, accuracy: Optional[float]) -> float:
+        """Accuracy-scaled desirable weight in [1, 1+graded_scale]. 1.0 at the
+        threshold, rising continuously with accuracy (linear ramp, or exponential
+        to emphasise near-ceiling models). 1.0 when graded_reward is off."""
+        if not self.graded_reward:
+            return 1.0
+        thr = self.accuracy_threshold
+        t = (float(accuracy or 0.0) - thr) / max(1e-6, 1.0 - thr)
+        t = max(0.0, min(1.0, t))
+        if self.graded_shape == "exponential":
+            gamma = 4.0
+            t = (math.exp(gamma * t) - 1.0) / (math.exp(gamma) - 1.0)
+        return 1.0 + self.graded_scale * t
 
     def _class_weights(self, ds_stats: Dict[str, Any]) -> Tuple[float, float]:
         """KTO imbalance rule: balance desirable_weight*n_D vs undesirable_weight*n_U."""
@@ -426,8 +508,10 @@ class SelfContainedKTOPipeline:
                 transform=self.eval_transform,
                 custom_synth_dir=str(nneval_dir),
                 cycle=cycle,
-                use_sequential=True,
-                use_all_visible_gpus=False,
+                # Multi-GPU: distribute eval across all visible GPUs via NNEval's
+                # worker pool (dynamic, one worker per GPU). Off → old single-GPU path.
+                use_sequential=not self.eval_multi_gpu,
+                use_all_visible_gpus=self.eval_multi_gpu,
             )
         except Exception as e:  # noqa: BLE001
             logger.error(f"[cycle {cycle}] NNEval raised: {type(e).__name__}: {e}")
@@ -456,7 +540,78 @@ class SelfContainedKTOPipeline:
         Disabled by eval_skip=False (e.g. benchmark runs that must evaluate ALL),
         and always disabled under the similarity penalty (non-novel passers must be
         evaluated so they can enter training as desirable).
+
+        Under DB-similarity novelty (novelty_db / nonnovel_undesirable) the same
+        pre-filter runs off the SimilarityIndex (Jaccard vs LEMUR DB + all prior
+        generations): near-duplicates skip eval either way. They are then DISCARDED
+        (novelty_db) or turned into hard negatives (nonnovel_undesirable) in bucketing.
+        Every extractable generation joins the reference set so later cycles see it.
         """
+        if self.use_db_novelty and self.sim_index is not None:
+            gate = self.graph_gate
+            if gate:
+                # Structural gate: also flag graph-isomorphic duplicates Jaccard misses
+                # (make_fx aten trace + WL hash vs earlier cycles). Fail-open on
+                # untraceable archs. Seen hashes persist per-cycle; drop >= this cycle
+                # so a mid-run resume never re-traces history nor sees future structures.
+                from ab.gpt.act.kto.graph_novelty_audit import graph_hash_for_file
+                self._graph_seen_records = [r for r in self._graph_seen_records
+                                            if int(r.get("cycle", -1)) < cycle]
+                seen = {r["h"] for r in self._graph_seen_records}
+
+                def _remember(path: Path) -> bool:
+                    h, _ = graph_hash_for_file(
+                        path, self.graph_gate_sizes, self.graph_gate_in_channels,
+                        self.graph_gate_num_classes, "aten",
+                        self.graph_gate_granularity, self.graph_gate_wl_rounds)
+                    if h is None:
+                        return False
+                    was = h in seen
+                    if not was:
+                        seen.add(h)
+                        self._graph_seen_records.append({"cycle": cycle, "h": h})
+                    return was
+
+            n = n_graph_only = 0
+            for rec in generation_records:
+                if not rec.get("ok"):
+                    continue
+                model_dir = nneval_dir / rec.get("model_id", "")
+                nn_file = model_dir / "new_nn.py"
+                aside = model_dir / "new_nn.notnovel.py"
+                if aside.exists() and not nn_file.exists():
+                    rec["not_novel"] = True  # already filtered on a prior run
+                    if gate:
+                        _remember(aside)  # re-register its graph for later cycles
+                    n += 1
+                    continue
+                if not nn_file.exists():
+                    continue
+                try:
+                    code = nn_file.read_text(encoding="utf-8", errors="replace")
+                except Exception:  # noqa: BLE001
+                    continue
+                is_dup = self.sim_index.nearest_jaccard(code) >= self.sim_threshold
+                self.sim_index.add(code)  # every generation joins the reference set
+                if gate:
+                    graph_dup = _remember(nn_file)  # True iff this graph was seen earlier
+                    if graph_dup and not is_dup:
+                        n_graph_only += 1
+                    is_dup = is_dup or graph_dup
+                if is_dup:
+                    rec["not_novel"] = True
+                    try:
+                        nn_file.rename(aside)
+                    except Exception:  # noqa: BLE001
+                        pass
+                    n += 1
+            if gate:
+                _write_jsonl(self._graph_seen_records, self._graph_seen_file)
+            if n:
+                extra = f" ({n_graph_only} by graph beyond Jaccard)" if gate else ""
+                logger.info(f"[cycle {cycle}] similarity pre-filter: {n} near-duplicate(s)"
+                            f"{extra} → undesirable, eval skipped")
+            return n
         if not self.novelty_check or not self.eval_skip or self.sim_index is not None:
             return 0
         n = 0
@@ -522,7 +677,9 @@ class SelfContainedKTOPipeline:
 
         def add_desirable(code: str, model_id: str, accuracy: float) -> None:
             pen = 0.0
-            if self.sim_index is not None:
+            # Reward-penalty mode only: score + index here. In nonnovel_undesirable
+            # mode the bucketing gate already indexed every generation.
+            if self.sim_penalty and self.sim_index is not None:
                 pen = self.sim_index.penalty_for(code, self.sim_shape)  # vs DB + prior gens
                 self.sim_index.add(code)                                # becomes a "prior" too
                 cycle_penalties.append(pen)
@@ -562,9 +719,16 @@ class SelfContainedKTOPipeline:
             model_id = rec.get("model_id")
             model_dir = nneval_dir / model_id
 
-            # Duplicate of an already-accepted design — pre-filtered before eval.
+            # Pre-filtered as a duplicate before eval (no GPU spent). In
+            # nonnovel_undesirable mode it becomes a hard negative from its moved-aside
+            # code; otherwise it's dropped (legacy self-contained dedup).
             if rec.get("not_novel"):
                 n_not_novel += 1
+                if self.nonnovel_undesirable:
+                    aside = model_dir / "new_nn.notnovel.py"
+                    if aside.exists():
+                        code = aside.read_text(encoding="utf-8", errors="replace")
+                        add_undesirable(_fenced(code), model_id, "non_novel", None)
                 continue
 
             # ── unparseable generation: salvage raw text as a hard negative ──
@@ -619,11 +783,19 @@ class SelfContainedKTOPipeline:
                 n_und_lowacc += 1
                 continue
 
-            # passed the accuracy bar. Without the similarity penalty, exact
-            # duplicates of already-accepted designs are skipped (legacy dedup).
-            # WITH the similarity penalty (sim_index set), non-novel passers are
-            # NOT skipped — they enter as desirable carrying a penalty; novelty
-            # stays a reported metric only.
+            # passed the accuracy bar.
+            if self.use_db_novelty:
+                # Novelty already decided by the similarity pre-filter (near-duplicates
+                # skipped eval, then discarded or bucketed undesirable); anything
+                # evaluated and passing here is novel → desirable.
+                n_desirable += 1
+                add_desirable(code, model_id, accuracy)
+                continue
+            # Legacy / reward-penalty modes: structural novelty decides desirability.
+            # Without the similarity penalty, exact duplicates of already-accepted
+            # designs are skipped (legacy dedup). WITH the penalty (sim_index set),
+            # non-novel passers enter as desirable carrying a penalty; novelty stays
+            # a reported metric only.
             is_novel = self.novelty_checker.is_novel(code, model_id) if self.novelty_check else True
             if is_novel:
                 n_desirable += 1
@@ -641,6 +813,10 @@ class SelfContainedKTOPipeline:
 
         n_und_total = (n_und_compile + n_und_runtime + n_und_lowacc
                        + n_und_unparseable)
+        # In nonnovel_undesirable mode the non-novel generations were bucketed as
+        # hard negatives, so count them in the undesirable totals.
+        if self.nonnovel_undesirable:
+            n_und_total += n_not_novel
         best_acc = max(accuracies) if accuracies else 0.0
         # Card-style avg: mean over models that cleared the threshold. Keep the
         # all-valid mean as a secondary field.
@@ -656,6 +832,7 @@ class SelfContainedKTOPipeline:
                 "runtime_error": n_und_runtime,
                 "low_accuracy": n_und_lowacc,
                 "unparseable": n_und_unparseable,
+                "non_novel": n_not_novel if self.nonnovel_undesirable else 0,
             },
             "not_novel_skipped": n_not_novel,
             "sim_penalty_mean": (sum(cycle_penalties) / len(cycle_penalties)) if cycle_penalties else 0.0,
@@ -677,7 +854,10 @@ class SelfContainedKTOPipeline:
         logger.info(f"      runtime error        : {n_und_runtime}")
         logger.info(f"      low accuracy         : {n_und_lowacc}")
         logger.info(f"      unparseable          : {n_und_unparseable}")
-        logger.info(f"  ~ not novel (skipped)    : {n_not_novel}")
+        if self.nonnovel_undesirable:
+            logger.info(f"      non-novel (dup)      : {n_not_novel}")
+        else:
+            logger.info(f"  ~ not novel (skipped)    : {n_not_novel}")
         logger.info(f"  skipped (no signal)      : {n_skipped}")
         logger.info(f"  best / avg(>=thr) / avg(all): {best_acc*100:.2f}% / "
                     f"{avg_acc*100:.2f}% / {avg_acc_all*100:.2f}%")
@@ -698,9 +878,14 @@ class SelfContainedKTOPipeline:
         Ua = len(undesirables)
 
         # Cap undesirables to keep KTO balanced; keep the most-recent (sharper)
-        # negatives.  Also respect the absolute total cap.
-        max_u = math.floor(D * self.undesirable_ratio) if D > 0 else Ua
-        max_u = min(max_u, self.max_undesirable_total)
+        # negatives.  Also respect the absolute total cap. use_all_undesirable skips
+        # the desirable-relative ratio cap (rebalance by class weight instead), but
+        # still respects max_undesirable_total as a memory/speed ceiling.
+        if self.use_all_undesirable:
+            max_u = min(Ua, self.max_undesirable_total)
+        else:
+            max_u = math.floor(D * self.undesirable_ratio) if D > 0 else Ua
+            max_u = min(max_u, self.max_undesirable_total)
         if Ua > max_u and max_u >= 0:
             selected_u = undesirables[-max_u:] if max_u > 0 else []
         else:
@@ -709,11 +894,13 @@ class SelfContainedKTOPipeline:
         combined = [
             {"prompt_messages": r["prompt_messages"], "completion": r["completion"],
              "label": True, "sim_penalty": float(r.get("sim_penalty", 0.0)),
+             "grade_weight": self._grade_weight(r.get("_meta", {}).get("accuracy")),
              "_meta": r.get("_meta", {})}
             for r in desirables
         ] + [
             {"prompt_messages": r["prompt_messages"], "completion": r["completion"],
-             "label": False, "sim_penalty": 0.0, "_meta": r.get("_meta", {})}
+             "label": False, "sim_penalty": 0.0, "grade_weight": 1.0,
+             "_meta": r.get("_meta", {})}
             for r in selected_u
         ]
         _write_jsonl(combined, kto_file)
@@ -780,6 +967,8 @@ class SelfContainedKTOPipeline:
         ]
         if self.sim_penalty:
             cmd.extend(["--sim_alpha", str(self.sim_alpha)])
+        if self.graded_reward:
+            cmd.append("--graded_reward")
         if prev_adapter is not None:
             logger.info(f"[cycle {cycle}] warm-starting from previous adapter: {prev_adapter}")
             cmd.extend(["--peft", str(prev_adapter)])
@@ -882,6 +1071,13 @@ class SelfContainedKTOPipeline:
         # and exits before training starts.  Harmless for the generator subprocess.
         env = os.environ.copy()
         env["MKL_THREADING_LAYER"] = "GNU"
+        # Multi-GPU eval keeps generation/training single-GPU: pin these subprocesses
+        # to the first VISIBLE GPU (whatever index the scheduler allocated, not a
+        # hardcoded 0) so device_map="auto" can't shard the 7B model across both — only
+        # NNEval's in-process eval pool uses every visible GPU.
+        if self.eval_multi_gpu:
+            env["CUDA_VISIBLE_DEVICES"] = (
+                env.get("CUDA_VISIBLE_DEVICES", "") or "0").split(",")[0]
         last_exc: Optional[Exception] = None
         for attempt in range(1, self.max_retries + 1):
             result = subprocess.run(cmd, capture_output=False, text=True, check=False, env=env)
@@ -941,6 +1137,30 @@ def main() -> None:
     parser.add_argument("--sim_db_task", type=str, default="img-classification")
     parser.add_argument("--sim_db_dataset", type=str, default="cifar-10")
 
+    # DB-similarity novelty (vs the structural-hash-vs-accepted default): check
+    # novelty by Jaccard >= --sim_threshold vs LEMUR DB + ALL prior generations.
+    parser.add_argument("--novelty_db", action="store_true", default=False,
+                        help="Decide novelty by similarity to the LEMUR DB + all prior "
+                             "generations; non-novel are DISCARDED (eval skipped). No reward change.")
+    # ...and, instead of discarding, bucket near-duplicates as UNDESIRABLE (implies --novelty_db).
+    parser.add_argument("--nonnovel_undesirable", action="store_true", default=False,
+                        help="Like --novelty_db but bucket near-duplicates as UNDESIRABLE (hard "
+                             "negatives) alongside non-compiling/low-accuracy, instead of discarding.")
+    # imbalance handling: use every undesirable (skip the 1:1-style ratio cap) and
+    # rebalance by class weight — pair with --class_weight_mode auto.
+    parser.add_argument("--use_all_undesirable", action="store_true", default=False,
+                        help="Train on all undesirable examples (skip the --undesirable_ratio cap; "
+                             "still capped by --max_undesirable_total). Use with --class_weight_mode auto.")
+    # accuracy-scaled reward: weight desirable examples by eval accuracy (>= threshold).
+    parser.add_argument("--graded_reward", action="store_true", default=False,
+                        help="Scale each desirable example's KTO loss by an accuracy-derived weight "
+                             "(higher accuracy → stronger reward); continuous, not hardcoded thresholds.")
+    parser.add_argument("--graded_scale", type=float, default=2.0,
+                        help="Max extra desirable weight at accuracy=1.0 (weight in [1, 1+scale]).")
+    parser.add_argument("--graded_shape", type=str, default="linear",
+                        choices=["linear", "exponential"],
+                        help="How the weight ramps with accuracy above threshold.")
+
     parser.add_argument("--kto_beta", type=float, default=0.1)
     parser.add_argument("--kto_desirable_weight", type=float, default=1.0)
     parser.add_argument("--kto_undesirable_weight", type=float, default=1.0)
@@ -969,8 +1189,21 @@ def main() -> None:
                         help="Card/ab.nn protocol = 10")
     parser.add_argument("--eval_dropout", type=float, default=0.2)
     parser.add_argument("--eval_train_epochs", type=int, default=1)
+    parser.add_argument("--eval_multi_gpu", action="store_true",
+                        help="Distribute evaluation across all visible GPUs (NNEval worker "
+                             "pool); pins generation/training to one GPU. Needs >1 GPU allocated.")
     parser.add_argument("--params_limit", type=int, default=500_000)
     parser.add_argument("--save_to_db", action="store_true", default=False)
+
+    # Graph-canonicalization novelty gate (opt-in; default off = Jaccard-only).
+    parser.add_argument("--graph_gate", action="store_true",
+                        help="Also flag graph-isomorphic duplicates as non-novel "
+                             "(make_fx aten trace + Weisfeiler-Lehman hash vs prior cycles)")
+    parser.add_argument("--graph_gate_granularity", choices=["topology", "typed"], default="topology")
+    parser.add_argument("--graph_gate_sizes", type=str, default="32,64,96,224,256")
+    parser.add_argument("--graph_gate_wl_rounds", type=int, default=3)
+    parser.add_argument("--graph_gate_num_classes", type=int, default=10)
+    parser.add_argument("--graph_gate_in_channels", type=int, default=3)
 
     parser.add_argument("--output_subdir", type=str, default="kto_selfcontained")
     parser.add_argument("--resume_from_cycle", type=int, default=None)
@@ -1001,6 +1234,18 @@ def main() -> None:
         sim_shape=args.sim_shape,
         sim_db_task=args.sim_db_task,
         sim_db_dataset=args.sim_db_dataset,
+        novelty_db=args.novelty_db,
+        nonnovel_undesirable=args.nonnovel_undesirable,
+        use_all_undesirable=args.use_all_undesirable,
+        graded_reward=args.graded_reward,
+        graded_scale=args.graded_scale,
+        graded_shape=args.graded_shape,
+        graph_gate=args.graph_gate,
+        graph_gate_granularity=args.graph_gate_granularity,
+        graph_gate_sizes=args.graph_gate_sizes,
+        graph_gate_wl_rounds=args.graph_gate_wl_rounds,
+        graph_gate_num_classes=args.graph_gate_num_classes,
+        graph_gate_in_channels=args.graph_gate_in_channels,
         kto_beta=args.kto_beta,
         kto_desirable_weight=args.kto_desirable_weight,
         kto_undesirable_weight=args.kto_undesirable_weight,
@@ -1022,6 +1267,7 @@ def main() -> None:
         eval_batch=args.eval_batch,
         eval_dropout=args.eval_dropout,
         eval_train_epochs=args.eval_train_epochs,
+        eval_multi_gpu=args.eval_multi_gpu,
         params_limit=args.params_limit,
         save_to_db=args.save_to_db,
         output_subdir=args.output_subdir,

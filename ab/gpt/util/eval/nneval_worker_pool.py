@@ -362,8 +362,8 @@ def _extract_accuracy(eval_results: Any) -> Tuple[Optional[str], Optional[float]
 
 
 def _execute_nneval_task(payload: Dict[str, Any]) -> Dict[str, Any]:
-    from ab.gpt.util.Eval import Eval
-    from ab.gpt.util.eval_checkpoint import eval_checkpoint_path
+    from ab.gpt.util.eval.Eval import Eval
+    from ab.gpt.util.eval.eval_checkpoint import eval_checkpoint_path
 
     model_dir = str(payload["model_dir"])
     code_file = str(payload["code_file"])
@@ -438,7 +438,7 @@ class _PersistentNNEvalWorkerSession:
             sys.executable,
             "-u",
             "-m",
-            "ab.gpt.util.nneval_worker_bootstrap",
+            "ab.gpt.util.eval.nneval_worker_bootstrap",
             "--conn-fd",
             str(child_fd),
             "--assigned-gpu",

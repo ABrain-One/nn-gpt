@@ -11,7 +11,7 @@ from tqdm import tqdm
 from transformers import PreTrainedTokenizerBase
 
 from ab.gpt.util.prompt.Prompt import Prompt
-from ab.gpt.util.lemur_enrichment import patch_join_nn_query, enrich_dataframe
+from ab.gpt.util.data.lemur_enrichment import patch_join_nn_query, enrich_dataframe
 from ab.gpt.util.Util import evaluate_delimited_formulas
 from ab.gpt.util.Const import DEFAULT_DATASET, DEFAULT_NN_PREFIXES
 
@@ -262,7 +262,7 @@ class NNGenPrompt(Prompt):
         # Compute delta if delta mode is enabled
         if use_delta and 'addon_nn_code' in para and 'nn_code' in para:
             try:
-                from ab.gpt.util.DeltaUtil import compute_delta
+                from ab.gpt.util.nn.DeltaUtil import compute_delta
                 baseline_code = full_nn_code if isinstance(full_nn_code, str) else para.get('nn_code', '')
                 improved_code = full_addon_nn_code if isinstance(full_addon_nn_code, str) else para.get('addon_nn_code', '')
 
@@ -404,7 +404,7 @@ class NNGenPrompt(Prompt):
             full_addon_nn_code = para_dict.get('addon_nn_code')
 
             if key_dict.get('shrink_nn_code') and isinstance(para_dict.get('nn_code'), str):
-                from ab.gpt.util.DeltaUtil import shrink_nn_code_for_prompt
+                from ab.gpt.util.nn.DeltaUtil import shrink_nn_code_for_prompt
                 para_dict['nn_code'] = shrink_nn_code_for_prompt(para_dict['nn_code'])
 
             nn_code_max_chars = key_dict.get('nn_code_max_chars')

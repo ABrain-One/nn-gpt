@@ -70,7 +70,7 @@ def rebuild_model():
 
     try:
         subprocess.run(
-            ["python", "-m", "ab.gpt.util.MergeLLM"],
+            ["python", "-m", "ab.gpt.util.llm.MergeLLM"],
             check=True
         )
         print("Rebuild complete\n")

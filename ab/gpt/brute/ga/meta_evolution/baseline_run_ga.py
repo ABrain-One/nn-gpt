@@ -38,8 +38,8 @@ def suppress_output():
 import torch
 from ab.gpt.brute.ga.meta_evolution.genetic_algorithm_baseline import GeneticAlgorithm
 from ab.gpt.brute.ga.meta_evolution.FractalNet_evolvable_backbone import SEARCH_SPACE, generate_model_code_string
-from ab.gpt.util.Eval import Eval
-from ab.gpt.util.acc_client import predict_best_accuracy
+from ab.gpt.util.eval.Eval import Eval
+from ab.gpt.util.eval.acc_client import predict_best_accuracy
 import ab.nn.api as nn_dataset
 import pandas as pd
 # MONKEYPATCH: Bypass the massive remote database download inside Eval.py

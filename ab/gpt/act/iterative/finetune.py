@@ -1195,7 +1195,7 @@ class IterativeFinetuner:
                 "accuracies": [],
             }
 
-        from ab.gpt.util.PostprocessNN import postprocess_directory
+        from ab.gpt.util.nn.PostprocessNN import postprocess_directory
         logger.info("Postprocessing generated models (in_shape, class name, learn, hyperparams)...")
         postprocess_directory(accepted_code_dir)
 

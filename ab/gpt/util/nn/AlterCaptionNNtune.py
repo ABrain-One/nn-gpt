@@ -21,7 +21,7 @@ from ab.gpt.util.Const import (
     new_nn_file,
     new_out_file,
 )
-from ab.gpt.util.LLM import LLM
+from ab.gpt.util.llm.LLM import LLM
 from ab.gpt.util.Util import extract_code
 
 # ============================================================

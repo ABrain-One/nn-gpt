@@ -11,7 +11,7 @@ from ab.gpt.util.prompt.Prompt import Prompt
 from tqdm import tqdm
 
 from ab.nn.api import JoinConf
-from ab.gpt.util.EditUtil import apply_source_edit_policy, build_source_edit_hint, infer_edit_spec, prune_edit_spec, prune_source_edit_hint, rank_source_edit_candidate, summarize_cifar_target
+from ab.gpt.util.nn.EditUtil import apply_source_edit_policy, build_source_edit_hint, infer_edit_spec, prune_edit_spec, prune_source_edit_hint, rank_source_edit_candidate, summarize_cifar_target
 from ab.gpt.act.analog.UtilAnalog import is_cifar_unsafe_seed, is_small_rgb32_dataset
 
 
@@ -330,7 +330,7 @@ class NNGenPrompt(Prompt):
                 # Compute delta if delta mode is enabled
                 elif use_delta and 'addon_nn_code' in para_dict and 'nn_code' in para_dict:
                     try:
-                        from ab.gpt.util.DeltaUtil import compute_delta
+                        from ab.gpt.util.nn.DeltaUtil import compute_delta
                         baseline_code = para_dict.get('nn_code', '')
                         improved_code = para_dict.get('addon_nn_code', '')
 

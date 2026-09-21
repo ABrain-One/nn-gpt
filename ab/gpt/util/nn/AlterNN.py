@@ -8,7 +8,7 @@ from ab.nn.util.Util import create_file
 from tqdm import tqdm
 
 from ab.gpt.util.Const import conf_test_dir, epoch_dir, new_nn_file, synth_dir, new_out_file
-from ab.gpt.util.LLM import LLM
+from ab.gpt.util.llm.LLM import LLM
 from ab.gpt.util.Util import extract_code, extract_delta
 
 
@@ -370,7 +370,7 @@ def alter_delta(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.
 
             if delta and origdf is not None:
                 try:
-                    from ab.gpt.util.DeltaUtil import apply_delta, validate_delta
+                    from ab.gpt.util.nn.DeltaUtil import apply_delta, validate_delta
                     baseline_code = origdf.get('nn_code', '')
 
                     if baseline_code:

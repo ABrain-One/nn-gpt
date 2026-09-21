@@ -4,7 +4,7 @@ import os
 import re
 
 from transformers import PreTrainedTokenizer, PreTrainedModel, pipeline
-from ab.gpt.util.GenerationDType import align_generation_head_dtype, infer_generation_head_dtype
+from ab.gpt.util.llm.GenerationDType import align_generation_head_dtype, infer_generation_head_dtype
 from ab.gpt.util.Util import extract_code, extract_hyperparam, extract_transform, extract_all_to_train
 from ab.gpt.util.prompt.Prompt import DEFAULT_CHAT_TEMPLATE
 import torch

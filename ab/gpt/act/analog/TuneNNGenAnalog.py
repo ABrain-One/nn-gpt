@@ -163,7 +163,7 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
     from transformers import TrainingArguments
 
     if onnx_run:
-        from ab.gpt.util.Tune_Onnx import tune, ds_conf
+        from ab.gpt.util.tune.Tune_Onnx import tune, ds_conf
     else:
         from ab.gpt.act.analog.TuneAnalog import tune, ds_conf
 
@@ -305,7 +305,7 @@ unsloth_opt={unsloth_opt},  trans_mode={trans_mode},  prompt_batch={prompt_batch
     # --- Optional post-training merge step ---
     if enable_merge:
         print("\n[MERGE] Running auto-merge decision module...\n")
-        from ab.gpt.util.Mergedecision import main as merge
+        from ab.gpt.util.llm.Mergedecision import main as merge
 
         try:
             merge()

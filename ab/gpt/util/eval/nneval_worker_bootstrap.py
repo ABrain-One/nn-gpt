@@ -39,7 +39,7 @@ def nneval_worker_main(conn, assigned_gpu=None, assigned_cuda_visible_device=Non
         )
         os.environ["CUDA_VISIBLE_DEVICES"] = visible_device
         os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
-    from ab.gpt.util import nneval_worker_pool as NNEvalWorkerPool
+    from ab.gpt.util.eval import nneval_worker_pool as NNEvalWorkerPool
 
     NNEvalWorkerPool._persistent_nneval_worker_entry(conn, assigned_gpu, assigned_cuda_visible_device)
 

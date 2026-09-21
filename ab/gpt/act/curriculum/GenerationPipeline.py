@@ -680,7 +680,7 @@ def write_entry_script(dataset: str, level: str, k: int,
         '"""',
         'from trl import SFTConfig',
         'from peft import LoraConfig',
-        'import ab.gpt.util.Tune_Curriculum as Tune_Curriculum',
+        'import ab.gpt.util.tune.Tune_Curriculum as Tune_Curriculum',
         'from ab.gpt.util.Const import nngpt_dir',
         '',
         f'LLM_TUNE_CONF   = "{train_name}"',
@@ -803,7 +803,7 @@ def select_best_epoch(tracker_path: Path) -> Optional[tuple[int, float]]:
 def run_merge(dry_run: bool = False) -> bool:
     """Run MergeLLM to merge the best adapter into the cumulative model."""
     if dry_run:
-        log("[DRY RUN] Would run: python -m ab.gpt.util.MergeLLM")
+        log("[DRY RUN] Would run: python -m ab.gpt.util.llm.MergeLLM")
         return True
 
     log("Running MergeLLM to merge best adapter...")
@@ -811,7 +811,7 @@ def run_merge(dry_run: bool = False) -> bool:
     env["PYTORCH_ALLOC_CONF"] = "expandable_segments:True"
 
     result = subprocess.run(
-        [sys.executable, "-m", "ab.gpt.util.MergeLLM"],
+        [sys.executable, "-m", "ab.gpt.util.llm.MergeLLM"],
         cwd=str(ab_root_path),
         env=env,
     )

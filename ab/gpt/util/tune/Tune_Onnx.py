@@ -13,7 +13,7 @@ import deepspeed
 from ab.nn.util.Util import release_memory, create_file
 from tqdm import tqdm
 import ab.gpt.act.eval.Eval as NNEval
-from ab.gpt.util.Chatbot import ChatBot
+from ab.gpt.util.llm.Chatbot import ChatBot
 from ab.gpt.util.Const import (
     out_dir,
     ab_root_path,
@@ -31,8 +31,8 @@ from ab.gpt.util.Const import (
     huggingface_tokenizer_cache,
 )
 
-from ab.gpt.util.LLMUtil import quantization_config_4bit
-from ab.gpt.util.LoRA import LoRA
+from ab.gpt.util.llm.LLMUtil import quantization_config_4bit
+from ab.gpt.util.llm.LoRA import LoRA
 from ab.gpt.util.Util import exists
 from ab.gpt.util.prompt.NNGenPrompt import NNGenPrompt
 
@@ -100,7 +100,7 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
 
     # 1) Always load PyTorch model for training
     print('Use Pytorch LLM for training...')
-    from ab.gpt.util.LLM import LLM as PyTorchLLM
+    from ab.gpt.util.llm.LLM import LLM as PyTorchLLM
 
     # Disable quantization when using ONNX workflow (for clean export)
     if onnx_run:
@@ -160,8 +160,8 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
     if onnx_run:
         print('Use ONNX exported LLM for generation')
         from optimum.onnxruntime import ORTModelForCausalLM
-        from ab.gpt.util.OnnxExport import export_llm_to_onnx
-        from ab.gpt.util.OnnxWrapper import OnnxCausalLMWrapper
+        from ab.gpt.util.onnx.OnnxExport import export_llm_to_onnx
+        from ab.gpt.util.onnx.OnnxWrapper import OnnxCausalLMWrapper
 
         export_onnx_path = out_dir / 'onnx_llm'
         onnx_model_file = export_onnx_path / 'model.onnx'
@@ -177,7 +177,7 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
 
             # Imprtant! Get the BASE model WITHOUT LoRA adapters, this fix is applied because the ONNX was generating gebbiresh
             print('[INFO] Loading clean base model for ONNX export...')
-            from ab.gpt.util.LLM import LLM as PyTorchLLM
+            from ab.gpt.util.llm.LLM import LLM as PyTorchLLM
             
             clean_model_loader = PyTorchLLM(
                 base_model_name,
@@ -328,7 +328,7 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
             
             # Load clean base model ON CPU (no device_map!)
             print('[INFO] Loading clean base model on CPU for ONNX export...')
-            from ab.gpt.util.LLM import LLM as PyTorchLLM
+            from ab.gpt.util.llm.LLM import LLM as PyTorchLLM
             
             # Don't pass training_args to avoid device_map='auto'
             clean_model_loader = PyTorchLLM(
@@ -426,7 +426,7 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
 
         num_joint_nns = prompt_dict_key.get('num_joint_nns') or 1
         if num_joint_nns >= 2:
-            from ab.gpt.util.lemur_enrichment import patch_join_nn_query, enrich_dataframe
+            from ab.gpt.util.data.lemur_enrichment import patch_join_nn_query, enrich_dataframe
             patch_join_nn_query()
             data = lemur.data(
                 only_best_accuracy=True,
@@ -504,7 +504,7 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
 
             if use_delta and origdf is not None:
                 try:
-                    from ab.gpt.util.DeltaUtil import apply_delta, validate_delta
+                    from ab.gpt.util.nn.DeltaUtil import apply_delta, validate_delta
                     from ab.gpt.util.Util import extract_delta
 
                     delta = extract_delta(full_out)

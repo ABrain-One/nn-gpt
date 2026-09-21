@@ -11,7 +11,7 @@ import time
 
 from AlexNet_evolvable import Net, SEARCH_SPACE, generate_model_code_string
 from genetic_algorithm import GeneticAlgorithm
-from ab.gpt.util.Eval import Eval
+from ab.gpt.util.eval.Eval import Eval
 
 POPULATION_SIZE = 50
 NUM_GENERATIONS = 25

@@ -1,7 +1,7 @@
 # ab/gpt/util/LLM.py
 from ab.nn.util.Const import out_dir
 from ab.gpt.util.Const import conf_chat_template_dir, llm_dir, llm_tokenizer_dir
-from ab.gpt.util.LLMUtil import quantization_config_4bit
+from ab.gpt.util.llm.LLMUtil import quantization_config_4bit
 from ab.gpt.util.Util import exists
 
 import os

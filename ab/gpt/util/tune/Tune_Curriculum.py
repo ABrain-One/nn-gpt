@@ -17,11 +17,11 @@ from peft import PeftModel
 from tqdm import tqdm
 from ab.gpt.util.Const import nngpt_dir
 import ab.gpt.act.eval.Eval as NNEval
-from ab.gpt.util.Chatbot import ChatBot
+from ab.gpt.util.llm.Chatbot import ChatBot
 from ab.gpt.util.Const import *
 
-from ab.gpt.util.LLMUtil import quantization_config_4bit
-from ab.gpt.util.LoRA import LoRA
+from ab.gpt.util.llm.LLMUtil import quantization_config_4bit
+from ab.gpt.util.llm.LoRA import LoRA
 from ab.gpt.util.Util import (
     exists,
     extract_delta,
@@ -30,7 +30,7 @@ from ab.gpt.util.Util import (
     extract_transform,
 )
 
-from ab.gpt.util.DeltaUtil import apply_delta, validate_delta, repair_code
+from ab.gpt.util.nn.DeltaUtil import apply_delta, validate_delta, repair_code
 from ab.gpt.util.Const import nngpt_upload
 from ab.gpt.brute.trans.TransformEval import run_eval
 from ab.gpt.util.prompt.TransformGenPrompt import TransformGenPrompt, load_data_from_folders
@@ -222,7 +222,7 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
         prompt_dict = json.load(prompt_file)
     assert isinstance(prompt_dict, dict)
 
-    from ab.gpt.util.LLM import LLM
+    from ab.gpt.util.llm.LLM import LLM
 
     model_loader = LLM(
         base_model_name,

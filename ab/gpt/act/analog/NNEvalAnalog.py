@@ -10,7 +10,7 @@ from ab.gpt.act.analog.UtilAnalog import read_py_file_as_string
 from ab.gpt.util.Const import epoch_dir, new_nn_file, nngpt_dir, synth_dir, hp_file, NN_TRAIN_EPOCHS
 from ab.gpt.act.analog.EvalAnalog import Eval
 from ab.gpt.act.analog.UtilAnalog import verify_nn_code, copy_to_lemur
-from ab.gpt.util.CycleResults import generate_cycle_results, collect_cycle_metrics, save_cycle_results
+from ab.gpt.util.data.CycleResults import generate_cycle_results, collect_cycle_metrics, save_cycle_results
 
 # --- Default Evaluation Parameters ---
 # These will be used as defaults for argparse arguments
