@@ -166,7 +166,9 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
          mobile_min_quantized_accuracy=None, mobile_max_duration_ms=None,
          mobile_score_tolerance=0.99, mobile_min_valid_models=5, mobile_delegate_priority="npu,gpu,cpu",
          # --- Corpus filters for the iterative pipeline's LEMUR curation ---
-         dataset=DEFAULT_DATASET, nn_prefixes=DEFAULT_NN_PREFIXES):
+         dataset=DEFAULT_DATASET, nn_prefixes=DEFAULT_NN_PREFIXES,
+         # --- LLMatic MAP-Elites seed selection ---
+         llmatic=False, llmatic_crossover_every=3):
 
     persist_llm_conf(llm_conf, enable_merge)
 
@@ -196,6 +198,8 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
             num_train_epochs=num_train_epochs,
             dataset=dataset,
             nn_prefixes=nn_prefixes,
+            llmatic=llmatic,
+            llmatic_crossover_every=llmatic_crossover_every,
         )
         if mobile_deployment:
             pipeline_kwargs["mobile_min_quantized_accuracy"] = mobile_min_quantized_accuracy
@@ -430,6 +434,7 @@ use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={c
             load_in_4bit=load_in_4bit,
             data_dir=data_dir,
             epoch_root=epoch_root,
+            llmatic=({"crossover_every": llmatic_crossover_every} if llmatic else None),
         )
 
         # Normal completion - auto merge best
@@ -683,6 +688,13 @@ if __name__ == '__main__':
     parser.add_argument('--nn_prefixes', type=lambda s: tuple(p for p in s.split(',') if p),
                         default=DEFAULT_NN_PREFIXES,
                         help=f"[Pipeline] Comma-separated NN name prefixes to curate (default: {','.join(DEFAULT_NN_PREFIXES)}).")
+    parser.add_argument('--llmatic', action='store_true', default=False,
+                        help="[Pipeline] Enable LLMatic MAP-Elites archive-driven seed "
+                             "selection (mutation + periodic crossover) in nn_gen, instead "
+                             "of random corpus sampling.")
+    parser.add_argument('--llmatic_crossover_every', type=int, default=3,
+                        help="[Pipeline] With --llmatic, run a crossover generation every N "
+                             "cycles (default: 3; 0 disables crossover).")
 
     args = parser.parse_args()
 

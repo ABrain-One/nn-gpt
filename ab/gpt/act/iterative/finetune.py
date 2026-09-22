@@ -64,6 +64,8 @@ class IterativeFinetuner:
             num_train_epochs: int = 5,
             dataset: str = DEFAULT_DATASET,
             nn_prefixes: Tuple[str, ...] = DEFAULT_NN_PREFIXES,
+            llmatic: bool = False,
+            llmatic_crossover_every: int = 3,
     ):
         self.output_dir = out_dir / 'curation_output'
         self.base_data_dir = self.output_dir / 'chat_data'
@@ -83,6 +85,9 @@ class IterativeFinetuner:
         # Corpus filters for LEMUR curation (default cifar-10 / ga-,GenFractalNet)
         self.dataset = dataset
         self.nn_prefixes = tuple(nn_prefixes)
+        # LLMatic MAP-Elites seed selection (forwarded to the per-cycle subprocess)
+        self.llmatic = llmatic
+        self.llmatic_crossover_every = llmatic_crossover_every
 
         # Initialize components
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -421,6 +426,12 @@ class IterativeFinetuner:
             # --data_dir wiring this pipeline depends on.
             "--no-use_agents",
         ]
+
+        # Forward LLMatic MAP-Elites seed selection to the per-cycle generation
+        # subprocess (the env-var gating the old monkeypatch relied on is gone).
+        if self.llmatic:
+            cmd.append("--llmatic")
+            cmd.extend(["--llmatic_crossover_every", str(self.llmatic_crossover_every)])
 
         # Load previous cycle's checkpoint for continual learning (cycle 2+)
         if cycle > 1:

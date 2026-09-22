@@ -174,7 +174,21 @@ def nn_gen(
                     "No NN seed rows matched the generation filters: "
                     f"{data_kwargs}"
                 )
-            data = data.groupby(by="nn").sample(n=1)[:test_nn]
+            # LLMatic MAP-Elites seed selection (opt-in via key_config["llmatic"]).
+            # Replaces random sampling with archive-driven mutation / periodic
+            # crossover. Any failure returns None -> fall back to random sampling,
+            # so seed selection can never break generation.
+            llmatic_seeds = None
+            if key_config.get("llmatic") and not use_backbone and not use_delta:
+                from ab.gpt.util.method.llmatic.seeds import build_archive, select_seed_rows, cycle_from_path
+                _archive = build_archive(key_config)
+                if _archive is not None:
+                    llmatic_seeds = select_seed_rows(
+                        _archive, data, key_config, cycle_from_path(out_path), test_nn, out_path)
+            if llmatic_seeds is not None:
+                data = llmatic_seeds
+            else:
+                data = data.groupby(by="nn").sample(n=1)[:test_nn]
             if use_backbone:
                 datasets = sorted(data["dataset"].dropna().unique().tolist()) if "dataset" in data else []
                 print(
@@ -219,11 +233,17 @@ def nn_gen(
                         for it in key_config["addon_list"]:
                             para_dict[it["para"]] = addon_row[it["value"]]
 
-            prompt_text = (
-                para_dict["backbone_prompt"]
-                if use_backbone
-                else prompt.format(**para_dict)
-            )
+            # LLMatic crossover supplies a fully-rendered two-parent prompt that
+            # the single-row template cannot express; use it verbatim when present.
+            llmatic_prompt = row.get("__llmatic_prompt__") if hasattr(row, "get") else None
+            if isinstance(llmatic_prompt, str) and llmatic_prompt:
+                prompt_text = llmatic_prompt
+            else:
+                prompt_text = (
+                    para_dict["backbone_prompt"]
+                    if use_backbone
+                    else prompt.format(**para_dict)
+                )
             prompts.append((system_text, prompt_text, row, output_type))
 
     models_dir = synth_dir(out_path)
@@ -1072,6 +1092,7 @@ def tune(
     load_in_4bit=None,
     epoch_root=None,
     data_dir=None,
+    llmatic=None,
 ):
     if not isinstance(conf_keys, (list, tuple)):
         conf_keys = (conf_keys,)
@@ -1120,6 +1141,13 @@ def tune(
     with open(conf_test_dir / nn_gen_conf) as prompt_file:
         prompt_dict = json.load(prompt_file)
     assert isinstance(prompt_dict, dict)
+
+    # Enable LLMatic MAP-Elites seed selection by injecting the config into each
+    # generation key. nn_gen reads key_config["llmatic"]; see ab/gpt/util/method/llmatic/.
+    if llmatic:
+        for _key in conf_keys:
+            if isinstance(prompt_dict.get(_key), dict):
+                prompt_dict[_key]["llmatic"] = dict(llmatic)
 
     from ab.gpt.util.llm.LLM import LLM
 
