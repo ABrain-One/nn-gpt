@@ -942,8 +942,13 @@ def _finetune_epoch(
         )
         data_processor = NNGenPrompt(length, tokenizer, train_config_path, data_dir=data_dir)
 
+    # Seed comes from the prompt config when set; otherwise the Trainer's own
+    # default. hasattr guards data processors that don't define get_config_seed().
+    config_seed = data_processor.get_config_seed() if hasattr(data_processor, 'get_config_seed') else None
+    seed = config_seed if config_seed is not None else lora_tuner.training_args.seed
     dataset = data_processor.get_dataset(
         only_best_accuracy,
+        seed=seed,
         max_prompts=max_prompts,
         max_new_tokens=max_new_tokens,
     )

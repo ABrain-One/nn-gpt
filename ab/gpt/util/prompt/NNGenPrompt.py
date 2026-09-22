@@ -67,6 +67,17 @@ class NNGenPrompt(Prompt):
         # fine-tuning uses its growing curated corpus, closing the feedback loop.
         self.data_dir = data_dir
 
+    def get_config_seed(self):
+        """Optional seed read from the prompt config, or None if unset."""
+        if self.data_dir is not None:
+            return None
+        with open(self.prompts_path) as prompt_file:
+            prompt_dict = json.load(prompt_file)
+        for key_dict in prompt_dict.values():
+            if 'seed' in key_dict and key_dict['seed'] is not None:
+                return key_dict['seed']
+        return None
+
     # ------------------------------------------------------------------
     # On-disk corpus path (unchanged from production)
     # ------------------------------------------------------------------
@@ -348,14 +359,19 @@ class NNGenPrompt(Prompt):
             classification = use_join and key_dict.get('output_type') == 'classification'
             if classification:
                 patch_join_nn_query()  # TODO: Generalize for all scenarios - SQL query implementation in the NN Dataset project
+            min_accuracy = key_dict.get('min_accuracy')
             data = lemur.data(
                 only_best_accuracy=only_best_accuracy,
                 task=key_dict.get('task'),
                 dataset=key_dict.get('dataset', DEFAULT_DATASET),
+                epoch=key_dict.get('epoch'),
                 nn_prefixes=tuple(key_dict.get('nn_prefixes') or DEFAULT_NN_PREFIXES),
+                min_accuracy=min_accuracy,
                 max_rows=n_training_prompts,
                 sql=NNGenPrompt._build_sql_conf(key_dict, "wide"),
             )
+            if min_accuracy is not None:
+                print(f"[ACCFILTER] min_accuracy={min_accuracy}: {len(data)} rows for key: {key}")
             # For classification tasks, enrich the DataFrame with normalised
             # accuracy and dataset-metadata columns needed for the prompt.
             if classification:
