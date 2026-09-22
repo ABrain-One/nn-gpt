@@ -1,0 +1,578 @@
+LEMUR root /a/mm
+2026-07-13 20:12:42,094 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 20:12:42,094 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 20:12:42,094 - INFO - NumExpr defaulting to 16 threads.
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/historic_runs/run_2026-07-13_20-12-47 for fresh start.
+[Config] Loaded model_config.json  (context_length=4096)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-07-13 20:12:48,475 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:02<00:08,  2.85s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:06<00:06,  3.19s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:09<00:03,  3.12s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  1.95s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  2.36s/it]
+[LoRA] No adapter directory found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+
+[Meta] Target: 10 SUCCESSFUL evolutions (will retry up to 5 times per component)
+
+=== Attempt 1 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 1 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 2 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 2 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 3 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 3 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 4 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 4 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 5 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 5 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_crossover',). Skipping to next component.
+
+=== Attempt 6 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 6 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 7 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 7 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 8 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 8 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 9 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 9 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 10 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 10 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_mutate',). Skipping to next component.
+
+=== Attempt 11 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 11 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 12 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 12 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 13 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 13 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 14 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 14 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 15 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 15 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_selection',). Skipping to next component.
+
+=== Attempt 16 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 16 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 17 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 17 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 18 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 18 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 19 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 19 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 20 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 20 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_create_random_chromosome',). Skipping to next component.
+
+=== Attempt 21 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 21 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 22 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 22 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 23 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 23 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 24 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 24 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 25 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 25 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_crossover',). Skipping to next component.
+
+=== Attempt 26 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 26 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 27 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 27 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 28 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 28 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 29 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 29 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 30 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 30 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_mutate',). Skipping to next component.
+
+=== Attempt 31 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 31 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 32 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 32 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 33 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 33 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 34 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 34 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 35 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 35 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_selection',). Skipping to next component.
+
+=== Attempt 36 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 36 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 37 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 37 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 38 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 38 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 39 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 39 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 40 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 40 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_create_random_chromosome',). Skipping to next component.
+
+=== Attempt 41 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 41 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 42 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 42 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 43 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 43 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 44 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 44 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 45 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 45 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_crossover',). Skipping to next component.
+
+=== Attempt 46 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 46 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 47 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 47 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 48 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 48 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 49 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 49 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 50 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 50 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_mutate',). Skipping to next component.
+
+=== Attempt 51 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 51 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 52 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 52 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 53 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 53 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 54 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 54 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 55 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 55 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_selection',). Skipping to next component.
+
+=== Attempt 56 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 56 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 57 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 57 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 58 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 58 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 59 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 59 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 60 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 60 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_create_random_chromosome',). Skipping to next component.
+
+=== Attempt 61 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 61 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 62 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 62 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 63 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 63 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 64 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 64 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 65 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 65 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_crossover',). Skipping to next component.
+
+=== Attempt 66 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 66 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 67 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 67 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 68 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 68 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 69 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 69 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 70 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 70 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_mutate',). Skipping to next component.
+
+=== Attempt 71 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 71 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 72 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 72 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 73 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 73 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 74 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 74 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 75 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 75 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_selection',). Skipping to next component.
+
+=== Attempt 76 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 76 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 77 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 77 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 78 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 78 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 79 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 79 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 80 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 80 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_create_random_chromosome',). Skipping to next component.
+
+=== Attempt 81 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 81 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 82 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 82 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 83 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 83 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 84 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 84 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 85 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 85 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_crossover',). Skipping to next component.
+
+=== Attempt 86 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 86 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 87 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 87 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 88 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 88 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 89 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 89 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 90 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 90 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_mutate',). Skipping to next component.
+
+=== Attempt 91 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 91 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 92 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 92 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 93 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 93 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 94 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 94 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 95 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 95 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_selection',). Skipping to next component.
+
+=== Attempt 96 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 96 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 97 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 97 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 98 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 98 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 99 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 99 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 100 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 100 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_create_random_chromosome',). Skipping to next component.
+
+[Meta] ⚠️ Reached absolute maximum attempts limit (100). Halting.
+
+=== Meta-Evolution Complete: 0 successful evolutions in 100 total attempts ===
+
+=== Generating Visualizations ===
+
+============================================================
+  visualize_meta_generation.py — run: 2026-07-13_19-24-21
+  Output root: visualizations/run_cifar10_2026-07-13_19-24-21
+============================================================
+
+[1/2] Loading stats records …
+  [Info] Loading GA eval logs from: ga_evaluations_cifar10_2026-07-13_19-24-21.jsonl
+      Found 53 evaluated model(s).
+
+  Generating GA evolution plots …
+  [saved] visualizations/run_cifar10_2026-07-13_19-24-21/ga_evolution/generation_accuracy.png
+  [saved] visualizations/run_cifar10_2026-07-13_19-24-21/ga_evolution/time_per_generation.png
+  [saved] visualizations/run_cifar10_2026-07-13_19-24-21/ga_evolution/population_diversity.png
+  [saved] visualizations/run_cifar10_2026-07-13_19-24-21/ga_evolution/best_vs_avg_accuracy.png
+
+[2/2] Loading LLM evolution logs …
+  [Info] Loading LLM logs from: LLM-evolution-logs_cifar10_2026-07-13_19-24-21.jsonl
+      Found 1 log entry(ies).
+
+  Generating fine-tuning plots …
+  [saved] visualizations/run_cifar10_2026-07-13_19-24-21/fine_tuning/reward_over_iterations.png
+  [WARN]  No 'score' fields in LLM logs — skipping score_improvement.png
+  [saved] visualizations/run_cifar10_2026-07-13_19-24-21/fine_tuning/meta_peak_accuracy.png
+  [saved] visualizations/run_cifar10_2026-07-13_19-24-21/fine_tuning/llm_success_rates.png
+
+============================================================
+  Saved 7 plot(s):
+    • visualizations/run_cifar10_2026-07-13_19-24-21/ga_evolution/generation_accuracy.png
+    • visualizations/run_cifar10_2026-07-13_19-24-21/ga_evolution/time_per_generation.png
+    • visualizations/run_cifar10_2026-07-13_19-24-21/ga_evolution/population_diversity.png
+    • visualizations/run_cifar10_2026-07-13_19-24-21/ga_evolution/best_vs_avg_accuracy.png
+    • visualizations/run_cifar10_2026-07-13_19-24-21/fine_tuning/reward_over_iterations.png
+    • visualizations/run_cifar10_2026-07-13_19-24-21/fine_tuning/meta_peak_accuracy.png
+    • visualizations/run_cifar10_2026-07-13_19-24-21/fine_tuning/llm_success_rates.png
+============================================================
+

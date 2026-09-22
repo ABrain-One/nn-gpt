@@ -1,0 +1,1881 @@
+LEMUR root /a/mm
+2026-07-13 22:04:37,762 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 22:04:37,762 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 22:04:37,762 - INFO - NumExpr defaulting to 16 threads.
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/historic_runs/run_2026-07-13_22-04-40 for fresh start.
+[Meta] Moved LLM LoRA weights to /a/mm/ab/gpt/brute/ga/meta_evolution/fine_tuned_adapter_cifar100/historic_runs/run_2026-07-13_22-04-40 for fresh start.
+[Config] Loaded model_config.json  (context_length=4096)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-07-13 22:04:41,646 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:02<00:08,  2.99s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:06<00:06,  3.35s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:09<00:03,  3.26s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  2.04s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  2.48s/it]
+[LoRA] Adapter directory exists at /a/mm/ab/gpt/brute/ga/meta_evolution/fine_tuned_adapter_cifar100 but no weight files found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+
+[Meta] Target: 10 SUCCESSFUL evolutions (will retry up to 10 times per component)
+
+=== Attempt 1 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Use majority voting to combine genes
+        if gene_name in ["n_columns", "n_blocks", "kernel_size"]:
+            return max([parent1_value, parent2_value], key=self.search_space[gene_name].count)
+        elif gene_name in ["dropout_prob", "fc_dropout", "lr", "momentum"]:
+            return random.choice([parent1_value, parent2_value])
+        elif gene_name in ["activation", "pooling_type", "conv_type", "norm_type", "optimizer_type"]:
+            return random.choice([parent1_value, parent2_value])
+        else:
+            return random.choice(self.search_space[gene_name])
+
+-------------------------
+[Meta] Generation Temperature: 0.90
+--- [DEBUG] Raw Response ---
+<thinking>
+To improve the performance of the Quality-Diversity Genetic Algorithm (QDGAs) specifically tailored for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to focus on the following strategies in the `combine_genes` function:
+
+1. **Favor Favorable Architectural Components**: Since we know that certain architectural components like SiLU activation, average pooling, and SGD optimizer performed well previously, we should prioritize these in our gene combination logic.
+
+2. **Enhance Diversity Injection**: To ensure that the algorithm explores novel architectures that could potentially outperform existing ones, we should enhance the diversity injection techniques. This includes combining parents in a way that maximizes divergence while still retaining some similarity.
+
+3. **Speed-Convergence Bias**: Given that we are limited to a single epoch, it's crucial to combine genes in a manner that results in architectures that converge quickly and effectively within this constraint.
+
+With these considerations, we can modify the `combine_genes` function to achieve the desired objectives. Here’s how we can update the function:
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Use majority voting to combine genes
+        if gene_name in ["n_columns", "n_blocks", "kernel_size"]:
+            return max([parent1_value, parent2_value], key=self.search_space[gene_name].count)
+        elif gene_name in ["dropout_prob", "fc_dropout", "lr", "momentum"]:
+            return random.choice([parent1_value, parent2_value])
+        elif gene_name == "activation":
+            favored_activations = ["SiLU"]
+            return random.choice(favored_activations + [parent1_value, parent2_value])
+        elif gene_name == "pooling_type":
+            favored_poolings = ["Avg"]
+            return random.choice(favored_poolings + [parent1_value, parent2_value])
+        elif gene_name == "optimizer_type":
+            favored_optimizers = ["SGD"]
+            return random.choice(favored_optimizers + [parent1_value, parent2_value])
+        else:
+            return random.choice(self.search_space[gene_name])
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+2026-07-13 22:05:15,262 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 22:05:15,262 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 22:05:15,262 - INFO - NumExpr defaulting to 16 threads.
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+LEMUR root /a/mm
+[Init] Loaded 209 existing checksums from stats/ (skipping duplicates)
+[Run] Continuing evolution from gen 0 to 1
+
+
+ >>> GENERATION 1 <<<
+
+  Evaluating Individual 1/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: 0bc1a09a...)
+Evaluating /a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-0bc1a09afd1346cbf117402068728b3a-6965274216f20def724fbb89862e344a.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 1/782 [00:00<01:23,  9.39it/s]
+  2%|▏         | 13/782 [00:00<00:10, 72.66it/s]
+  3%|▎         | 26/782 [00:00<00:07, 96.05it/s]
+  5%|▌         | 40/782 [00:00<00:06, 111.60it/s]
+  7%|▋         | 54/782 [00:00<00:06, 120.46it/s]
+  9%|▊         | 68/782 [00:00<00:05, 125.38it/s]
+ 10%|█         | 82/782 [00:00<00:05, 128.79it/s]
+ 12%|█▏        | 95/782 [00:00<00:05, 128.02it/s]
+ 14%|█▍        | 108/782 [00:00<00:05, 123.60it/s]
+ 16%|█▌        | 122/782 [00:01<00:05, 126.29it/s]
+ 17%|█▋        | 136/782 [00:01<00:05, 128.01it/s]
+ 19%|█▉        | 150/782 [00:01<00:04, 130.72it/s]
+ 21%|██        | 164/782 [00:01<00:04, 130.97it/s]
+ 23%|██▎       | 178/782 [00:01<00:04, 131.57it/s]
+ 25%|██▍       | 192/782 [00:01<00:04, 132.40it/s]
+ 26%|██▋       | 206/782 [00:01<00:04, 131.87it/s]
+ 28%|██▊       | 220/782 [00:01<00:04, 132.74it/s]
+ 30%|██▉       | 234/782 [00:01<00:04, 132.06it/s]
+ 32%|███▏      | 248/782 [00:01<00:04, 132.98it/s]
+ 34%|███▎      | 262/782 [00:02<00:03, 132.46it/s]
+ 35%|███▌      | 276/782 [00:02<00:03, 133.70it/s]
+ 37%|███▋      | 290/782 [00:02<00:03, 134.78it/s]
+ 39%|███▉      | 304/782 [00:02<00:03, 135.57it/s]
+ 41%|████      | 318/782 [00:02<00:03, 135.17it/s]
+ 42%|████▏     | 332/782 [00:02<00:03, 135.67it/s]
+ 44%|████▍     | 346/782 [00:02<00:03, 135.54it/s]
+ 46%|████▌     | 360/782 [00:02<00:03, 135.80it/s]
+ 48%|████▊     | 374/782 [00:02<00:03, 135.88it/s]
+ 50%|████▉     | 388/782 [00:03<00:02, 133.00it/s]
+ 51%|█████▏    | 402/782 [00:03<00:02, 131.05it/s]
+ 53%|█████▎    | 416/782 [00:03<00:02, 131.65it/s]
+ 55%|█████▍    | 430/782 [00:03<00:02, 133.22it/s]
+ 57%|█████▋    | 444/782 [00:03<00:02, 134.16it/s]
+ 59%|█████▊    | 458/782 [00:03<00:02, 134.60it/s]
+ 60%|██████    | 472/782 [00:03<00:02, 134.42it/s]
+ 62%|██████▏   | 486/782 [00:03<00:02, 135.13it/s]
+ 64%|██████▍   | 500/782 [00:03<00:02, 135.87it/s]
+ 66%|██████▌   | 514/782 [00:03<00:01, 135.56it/s]
+ 68%|██████▊   | 528/782 [00:04<00:01, 135.83it/s]
+ 69%|██████▉   | 542/782 [00:04<00:01, 135.06it/s]
+ 71%|███████   | 556/782 [00:04<00:01, 134.54it/s]
+ 73%|███████▎  | 570/782 [00:04<00:01, 134.49it/s]
+ 75%|███████▍  | 584/782 [00:04<00:01, 133.67it/s]
+ 76%|███████▋  | 598/782 [00:04<00:01, 132.48it/s]
+ 78%|███████▊  | 612/782 [00:04<00:01, 132.21it/s]
+ 80%|████████  | 627/782 [00:04<00:01, 135.64it/s]
+ 82%|████████▏ | 641/782 [00:04<00:01, 134.82it/s]
+ 84%|████████▍ | 655/782 [00:05<00:00, 134.45it/s]
+ 86%|████████▌ | 669/782 [00:05<00:00, 135.23it/s]
+ 87%|████████▋ | 683/782 [00:05<00:00, 135.01it/s]
+ 89%|████████▉ | 697/782 [00:05<00:00, 133.12it/s]
+ 91%|█████████ | 711/782 [00:05<00:00, 133.86it/s]
+ 93%|█████████▎| 725/782 [00:05<00:00, 134.17it/s]
+ 95%|█████████▍| 739/782 [00:05<00:00, 134.32it/s]
+ 96%|█████████▋| 753/782 [00:05<00:00, 133.75it/s]
+ 98%|█████████▊| 767/782 [00:05<00:00, 133.68it/s]
+100%|█████████▉| 781/782 [00:05<00:00, 130.74it/s]
+100%|██████████| 782/782 [00:06<00:00, 129.57it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-0bc1a09afd1346cbf117402068728b3a-6965274216f20def724fbb89862e344a.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-38186ad60771286669b1ef8cd020a085-0a3dc0d29c051cab2ed3eb571aeda9d3.py'
+  Train Loss: 1.8702, Test Loss: 1.8767
+  Train Acc: 0.2934, Test Acc: 0.2914
+  LR: 0.000000, Grad Norm: 5.0000, Throughput: 2478.0 samples/s
+accuracy_to_time_metric 0.948556403076649
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-0bc1a09afd1346cbf117402068728b3a-6965274216f20def724fbb89862e344a.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar10/_tmp_GenFractalNet-0bc1a09afd1346cbf117402068728b3a.py
+  [Archive] Cell (4, 32) updated with fitness: 0.0000
+  Evaluating Individual 2/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: 38186ad6...)
+Evaluating /a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-38186ad60771286669b1ef8cd020a085-0a3dc0d29c051cab2ed3eb571aeda9d3.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-38186ad60771286669b1ef8cd020a085-0a3dc0d29c051cab2ed3eb571aeda9d3.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-38186ad60771286669b1ef8cd020a085-0a3dc0d29c051cab2ed3eb571aeda9d3.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_301.nn.tmp.GenFractalNet-38186ad60771286669b1ef8cd020a085-0a3dc0d29c051cab2ed3eb571aeda9d3'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-38186ad60771286669b1ef8cd020a085-0a3dc0d29c051cab2ed3eb571aeda9d3.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-9bfb35540b3f45f06425299d402d6f79-b7548e6c79864257b8ebc1b9ef900d85.py'
+Error during training: No module named 'out_nneval_tmp_pid_301.nn.tmp.GenFractalNet-38186ad60771286669b1ef8cd020a085-0a3dc0d29c051cab2ed3eb571aeda9d3'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-38186ad60771286669b1ef8cd020a085-0a3dc0d29c051cab2ed3eb571aeda9d3.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar10/_tmp_GenFractalNet-38186ad60771286669b1ef8cd020a085.py
+  [Archive] Cell (4, 64) updated with fitness: 0.0000
+  Evaluating Individual 3/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: 9bfb3554...)
+Evaluating /a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-9bfb35540b3f45f06425299d402d6f79-b7548e6c79864257b8ebc1b9ef900d85.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-9bfb35540b3f45f06425299d402d6f79-b7548e6c79864257b8ebc1b9ef900d85.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-9bfb35540b3f45f06425299d402d6f79-b7548e6c79864257b8ebc1b9ef900d85.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_301.nn.tmp.GenFractalNet-9bfb35540b3f45f06425299d402d6f79-b7548e6c79864257b8ebc1b9ef900d85'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-9bfb35540b3f45f06425299d402d6f79-b7548e6c79864257b8ebc1b9ef900d85.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-c56b23f68079dd5361f86e945a9ae5b8-0afb3d35b21f188a8c12d9812469a1dd.py'
+Error during training: No module named 'out_nneval_tmp_pid_301.nn.tmp.GenFractalNet-9bfb35540b3f45f06425299d402d6f79-b7548e6c79864257b8ebc1b9ef900d85'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-9bfb35540b3f45f06425299d402d6f79-b7548e6c79864257b8ebc1b9ef900d85.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar10/_tmp_GenFractalNet-9bfb35540b3f45f06425299d402d6f79.py
+  [Archive] Cell (3, 16) updated with fitness: 0.0000
+  Evaluating Individual 4/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: c56b23f6...)
+Evaluating /a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-c56b23f68079dd5361f86e945a9ae5b8-0afb3d35b21f188a8c12d9812469a1dd.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-c56b23f68079dd5361f86e945a9ae5b8-0afb3d35b21f188a8c12d9812469a1dd.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-c56b23f68079dd5361f86e945a9ae5b8-0afb3d35b21f188a8c12d9812469a1dd.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_301.nn.tmp.GenFractalNet-c56b23f68079dd5361f86e945a9ae5b8-0afb3d35b21f188a8c12d9812469a1dd'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-c56b23f68079dd5361f86e945a9ae5b8-0afb3d35b21f188a8c12d9812469a1dd.py'
+Evaluation Failed: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-7ad6b793301ad39a7747d94e731e512a-7ba164984b62d9bd0847598244bda977.py'
+Error during training: No module named 'out_nneval_tmp_pid_301.nn.tmp.GenFractalNet-c56b23f68079dd5361f86e945a9ae5b8-0afb3d35b21f188a8c12d9812469a1dd'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-c56b23f68079dd5361f86e945a9ae5b8-0afb3d35b21f188a8c12d9812469a1dd.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar10/_tmp_GenFractalNet-c56b23f68079dd5361f86e945a9ae5b8.py
+  [Archive] Cell (4, 16) updated with fitness: 0.0000
+  Evaluating Individual 5/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: 7ad6b793...)
+Evaluating /a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-7ad6b793301ad39a7747d94e731e512a-7ba164984b62d9bd0847598244bda977.py...
+Error analyzing complexity for /a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-7ad6b793301ad39a7747d94e731e512a-7ba164984b62d9bd0847598244bda977.py: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-7ad6b793301ad39a7747d94e731e512a-7ba164984b62d9bd0847598244bda977.py'
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 538, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 214, in __init__
+    model_net = get_attr(nn_module, 'Net')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/db/Util.py", line 24, in get_attr
+    return get_obj_attr(__import__(mod, fromlist=[f]), f)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'out_nneval_tmp_pid_301'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-7ad6b793301ad39a7747d94e731e512a-7ba164984b62d9bd0847598244bda977.py'
+Error during training: No module named 'out_nneval_tmp_pid_301'
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_301/nn/tmp/GenFractalNet-7ad6b793301ad39a7747d94e731e512a-7ba164984b62d9bd0847598244bda977.py'
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar10/_tmp_GenFractalNet-7ad6b793301ad39a7747d94e731e512a.py
+  [Archive] Cell (3, 64) updated with fitness: 0.0000
+[Best] Saved best model to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_model.py
+[Best] Warning: stats folder not found for checksum 0bc1a09a
+[Best] Saved best info metadata to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_info.json
+PEAK_ACCURACY: 0.0000
+TOP3_MEAN: 0.0000
+ARCHIVE_SIZE: 5
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] TERTIARY: Archive Novelty (5 cells updated). Bonus: 2.5000
+   [RL] Total Reward: 2.5000
+[Meta] --> ARCHIVE EXPANDED! 5 cells (was 0)
+--> SUCCESS. Updating Baseline (EMA) & Fine-tuning on Success.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+[LoRA] Fine-tune start (replay buffer: 1 items, batch: 1)
+[LoRA] Training on 1 examples...
+`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`.
+/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/_dynamo/eval_frame.py:838: UserWarning: torch.utils.checkpoint: the use_reentrant parameter should be passed explicitly. In version 2.5 we will raise an exception if use_reentrant is not passed. use_reentrant=False is recommended, but if you need to preserve the current default behavior, you can pass use_reentrant=True. Refer to docs for more details on the differences between the two variants.
+  return fn(*args, **kwargs)
+[LoRA] Epoch 1/1 - Loss: 0.2342
+[LoRA] Fine-tune complete
+[LoRA] Adapter save start
+[LoRA] Adapter save complete
+--> Saved version history with accuracy: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/genetic_algorithm_attempt1_combine_genes_acc_0.00.py
+--> Saved CoT trace: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/genetic_algorithm_attempt1_combine_genes_acc_0.00_thinking.txt
+[Meta] ✓ Success #1/10 achieved on attempt 1
+
+=== Attempt 2 | Successes: 1/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        # Use historical context to mutate genes
+        history_key = f"{gene_name}_history"
+        if hasattr(self, history_key):
+            history = getattr(self, history_key)
+            most_common = max(set(history), key=history.count)
+        else:
+            most_common = random.choice(possible_values)
+    
+        # Mutate towards the most common value
+        mutated_value = random.choice([most_common, random.choice(possible_values)])
+    
+        # Update history
+        setattr(self, history_key, history + [mutated_value])
+    
+        return mutated_value
+
+-------------------------
+[Meta] Generation Temperature: 0.84
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the mutation strategy in the Quality-Diversity Genetic Algorithm (MAP-Elites) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to ensure that the mutation process is both diverse and focused on improving the performance of the neural networks. Given that the current SOTA accuracy is low (0.00%), we should prioritize mutations that lead to higher dropout probabilities, smaller base channels, and more layers. This approach aims to increase the complexity and robustness of the neural networks while reducing overfitting.
+
+### Key Strategies:
+1. **Focus on Dropout Probabilities**: Increase dropout probabilities to encourage early stopping and reduce overfitting.
+2. **Reduce Base Channels**: Smaller base channels can help in achieving faster convergence and lower computational costs.
+3. **Increase Number of Blocks**: More blocks can improve model capacity but should be balanced with dropout to avoid overfitting.
+4. **Mutate Towards Favorable Values**: Prefer mutation towards values that have historically been associated with better performance.
+
+### Implementation Details:
+1. **Mutation Logic**:
+   - For `dropout_prob`: Mutate towards higher values (0.2 to 0.5).
+   - For `base_channels`: Mutate towards lower values (16 to 32).
+   - For `n_blocks`: Mutate towards higher values (3 to 4).
+   - For other genes, use historical data to mutate towards more common values.
+
+2. **Prevent Duplicates**:
+   - Ensure that the mutation does not result in duplicate values within the search space.
+
+### Code Refinement**:
+- Adjust the mutation logic to prioritize the above strategies.
+- Use historical data to guide mutations towards more favorable values.
+- Implement a mechanism to limit the exploration of less promising areas of the search space.
+
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        # Use historical context to mutate genes
+        history_key = f"{gene_name}_history"
+        if hasattr(self, history_key):
+            history = getattr(self, history_key)
+            most_common = max(set(history), key=history.count)
+        else:
+            most_common = random.choice(possible_values)
+    
+        # Mutate towards the most common value
+        if gene_name == "dropout_prob":
+            possible_values_filtered = [0.2, 0.3, 0.4, 0.5]
+            mutated_value = random.choice(possible_values_filtered)
+        elif gene_name == "base_channels":
+            possible_values_filtered = [16, 32, 64]
+            mutated_value = random.choice(possible_values_filtered)
+        elif gene_name == "n_blocks":
+            possible_values_filtered = [2, 3, 4]
+            mutated_value = random.choice(possible_values_filtered)
+        elif gene_name in ["n_columns", "kernel_size"]:
+            mutated_value = max([parent1_value, parent2_value], key=self.search_space[gene_name].count)
+        elif gene_name in ["fc_dropout", "lr", "momentum"]:
+            mutated_value = random.choice([parent1_value, parent2_value])
+        elif gene_name == 'activation':
+            favored_activations = ['SiLU']
+            mutated_value = random.choice(favored_activations + [parent1_value, parent2_value])
+        elif gene_name == 'pooling_type':
+            favored_poolings = ['Avg']
+            mutated_value = random.choice(favored_poolings + [parent1_value, parent2_value])
+        elif gene_name == 'optimizer_type':
+            favored_optimizers = ['SGD']
+            mutated_value = random.choice(favored_optimizers + [parent1_value, parent2_value])
+        else:
+            mutated_value = random.choice(self.search_space[gene_name])
+    
+        # Update history
+        setattr(self, history_key, history + [mutated_value])
+    
+        return mutated_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+2026-07-13 22:06:56,261 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 22:06:56,261 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 22:06:56,261 - INFO - NumExpr defaulting to 16 threads.
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+LEMUR root /a/mm
+[Init] Loaded 210 existing checksums from stats/ (skipping duplicates)
+[Run] Continuing evolution from gen 1 to 2
+
+
+ >>> GENERATION 2 <<<
+
+  Evaluating Individual 2/5 ---- Generation: 2/2
+  - Evaluating unique arch (checksum: 016fd8c0...)
+Evaluating /a/mm/out_nneval_tmp_pid_608/nn/tmp/GenFractalNet-016fd8c0ee70820e371d7b634992f299-5f3480b1639d77467f6d1ec94a4f64fe.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 8/782 [00:00<00:10, 74.86it/s]
+  3%|▎         | 23/782 [00:00<00:06, 115.07it/s]
+  5%|▍         | 37/782 [00:00<00:05, 124.90it/s]
+  6%|▋         | 50/782 [00:00<00:05, 126.56it/s]
+  8%|▊         | 65/782 [00:00<00:05, 133.25it/s]
+ 10%|█         | 80/782 [00:00<00:05, 137.86it/s]
+ 12%|█▏        | 95/782 [00:00<00:04, 139.86it/s]
+ 14%|█▍        | 110/782 [00:00<00:04, 141.54it/s]
+ 16%|█▌        | 125/782 [00:00<00:04, 143.37it/s]
+ 18%|█▊        | 140/782 [00:01<00:04, 143.33it/s]
+ 20%|█▉        | 155/782 [00:01<00:04, 143.49it/s]
+ 22%|██▏       | 170/782 [00:01<00:04, 144.38it/s]
+ 24%|██▎       | 185/782 [00:01<00:04, 144.17it/s]
+ 26%|██▌       | 200/782 [00:01<00:04, 144.21it/s]
+ 27%|██▋       | 215/782 [00:01<00:03, 144.85it/s]
+ 29%|██▉       | 230/782 [00:01<00:03, 145.28it/s]
+ 31%|███▏      | 245/782 [00:01<00:03, 145.90it/s]
+ 33%|███▎      | 260/782 [00:01<00:03, 145.57it/s]
+ 35%|███▌      | 275/782 [00:01<00:03, 145.23it/s]
+ 37%|███▋      | 290/782 [00:02<00:03, 145.95it/s]
+ 39%|███▉      | 305/782 [00:02<00:03, 146.52it/s]
+ 41%|████      | 320/782 [00:02<00:03, 146.71it/s]
+ 43%|████▎     | 335/782 [00:02<00:03, 146.79it/s]
+ 45%|████▍     | 350/782 [00:02<00:02, 146.93it/s]
+ 47%|████▋     | 365/782 [00:02<00:02, 147.11it/s]
+ 49%|████▊     | 380/782 [00:02<00:02, 147.34it/s]
+ 51%|█████     | 395/782 [00:02<00:02, 147.30it/s]
+ 52%|█████▏    | 410/782 [00:02<00:02, 147.36it/s]
+ 54%|█████▍    | 425/782 [00:02<00:02, 147.18it/s]
+ 56%|█████▋    | 440/782 [00:03<00:02, 147.10it/s]
+ 58%|█████▊    | 455/782 [00:03<00:02, 147.27it/s]
+ 60%|██████    | 470/782 [00:03<00:02, 147.16it/s]
+ 62%|██████▏   | 485/782 [00:03<00:02, 146.96it/s]
+ 64%|██████▍   | 500/782 [00:03<00:01, 147.14it/s]
+ 66%|██████▌   | 515/782 [00:03<00:01, 146.48it/s]
+ 68%|██████▊   | 530/782 [00:03<00:01, 146.30it/s]
+ 70%|██████▉   | 545/782 [00:03<00:01, 145.76it/s]
+ 72%|███████▏  | 560/782 [00:03<00:01, 145.54it/s]
+ 74%|███████▎  | 575/782 [00:04<00:01, 145.93it/s]
+ 75%|███████▌  | 590/782 [00:04<00:01, 145.75it/s]
+ 77%|███████▋  | 605/782 [00:04<00:01, 146.21it/s]
+ 79%|███████▉  | 620/782 [00:04<00:01, 146.15it/s]
+ 81%|████████  | 635/782 [00:04<00:01, 146.35it/s]
+ 83%|████████▎ | 650/782 [00:04<00:00, 145.49it/s]
+ 85%|████████▌ | 665/782 [00:04<00:00, 146.29it/s]
+ 87%|████████▋ | 680/782 [00:04<00:00, 146.18it/s]
+ 89%|████████▉ | 695/782 [00:04<00:00, 146.72it/s]
+ 91%|█████████ | 710/782 [00:04<00:00, 146.97it/s]
+ 93%|█████████▎| 725/782 [00:05<00:00, 146.79it/s]
+ 95%|█████████▍| 740/782 [00:05<00:00, 146.48it/s]
+ 97%|█████████▋| 755/782 [00:05<00:00, 146.58it/s]
+ 98%|█████████▊| 770/782 [00:05<00:00, 146.23it/s]
+100%|██████████| 782/782 [00:05<00:00, 142.81it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_608/nn/tmp/GenFractalNet-016fd8c0ee70820e371d7b634992f299-5f3480b1639d77467f6d1ec94a4f64fe.py'
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 1.6478, Test Loss: 1.6472
+  Train Acc: 0.3902, Test Acc: 0.3888
+  LR: 0.000000, Grad Norm: 1.1339, Throughput: 2683.7 samples/s
+accuracy_to_time_metric 1.5500571184240222
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_608/nn/tmp/GenFractalNet-016fd8c0ee70820e371d7b634992f299-5f3480b1639d77467f6d1ec94a4f64fe.py'
+  Evaluating Individual 3/5 ---- Generation: 2/2
+  - Evaluating unique arch (checksum: 326a519c...)
+Evaluating /a/mm/out_nneval_tmp_pid_608/nn/tmp/GenFractalNet-326a519ca2d36b7400ad4d3e9296055c-b8c769537ceb9357c0ca89f161c22d40.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|▏         | 10/782 [00:00<00:08, 94.48it/s]
+  3%|▎         | 25/782 [00:00<00:06, 124.97it/s]
+  5%|▌         | 40/782 [00:00<00:05, 134.50it/s]
+  7%|▋         | 55/782 [00:00<00:05, 139.68it/s]
+  9%|▉         | 70/782 [00:00<00:05, 141.94it/s]
+ 11%|█         | 85/782 [00:00<00:04, 143.20it/s]
+ 13%|█▎        | 100/782 [00:00<00:04, 144.67it/s]
+ 15%|█▍        | 115/782 [00:00<00:04, 145.66it/s]
+ 17%|█▋        | 130/782 [00:00<00:04, 146.12it/s]
+ 19%|█▊        | 145/782 [00:01<00:04, 146.48it/s]
+ 20%|██        | 160/782 [00:01<00:04, 146.72it/s]
+ 22%|██▏       | 175/782 [00:01<00:04, 147.07it/s]
+ 24%|██▍       | 190/782 [00:01<00:04, 147.39it/s]
+ 26%|██▌       | 205/782 [00:01<00:03, 147.49it/s]
+ 28%|██▊       | 220/782 [00:01<00:03, 147.14it/s]
+ 30%|███       | 235/782 [00:01<00:03, 147.40it/s]
+ 32%|███▏      | 250/782 [00:01<00:03, 147.63it/s]
+ 34%|███▍      | 265/782 [00:01<00:03, 147.89it/s]
+ 36%|███▌      | 280/782 [00:01<00:03, 146.79it/s]
+ 38%|███▊      | 295/782 [00:02<00:03, 146.20it/s]
+ 40%|███▉      | 310/782 [00:02<00:03, 146.55it/s]
+ 42%|████▏     | 325/782 [00:02<00:03, 146.60it/s]
+ 43%|████▎     | 340/782 [00:02<00:03, 147.13it/s]
+ 45%|████▌     | 355/782 [00:02<00:02, 147.33it/s]
+ 47%|████▋     | 370/782 [00:02<00:02, 147.27it/s]
+ 49%|████▉     | 385/782 [00:02<00:02, 147.70it/s]
+ 51%|█████     | 400/782 [00:02<00:02, 146.97it/s]
+ 53%|█████▎    | 415/782 [00:02<00:02, 147.13it/s]
+ 55%|█████▍    | 430/782 [00:02<00:02, 147.47it/s]
+ 57%|█████▋    | 445/782 [00:03<00:02, 146.96it/s]
+ 59%|█████▉    | 460/782 [00:03<00:02, 144.39it/s]
+ 61%|██████    | 475/782 [00:03<00:02, 142.59it/s]
+ 63%|██████▎   | 490/782 [00:03<00:02, 142.27it/s]
+ 65%|██████▍   | 505/782 [00:03<00:01, 142.92it/s]
+ 66%|██████▋   | 520/782 [00:03<00:01, 143.26it/s]
+ 68%|██████▊   | 535/782 [00:03<00:01, 143.28it/s]
+ 70%|███████   | 550/782 [00:03<00:01, 142.77it/s]
+ 72%|███████▏  | 565/782 [00:03<00:01, 143.28it/s]
+ 74%|███████▍  | 580/782 [00:04<00:01, 143.47it/s]
+ 76%|███████▌  | 595/782 [00:04<00:01, 144.61it/s]
+ 78%|███████▊  | 610/782 [00:04<00:01, 145.21it/s]
+ 80%|███████▉  | 625/782 [00:04<00:01, 145.72it/s]
+ 82%|████████▏ | 640/782 [00:04<00:00, 146.21it/s]
+ 84%|████████▍ | 655/782 [00:04<00:00, 146.48it/s]
+ 86%|████████▌ | 670/782 [00:04<00:00, 146.59it/s]
+ 88%|████████▊ | 685/782 [00:04<00:00, 146.39it/s]
+ 90%|████████▉ | 700/782 [00:04<00:00, 146.98it/s]
+ 91%|█████████▏| 715/782 [00:04<00:00, 146.63it/s]
+ 93%|█████████▎| 730/782 [00:05<00:00, 146.74it/s]
+ 95%|█████████▌| 745/782 [00:05<00:00, 146.18it/s]
+ 97%|█████████▋| 760/782 [00:05<00:00, 146.57it/s]
+ 99%|█████████▉| 775/782 [00:05<00:00, 145.74it/s]
+100%|██████████| 782/782 [00:05<00:00, 144.44it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/nn/util/Train.py", line 553, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes, False, export_onnx, train_set, save_path=save_path)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 367, in train_n_eval
+    raise AccuracyException(accuracy, duration,
+ab.nn.util.Exception.AccuracyException: (0.1009, 18506545266, "Accuracy is too low: 0.1009. The minimum accepted accuracy for the 'cifar-10' dataset is 0.1.")
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_608/nn/tmp/GenFractalNet-326a519ca2d36b7400ad4d3e9296055c-b8c769537ceb9357c0ca89f161c22d40.py'
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 2.3040, Test Loss: 2.3039
+  Train Acc: 0.1005, Test Acc: 0.1009
+  LR: 0.000000, Grad Norm: 0.2431, Throughput: 2701.8 samples/s
+accuracy_to_time_metric 0.004863144293351537
+Error during training: (0.1009, 18506545266, "Accuracy is too low: 0.1009. The minimum accepted accuracy for the 'cifar-10' dataset is 0.1.")
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_608/nn/tmp/GenFractalNet-326a519ca2d36b7400ad4d3e9296055c-b8c769537ceb9357c0ca89f161c22d40.py'
+  Evaluating Individual 4/5 ---- Generation: 2/2
+  - Evaluating unique arch (checksum: 23e77e22...)
+Evaluating /a/mm/out_nneval_tmp_pid_608/nn/tmp/GenFractalNet-23e77e228267bd474106c65521eba8ce-0856dcff95e101ccbd4fc00c2768e923.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 9/782 [00:00<00:09, 85.66it/s]
+  3%|▎         | 24/782 [00:00<00:06, 120.64it/s]
+  5%|▍         | 39/782 [00:00<00:05, 131.98it/s]
+  7%|▋         | 54/782 [00:00<00:05, 137.73it/s]
+  9%|▉         | 69/782 [00:00<00:05, 139.91it/s]
+ 11%|█         | 84/782 [00:00<00:04, 140.96it/s]
+ 13%|█▎        | 99/782 [00:00<00:04, 143.13it/s]
+ 15%|█▍        | 114/782 [00:00<00:04, 144.80it/s]
+ 16%|█▋        | 129/782 [00:00<00:04, 145.73it/s]
+ 18%|█▊        | 144/782 [00:01<00:04, 146.67it/s]
+ 20%|██        | 159/782 [00:01<00:04, 147.07it/s]
+ 22%|██▏       | 174/782 [00:01<00:04, 147.35it/s]
+ 24%|██▍       | 189/782 [00:01<00:04, 147.43it/s]
+ 26%|██▌       | 204/782 [00:01<00:03, 147.61it/s]
+ 28%|██▊       | 219/782 [00:01<00:03, 147.64it/s]
+ 30%|██▉       | 234/782 [00:01<00:03, 147.30it/s]
+ 32%|███▏      | 249/782 [00:01<00:03, 147.05it/s]
+ 34%|███▍      | 264/782 [00:01<00:03, 147.09it/s]
+ 36%|███▌      | 279/782 [00:01<00:03, 146.90it/s]
+ 38%|███▊      | 294/782 [00:02<00:03, 146.51it/s]
+ 40%|███▉      | 309/782 [00:02<00:03, 146.47it/s]
+ 41%|████▏     | 324/782 [00:02<00:03, 146.78it/s]
+ 43%|████▎     | 339/782 [00:02<00:03, 146.33it/s]
+ 45%|████▌     | 354/782 [00:02<00:02, 145.68it/s]
+ 47%|████▋     | 369/782 [00:02<00:02, 145.99it/s]
+ 49%|████▉     | 384/782 [00:02<00:02, 146.11it/s]
+ 51%|█████     | 399/782 [00:02<00:02, 146.67it/s]
+ 53%|█████▎    | 414/782 [00:02<00:02, 146.51it/s]
+ 55%|█████▍    | 429/782 [00:02<00:02, 146.28it/s]
+ 57%|█████▋    | 444/782 [00:03<00:02, 146.69it/s]
+ 59%|█████▊    | 459/782 [00:03<00:02, 146.92it/s]
+ 61%|██████    | 474/782 [00:03<00:02, 146.60it/s]
+ 63%|██████▎   | 489/782 [00:03<00:02, 146.34it/s]
+ 64%|██████▍   | 504/782 [00:03<00:01, 145.80it/s]
+ 66%|██████▋   | 519/782 [00:03<00:01, 145.95it/s]
+ 68%|██████▊   | 534/782 [00:03<00:01, 145.82it/s]
+ 70%|███████   | 549/782 [00:03<00:01, 144.42it/s]
+ 72%|███████▏  | 564/782 [00:03<00:01, 143.36it/s]
+ 74%|███████▍  | 579/782 [00:04<00:01, 137.06it/s]
+ 76%|███████▌  | 593/782 [00:04<00:01, 131.63it/s]
+ 78%|███████▊  | 607/782 [00:04<00:01, 128.60it/s]
+ 79%|███████▉  | 620/782 [00:04<00:01, 127.24it/s]
+ 81%|████████  | 633/782 [00:04<00:01, 126.44it/s]
+ 83%|████████▎ | 647/782 [00:04<00:01, 128.38it/s]
+ 85%|████████▍ | 661/782 [00:04<00:00, 130.41it/s]
+ 86%|████████▋ | 675/782 [00:04<00:00, 131.57it/s]
+ 88%|████████▊ | 690/782 [00:04<00:00, 134.27it/s]
+ 90%|█████████ | 705/782 [00:04<00:00, 136.39it/s]
+ 92%|█████████▏| 719/782 [00:05<00:00, 137.35it/s]
+ 94%|█████████▍| 734/782 [00:05<00:00, 138.80it/s]
+ 96%|█████████▌| 749/782 [00:05<00:00, 139.35it/s]
+ 98%|█████████▊| 764/782 [00:05<00:00, 140.98it/s]
+100%|█████████▉| 779/782 [00:05<00:00, 141.67it/s]
+100%|██████████| 782/782 [00:05<00:00, 140.56it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_608/nn/tmp/GenFractalNet-23e77e228267bd474106c65521eba8ce-0856dcff95e101ccbd4fc00c2768e923.py'
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 1.3543, Test Loss: 1.3609
+  Train Acc: 0.5364, Test Acc: 0.5334
+  LR: 0.000001, Grad Norm: 2.1096, Throughput: 2665.9 samples/s
+accuracy_to_time_metric 2.310782851301629
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_608/nn/tmp/GenFractalNet-23e77e228267bd474106c65521eba8ce-0856dcff95e101ccbd4fc00c2768e923.py'
+  [Archive] Cell (2, 32) updated with fitness: 0.0000
+  Evaluating Individual 5/5 ---- Generation: 2/2
+  - Evaluating unique arch (checksum: 44a8363d...)
+Evaluating /a/mm/out_nneval_tmp_pid_608/nn/tmp/GenFractalNet-44a8363dec53bc3ea146020b2527ca1e-a5d44267e1e4a9c46af832c32f71b967.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 3/782 [00:00<00:32, 23.97it/s]
+  1%|          | 8/782 [00:00<00:22, 33.71it/s]
+  2%|▏         | 13/782 [00:00<00:19, 38.47it/s]
+  2%|▏         | 18/782 [00:00<00:18, 41.22it/s]
+  3%|▎         | 23/782 [00:00<00:18, 41.97it/s]
+  4%|▎         | 28/782 [00:00<00:17, 43.69it/s]
+  4%|▍         | 33/782 [00:00<00:17, 43.41it/s]
+  5%|▍         | 38/782 [00:00<00:17, 42.97it/s]
+  5%|▌         | 43/782 [00:01<00:17, 43.26it/s]
+  6%|▌         | 48/782 [00:01<00:16, 43.58it/s]
+  7%|▋         | 53/782 [00:01<00:16, 43.72it/s]
+  7%|▋         | 58/782 [00:01<00:16, 43.88it/s]
+  8%|▊         | 63/782 [00:01<00:16, 43.54it/s]
+  9%|▊         | 68/782 [00:01<00:16, 43.22it/s]
+  9%|▉         | 73/782 [00:01<00:16, 43.68it/s]
+ 10%|▉         | 78/782 [00:01<00:15, 44.05it/s]
+ 11%|█         | 83/782 [00:01<00:16, 43.01it/s]
+ 11%|█▏        | 88/782 [00:02<00:16, 42.99it/s]
+ 12%|█▏        | 93/782 [00:02<00:15, 43.98it/s]
+ 13%|█▎        | 98/782 [00:02<00:15, 43.27it/s]
+ 13%|█▎        | 103/782 [00:02<00:15, 43.30it/s]
+ 14%|█▍        | 108/782 [00:02<00:16, 42.03it/s]
+ 14%|█▍        | 113/782 [00:02<00:15, 42.28it/s]
+ 15%|█▌        | 118/782 [00:02<00:15, 42.81it/s]
+ 16%|█▌        | 123/782 [00:02<00:15, 42.26it/s]
+ 16%|█▋        | 128/782 [00:03<00:15, 42.33it/s]
+ 17%|█▋        | 133/782 [00:03<00:15, 43.11it/s]
+ 18%|█▊        | 138/782 [00:03<00:14, 43.08it/s]
+ 18%|█▊        | 143/782 [00:03<00:15, 41.12it/s]
+ 19%|█▉        | 148/782 [00:03<00:15, 40.98it/s]
+ 20%|█▉        | 153/782 [00:03<00:15, 41.70it/s]
+ 20%|██        | 158/782 [00:03<00:14, 42.78it/s]
+ 21%|██        | 163/782 [00:03<00:14, 43.40it/s]
+ 21%|██▏       | 168/782 [00:03<00:14, 42.31it/s]
+ 22%|██▏       | 173/782 [00:04<00:14, 42.48it/s]
+ 23%|██▎       | 178/782 [00:04<00:14, 42.47it/s]
+ 23%|██▎       | 183/782 [00:04<00:14, 41.86it/s]
+ 24%|██▍       | 188/782 [00:04<00:13, 42.47it/s]
+ 25%|██▍       | 193/782 [00:04<00:13, 42.43it/s]
+ 25%|██▌       | 198/782 [00:04<00:13, 43.10it/s]
+ 26%|██▌       | 203/782 [00:04<00:13, 43.64it/s]
+ 27%|██▋       | 208/782 [00:04<00:13, 42.83it/s]
+ 27%|██▋       | 213/782 [00:05<00:13, 43.50it/s]
+ 28%|██▊       | 218/782 [00:05<00:12, 43.84it/s]
+ 29%|██▊       | 223/782 [00:05<00:12, 43.77it/s]
+ 29%|██▉       | 228/782 [00:05<00:12, 44.38it/s]
+ 30%|██▉       | 233/782 [00:05<00:12, 44.64it/s]
+ 30%|███       | 238/782 [00:05<00:12, 44.05it/s]
+ 31%|███       | 243/782 [00:05<00:12, 44.44it/s]
+ 32%|███▏      | 248/782 [00:05<00:12, 44.07it/s]
+ 32%|███▏      | 253/782 [00:05<00:11, 44.12it/s]
+ 33%|███▎      | 258/782 [00:06<00:12, 43.36it/s]
+ 34%|███▎      | 263/782 [00:06<00:11, 43.66it/s]
+ 34%|███▍      | 268/782 [00:06<00:12, 41.86it/s]
+ 35%|███▍      | 273/782 [00:06<00:11, 42.76it/s]
+ 36%|███▌      | 278/782 [00:06<00:11, 43.49it/s]
+ 36%|███▌      | 283/782 [00:06<00:11, 43.63it/s]
+ 37%|███▋      | 288/782 [00:06<00:11, 43.92it/s]
+ 37%|███▋      | 293/782 [00:06<00:11, 44.00it/s]
+ 38%|███▊      | 298/782 [00:06<00:10, 44.12it/s]
+ 39%|███▊      | 303/782 [00:07<00:10, 44.49it/s]
+ 39%|███▉      | 308/782 [00:07<00:10, 44.41it/s]
+ 40%|████      | 313/782 [00:07<00:10, 44.21it/s]
+ 41%|████      | 318/782 [00:07<00:10, 44.17it/s]
+ 41%|████▏     | 323/782 [00:07<00:10, 43.89it/s]
+ 42%|████▏     | 328/782 [00:07<00:10, 43.78it/s]
+ 43%|████▎     | 333/782 [00:07<00:10, 44.04it/s]
+ 43%|████▎     | 338/782 [00:07<00:10, 44.01it/s]
+ 44%|████▍     | 343/782 [00:07<00:09, 44.02it/s]
+ 45%|████▍     | 348/782 [00:08<00:09, 44.16it/s]
+ 45%|████▌     | 353/782 [00:08<00:09, 44.78it/s]
+ 46%|████▌     | 358/782 [00:08<00:09, 44.81it/s]
+ 46%|████▋     | 363/782 [00:08<00:09, 44.44it/s]
+ 47%|████▋     | 368/782 [00:08<00:09, 44.42it/s]
+ 48%|████▊     | 373/782 [00:08<00:09, 44.02it/s]
+ 48%|████▊     | 378/782 [00:08<00:09, 44.18it/s]
+ 49%|████▉     | 383/782 [00:08<00:08, 44.53it/s]
+ 50%|████▉     | 388/782 [00:08<00:08, 44.22it/s]
+ 50%|█████     | 393/782 [00:09<00:08, 44.00it/s]
+ 51%|█████     | 398/782 [00:09<00:08, 44.54it/s]
+ 52%|█████▏    | 403/782 [00:09<00:08, 44.78it/s]
+ 52%|█████▏    | 408/782 [00:09<00:08, 45.09it/s]
+ 53%|█████▎    | 413/782 [00:09<00:08, 44.46it/s]
+ 53%|█████▎    | 418/782 [00:09<00:08, 43.82it/s]
+ 54%|█████▍    | 423/782 [00:09<00:08, 43.46it/s]
+ 55%|█████▍    | 428/782 [00:09<00:08, 43.80it/s]
+ 55%|█████▌    | 433/782 [00:09<00:07, 44.02it/s]
+ 56%|█████▌    | 438/782 [00:10<00:07, 43.95it/s]
+ 57%|█████▋    | 443/782 [00:10<00:07, 42.55it/s]
+ 57%|█████▋    | 448/782 [00:10<00:08, 41.38it/s]
+ 58%|█████▊    | 453/782 [00:10<00:07, 41.91it/s]
+ 59%|█████▊    | 458/782 [00:10<00:07, 40.81it/s]
+ 59%|█████▉    | 463/782 [00:10<00:07, 41.43it/s]
+ 60%|█████▉    | 468/782 [00:10<00:07, 42.03it/s]
+ 60%|██████    | 473/782 [00:10<00:07, 41.98it/s]
+ 61%|██████    | 478/782 [00:11<00:07, 42.20it/s]
+ 62%|██████▏   | 483/782 [00:11<00:07, 42.53it/s]
+ 62%|██████▏   | 488/782 [00:11<00:06, 43.60it/s]
+ 63%|██████▎   | 493/782 [00:11<00:06, 44.04it/s]
+ 64%|██████▎   | 498/782 [00:11<00:06, 43.92it/s]
+ 64%|██████▍   | 503/782 [00:11<00:06, 43.72it/s]
+ 65%|██████▍   | 508/782 [00:11<00:06, 44.48it/s]
+ 66%|██████▌   | 513/782 [00:11<00:05, 45.28it/s]
+ 66%|██████▌   | 518/782 [00:11<00:06, 43.65it/s]
+ 67%|██████▋   | 523/782 [00:12<00:05, 43.46it/s]
+ 68%|██████▊   | 528/782 [00:12<00:05, 42.71it/s]
+ 68%|██████▊   | 533/782 [00:12<00:05, 42.40it/s]
+ 69%|██████▉   | 538/782 [00:12<00:05, 43.25it/s]
+ 69%|██████▉   | 543/782 [00:12<00:05, 43.87it/s]
+ 70%|███████   | 548/782 [00:12<00:05, 43.83it/s]
+ 71%|███████   | 553/782 [00:12<00:05, 43.81it/s]
+ 71%|███████▏  | 558/782 [00:12<00:05, 43.34it/s]
+ 72%|███████▏  | 563/782 [00:13<00:04, 43.96it/s]
+ 73%|███████▎  | 568/782 [00:13<00:04, 43.79it/s]
+ 73%|███████▎  | 573/782 [00:13<00:04, 43.53it/s]
+ 74%|███████▍  | 578/782 [00:13<00:04, 43.23it/s]
+ 75%|███████▍  | 583/782 [00:13<00:04, 43.92it/s]
+ 75%|███████▌  | 588/782 [00:13<00:04, 44.46it/s]
+ 76%|███████▌  | 593/782 [00:13<00:04, 44.09it/s]
+ 76%|███████▋  | 598/782 [00:13<00:04, 43.41it/s]
+ 77%|███████▋  | 603/782 [00:13<00:04, 43.66it/s]
+ 78%|███████▊  | 608/782 [00:14<00:03, 43.53it/s]
+ 78%|███████▊  | 613/782 [00:14<00:03, 44.99it/s]
+ 79%|███████▉  | 618/782 [00:14<00:03, 44.02it/s]
+ 80%|███████▉  | 623/782 [00:14<00:03, 44.34it/s]
+ 80%|████████  | 628/782 [00:14<00:03, 44.39it/s]
+ 81%|████████  | 633/782 [00:14<00:03, 44.62it/s]
+ 82%|████████▏ | 638/782 [00:14<00:03, 44.69it/s]
+ 82%|████████▏ | 643/782 [00:14<00:03, 44.57it/s]
+ 83%|████████▎ | 648/782 [00:14<00:02, 45.27it/s]
+ 84%|████████▎ | 653/782 [00:15<00:02, 45.33it/s]
+ 84%|████████▍ | 658/782 [00:15<00:02, 45.08it/s]
+ 85%|████████▍ | 663/782 [00:15<00:02, 45.41it/s]
+ 85%|████████▌ | 668/782 [00:15<00:02, 45.11it/s]
+ 86%|████████▌ | 673/782 [00:15<00:02, 44.69it/s]
+ 87%|████████▋ | 678/782 [00:15<00:02, 44.86it/s]
+ 87%|████████▋ | 683/782 [00:15<00:02, 44.30it/s]
+ 88%|████████▊ | 688/782 [00:15<00:02, 44.47it/s]
+ 89%|████████▊ | 693/782 [00:15<00:02, 44.50it/s]
+ 89%|████████▉ | 698/782 [00:16<00:01, 44.60it/s]
+ 90%|████████▉ | 703/782 [00:16<00:01, 44.18it/s]
+ 91%|█████████ | 708/782 [00:16<00:01, 44.11it/s]
+ 91%|█████████ | 713/782 [00:16<00:01, 43.96it/s]
+ 92%|█████████▏| 718/782 [00:16<00:01, 43.99it/s]
+ 92%|█████████▏| 723/782 [00:16<00:01, 43.27it/s]
+ 93%|█████████▎| 728/782 [00:16<00:01, 43.57it/s]
+ 94%|█████████▎| 733/782 [00:16<00:01, 44.06it/s]
+ 94%|█████████▍| 738/782 [00:16<00:00, 44.72it/s]
+ 95%|█████████▌| 743/782 [00:17<00:00, 44.10it/s]
+ 96%|█████████▌| 748/782 [00:17<00:00, 43.92it/s]
+ 96%|█████████▋| 753/782 [00:17<00:00, 44.55it/s]
+ 97%|█████████▋| 758/782 [00:17<00:00, 44.02it/s]
+ 98%|█████████▊| 763/782 [00:17<00:00, 43.70it/s]
+ 98%|█████████▊| 768/782 [00:17<00:00, 43.69it/s]
+ 99%|█████████▉| 773/782 [00:17<00:00, 43.70it/s]
+ 99%|█████████▉| 778/782 [00:17<00:00, 44.00it/s]
+100%|██████████| 782/782 [00:18<00:00, 43.39it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_608/nn/tmp/GenFractalNet-44a8363dec53bc3ea146020b2527ca1e-a5d44267e1e4a9c46af832c32f71b967.py'
+  Train Loss: 2.2871, Test Loss: 2.2869
+  Train Acc: 0.1224, Test Acc: 0.1242
+  LR: 0.000001, Grad Norm: 1.0358, Throughput: 1501.6 samples/s
+accuracy_to_time_metric 0.07267589212521298
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_608/nn/tmp/GenFractalNet-44a8363dec53bc3ea146020b2527ca1e-a5d44267e1e4a9c46af832c32f71b967.py'
+  [Archive] Cell (3, 32) updated with fitness: 0.0000
+[Best] Saved best model to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_model.py
+[Best] Warning: stats folder not found for checksum 0bc1a09a
+[Best] Saved best info metadata to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_info.json
+PEAK_ACCURACY: 0.0000
+TOP3_MEAN: 0.0000
+ARCHIVE_SIZE: 7
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] TERTIARY: Archive Novelty (2 cells updated). Bonus: 1.0000
+   [RL] Total Reward: 1.0000
+[Meta] --> ARCHIVE EXPANDED! 7 cells (was 5)
+--> SUCCESS. Updating Baseline (EMA) & Fine-tuning on Success.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+[LoRA] Fine-tune start (replay buffer: 2 items, batch: 2)
+[LoRA] Training on 2 examples...
+[LoRA] Epoch 1/1 - Loss: 0.1899
+[LoRA] Fine-tune complete
+[LoRA] Adapter save start
+[LoRA] Adapter save complete
+--> Saved version history with accuracy: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/genetic_algorithm_attempt2_mutate_gene_acc_0.00.py
+--> Saved CoT trace: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/genetic_algorithm_attempt2_mutate_gene_acc_0.00_thinking.txt
+[Meta] ✓ Success #2/10 achieved on attempt 2
+
+=== Attempt 3 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.79
+--- [DEBUG] Raw Response ---
+<thinking>
+To break the Global SOTA peak accuracy and discover novel, high-performing architectures, we need to ensure that our selection mechanism actively explores the search space. The current `select_competitor` simply selects the competitor with the highest fitness, which can lead to premature convergence. Instead, we should introduce more diversity and exploration by sampling heavily from both the current population and the archive. This approach helps in discovering new frontiers in the search space and breaking through local optima.
+
+We will modify the `select_competitor` to sample a fixed number of competitors randomly from both the population and the archive, ensuring a balance between exploitation and exploration. We will then select the best competitor among these samples.
+
+This strategy is inspired by the concept of **Stochastic Universal Sampling** (SUS), where multiple candidates are selected from the population and archive, and then one is chosen at random proportional to their fitness. However, since we are dealing with a simpler scenario, we will use a weighted random selection to achieve similar effects.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Sample 5 competitors from the current population
+        pop_sample = random.sample(self.population, min(5, len(self.population)))
+        
+        # Sample 5 competitors from the archive
+        archive_sample = random.sample(list(self.archive.values()), min(5, len(self.archive)))
+        
+        # Combine both samples
+        combined_sample = pop_sample + archive_sample
+        
+        # Select the competitor with the highest fitness among the combined sample
+        return max(combined_sample, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+2026-07-13 22:09:31,161 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 22:09:31,161 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 22:09:31,161 - INFO - NumExpr defaulting to 16 threads.
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+LEMUR root /a/mm
+[Init] Loaded 214 existing checksums from stats/ (skipping duplicates)
+[Run] Continuing evolution from gen 2 to 3
+
+
+ >>> GENERATION 3 <<<
+
+  Evaluating Individual 2/5 ---- Generation: 3/3
+  - Evaluating unique arch (checksum: 322fd49a...)
+Evaluating /a/mm/out_nneval_tmp_pid_969/nn/tmp/GenFractalNet-322fd49a80959bb123f9747f6fa15017-138e2d2299e11d6bc3bddfa3e95a0c39.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 2/782 [00:00<00:39, 19.77it/s]
+  1%|▏         | 11/782 [00:00<00:13, 58.57it/s]
+  3%|▎         | 21/782 [00:00<00:10, 75.98it/s]
+  4%|▍         | 31/782 [00:00<00:08, 84.49it/s]
+  5%|▌         | 42/782 [00:00<00:08, 90.47it/s]
+  7%|▋         | 52/782 [00:00<00:07, 93.59it/s]
+  8%|▊         | 62/782 [00:00<00:07, 92.32it/s]
+  9%|▉         | 72/782 [00:00<00:07, 92.74it/s]
+ 10%|█         | 82/782 [00:00<00:07, 94.35it/s]
+ 12%|█▏        | 92/782 [00:01<00:07, 95.32it/s]
+ 13%|█▎        | 102/782 [00:01<00:07, 96.37it/s]
+ 14%|█▍        | 113/782 [00:01<00:06, 98.54it/s]
+ 16%|█▌        | 123/782 [00:01<00:06, 98.31it/s]
+ 17%|█▋        | 133/782 [00:01<00:06, 96.63it/s]
+ 18%|█▊        | 143/782 [00:01<00:06, 96.59it/s]
+ 20%|█▉        | 153/782 [00:01<00:06, 97.23it/s]
+ 21%|██        | 163/782 [00:01<00:06, 96.73it/s]
+ 22%|██▏       | 174/782 [00:01<00:06, 98.47it/s]
+ 24%|██▎       | 184/782 [00:01<00:06, 98.62it/s]
+ 25%|██▍       | 194/782 [00:02<00:05, 98.39it/s]
+ 26%|██▌       | 204/782 [00:02<00:05, 98.83it/s]
+ 27%|██▋       | 214/782 [00:02<00:05, 97.95it/s]
+ 29%|██▊       | 224/782 [00:02<00:05, 98.41it/s]
+ 30%|██▉       | 234/782 [00:02<00:05, 98.03it/s]
+ 31%|███       | 244/782 [00:02<00:05, 97.65it/s]
+ 33%|███▎      | 255/782 [00:02<00:05, 98.78it/s]
+ 34%|███▍      | 265/782 [00:02<00:05, 97.81it/s]
+ 35%|███▌      | 275/782 [00:02<00:05, 97.42it/s]
+ 36%|███▋      | 285/782 [00:03<00:05, 97.34it/s]
+ 38%|███▊      | 295/782 [00:03<00:05, 97.38it/s]
+ 39%|███▉      | 305/782 [00:03<00:04, 98.09it/s]
+ 40%|████      | 315/782 [00:03<00:04, 98.55it/s]
+ 42%|████▏     | 325/782 [00:03<00:04, 98.74it/s]
+ 43%|████▎     | 336/782 [00:03<00:04, 99.38it/s]
+ 44%|████▍     | 347/782 [00:03<00:04, 100.22it/s]
+ 46%|████▌     | 358/782 [00:03<00:04, 100.34it/s]
+ 47%|████▋     | 369/782 [00:03<00:04, 99.75it/s] 
+ 49%|████▊     | 380/782 [00:03<00:04, 99.97it/s]
+ 50%|████▉     | 390/782 [00:04<00:03, 98.88it/s]
+ 51%|█████     | 400/782 [00:04<00:03, 99.07it/s]
+ 52%|█████▏    | 410/782 [00:04<00:03, 99.06it/s]
+ 54%|█████▎    | 420/782 [00:04<00:03, 99.21it/s]
+ 55%|█████▍    | 430/782 [00:04<00:03, 99.29it/s]
+ 56%|█████▋    | 440/782 [00:04<00:03, 98.50it/s]
+ 58%|█████▊    | 451/782 [00:04<00:03, 99.63it/s]
+ 59%|█████▉    | 461/782 [00:04<00:03, 98.84it/s]
+ 60%|██████    | 471/782 [00:04<00:03, 98.52it/s]
+ 62%|██████▏   | 481/782 [00:04<00:03, 97.97it/s]
+ 63%|██████▎   | 491/782 [00:05<00:02, 98.33it/s]
+ 64%|██████▍   | 501/782 [00:05<00:02, 98.78it/s]
+ 65%|██████▌   | 511/782 [00:05<00:02, 98.38it/s]
+ 67%|██████▋   | 522/782 [00:05<00:02, 99.21it/s]
+ 68%|██████▊   | 532/782 [00:05<00:02, 99.41it/s]
+ 69%|██████▉   | 542/782 [00:05<00:02, 98.65it/s]
+ 71%|███████   | 552/782 [00:05<00:02, 98.69it/s]
+ 72%|███████▏  | 562/782 [00:05<00:02, 98.23it/s]
+ 73%|███████▎  | 572/782 [00:05<00:02, 98.74it/s]
+ 74%|███████▍  | 582/782 [00:06<00:02, 98.48it/s]
+ 76%|███████▌  | 592/782 [00:06<00:01, 98.16it/s]
+ 77%|███████▋  | 602/782 [00:06<00:01, 98.43it/s]
+ 78%|███████▊  | 613/782 [00:06<00:01, 99.26it/s]
+ 80%|███████▉  | 623/782 [00:06<00:01, 99.17it/s]
+ 81%|████████  | 634/782 [00:06<00:01, 99.89it/s]
+ 82%|████████▏ | 644/782 [00:06<00:01, 99.82it/s]
+ 84%|████████▍ | 655/782 [00:06<00:01, 100.04it/s]
+ 85%|████████▌ | 666/782 [00:06<00:01, 99.67it/s] 
+ 87%|████████▋ | 677/782 [00:06<00:01, 99.93it/s]
+ 88%|████████▊ | 688/782 [00:07<00:00, 100.40it/s]
+ 89%|████████▉ | 699/782 [00:07<00:00, 99.69it/s] 
+ 91%|█████████ | 709/782 [00:07<00:00, 99.12it/s]
+ 92%|█████████▏| 719/782 [00:07<00:00, 98.24it/s]
+ 93%|█████████▎| 729/782 [00:07<00:00, 98.23it/s]
+ 95%|█████████▍| 739/782 [00:07<00:00, 96.08it/s]
+ 96%|█████████▌| 750/782 [00:07<00:00, 97.30it/s]
+ 97%|█████████▋| 760/782 [00:07<00:00, 97.71it/s]
+ 99%|█████████▊| 771/782 [00:07<00:00, 98.20it/s]
+100%|█████████▉| 781/782 [00:08<00:00, 96.21it/s]
+100%|██████████| 782/782 [00:08<00:00, 96.57it/s]
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 2.1993, Test Loss: 2.1990
+  Train Acc: 0.2023, Test Acc: 0.2026
+  LR: 0.000001, Grad Norm: 0.7347, Throughput: 2307.0 samples/s
+accuracy_to_time_metric 0.4733772065470884
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-322fd49a80959bb123f9747f6fa15017/1.json
+  - Model persisted to ga_fractal_arch_cifar10/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 20.26%  (source: hyperparameters.accuracy, checksum: 322fd49a80959bb123f9747f6fa15017)
+  ========================================
+
+  [Archive] Cell (3, 16) updated with fitness: 20.2600
+  Evaluating Individual 3/5 ---- Generation: 3/3
+  - Evaluating unique arch (checksum: cee918f1...)
+Evaluating /a/mm/out_nneval_tmp_pid_969/nn/tmp/GenFractalNet-cee918f1a7e7a63862f39f05f09906a7-38b0a3b472a992823ac76488bfbd1b03.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 4/782 [00:00<00:19, 39.76it/s]
+  2%|▏         | 16/782 [00:00<00:08, 85.86it/s]
+  4%|▎         | 28/782 [00:00<00:07, 98.51it/s]
+  5%|▌         | 40/782 [00:00<00:07, 104.14it/s]
+  7%|▋         | 54/782 [00:00<00:06, 115.50it/s]
+  9%|▉         | 69/782 [00:00<00:05, 124.70it/s]
+ 11%|█         | 84/782 [00:00<00:05, 131.01it/s]
+ 13%|█▎        | 99/782 [00:00<00:05, 134.46it/s]
+ 15%|█▍        | 114/782 [00:00<00:04, 137.04it/s]
+ 16%|█▋        | 129/782 [00:01<00:04, 138.88it/s]
+ 18%|█▊        | 144/782 [00:01<00:04, 140.22it/s]
+ 20%|██        | 159/782 [00:01<00:04, 141.19it/s]
+ 22%|██▏       | 174/782 [00:01<00:04, 141.78it/s]
+ 24%|██▍       | 189/782 [00:01<00:04, 142.30it/s]
+ 26%|██▌       | 204/782 [00:01<00:04, 142.91it/s]
+ 28%|██▊       | 219/782 [00:01<00:03, 142.64it/s]
+ 30%|██▉       | 234/782 [00:01<00:03, 142.85it/s]
+ 32%|███▏      | 249/782 [00:01<00:03, 142.62it/s]
+ 34%|███▍      | 264/782 [00:01<00:03, 142.92it/s]
+ 36%|███▌      | 279/782 [00:02<00:03, 142.20it/s]
+ 38%|███▊      | 294/782 [00:02<00:03, 143.15it/s]
+ 40%|███▉      | 309/782 [00:02<00:03, 143.22it/s]
+ 41%|████▏     | 324/782 [00:02<00:03, 143.54it/s]
+ 43%|████▎     | 339/782 [00:02<00:03, 143.14it/s]
+ 45%|████▌     | 354/782 [00:02<00:03, 142.63it/s]
+ 47%|████▋     | 369/782 [00:02<00:02, 142.48it/s]
+ 49%|████▉     | 384/782 [00:02<00:02, 142.71it/s]
+ 51%|█████     | 399/782 [00:02<00:02, 142.23it/s]
+ 53%|█████▎    | 414/782 [00:03<00:02, 142.17it/s]
+ 55%|█████▍    | 429/782 [00:03<00:02, 142.26it/s]
+ 57%|█████▋    | 444/782 [00:03<00:02, 142.31it/s]
+ 59%|█████▊    | 459/782 [00:03<00:02, 142.18it/s]
+ 61%|██████    | 474/782 [00:03<00:02, 142.21it/s]
+ 63%|██████▎   | 489/782 [00:03<00:02, 142.66it/s]
+ 64%|██████▍   | 504/782 [00:03<00:01, 141.87it/s]
+ 66%|██████▋   | 519/782 [00:03<00:01, 142.13it/s]
+ 68%|██████▊   | 534/782 [00:03<00:01, 142.07it/s]
+ 70%|███████   | 549/782 [00:03<00:01, 142.44it/s]
+ 72%|███████▏  | 564/782 [00:04<00:01, 142.52it/s]
+ 74%|███████▍  | 579/782 [00:04<00:01, 141.70it/s]
+ 76%|███████▌  | 594/782 [00:04<00:01, 141.27it/s]
+ 78%|███████▊  | 609/782 [00:04<00:01, 141.36it/s]
+ 80%|███████▉  | 624/782 [00:04<00:01, 141.50it/s]
+ 82%|████████▏ | 639/782 [00:04<00:01, 142.14it/s]
+ 84%|████████▎ | 654/782 [00:04<00:00, 141.93it/s]
+ 86%|████████▌ | 669/782 [00:04<00:00, 142.50it/s]
+ 87%|████████▋ | 684/782 [00:04<00:00, 142.40it/s]
+ 89%|████████▉ | 699/782 [00:05<00:00, 142.70it/s]
+ 91%|█████████▏| 714/782 [00:05<00:00, 142.86it/s]
+ 93%|█████████▎| 729/782 [00:05<00:00, 142.85it/s]
+ 95%|█████████▌| 744/782 [00:05<00:00, 143.14it/s]
+ 97%|█████████▋| 759/782 [00:05<00:00, 143.22it/s]
+ 99%|█████████▉| 774/782 [00:05<00:00, 143.09it/s]
+100%|██████████| 782/782 [00:05<00:00, 138.19it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 553, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes, False, export_onnx, train_set, save_path=save_path)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 367, in train_n_eval
+    raise AccuracyException(accuracy, duration,
+ab.nn.util.Exception.AccuracyException: (0.1088, 19302777669, "Accuracy is too low: 0.1088. The minimum accepted accuracy for the 'cifar-10' dataset is 0.1.")
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 2.3008, Test Loss: 2.3012
+  Train Acc: 0.1078, Test Acc: 0.1088
+  LR: 0.000000, Grad Norm: 0.3373, Throughput: 2590.3 samples/s
+accuracy_to_time_metric 0.04558929368042543
+Error during training: (0.1088, 19302777669, "Accuracy is too low: 0.1088. The minimum accepted accuracy for the 'cifar-10' dataset is 0.1.")
+Eval Fail: (0.1088, 19302777669, "Accuracy is too low: 0.1088. The minimum accepted accuracy for the 'cifar-10' dataset is 0.1.")
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar10/_tmp_GenFractalNet-cee918f1a7e7a63862f39f05f09906a7.py
+  Evaluating Individual 4/5 ---- Generation: 3/3
+  - Evaluating unique arch (checksum: 3f516ff8...)
+Evaluating /a/mm/out_nneval_tmp_pid_969/nn/tmp/GenFractalNet-3f516ff8507772b9c57e7852980b1018-95374634c995a091a9b08da0b063b0cc.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 9/782 [00:00<00:08, 88.77it/s]
+  3%|▎         | 24/782 [00:00<00:06, 120.52it/s]
+  5%|▍         | 39/782 [00:00<00:05, 130.56it/s]
+  7%|▋         | 54/782 [00:00<00:05, 134.95it/s]
+  9%|▉         | 69/782 [00:00<00:05, 138.00it/s]
+ 11%|█         | 84/782 [00:00<00:04, 140.15it/s]
+ 13%|█▎        | 99/782 [00:00<00:04, 141.27it/s]
+ 15%|█▍        | 114/782 [00:00<00:04, 141.99it/s]
+ 16%|█▋        | 129/782 [00:00<00:04, 142.70it/s]
+ 18%|█▊        | 144/782 [00:01<00:04, 143.32it/s]
+ 20%|██        | 159/782 [00:01<00:04, 143.44it/s]
+ 22%|██▏       | 174/782 [00:01<00:04, 143.60it/s]
+ 24%|██▍       | 189/782 [00:01<00:04, 143.92it/s]
+ 26%|██▌       | 204/782 [00:01<00:04, 143.90it/s]
+ 28%|██▊       | 219/782 [00:01<00:03, 144.05it/s]
+ 30%|██▉       | 234/782 [00:01<00:03, 143.93it/s]
+ 32%|███▏      | 249/782 [00:01<00:03, 143.75it/s]
+ 34%|███▍      | 264/782 [00:01<00:03, 143.75it/s]
+ 36%|███▌      | 279/782 [00:01<00:03, 143.50it/s]
+ 38%|███▊      | 294/782 [00:02<00:03, 143.45it/s]
+ 40%|███▉      | 309/782 [00:02<00:03, 143.22it/s]
+ 41%|████▏     | 324/782 [00:02<00:03, 143.30it/s]
+ 43%|████▎     | 339/782 [00:02<00:03, 142.62it/s]
+ 45%|████▌     | 354/782 [00:02<00:02, 142.98it/s]
+ 47%|████▋     | 369/782 [00:02<00:02, 142.81it/s]
+ 49%|████▉     | 384/782 [00:02<00:02, 143.12it/s]
+ 51%|█████     | 399/782 [00:02<00:02, 142.39it/s]
+ 53%|█████▎    | 414/782 [00:02<00:02, 142.84it/s]
+ 55%|█████▍    | 429/782 [00:03<00:02, 143.16it/s]
+ 57%|█████▋    | 444/782 [00:03<00:02, 142.18it/s]
+ 59%|█████▊    | 459/782 [00:03<00:02, 135.92it/s]
+ 60%|██████    | 473/782 [00:03<00:02, 133.01it/s]
+ 62%|██████▏   | 487/782 [00:03<00:02, 133.87it/s]
+ 64%|██████▍   | 502/782 [00:03<00:02, 136.05it/s]
+ 66%|██████▌   | 517/782 [00:03<00:01, 138.16it/s]
+ 68%|██████▊   | 532/782 [00:03<00:01, 139.49it/s]
+ 70%|██████▉   | 547/782 [00:03<00:01, 140.66it/s]
+ 72%|███████▏  | 562/782 [00:04<00:01, 140.96it/s]
+ 74%|███████▍  | 577/782 [00:04<00:01, 141.67it/s]
+ 76%|███████▌  | 592/782 [00:04<00:01, 142.28it/s]
+ 78%|███████▊  | 607/782 [00:04<00:01, 142.24it/s]
+ 80%|███████▉  | 622/782 [00:04<00:01, 141.70it/s]
+ 81%|████████▏ | 637/782 [00:04<00:01, 142.25it/s]
+ 83%|████████▎ | 652/782 [00:04<00:00, 142.27it/s]
+ 85%|████████▌ | 667/782 [00:04<00:00, 142.86it/s]
+ 87%|████████▋ | 682/782 [00:04<00:00, 142.65it/s]
+ 89%|████████▉ | 697/782 [00:04<00:00, 142.76it/s]
+ 91%|█████████ | 712/782 [00:05<00:00, 142.92it/s]
+ 93%|█████████▎| 727/782 [00:05<00:00, 142.83it/s]
+ 95%|█████████▍| 742/782 [00:05<00:00, 141.69it/s]
+ 97%|█████████▋| 757/782 [00:05<00:00, 141.41it/s]
+ 99%|█████████▊| 772/782 [00:05<00:00, 139.48it/s]
+100%|██████████| 782/782 [00:05<00:00, 140.19it/s]
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 1.7242, Test Loss: 1.7271
+  Train Acc: 0.3643, Test Acc: 0.3641
+  LR: 0.000001, Grad Norm: 1.1453, Throughput: 2617.9 samples/s
+accuracy_to_time_metric 1.3827582365394526
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-3f516ff8507772b9c57e7852980b1018/1.json
+  - Model persisted to ga_fractal_arch_cifar10/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 36.41%  (source: hyperparameters.accuracy, checksum: 3f516ff8507772b9c57e7852980b1018)
+  ========================================
+
+  [Archive] Cell (3, 16) updated with fitness: 36.4100
+  Evaluating Individual 5/5 ---- Generation: 3/3
+  - Evaluating unique arch (checksum: a872d3bc...)
+Evaluating /a/mm/out_nneval_tmp_pid_969/nn/tmp/GenFractalNet-a872d3bc5d318a4f9ff12a26a5cf907a-791504ef87ea060a18a486552c6e6818.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 6/782 [00:00<00:13, 57.77it/s]
+  3%|▎         | 21/782 [00:00<00:07, 107.49it/s]
+  5%|▍         | 36/782 [00:00<00:06, 122.51it/s]
+  6%|▋         | 50/782 [00:00<00:05, 128.33it/s]
+  8%|▊         | 64/782 [00:00<00:05, 131.71it/s]
+ 10%|█         | 79/782 [00:00<00:05, 135.33it/s]
+ 12%|█▏        | 94/782 [00:00<00:04, 138.10it/s]
+ 14%|█▍        | 109/782 [00:00<00:04, 139.55it/s]
+ 16%|█▌        | 124/782 [00:00<00:04, 140.31it/s]
+ 18%|█▊        | 139/782 [00:01<00:04, 141.07it/s]
+ 20%|█▉        | 154/782 [00:01<00:04, 141.60it/s]
+ 22%|██▏       | 169/782 [00:01<00:04, 140.84it/s]
+ 24%|██▎       | 184/782 [00:01<00:04, 140.98it/s]
+ 25%|██▌       | 199/782 [00:01<00:04, 140.74it/s]
+ 27%|██▋       | 214/782 [00:01<00:04, 137.76it/s]
+ 29%|██▉       | 228/782 [00:01<00:04, 137.21it/s]
+ 31%|███       | 242/782 [00:01<00:03, 135.70it/s]
+ 33%|███▎      | 257/782 [00:01<00:03, 137.06it/s]
+ 35%|███▍      | 272/782 [00:02<00:03, 138.43it/s]
+ 37%|███▋      | 287/782 [00:02<00:03, 139.82it/s]
+ 38%|███▊      | 301/782 [00:02<00:03, 139.09it/s]
+ 40%|████      | 315/782 [00:02<00:03, 137.61it/s]
+ 42%|████▏     | 329/782 [00:02<00:03, 135.42it/s]
+ 44%|████▍     | 343/782 [00:02<00:03, 134.16it/s]
+ 46%|████▌     | 357/782 [00:02<00:03, 132.34it/s]
+ 47%|████▋     | 371/782 [00:02<00:03, 132.12it/s]
+ 49%|████▉     | 385/782 [00:02<00:02, 132.57it/s]
+ 51%|█████     | 399/782 [00:02<00:02, 133.35it/s]
+ 53%|█████▎    | 413/782 [00:03<00:02, 133.86it/s]
+ 55%|█████▍    | 427/782 [00:03<00:02, 133.66it/s]
+ 56%|█████▋    | 441/782 [00:03<00:02, 135.14it/s]
+ 58%|█████▊    | 455/782 [00:03<00:02, 136.30it/s]
+ 60%|██████    | 470/782 [00:03<00:02, 138.15it/s]
+ 62%|██████▏   | 485/782 [00:03<00:02, 138.96it/s]
+ 64%|██████▍   | 500/782 [00:03<00:02, 139.42it/s]
+ 66%|██████▌   | 514/782 [00:03<00:01, 139.22it/s]
+ 68%|██████▊   | 529/782 [00:03<00:01, 139.83it/s]
+ 70%|██████▉   | 544/782 [00:03<00:01, 140.79it/s]
+ 71%|███████▏  | 559/782 [00:04<00:01, 141.30it/s]
+ 73%|███████▎  | 574/782 [00:04<00:01, 135.42it/s]
+ 75%|███████▌  | 588/782 [00:04<00:01, 136.31it/s]
+ 77%|███████▋  | 603/782 [00:04<00:01, 138.29it/s]
+ 79%|███████▉  | 617/782 [00:04<00:01, 138.60it/s]
+ 81%|████████  | 631/782 [00:04<00:01, 135.42it/s]
+ 83%|████████▎ | 646/782 [00:04<00:00, 137.54it/s]
+ 84%|████████▍ | 660/782 [00:04<00:00, 138.22it/s]
+ 86%|████████▌ | 674/782 [00:04<00:00, 138.18it/s]
+ 88%|████████▊ | 689/782 [00:05<00:00, 139.44it/s]
+ 90%|█████████ | 704/782 [00:05<00:00, 139.13it/s]
+ 92%|█████████▏| 718/782 [00:05<00:00, 135.39it/s]
+ 94%|█████████▎| 732/782 [00:05<00:00, 131.59it/s]
+ 95%|█████████▌| 746/782 [00:05<00:00, 128.46it/s]
+ 97%|█████████▋| 759/782 [00:05<00:00, 127.02it/s]
+ 99%|█████████▊| 772/782 [00:05<00:00, 124.70it/s]
+100%|██████████| 782/782 [00:05<00:00, 134.26it/s]
+  Train Loss: 1.9782, Test Loss: 1.9756
+  Train Acc: 0.2428, Test Acc: 0.2474
+  LR: 0.000000, Grad Norm: 1.7956, Throughput: 2599.0 samples/s
+accuracy_to_time_metric 0.7661728652090606
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-a872d3bc5d318a4f9ff12a26a5cf907a/1.json
+  - Model persisted to ga_fractal_arch_cifar10/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 24.74%  (source: hyperparameters.accuracy, checksum: a872d3bc5d318a4f9ff12a26a5cf907a)
+  ========================================
+
+[Best] Saved best model to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_model.py
+[Best] Copying stats from /a/mm/ab/gpt/brute/ga/meta_evolution/stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-3f516ff8507772b9c57e7852980b1018...
+[Best] Saved best stats to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_stats_cifar10/img-classification_cifar-10_acc_GenFractalNet-3f516ff8507772b9c57e7852980b1018
+[Best] Saved best info metadata to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_info.json
+PEAK_ACCURACY: 36.4100
+TOP3_MEAN: 12.1367
+ARCHIVE_SIZE: 7
+[Meta] Median Top-3 Quality over 1 runs: 12.1367
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] PRIMARY: +36.41% SOTA Improvement! Bonus: 18.1097
+   [RL] SECONDARY: Top-3 Quality (12.14%). Bonus: 0.1821
+   [RL] Total Reward: 15.0000
+[Meta] --> NEW GLOBAL SOTA! 36.41% (was 0.00%)
+--> SUCCESS. Updating Baseline (EMA) & Fine-tuning on Success.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+[LoRA] Fine-tune start (replay buffer: 3 items, batch: 3)
+[LoRA] Training on 3 examples...
+[LoRA] Epoch 1/1 - Loss: 0.2671
+[LoRA] Fine-tune complete
+[LoRA] Adapter save start
+[LoRA] Adapter save complete
+--> Saved version history with accuracy: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/genetic_algorithm_attempt3_select_competitor_acc_36.41.py
+--> Saved CoT trace: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/genetic_algorithm_attempt3_select_competitor_acc_36.41_thinking.txt
+[Meta] ✓ Success #3/10 achieved on attempt 3
+
+=== Attempt 4 | Successes: 3/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.73
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the diversity and exploration capabilities of the GA, I will introduce a strategy that favors novel and previously unseen configurations. This can be achieved by combining elements from the best-known architecture with randomly sampled values from the search space. Additionally, I will ensure that the dropout probability is always greater than 0.0 to maintain robustness against heavy path-dropping during the short 1-epoch evaluations.
+</thinking>
+
+```python
+    def _create_random_chromosome(self):
+        # Start with the best-known architecture
+        best_architecture = {
+            "n_columns": 2,
+            "base_channels": 32,
+            "n_blocks": 4,
+            "dropout_prob": 0.25,
+            "fc_dropout": 0.25,
+            "lr": 0.001,
+            "momentum": 0.9,
+            "activation": "SiLU",
+            "kernel_size": 5,
+            "pooling_type": "Max",
+            "conv_type": "Standard",
+            "norm_type": "InstanceNorm",
+            "optimizer_type": "SGD"
+        }
+        
+        # Create a new chromosome by combining elements from the best architecture with random values
+        new_chromosome = {}
+        for gene, value in best_architecture.items():
+            if gene == "dropout_prob":
+                # Ensure the dropout probability is always greater than 0.0
+                new_chromosome[gene] = random.choice([0.2, 0.3, 0.4, 0.5])
+            elif gene in ["base_channels", "n_blocks"]:
+                # Choose a value from the best architecture's value
+                new_chromosome[gene] = value
+            else:
+                # Randomly choose a value from the search space
+                new_chromosome[gene] = random.choice(self.search_space[gene])
+        
+        return new_chromosome
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+2026-07-13 22:12:07,455 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 22:12:07,455 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 22:12:07,455 - INFO - NumExpr defaulting to 16 threads.
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+LEMUR root /a/mm
+[Init] Loaded 217 existing checksums from stats/ (skipping duplicates)
+[Run] Continuing evolution from gen 3 to 4
+
+
+ >>> GENERATION 4 <<<
+
+  Evaluating Individual 2/5 ---- Generation: 4/4
+  - Evaluating unique arch (checksum: 3c95b67e...)
+Evaluating /a/mm/out_nneval_tmp_pid_1330/nn/tmp/GenFractalNet-3c95b67eb23b12f56714f5c025b4a890-d9fbd2f39f3152b0782b0e89d51fd0f6.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 5/782 [00:00<00:15, 49.32it/s]
+  2%|▏         | 19/782 [00:00<00:07, 101.80it/s]
+  4%|▍         | 33/782 [00:00<00:06, 118.21it/s]
+  6%|▌         | 47/782 [00:00<00:05, 125.28it/s]
+  8%|▊         | 61/782 [00:00<00:05, 129.19it/s]
+ 10%|▉         | 75/782 [00:00<00:05, 131.62it/s]
+ 11%|█▏        | 89/782 [00:00<00:05, 132.38it/s]
+ 13%|█▎        | 103/782 [00:00<00:05, 133.47it/s]
+ 15%|█▍        | 117/782 [00:00<00:04, 134.86it/s]
+ 17%|█▋        | 131/782 [00:01<00:04, 135.50it/s]
+ 19%|█▊        | 145/782 [00:01<00:04, 135.29it/s]
+ 20%|██        | 159/782 [00:01<00:04, 135.94it/s]
+ 22%|██▏       | 173/782 [00:01<00:04, 134.59it/s]
+ 24%|██▍       | 187/782 [00:01<00:04, 134.10it/s]
+ 26%|██▌       | 201/782 [00:01<00:04, 132.31it/s]
+ 27%|██▋       | 215/782 [00:01<00:04, 132.45it/s]
+ 29%|██▉       | 229/782 [00:01<00:04, 132.95it/s]
+ 31%|███       | 243/782 [00:01<00:04, 133.25it/s]
+ 33%|███▎      | 257/782 [00:01<00:03, 133.51it/s]
+ 35%|███▍      | 271/782 [00:02<00:03, 133.48it/s]
+ 36%|███▋      | 285/782 [00:02<00:03, 133.55it/s]
+ 38%|███▊      | 299/782 [00:02<00:03, 133.88it/s]
+ 40%|████      | 313/782 [00:02<00:03, 134.24it/s]
+ 42%|████▏     | 327/782 [00:02<00:03, 129.63it/s]
+ 43%|████▎     | 340/782 [00:02<00:03, 129.59it/s]
+ 45%|████▌     | 354/782 [00:02<00:03, 130.98it/s]
+ 47%|████▋     | 368/782 [00:02<00:03, 131.74it/s]
+ 49%|████▉     | 382/782 [00:02<00:03, 132.63it/s]
+ 51%|█████     | 396/782 [00:03<00:02, 132.87it/s]
+ 52%|█████▏    | 410/782 [00:03<00:02, 133.27it/s]
+ 54%|█████▍    | 424/782 [00:03<00:02, 133.57it/s]
+ 56%|█████▌    | 438/782 [00:03<00:02, 132.36it/s]
+ 58%|█████▊    | 452/782 [00:03<00:02, 132.93it/s]
+ 60%|█████▉    | 466/782 [00:03<00:02, 133.47it/s]
+ 61%|██████▏   | 480/782 [00:03<00:02, 133.84it/s]
+ 63%|██████▎   | 494/782 [00:03<00:02, 133.97it/s]
+ 65%|██████▍   | 508/782 [00:03<00:02, 133.85it/s]
+ 67%|██████▋   | 522/782 [00:03<00:01, 133.47it/s]
+ 69%|██████▊   | 536/782 [00:04<00:01, 129.43it/s]
+ 70%|███████   | 549/782 [00:04<00:01, 123.21it/s]
+ 72%|███████▏  | 563/782 [00:04<00:01, 126.45it/s]
+ 74%|███████▍  | 577/782 [00:04<00:01, 128.87it/s]
+ 76%|███████▌  | 591/782 [00:04<00:01, 130.59it/s]
+ 77%|███████▋  | 605/782 [00:04<00:01, 131.15it/s]
+ 79%|███████▉  | 619/782 [00:04<00:01, 132.55it/s]
+ 81%|████████  | 633/782 [00:04<00:01, 131.31it/s]
+ 83%|████████▎ | 647/782 [00:04<00:01, 132.17it/s]
+ 85%|████████▍ | 661/782 [00:05<00:00, 132.77it/s]
+ 86%|████████▋ | 675/782 [00:05<00:00, 133.68it/s]
+ 88%|████████▊ | 689/782 [00:05<00:00, 134.16it/s]
+ 90%|████████▉ | 703/782 [00:05<00:00, 134.47it/s]
+ 92%|█████████▏| 717/782 [00:05<00:00, 132.66it/s]
+ 93%|█████████▎| 731/782 [00:05<00:00, 133.11it/s]
+ 95%|█████████▌| 745/782 [00:05<00:00, 133.61it/s]
+ 97%|█████████▋| 759/782 [00:05<00:00, 133.85it/s]
+ 99%|█████████▉| 773/782 [00:05<00:00, 133.99it/s]
+100%|██████████| 782/782 [00:06<00:00, 130.33it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    try:
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_1330/nn/tmp/GenFractalNet-3c95b67eb23b12f56714f5c025b4a890-d9fbd2f39f3152b0782b0e89d51fd0f6.py'
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 1.9385, Test Loss: 1.9339
+  Train Acc: 0.2707, Test Acc: 0.2764
+  LR: 0.000001, Grad Norm: 0.2427, Throughput: 2571.7 samples/s
+accuracy_to_time_metric 0.9072788628406739
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_1330/nn/tmp/GenFractalNet-3c95b67eb23b12f56714f5c025b4a890-d9fbd2f39f3152b0782b0e89d51fd0f6.py'
+  Evaluating Individual 3/5 ---- Generation: 4/4
+  - Evaluating unique arch (checksum: b719bb90...)
+Evaluating /a/mm/out_nneval_tmp_pid_1330/nn/tmp/GenFractalNet-b719bb90a281de06d4af86d138c8a2bc-8c4c5c4e728b849d5bbd3630bca83e86.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 7/782 [00:00<00:11, 67.64it/s]
+  3%|▎         | 22/782 [00:00<00:06, 111.55it/s]
+  5%|▍         | 37/782 [00:00<00:05, 125.60it/s]
+  7%|▋         | 52/782 [00:00<00:05, 132.24it/s]
+  8%|▊         | 66/782 [00:00<00:05, 134.75it/s]
+ 10%|█         | 81/782 [00:00<00:05, 137.29it/s]
+ 12%|█▏        | 96/782 [00:00<00:04, 139.42it/s]
+ 14%|█▍        | 111/782 [00:00<00:04, 140.87it/s]
+ 16%|█▌        | 126/782 [00:00<00:04, 141.93it/s]
+ 18%|█▊        | 141/782 [00:01<00:04, 142.85it/s]
+ 20%|█▉        | 156/782 [00:01<00:04, 143.00it/s]
+ 22%|██▏       | 171/782 [00:01<00:04, 143.21it/s]
+ 24%|██▍       | 186/782 [00:01<00:04, 141.61it/s]
+ 26%|██▌       | 201/782 [00:01<00:04, 139.39it/s]
+ 27%|██▋       | 215/782 [00:01<00:04, 139.48it/s]
+ 29%|██▉       | 230/782 [00:01<00:03, 140.16it/s]
+ 31%|███▏      | 245/782 [00:01<00:03, 140.49it/s]
+ 33%|███▎      | 260/782 [00:01<00:03, 141.66it/s]
+ 35%|███▌      | 275/782 [00:01<00:03, 141.40it/s]
+ 37%|███▋      | 290/782 [00:02<00:03, 141.17it/s]
+ 39%|███▉      | 305/782 [00:02<00:03, 141.16it/s]
+ 41%|████      | 320/782 [00:02<00:03, 140.74it/s]
+ 43%|████▎     | 335/782 [00:02<00:03, 140.61it/s]
+ 45%|████▍     | 350/782 [00:02<00:03, 140.87it/s]
+ 47%|████▋     | 365/782 [00:02<00:02, 141.46it/s]
+ 49%|████▊     | 380/782 [00:02<00:02, 141.66it/s]
+ 51%|█████     | 395/782 [00:02<00:02, 141.79it/s]
+ 52%|█████▏    | 410/782 [00:02<00:02, 142.03it/s]
+ 54%|█████▍    | 425/782 [00:03<00:02, 142.41it/s]
+ 56%|█████▋    | 440/782 [00:03<00:02, 142.08it/s]
+ 58%|█████▊    | 455/782 [00:03<00:02, 142.01it/s]
+ 60%|██████    | 470/782 [00:03<00:02, 142.25it/s]
+ 62%|██████▏   | 485/782 [00:03<00:02, 142.14it/s]
+ 64%|██████▍   | 500/782 [00:03<00:01, 142.55it/s]
+ 66%|██████▌   | 515/782 [00:03<00:01, 140.34it/s]
+ 68%|██████▊   | 530/782 [00:03<00:01, 133.34it/s]
+ 70%|██████▉   | 545/782 [00:03<00:01, 135.67it/s]
+ 72%|███████▏  | 560/782 [00:04<00:01, 137.19it/s]
+ 74%|███████▎  | 575/782 [00:04<00:01, 138.83it/s]
+ 75%|███████▌  | 590/782 [00:04<00:01, 140.23it/s]
+ 77%|███████▋  | 605/782 [00:04<00:01, 140.50it/s]
+ 79%|███████▉  | 620/782 [00:04<00:01, 140.69it/s]
+ 81%|████████  | 635/782 [00:04<00:01, 141.11it/s]
+ 83%|████████▎ | 650/782 [00:04<00:00, 140.35it/s]
+ 85%|████████▌ | 665/782 [00:04<00:00, 139.30it/s]
+ 87%|████████▋ | 680/782 [00:04<00:00, 140.12it/s]
+ 89%|████████▉ | 695/782 [00:04<00:00, 141.07it/s]
+ 91%|█████████ | 710/782 [00:05<00:00, 141.81it/s]
+ 93%|█████████▎| 725/782 [00:05<00:00, 142.42it/s]
+ 95%|█████████▍| 740/782 [00:05<00:00, 142.69it/s]
+ 97%|█████████▋| 755/782 [00:05<00:00, 142.38it/s]
+ 98%|█████████▊| 770/782 [00:05<00:00, 142.93it/s]
+100%|██████████| 782/782 [00:05<00:00, 138.50it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    try:
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_1330/nn/tmp/GenFractalNet-b719bb90a281de06d4af86d138c8a2bc-8c4c5c4e728b849d5bbd3630bca83e86.py'
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 2.0281, Test Loss: 2.0246
+  Train Acc: 0.2651, Test Acc: 0.2701
+  LR: 0.000000, Grad Norm: 1.5835, Throughput: 2603.6 samples/s
+accuracy_to_time_metric 0.8857209145263769
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_1330/nn/tmp/GenFractalNet-b719bb90a281de06d4af86d138c8a2bc-8c4c5c4e728b849d5bbd3630bca83e86.py'
+  Evaluating Individual 4/5 ---- Generation: 4/4
+  - Evaluating unique arch (checksum: 2fda6261...)
+Evaluating /a/mm/out_nneval_tmp_pid_1330/nn/tmp/GenFractalNet-2fda6261c8be53574607b95466c936b5-e096bd3ef579862320349295b666d82b.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 6/782 [00:00<00:13, 57.64it/s]
+  3%|▎         | 21/782 [00:00<00:06, 109.39it/s]
+  5%|▍         | 36/782 [00:00<00:06, 124.05it/s]
+  7%|▋         | 51/782 [00:00<00:05, 131.65it/s]
+  8%|▊         | 66/782 [00:00<00:05, 135.67it/s]
+ 10%|█         | 81/782 [00:00<00:05, 138.08it/s]
+ 12%|█▏        | 96/782 [00:00<00:04, 139.39it/s]
+ 14%|█▍        | 111/782 [00:00<00:04, 140.14it/s]
+ 16%|█▌        | 126/782 [00:00<00:04, 140.62it/s]
+ 18%|█▊        | 141/782 [00:01<00:04, 141.29it/s]
+ 20%|█▉        | 156/782 [00:01<00:04, 141.64it/s]
+ 22%|██▏       | 171/782 [00:01<00:04, 142.32it/s]
+ 24%|██▍       | 186/782 [00:01<00:04, 141.57it/s]
+ 26%|██▌       | 201/782 [00:01<00:04, 141.38it/s]
+ 28%|██▊       | 216/782 [00:01<00:04, 140.19it/s]
+ 30%|██▉       | 231/782 [00:01<00:03, 141.35it/s]
+ 31%|███▏      | 246/782 [00:01<00:03, 141.48it/s]
+ 33%|███▎      | 261/782 [00:01<00:03, 141.82it/s]
+ 35%|███▌      | 276/782 [00:02<00:03, 142.06it/s]
+ 37%|███▋      | 291/782 [00:02<00:03, 142.31it/s]
+ 39%|███▉      | 306/782 [00:02<00:03, 142.32it/s]
+ 41%|████      | 321/782 [00:02<00:03, 142.57it/s]
+ 43%|████▎     | 336/782 [00:02<00:03, 142.43it/s]
+ 45%|████▍     | 351/782 [00:02<00:03, 142.11it/s]
+ 47%|████▋     | 366/782 [00:02<00:02, 142.83it/s]
+ 49%|████▊     | 381/782 [00:02<00:02, 142.55it/s]
+ 51%|█████     | 396/782 [00:02<00:02, 141.78it/s]
+ 53%|█████▎    | 411/782 [00:02<00:02, 137.30it/s]
+ 54%|█████▍    | 425/782 [00:03<00:02, 137.86it/s]
+ 56%|█████▌    | 439/782 [00:03<00:02, 138.33it/s]
+ 58%|█████▊    | 453/782 [00:03<00:02, 138.72it/s]
+ 60%|█████▉    | 467/782 [00:03<00:02, 138.73it/s]
+ 62%|██████▏   | 481/782 [00:03<00:02, 134.20it/s]
+ 63%|██████▎   | 495/782 [00:03<00:02, 119.65it/s]
+ 65%|██████▍   | 508/782 [00:03<00:02, 114.82it/s]
+ 67%|██████▋   | 522/782 [00:03<00:02, 120.84it/s]
+ 69%|██████▊   | 536/782 [00:03<00:01, 125.22it/s]
+ 70%|███████   | 550/782 [00:04<00:01, 129.29it/s]
+ 72%|███████▏  | 564/782 [00:04<00:01, 131.78it/s]
+ 74%|███████▍  | 578/782 [00:04<00:01, 133.70it/s]
+ 76%|███████▌  | 592/782 [00:04<00:01, 134.95it/s]
+ 77%|███████▋  | 606/782 [00:04<00:01, 135.90it/s]
+ 79%|███████▉  | 620/782 [00:04<00:01, 136.76it/s]
+ 81%|████████  | 634/782 [00:04<00:01, 137.65it/s]
+ 83%|████████▎ | 648/782 [00:04<00:00, 137.74it/s]
+ 85%|████████▍ | 662/782 [00:04<00:00, 138.04it/s]
+ 86%|████████▋ | 676/782 [00:04<00:00, 138.17it/s]
+ 88%|████████▊ | 690/782 [00:05<00:00, 137.95it/s]
+ 90%|█████████ | 704/782 [00:05<00:00, 138.39it/s]
+ 92%|█████████▏| 718/782 [00:05<00:00, 138.74it/s]
+ 94%|█████████▎| 732/782 [00:05<00:00, 138.63it/s]
+ 96%|█████████▌| 747/782 [00:05<00:00, 138.98it/s]
+ 97%|█████████▋| 761/782 [00:05<00:00, 138.52it/s]
+ 99%|█████████▉| 776/782 [00:05<00:00, 139.06it/s]
+100%|██████████| 782/782 [00:05<00:00, 135.40it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_1330/nn/tmp/GenFractalNet-2fda6261c8be53574607b95466c936b5-e096bd3ef579862320349295b666d82b.py'
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 1.5344, Test Loss: 1.5327
+  Train Acc: 0.4407, Test Acc: 0.4468
+  LR: 0.000000, Grad Norm: 4.6185, Throughput: 2531.4 samples/s
+accuracy_to_time_metric 1.7557659571986317
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_1330/nn/tmp/GenFractalNet-2fda6261c8be53574607b95466c936b5-e096bd3ef579862320349295b666d82b.py'
+  Evaluating Individual 5/5 ---- Generation: 4/4
+  - Evaluating unique arch (checksum: 12d15f20...)
+Evaluating /a/mm/out_nneval_tmp_pid_1330/nn/tmp/GenFractalNet-12d15f20bc780d3169aad8882d62495f-bcf9f6e883c19ea8ce43988470918f36.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 8/782 [00:00<00:09, 79.19it/s]
+  3%|▎         | 22/782 [00:00<00:06, 113.42it/s]
+  5%|▍         | 36/782 [00:00<00:05, 124.89it/s]
+  6%|▋         | 50/782 [00:00<00:05, 129.30it/s]
+  8%|▊         | 65/782 [00:00<00:05, 133.24it/s]
+ 10%|█         | 79/782 [00:00<00:05, 134.21it/s]
+ 12%|█▏        | 94/782 [00:00<00:05, 136.52it/s]
+ 14%|█▍        | 108/782 [00:00<00:04, 135.90it/s]
+ 16%|█▌        | 122/782 [00:00<00:04, 135.91it/s]
+ 17%|█▋        | 136/782 [00:01<00:04, 136.54it/s]
+ 19%|█▉        | 150/782 [00:01<00:04, 136.77it/s]
+ 21%|██        | 164/782 [00:01<00:04, 137.57it/s]
+ 23%|██▎       | 179/782 [00:01<00:04, 138.62it/s]
+ 25%|██▍       | 193/782 [00:01<00:04, 137.29it/s]
+ 26%|██▋       | 207/782 [00:01<00:04, 136.58it/s]
+ 28%|██▊       | 222/782 [00:01<00:04, 137.97it/s]
+ 30%|███       | 236/782 [00:01<00:03, 137.46it/s]
+ 32%|███▏      | 250/782 [00:01<00:03, 133.95it/s]
+ 34%|███▍      | 264/782 [00:01<00:03, 131.83it/s]
+ 36%|███▌      | 278/782 [00:02<00:03, 130.22it/s]
+ 37%|███▋      | 292/782 [00:02<00:03, 130.53it/s]
+ 39%|███▉      | 306/782 [00:02<00:03, 131.12it/s]
+ 41%|████      | 320/782 [00:02<00:03, 132.23it/s]
+ 43%|████▎     | 334/782 [00:02<00:03, 133.21it/s]
+ 45%|████▍     | 349/782 [00:02<00:03, 135.90it/s]
+ 47%|████▋     | 364/782 [00:02<00:03, 137.42it/s]
+ 48%|████▊     | 379/782 [00:02<00:02, 138.88it/s]
+ 50%|█████     | 393/782 [00:02<00:02, 137.78it/s]
+ 52%|█████▏    | 408/782 [00:03<00:02, 139.11it/s]
+ 54%|█████▍    | 423/782 [00:03<00:02, 140.19it/s]
+ 56%|█████▌    | 438/782 [00:03<00:02, 139.52it/s]
+ 58%|█████▊    | 452/782 [00:03<00:02, 138.97it/s]
+ 60%|█████▉    | 466/782 [00:03<00:02, 138.86it/s]
+ 61%|██████▏   | 480/782 [00:03<00:02, 138.74it/s]
+ 63%|██████▎   | 495/782 [00:03<00:02, 139.50it/s]
+ 65%|██████▌   | 509/782 [00:03<00:01, 139.28it/s]
+ 67%|██████▋   | 523/782 [00:03<00:01, 138.14it/s]
+ 69%|██████▊   | 537/782 [00:03<00:01, 138.65it/s]
+ 71%|███████   | 552/782 [00:04<00:01, 139.13it/s]
+ 72%|███████▏  | 566/782 [00:04<00:01, 136.42it/s]
+ 74%|███████▍  | 580/782 [00:04<00:01, 135.88it/s]
+ 76%|███████▌  | 594/782 [00:04<00:01, 135.21it/s]
+ 78%|███████▊  | 608/782 [00:04<00:01, 136.19it/s]
+ 80%|███████▉  | 622/782 [00:04<00:01, 136.78it/s]
+ 81%|████████▏ | 636/782 [00:04<00:01, 136.96it/s]
+ 83%|████████▎ | 651/782 [00:04<00:00, 138.10it/s]
+ 85%|████████▌ | 665/782 [00:04<00:00, 137.50it/s]
+ 87%|████████▋ | 679/782 [00:05<00:00, 137.22it/s]
+ 89%|████████▊ | 693/782 [00:05<00:00, 137.60it/s]
+ 90%|█████████ | 707/782 [00:05<00:00, 138.11it/s]
+ 92%|█████████▏| 721/782 [00:05<00:00, 136.94it/s]
+ 94%|█████████▍| 735/782 [00:05<00:00, 137.40it/s]
+ 96%|█████████▌| 749/782 [00:05<00:00, 137.62it/s]
+ 98%|█████████▊| 764/782 [00:05<00:00, 139.18it/s]
+100%|█████████▉| 779/782 [00:05<00:00, 139.64it/s]
+100%|██████████| 782/782 [00:05<00:00, 135.43it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 565, in train_new
+    remove(temp_file_path)
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_1330/nn/tmp/GenFractalNet-12d15f20bc780d3169aad8882d62495f-bcf9f6e883c19ea8ce43988470918f36.py'
+  Train Loss: 1.9137, Test Loss: 1.9155
+  Train Acc: 0.3048, Test Acc: 0.3051
+  LR: 0.000000, Grad Norm: 4.6119, Throughput: 2592.6 samples/s
+accuracy_to_time_metric 1.0634665304024686
+Eval Fail: [Errno 2] No such file or directory: '/a/mm/out_nneval_tmp_pid_1330/nn/tmp/GenFractalNet-12d15f20bc780d3169aad8882d62495f-bcf9f6e883c19ea8ce43988470918f36.py'
+[Best] Saved best model to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_model.py
+[Best] Warning: stats folder not found for checksum 0bc1a09a
+[Best] Saved best info metadata to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_info.json
+PEAK_ACCURACY: 0.0000
+TOP3_MEAN: 0.0000
+ARCHIVE_SIZE: 7
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 4 failed — retrying (failures: 1/10, successes so far: 3/10)
+
+=== Attempt 5 | Successes: 3/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.68
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (MAP-Elites) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to strategically generate random chromosomes that are likely to lead to high-performing architectures. Given that the best-known architecture achieves a peak accuracy of 36.41%, our strategy should focus on generating architectures that are similar but introduce enough diversity to explore new frontiers.
+
+We can achieve this by:
+1. **Biasing towards known effective parameters**: Since the best-known architecture uses SiLU activation, Max pooling, and SGD optimizer, we should prioritize these choices when creating new chromosomes.
+2. **Introducing randomness while maintaining diversity**: We will ensure that the generated architectures are diverse by occasionally selecting less common values for some parameters.
+
+This approach balances exploration and exploitation, increasing the chances of discovering new, high-performing architectures.
+</thinking>
+
+```python
+    def _create_random_chromosome(self):
+        chromosome = {}
+        for key, values in self.search_space.items():
+            if key == "activation":
+                # Bias towards known effective activation
+                favored_activations = ["SiLU"]
+                chromosome[key] = random.choice(favored_activations + values)
+            elif key == "pooling_type":
+                # Bias towards known effective pooling type
+                favored_poolings = ["Max"]
+                chromosome[key] = random.choice(favored_poolings + values)
+            elif key == "optimizer_type":
+                # Bias towards known effective optimizer
+                favored_optimizers = ["SGD"]
+                chromosome[key] = random.choice(favored_optimizers + values)
+            else:
+                # Randomly choose from all possible values
+                chromosome[key] = random.choice(values)
+        return chromosome
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+2026-07-13 22:14:11,361 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 22:14:11,361 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 22:14:11,361 - INFO - NumExpr defaulting to 16 threads.
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+LEMUR root /a/mm
+[Init] Loaded 221 existing checksums from stats/ (skipping duplicates)
+[Run] Continuing evolution from gen 4 to 5
+
+
+ >>> GENERATION 5 <<<
+
+  Evaluating Individual 2/5 ---- Generation: 5/5
+  - Evaluating unique arch (checksum: 5c9a3ba3...)
+Evaluating /a/mm/out_nneval_tmp_pid_1691/nn/tmp/GenFractalNet-5c9a3ba3a8d2ea882a838e06634f277e-77d8f8688dd0d760b4e52400dfadb45d.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 1/782 [00:00<01:25,  9.15it/s]
+  1%|▏         | 11/782 [00:00<00:13, 56.80it/s]
+  3%|▎         | 21/782 [00:00<00:10, 72.78it/s]
+  4%|▍         | 31/782 [00:00<00:09, 81.39it/s]
+  5%|▌         | 40/782 [00:00<00:08, 84.07it/s]
+  6%|▋         | 50/782 [00:00<00:08, 88.14it/s]
+  8%|▊         | 60/782 [00:00<00:07, 90.88it/s]
+  9%|▉         | 70/782 [00:00<00:07, 92.50it/s]
+ 10%|█         | 80/782 [00:00<00:07, 94.32it/s]
+ 12%|█▏        | 90/782 [00:01<00:07, 94.66it/s]
+ 13%|█▎        | 100/782 [00:01<00:07, 93.58it/s]
+ 14%|█▍        | 110/782 [00:01<00:07, 93.03it/s]
+ 15%|█▌        | 120/782 [00:01<00:07, 93.42it/s]
+ 17%|█▋        | 130/782 [00:01<00:06, 94.43it/s]
+ 18%|█▊        | 140/782 [00:01<00:06, 93.95it/s]
+ 19%|█▉        | 150/782 [00:01<00:06, 92.50it/s]
+ 20%|██        | 160/782 [00:01<00:06, 92.56it/s]
+ 22%|██▏       | 170/782 [00:01<00:06, 92.46it/s]
+ 23%|██▎       | 180/782 [00:02<00:06, 92.36it/s]
+ 24%|██▍       | 190/782 [00:02<00:06, 91.09it/s]
+ 26%|██▌       | 200/782 [00:02<00:06, 91.48it/s]
+ 27%|██▋       | 210/782 [00:02<00:06, 93.01it/s]
+ 28%|██▊       | 220/782 [00:02<00:05, 94.25it/s]
+ 29%|██▉       | 230/782 [00:02<00:05, 94.27it/s]
+ 31%|███       | 240/782 [00:02<00:05, 94.74it/s]
+ 32%|███▏      | 250/782 [00:02<00:05, 94.35it/s]
+ 33%|███▎      | 260/782 [00:02<00:05, 94.92it/s]
+ 35%|███▍      | 270/782 [00:02<00:05, 96.20it/s]
+ 36%|███▌      | 280/782 [00:03<00:05, 96.66it/s]
+ 37%|███▋      | 290/782 [00:03<00:05, 94.05it/s]
+ 38%|███▊      | 300/782 [00:03<00:05, 93.95it/s]
+ 40%|███▉      | 310/782 [00:03<00:05, 94.38it/s]
+ 41%|████      | 320/782 [00:03<00:04, 94.55it/s]
+ 42%|████▏     | 330/782 [00:03<00:04, 95.60it/s]
+ 43%|████▎     | 340/782 [00:03<00:04, 94.65it/s]
+ 45%|████▍     | 350/782 [00:03<00:04, 93.82it/s]
+ 46%|████▌     | 360/782 [00:03<00:04, 93.84it/s]
+ 47%|████▋     | 370/782 [00:04<00:04, 93.64it/s]
+ 49%|████▊     | 380/782 [00:04<00:04, 93.84it/s]
+ 50%|████▉     | 390/782 [00:04<00:04, 94.30it/s]
+ 51%|█████     | 400/782 [00:04<00:04, 95.14it/s]
+ 52%|█████▏    | 410/782 [00:04<00:03, 94.89it/s]
+ 54%|█████▎    | 420/782 [00:04<00:03, 93.81it/s]
+ 55%|█████▍    | 430/782 [00:04<00:03, 95.12it/s]
+ 56%|█████▋    | 440/782 [00:04<00:03, 95.00it/s]
+ 58%|█████▊    | 450/782 [00:04<00:03, 95.31it/s]
+ 59%|█████▉    | 460/782 [00:04<00:03, 95.57it/s]
+ 60%|██████    | 470/782 [00:05<00:03, 95.90it/s]
+ 61%|██████▏   | 480/782 [00:05<00:03, 95.05it/s]
+ 63%|██████▎   | 490/782 [00:05<00:03, 94.21it/s]
+ 64%|██████▍   | 500/782 [00:05<00:02, 94.63it/s]
+ 65%|██████▌   | 510/782 [00:05<00:02, 93.14it/s]
+ 66%|██████▋   | 520/782 [00:05<00:02, 94.03it/s]
+ 68%|██████▊   | 531/782 [00:05<00:02, 95.55it/s]
+ 69%|██████▉   | 541/782 [00:05<00:02, 95.93it/s]
+ 70%|███████   | 551/782 [00:05<00:02, 94.19it/s]
+ 72%|███████▏  | 561/782 [00:06<00:02, 93.88it/s]
+ 73%|███████▎  | 571/782 [00:06<00:02, 93.84it/s]
+ 74%|███████▍  | 581/782 [00:06<00:02, 94.72it/s]
+ 76%|███████▌  | 591/782 [00:06<00:02, 94.31it/s]
+ 77%|███████▋  | 601/782 [00:06<00:01, 95.22it/s]
+ 78%|███████▊  | 611/782 [00:06<00:01, 96.24it/s]
+ 79%|███████▉  | 621/782 [00:06<00:01, 94.15it/s]
+ 81%|████████  | 631/782 [00:06<00:01, 94.38it/s]
+ 82%|████████▏ | 641/782 [00:06<00:01, 93.16it/s]
+ 83%|████████▎ | 651/782 [00:07<00:01, 94.32it/s]
+ 85%|████████▍ | 661/782 [00:07<00:01, 94.21it/s]
+ 86%|████████▌ | 671/782 [00:07<00:01, 95.79it/s]
+ 87%|████████▋ | 681/782 [00:07<00:01, 95.45it/s]
+ 88%|████████▊ | 691/782 [00:07<00:00, 96.46it/s]
+ 90%|████████▉ | 701/782 [00:07<00:00, 96.77it/s]
+ 91%|█████████ | 711/782 [00:07<00:00, 97.00it/s]
+ 92%|█████████▏| 721/782 [00:07<00:00, 94.53it/s]
+ 93%|█████████▎| 731/782 [00:07<00:00, 94.48it/s]
+ 95%|█████████▍| 741/782 [00:07<00:00, 94.54it/s]
+ 96%|█████████▌| 751/782 [00:08<00:00, 95.54it/s]
+ 97%|█████████▋| 761/782 [00:08<00:00, 95.11it/s]
+ 99%|█████████▊| 771/782 [00:08<00:00, 94.89it/s]
+100%|█████████▉| 781/782 [00:08<00:00, 93.67it/s]
+100%|██████████| 782/782 [00:08<00:00, 92.54it/s]

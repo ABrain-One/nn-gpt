@@ -1,0 +1,345 @@
+LEMUR root /a/mm
+2026-07-14 12:58:25,431 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-14 12:58:25,431 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-14 12:58:25,431 - INFO - NumExpr defaulting to 16 threads.
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/historic_runs/run_2026-07-14_12-58-29 for fresh start.
+[Meta] Moved LLM LoRA weights to /a/mm/ab/gpt/brute/ga/meta_evolution/fine_tuned_adapter_cifar100/historic_runs/run_2026-07-14_12-58-29 for fresh start.
+[Config] Loaded model_config.json  (context_length=4096)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-07-14 12:58:29,333 - INFO - HTTP Request: GET https://huggingface.co/api/agent-harnesses "HTTP/1.1 200 OK"
+2026-07-14 12:58:29,454 - INFO - HTTP Request: HEAD https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-07-14 12:58:29,454 - WARNING - Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-07-14 12:58:29,465 - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Qwen/Qwen2.5-Coder-7B-Instruct/c03e6d358207e414f1eca0bb1891e29f1db0e242/config.json "HTTP/1.1 200 OK"
+2026-07-14 12:58:29,584 - INFO - HTTP Request: HEAD https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-07-14 12:58:29,593 - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Qwen/Qwen2.5-Coder-7B-Instruct/c03e6d358207e414f1eca0bb1891e29f1db0e242/tokenizer_config.json "HTTP/1.1 200 OK"
+2026-07-14 12:58:29,709 - INFO - HTTP Request: GET https://huggingface.co/api/models/Qwen/Qwen2.5-Coder-7B-Instruct/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+2026-07-14 12:58:29,822 - INFO - HTTP Request: GET https://huggingface.co/api/models/Qwen/Qwen2.5-Coder-7B-Instruct/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-07-14 12:58:30,218 - INFO - HTTP Request: GET https://huggingface.co/api/models/Qwen/Qwen2.5-Coder-7B-Instruct "HTTP/1.1 200 OK"
+2026-07-14 12:58:30,327 - INFO - HTTP Request: HEAD https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-07-14 12:58:30,336 - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Qwen/Qwen2.5-Coder-7B-Instruct/c03e6d358207e414f1eca0bb1891e29f1db0e242/config.json "HTTP/1.1 200 OK"
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+2026-07-14 12:58:30,453 - INFO - HTTP Request: HEAD https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-07-14 12:58:30,461 - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Qwen/Qwen2.5-Coder-7B-Instruct/c03e6d358207e414f1eca0bb1891e29f1db0e242/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<01:55,  2.93it/s]Loading weights:   1%|          | 2/339 [00:00<02:05,  2.69it/s]Loading weights:   2%|▏         | 6/339 [00:00<00:39,  8.40it/s]Loading weights:   5%|▍         | 16/339 [00:01<00:14, 21.64it/s]Loading weights:   6%|▌         | 19/339 [00:01<00:16, 19.54it/s]Loading weights:   8%|▊         | 28/339 [00:01<00:11, 27.39it/s]Loading weights:   9%|▉         | 32/339 [00:01<00:12, 25.32it/s]Loading weights:  12%|█▏        | 40/339 [00:01<00:08, 34.80it/s]Loading weights:  13%|█▎        | 45/339 [00:02<00:09, 31.39it/s]Loading weights:  15%|█▌        | 52/339 [00:02<00:08, 32.69it/s]Loading weights:  17%|█▋        | 56/339 [00:02<00:09, 28.64it/s]Loading weights:  19%|█▉        | 64/339 [00:02<00:08, 32.22it/s]Loading weights:  20%|██        | 68/339 [00:02<00:09, 29.11it/s]Loading weights:  22%|██▏       | 76/339 [00:02<00:07, 37.25it/s]Loading weights:  24%|██▍       | 81/339 [00:03<00:07, 33.21it/s]Loading weights:  26%|██▌       | 88/339 [00:03<00:07, 33.84it/s]Loading weights:  27%|██▋       | 92/339 [00:03<00:08, 29.47it/s]Loading weights:  29%|██▉       | 100/339 [00:03<00:07, 32.72it/s]Loading weights:  31%|███       | 104/339 [00:03<00:08, 28.80it/s]Loading weights:  33%|███▎      | 112/339 [00:04<00:07, 32.28it/s]Loading weights:  34%|███▍      | 116/339 [00:04<00:07, 28.49it/s]Loading weights:  37%|███▋      | 124/339 [00:04<00:06, 32.03it/s]Loading weights:  38%|███▊      | 128/339 [00:04<00:07, 29.01it/s]Loading weights:  40%|████      | 136/339 [00:04<00:05, 37.04it/s]Loading weights:  42%|████▏     | 141/339 [00:05<00:05, 33.08it/s]Loading weights:  44%|████▎     | 148/339 [00:05<00:05, 34.08it/s]Loading weights:  45%|████▍     | 152/339 [00:05<00:05, 33.26it/s]Loading weights:  47%|████▋     | 160/339 [00:05<00:04, 37.11it/s]Loading weights:  48%|████▊     | 164/339 [00:05<00:05, 31.42it/s]Loading weights:  51%|█████     | 172/339 [00:05<00:04, 34.52it/s]Loading weights:  52%|█████▏    | 176/339 [00:06<00:04, 34.55it/s]Loading weights:  54%|█████▍    | 184/339 [00:06<00:04, 37.05it/s]Loading weights:  55%|█████▌    | 188/339 [00:06<00:04, 31.35it/s]Loading weights:  58%|█████▊    | 196/339 [00:06<00:04, 34.16it/s]Loading weights:  59%|█████▉    | 200/339 [00:06<00:04, 29.98it/s]Loading weights:  61%|██████▏   | 208/339 [00:06<00:03, 38.64it/s]Loading weights:  63%|██████▎   | 213/339 [00:07<00:03, 34.01it/s]Loading weights:  65%|██████▍   | 220/339 [00:07<00:03, 34.46it/s]Loading weights:  66%|██████▌   | 224/339 [00:07<00:03, 29.82it/s]Loading weights:  68%|██████▊   | 232/339 [00:07<00:03, 33.26it/s]Loading weights:  70%|██████▉   | 236/339 [00:07<00:03, 32.59it/s]Loading weights:  72%|███████▏  | 244/339 [00:08<00:02, 36.68it/s]Loading weights:  73%|███████▎  | 248/339 [00:08<00:02, 31.16it/s]Loading weights:  76%|███████▌  | 256/339 [00:08<00:02, 34.27it/s]Loading weights:  77%|███████▋  | 260/339 [00:08<00:02, 33.34it/s]Loading weights:  79%|███████▉  | 268/339 [00:08<00:01, 37.22it/s]Loading weights:  80%|████████  | 272/339 [00:08<00:02, 31.53it/s]Loading weights:  83%|████████▎ | 280/339 [00:09<00:01, 34.25it/s]Loading weights:  84%|████████▍ | 284/339 [00:09<00:01, 29.76it/s]Loading weights:  86%|████████▌ | 292/339 [00:09<00:01, 32.88it/s]Loading weights:  87%|████████▋ | 296/339 [00:09<00:01, 29.63it/s]Loading weights:  90%|████████▉ | 304/339 [00:09<00:01, 32.27it/s]Loading weights:  91%|█████████ | 308/339 [00:10<00:01, 28.41it/s]Loading weights:  93%|█████████▎| 316/339 [00:10<00:00, 31.86it/s]Loading weights:  94%|█████████▍| 320/339 [00:10<00:00, 28.32it/s]Loading weights:  97%|█████████▋| 328/339 [00:10<00:00, 32.14it/s]Loading weights:  98%|█████████▊| 332/339 [00:10<00:00, 32.96it/s]Loading weights: 100%|██████████| 339/339 [00:10<00:00, 31.11it/s]
+2026-07-14 12:58:42,670 - INFO - HTTP Request: HEAD https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct/resolve/main/generation_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-07-14 12:58:42,679 - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Qwen/Qwen2.5-Coder-7B-Instruct/c03e6d358207e414f1eca0bb1891e29f1db0e242/generation_config.json "HTTP/1.1 200 OK"
+2026-07-14 12:58:42,877 - INFO - HTTP Request: HEAD https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct/resolve/main/custom_generate/generate.py "HTTP/1.1 404 Not Found"
+[LoRA] Adapter directory exists at /a/mm/ab/gpt/brute/ga/meta_evolution/fine_tuned_adapter_cifar100 but no weight files found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+
+[Meta] Target: 10 SUCCESSFUL evolutions (will retry up to 10 times per component)
+
+=== Attempt 1 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.60
+--- [DEBUG] Raw Response ---
+<thinking>
+To break the Global SOTA peak accuracy and discover novel, high-performing architectures, we need to design `combine_genes` such that it encourages diversity while also leveraging promising regions of the search space. Given the constraints, we should focus on combining genes in a way that maximizes both exploration and exploitation.
+
+**Key Strategies:**
+1. **Hybridization**: Combine elements from both parents but introduce some randomness to ensure diversity.
+2. **Momentum Tracking**: Use historical data to guide the combination process towards previously successful areas.
+3. **Inversion**: Occasionally invert the gene values to explore opposite regions of the search space.
+
+**Implementation Details:**
+- **Hybridization**: Use a weighted average of parent values with a small noise term.
+- **Momentum Tracking**: Maintain a history of good gene values and use them to influence the combination.
+- **Inversion**: With a low probability, invert the gene value to explore different paths.
+
+**Steps:**
+1. Check if the gene name exists in the search space; if not, return a random choice from the possible values.
+2. Calculate a weighted average of the parent values.
+3. Introduce a small noise term to encourage exploration.
+4. Optionally, invert the gene value with a low probability.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_name not in self.search_space:
+            return random.choice(self.search_space[gene_name])
+
+        # Calculate a weighted average of the parent values
+        alpha = 0.5
+        combined_value = alpha * parent1_value + (1 - alpha) * parent2_value
+
+        # Introduce a small noise term to encourage exploration
+        noise_scale = 0.1
+        combined_value += noise_scale * (random.random() * 2 - 1)
+
+        # Optionally, invert the gene value with a low probability
+        if random.random() < 0.1:
+            combined_value = 1 - combined_value
+
+        # Ensure the combined value is within the valid range
+        valid_values = self.search_space[gene_name]
+        combined_value = min(max(combined_value, min(valid_values)), max(valid_values))
+
+        return combined_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: can't multiply sequence by non-int of type 'float'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 1 failed — retrying (failures: 1/10, successes so far: 0/10)
+
+=== Attempt 2 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.64
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of diverse architectures and hyperparameter combinations, we can introduce more complex crossover strategies. Instead of simply inheriting genes from one parent up to a crossover point, we can mix and match genes more flexibly. This approach will help in discovering novel architectures that might outperform the current bests. 
+
+For mutations, we can adopt techniques like gene inversion, where a segment of the chromosome is reversed, or momentum tracking, where changes made to a gene are carried over to subsequent generations. These methods ensure that the population remains diverse and avoids converging prematurely.
+
+Given the constraints, we will focus on ensuring that the combined genes still fall within the allowed range for each parameter. We will also avoid duplicating existing genes by incorporating randomness and diversity-promoting mechanisms.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_name == "dropout_prob":
+            # Combine dropout probabilities in a way that keeps it active but allows variation
+            new_value = (parent1_value + parent2_value) / 2
+            return max(min(new_value, 0.5), 0.1)
+        elif gene_name == "fc_dropout":
+            # Invert the dropout probability with a small chance to keep it active
+            if random.random() < 0.5:
+                return parent1_value
+            else:
+                return parent2_value
+        elif gene_name == "lr":
+            # Use geometric mean to balance between two learning rates
+            return (parent1_value * parent2_value) ** 0.5
+        elif gene_name == "momentum":
+            # Use arithmetic mean to balance between two momentums
+            return (parent1_value + parent2_value) / 2
+        elif gene_name == "activation":
+            # Cycle through activation functions to introduce diversity
+            activations = ["ReLU", "GELU", "LeakyReLU", "SiLU"]
+            index = activations.index(parent1_value)
+            return activations[(index + 1) % len(activations)]
+        elif gene_name == "kernel_size":
+            # Choose the larger kernel size to allow for more complex feature extraction
+            return max(parent1_value, parent2_value)
+        elif gene_name == "pooling_type":
+            # Alternate pooling types to explore different spatial reduction strategies
+            pool_types = ["Max", "Avg"]
+            index = pool_types.index(parent1_value)
+            return pool_types[(index + 1) % len(pool_types)]
+        elif gene_name == "conv_type":
+            # Cycle through convolution types to introduce diversity
+            conv_types = ["Standard", "Depthwise"]
+            index = conv_types.index(parent1_value)
+            return conv_types[(index + 1) % len(conv_types)]
+        elif gene_name == "norm_type":
+            # Alternate normalization types to explore different ways of stabilizing activations
+            norm_types = ["BatchNorm", "InstanceNorm"]
+            index = norm_types.index(parent1_value)
+            return norm_types[(index + 1) % len(norm_types)]
+        elif gene_name == "optimizer_type":
+            # Cycle through optimizer types to introduce diversity
+            opt_types = ["SGD", "AdamW", "RMSprop"]
+            index = opt_types.index(parent1_value)
+            return opt_types[(index + 1) % len(opt_types)]
+        else:
+            return random.choice([parent1_value, parent2_value])
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '0.00565685424949238' for gene 'lr', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 2 failed — retrying (failures: 2/10, successes so far: 0/10)
+
+=== Attempt 3 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.68
+--- [DEBUG] Raw Response ---
+<thinking> 
+To enhance the exploration of the search space and promote diversity, we can introduce more sophisticated strategies in the `combine_genes` method. Specifically, we can use techniques such as uniform crossover and arithmetic crossover to ensure that the offspring exhibit a mix of traits from both parents while also introducing some randomness. This approach can help break through local optima and explore new regions of the search space.
+
+For the `mutate_gene` method, we can introduce mutations that involve flipping bits, changing signs, or swapping elements in lists. These types of mutations can help escape plateaus and discover new configurations.
+
+Finally, for the `select_competitor` method, we can use tournament selection with multiple rounds to increase the pressure for high-performing individuals to reproduce, thereby ensuring that the population converges towards better solutions.
+
+By combining these strategies, we aim to create a more robust and diverse population that can efficiently find and exploit promising areas of the search space.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_name in ["n_columns", "n_blocks", "base_channels"]:
+            # Uniform Crossover
+            if random.random() < 0.5:
+                return parent1_value
+            else:
+                return parent2_value
+        elif gene_name in ["dropout_prob", "fc_dropout", "lr", "momentum"]:
+            # Arithmetic Crossover
+            alpha = random.random()
+            return alpha * parent1_value + (1 - alpha) * parent2_value
+        elif gene_name in ["kernel_size"]:
+            # Arithmetic Crossover with rounding
+            alpha = random.random()
+            return round(alpha * parent1_value + (1 - alpha) * parent2_value)
+        elif gene_name in ["activation", "pooling_type", "conv_type", "norm_type", "optimizer_type"]:
+            # One-point Crossover
+            if random.random() < 0.5:
+                return parent1_value
+            else:
+                return parent2_value
+        else:
+            return random.choice([parent1_value, parent2_value])
+
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if gene_name in ["n_columns", "n_blocks", "base_channels"]:
+            # Flip bits
+            if random.random() < 0.5:
+                return random.choice([x for x in possible_values if x != current_value])
+        elif gene_name in ["dropout_prob", "fc_dropout", "lr", "momentum"]:
+            # Change sign
+            return -current_value
+        elif gene_name in ["kernel_size"]:
+            # Swap elements in list
+            if isinstance(current_value, list):
+                if len(current_value) > 1:
+                    idx1, idx2 = random.sample(range(len(current_value)), 2)
+                    current_value[idx1], current_value[idx2] = current_value[idx2], current_value[idx1]
+                    return current_value
+        elif gene_name in ["activation", "pooling_type", "conv_type", "norm_type", "optimizer_type"]:
+            # Random choice
+            return random.choice(possible_values)
+        return current_value
+
+    def select_competitor(self, competitors):
+        if len(competitors) < 2:
+            return random.choice(competitors)
+        
+        # Tournament Selection with multiple rounds
+        while len(competitors) > 1:
+            new_competitors = []
+            for i in range(0, len(competitors), 2):
+                if i + 1 < len(competitors):
+                    competitor1 = competitors[i]
+                    competitor2 = competitors[i + 1]
+                    winner = competitor1 if competitor1['fitness'] > competitor2['fitness'] else competitor2
+                    new_competitors.append(winner)
+            competitors = new_competitors
+        
+        return competitors[0]
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '0.34639373440384114' for gene 'dropout_prob', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 3 failed — retrying (failures: 3/10, successes so far: 0/10)
+
+=== Attempt 4 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.72
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the genetic algorithm and explore more diverse architectures, we need to modify the `combine_genes` method. The current implementation simply alternates between the two parent genes based on the crossover point. This approach can lead to suboptimal solutions because it does not consider the compatibility or synergy between genes.
+
+Instead, we can introduce a more sophisticated combining strategy that takes into account the potential synergies between genes. One effective method is to use a weighted average, where each parent's gene contributes to the offspring's gene based on its historical performance or some other metric.
+
+For our case, we will use the fitness scores of the parents to determine the weight. Higher-fitness parents will contribute more to the offspring's gene. Additionally, we will ensure that the offspring remains within the bounds of the search space by snapping to the nearest valid value if necessary.
+
+This approach should help the algorithm explore more promising areas of the search space and potentially break through the current global SOTA peak accuracy.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Get the fitness scores of the parents
+        parent1_fitness = parent1_value.get('fitness', 0)
+        parent2_fitness = parent2_value.get('fitness', 0)
+
+        # Calculate weights based on fitness scores
+        total_fitness = parent1_fitness + parent2_fitness
+        if total_fitness <= 0:
+            weight1 = 0.5
+            weight2 = 0.5
+        else:
+            weight1 = parent1_fitness / total_fitness
+            weight2 = parent2_fitness / total_fitness
+
+        # Combine genes using weighted average
+        combined_value = (parent1_value[gene_name] * weight1 + parent2_value[gene_name] * weight2)
+
+        # Snap to nearest valid value in the search space
+        valid_values = self.search_space[gene_name]
+        if not valid_values:
+            return combined_value
+        if combined_value in valid_values:
+            return combined_value
+        exemplar = valid_values[0]
+        if isinstance(exemplar, (int, float, np.integer, np.floating)) and isinstance(combined_value, (int, float, np.integer, np.floating)):
+            return min(valid_values, key=lambda candidate: abs(float(candidate) - float(combined_value)))
+        return random.choice(valid_values)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: 'int' object has no attribute 'get'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 4 failed — retrying (failures: 4/10, successes so far: 0/10)
+
+=== Attempt 5 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.76

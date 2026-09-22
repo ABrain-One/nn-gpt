@@ -9,7 +9,7 @@ import torch
 import random
 import numpy as np
 import requests
-from ab.gpt.util.LLM import LLM
+from ab.gpt.util.llm.LLM import LLM
 from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
 
 # Default seed for reproducibility

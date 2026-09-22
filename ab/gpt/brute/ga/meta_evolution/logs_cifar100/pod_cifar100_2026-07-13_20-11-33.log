@@ -1,0 +1,148 @@
+LEMUR root /a/mm
+2026-07-13 20:11:34,752 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 20:11:34,752 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 20:11:34,752 - INFO - NumExpr defaulting to 16 threads.
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/historic_runs/run_2026-07-13_20-11-37 for fresh start.
+[Config] Loaded model_config.json  (context_length=4096)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-07-13 20:11:38,698 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:02<00:08,  2.88s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:06<00:06,  3.24s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:09<00:03,  3.17s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  1.98s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  2.40s/it]
+[LoRA] No adapter directory found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+
+[Meta] Target: 10 SUCCESSFUL evolutions (will retry up to 5 times per component)
+
+=== Attempt 1 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 1 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 2 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 2 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 3 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 3 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 4 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 4 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 5 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 5 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_crossover',). Skipping to next component.
+
+=== Attempt 6 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 6 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 7 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 7 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 8 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 8 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 9 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 9 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 10 | Successes: 0/10 — Evolving: ('_mutate',) ===
+
+[Meta] Evolving: ('_mutate',)
+[Meta] ✗ Attempt 10 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_mutate',). Skipping to next component.
+
+=== Attempt 11 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 11 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 12 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 12 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 13 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 13 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 14 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 14 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 15 | Successes: 0/10 — Evolving: ('_selection',) ===
+
+[Meta] Evolving: ('_selection',)
+[Meta] ✗ Attempt 15 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_selection',). Skipping to next component.
+
+=== Attempt 16 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 16 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 17 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 17 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 18 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 18 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 19 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 19 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 20 | Successes: 0/10 — Evolving: ('_create_random_chromosome',) ===
+
+[Meta] Evolving: ('_create_random_chromosome',)
+[Meta] ✗ Attempt 20 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for ('_create_random_chromosome',). Skipping to next component.
+
+=== Attempt 21 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 21 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 22 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 22 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 23 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+[Meta] ✗ Attempt 23 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 24 | Successes: 0/10 — Evolving: ('_crossover',) ===
+
+[Meta] Evolving: ('_crossover',)
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/meta_evolver_cifar100.py", line 799, in <module>
+    success = evolver.evolve_component(component, attempt=total_attempts, total_attempts=META_ITERATIONS)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/meta_evolver_cifar100.py", line 331, in evolve_component
+    with open(TARGET_FILE, 'r') as f: full_code = f.read()
+         ^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/ab/gpt/brute/ga/meta_evolution/modified_GA_cifar100/genetic_algorithm_evolved_cifar100.py'

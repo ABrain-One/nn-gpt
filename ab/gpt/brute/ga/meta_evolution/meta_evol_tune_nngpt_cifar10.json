@@ -1,0 +1,132 @@
+{
+  "apiVersion": "batch/v1",
+  "kind": "Job",
+  "metadata": {
+    "name": "nngpt-fractal-meta-evo-clonescience-cifar10"
+  },
+  "spec": {
+    "parallelism": 1,
+    "ttlSecondsAfterFinished": 86400,
+    "template": {
+      "spec": {
+        "tolerations": [
+          {
+            "key": "dgx",
+            "operator": "Exists"
+          }
+        ],
+        "containers": [
+          {
+            "name": "ml",
+            "image": "abrainone/ai-linux:cu12.6.3-latest",
+            "imagePullPolicy": "Always",
+            "command": [
+              "/bin/bash",
+              "-c"
+            ],
+            "args": [
+              "cd /a/mm && (pip uninstall -y flash-attn || true) && pip install \"torchao==0.15.0\" --no-deps --upgrade --extra-index-url https://download.pytorch.org/whl/cu126 && export PYTHONPATH=/a/mm && export RUN_TS=$(date +%d-%m-%y_%H-%M) && export DATASET=cifar10 && export PIPELINE_DIR=/a/mm/ab/gpt/brute/ga/meta_evolution/cifar10_pipeline && export MODEL_NAME=$(python3 -c \"import json, os; full=json.load(open(os.path.join(os.environ.get('PIPELINE_DIR', ''), 'model_config.json'))).get('base_model_name', 'unknown').lower(); print('qwen' if 'qwen' in full else 'deepseek' if 'deepseek' in full else 'mistral' if 'mistral' in full else full.split('/')[0])\" || echo \"unknown\") && mkdir -p ${PIPELINE_DIR}/logs_${DATASET}/${MODEL_NAME}/${RUN_TS} && python3 -u -m ab.gpt.brute.ga.meta_evolution.meta_evolver 2>&1 | tee ${PIPELINE_DIR}/logs_${DATASET}/${MODEL_NAME}/${RUN_TS}/${RUN_TS}_${DATASET}_${MODEL_NAME}_Pod_logs.log"
+            ],
+            "env": [
+              {
+                "name": "LOAD_PREVIOUS_ADAPTER",
+                "value": "false"
+              },
+              {
+                "name": "HF_HOME",
+                "value": "/a/mm/.cache/huggingface"
+              },
+              {
+                "name": "PIP_CACHE_DIR",
+                "value": "/a/mm/.cache/pip"
+              },
+              {
+                "name": "POPULATION_SIZE",
+                "value": "20"
+              },
+              {
+                "name": "GENERATIONS",
+                "value": "5"
+              },
+              {
+                "name": "MUTATION_RATE",
+                "value": "0.6"
+              },
+              {
+                "name": "META_ATTEMPTS",
+                "value": "5"
+              },
+              {
+                "name": "PYTORCH_CUDA_ALLOC_CONF",
+                "value": "expandable_segments:True"
+              },
+              {
+                "name": "LORA_REPLAY_BATCH_SIZE",
+                "value": "4"
+              },
+              {
+                "name": "LORA_REPLAY_BATCH_FALLBACKS",
+                "value": "2,1"
+              }
+            ],
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "runAsUser": 1017,
+              "runAsGroup": 1376
+            },
+            "resources": {
+              "requests": {
+                "nvidia.com/gpu": 1,
+                "cpu": 10,
+                "memory": "48Gi"
+              },
+              "limits": {
+                "nvidia.com/gpu": 1,
+                "cpu": 10,
+                "memory": "48Gi"
+              }
+            },
+            "volumeMounts": [
+              {
+                "mountPath": "/dev/shm",
+                "name": "shm"
+              },
+              {
+                "mountPath": "/a/mm",
+                "name": "v0"
+              },
+              {
+                "mountPath": "/a/mm/data",
+                "name": "v1"
+              }
+            ]
+          }
+        ],
+        "restartPolicy": "Never",
+        "volumes": [
+          {
+            "name": "shm",
+            "emptyDir": {
+              "medium": "Memory",
+              "sizeLimit": "16Gi"
+            }
+          },
+          {
+            "name": "v0",
+            "hostPath": {
+              "path": "/shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt",
+              "type": "Directory"
+            }
+          },
+          {
+            "name": "v1",
+            "hostPath": {
+              "path": "/shared/local/data/a-group-automl/data",
+              "type": "Directory"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

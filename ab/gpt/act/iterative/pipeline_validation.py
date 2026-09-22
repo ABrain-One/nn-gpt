@@ -137,10 +137,10 @@ class PipelineValidator:
     @staticmethod
     def check_infrastructure_files() -> Tuple[bool, List[str]]:
         """Check if all required infrastructure files exist."""
-        # Pipeline files are in ab/gpt/iterative_pipeline/
-        # iterative_finetune.py is at ab/gpt/iterative_finetune.py (one level up)
+        # After the refactor, pipeline infra files live in ab/gpt/act/iterative/
+        # (iterative_finetune.py was renamed to finetune.py in that same directory).
         gpt_dir = ab_root_path / 'ab' / 'gpt'
-        pipeline_dir = gpt_dir / 'iterative_pipeline'
+        pipeline_dir = gpt_dir / 'act' / 'iterative'
 
         # Files in the pipeline directory
         pipeline_files = [
@@ -148,25 +148,16 @@ class PipelineValidator:
             "training_data_manager.py",
             "aggregate_cycles.py",
             "plot_cycles.py",
+            "finetune.py",
         ]
-        
-        # Files in the gpt directory (one level up)
-        gpt_files = [
-            "iterative_finetune.py",
-        ]
-        
+
         missing = []
-        
+
         # Check pipeline files
         for file in pipeline_files:
             if not Path(file).exists() and not (pipeline_dir / file).exists():
                 missing.append(file)
-        
-        # Check gpt-level files
-        for file in gpt_files:
-            if not Path(file).exists() and not (gpt_dir / file).exists():
-                missing.append(file)
-        
+
         if missing:
             return False, missing
         return True, []

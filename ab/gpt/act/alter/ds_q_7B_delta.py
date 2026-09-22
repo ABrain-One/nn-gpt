@@ -11,7 +11,7 @@ Usage:
 
 import argparse
 
-from ab.gpt.util.AlterNN import alter_delta
+from ab.gpt.util.nn.AlterNN import alter_delta
 
 
 def main():

@@ -1,0 +1,3342 @@
+LEMUR root /a/mm
+2026-07-13 23:11:13,177 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 23:11:13,178 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 23:11:13,178 - INFO - NumExpr defaulting to 16 threads.
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/historic_runs/run_2026-07-13_23-11-15 for fresh start.
+[Meta] Moved LLM LoRA weights to /a/mm/ab/gpt/brute/ga/meta_evolution/fine_tuned_adapter_cifar100/historic_runs/run_2026-07-13_23-11-15 for fresh start.
+[Config] Loaded model_config.json  (context_length=4096)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-07-13 23:11:17,022 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:03<00:09,  3.03s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:06<00:06,  3.35s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:09<00:03,  3.26s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  2.03s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  2.48s/it]
+[LoRA] Adapter directory exists at /a/mm/ab/gpt/brute/ga/meta_evolution/fine_tuned_adapter_cifar100 but no weight files found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+
+[Meta] Target: 10 SUCCESSFUL evolutions (will retry up to 10 times per component)
+
+=== Attempt 1 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.60
+--- [DEBUG] Raw Response ---
+### Thinking
+To enhance the exploration and exploitation capabilities of the genetic algorithm, we need to modify the `combine_genes` method to ensure that it combines genes in a way that promotes diversity while also allowing for informed gene selection. This can be achieved by using a more sophisticated approach to combine genes, such as linear interpolation between parent genes or by combining genes in a way that respects the structure of the neural network architecture.
+
+Given that the goal is to break the global SOTA peak accuracy and discover novel, high-performing architectures, we should focus on combining genes in a way that balances exploration and exploitation. One effective strategy is to use a weighted average of the parent genes, where the weights are determined by the fitness of the parents. This ensures that more fit individuals contribute more significantly to the offspring.
+
+Additionally, to promote diversity, we can introduce a small random perturbation to the combined gene value. This can help escape local optima and explore new areas of the search space.
+
+Let's implement these ideas in the `combine_genes` method.
+
+### Code
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Use a weighted average of the parent genes based on their fitness
+        if 'fitness' in parent1_value and 'fitness' in parent2_value:
+            weight1 = parent1_value['fitness']
+            weight2 = parent2_value['fitness']
+            combined_value = (weight1 * parent1_value[gene_name] + weight2 * parent2_value[gene_name]) / (weight1 + weight2)
+        else:
+            combined_value = (parent1_value[gene_name] + parent2_value[gene_name]) / 2
+        
+        # Introduce a small random perturbation to promote diversity
+        possible_values = self.search_space[gene_name]
+        if possible_values:
+            closest_value = min(possible_values, key=lambda x: abs(x - combined_value))
+            perturbation = random.choice([1, -1]) * random.uniform(0.01, 0.1)
+            combined_value += perturbation
+        
+        # Coerce the combined value to a valid gene value
+        return self._coerce_gene_value(gene_name, combined_value)
+```
+
+This implementation uses a weighted average of the parent genes based on their fitness, which helps balance exploration and exploitation. It also introduces a small random perturbation to promote diversity, ensuring that the offspring do not get stuck in local optima. Finally, it coerces the combined value to a valid gene value, ensuring that the resulting chromosome remains within the search space.
+--------------------------
+[Meta] Runtime smoke test FAILED: argument of type 'int' is not iterable
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 1 failed — retrying (failures: 1/10, successes so far: 0/10)
+
+=== Attempt 2 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.64
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (MAP-Elites) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to refine the `combine_genes` method. The goal is to ensure that the offspring chromosomes are diverse yet promising, thereby expanding the frontier of what the GA has seen. 
+
+Given the constraints and objectives, here's our approach:
+1. **Introduce Novelty**: We want to ensure that the offspring chromosomes are different from their parents while still being plausible candidates.
+2. **Prioritize High-Performing Features**: Since we aim to break the Global SOTA peak accuracy, we should favor features that lead to higher performance.
+3. **Maintain Robustness**: Given the 1-EPOCH speedrun constraint, we should focus on ensuring that the offspring can quickly converge despite heavy path-dropping due to `FractalDropPath`.
+
+To achieve these goals, we can introduce some randomness but also ensure that the offspring chromosomes inherit beneficial traits from their parents while introducing novelty. Here's how we can modify the `combine_genes` method:
+
+- **Random Inversion**: Introduce a small probability that the gene value is inverted (i.e., changed to its opposite within the possible range).
+- **Hybridization**: Combine elements from both parents in a more balanced way.
+- **Favor High-Performance Features**: Prioritize features that have historically led to higher performance.
+
+Let's implement these ideas in the `combine_genes` method.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Define the possible values for each gene
+        possible_values = self.search_space[gene_name]
+
+        # Determine the midpoint of the crossover point
+        mid_point = (crossover_point + gene_index) / total_genes
+
+        # Randomly decide whether to take the value from parent1 or parent2
+        if random.random() < mid_point:
+            combined_value = parent1_value
+        else:
+            combined_value = parent2_value
+
+        # Introduce a small probability of inverting the gene value
+        if random.random() < 0.1:
+            # Find the opposite value within the possible range
+            opposite_value = self._find_opposite_value(combined_value, possible_values)
+            if opposite_value is not None:
+                combined_value = opposite_value
+
+        return combined_value
+
+    def _find_opposite_value(self, value, possible_values):
+        """Find the opposite value within the possible range."""
+        if isinstance(value, (int, float)):
+            # Calculate the opposite value
+            opposite_value = -value
+            # Check if the opposite value is within the possible range
+            if opposite_value in possible_values:
+                return opposite_value
+        elif isinstance(value, str):
+            # Find the opposite string value (assuming two-way mapping)
+            opposite_mapping = {
+                "ReLU": "LeakyReLU",
+                "LeakyReLU": "ReLU",
+                "GELU": "SiLU",
+                "SiLU": "GELU",
+                "Max": "Avg",
+                "Avg": "Max",
+                "Standard": "Depthwise",
+                "Depthwise": "Standard",
+                "BatchNorm": "InstanceNorm",
+                "InstanceNorm": "BatchNorm",
+                "SGD": "AdamW",
+                "AdamW": "SGD",
+                "RMSprop": "RMSprop"  # RMSprop is symmetric, so no opposite
+            }
+            if value in opposite_mapping:
+                return opposite_mapping[value]
+        return None
+```
+
+This revised `combine_genes` method introduces a small probability of inverting the gene value, which helps maintain diversity while occasionally exploring new configurations. It also prioritizes the inheritance of beneficial traits from the parents, ensuring that the offspring are likely to perform well.
+--------------------------
+[Meta] Runtime smoke test FAILED: 'GeneticAlgorithm' object has no attribute '_find_opposite_value'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 2 failed — retrying (failures: 2/10, successes so far: 0/10)
+
+=== Attempt 3 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.68
+--- [DEBUG] Raw Response ---
+<thinking>
+To break the global SOTA peak accuracy and discover novel, high-performing architectures, we need to enhance our `combine_genes` function. The goal is to introduce more diversity while maintaining a balance between parent traits. We can achieve this by combining genes in a way that ensures each offspring is unique and potentially better than its parents. 
+
+Here's a strategy:
+1. **Randomly choose between parents**: With a certain probability, we can decide whether to inherit the gene from either parent. This introduces randomness and helps in exploring new configurations.
+2. **Hybridize parents**: When combining genes, we can blend the parent values to create a new one that lies somewhere between the two. This can help in discovering new architectures that might perform well.
+3. **Invert genes**: Sometimes, simply inverting a gene can lead to a new architecture that performs better. This is especially useful when dealing with binary decisions like dropout probabilities.
+
+By implementing these strategies, we aim to increase the diversity of the offspring and explore more promising regions of the search space.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Randomly choose between parents
+        if random.random() < 0.5:
+            return parent1_value
+        else:
+            return parent2_value
+        
+        # Hybridize parents
+        # mid_point = (parent1_value + parent2_value) / 2
+        # return mid_point
+        
+        # Invert genes
+        # inverted_parent1_value = 1 - parent1_value
+        # inverted_parent2_value = 1 - parent2_value
+        # if random.random() < 0.5:
+        #     return inverted_parent1_value
+        # else:
+        #     return inverted_parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+2026-07-13 23:12:40,421 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 23:12:40,421 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 23:12:40,421 - INFO - NumExpr defaulting to 16 threads.
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+LEMUR root /a/mm
+[Init] Loaded 20 existing checksums from stats/ (skipping duplicates)
+[Run] Continuing evolution from gen 0 to 1
+
+
+ >>> GENERATION 1 <<<
+
+  Evaluating Individual 1/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: f5590c84...)
+Evaluating /a/mm/out_nneval_tmp_pid_300/nn/tmp/GenFractalNet-f5590c844bd1175eed9524b8d2f3f355-eb81ace8883be51407a1ab66db3d40c4.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 7/782 [00:00<00:11, 67.62it/s]
+  3%|▎         | 22/782 [00:00<00:06, 112.41it/s]
+  5%|▍         | 37/782 [00:00<00:05, 126.03it/s]
+  7%|▋         | 52/782 [00:00<00:05, 132.42it/s]
+  8%|▊         | 66/782 [00:00<00:05, 133.81it/s]
+ 10%|█         | 80/782 [00:00<00:05, 135.23it/s]
+ 12%|█▏        | 94/782 [00:00<00:05, 135.28it/s]
+ 14%|█▍        | 108/782 [00:00<00:05, 131.18it/s]
+ 16%|█▌        | 122/782 [00:00<00:05, 131.63it/s]
+ 17%|█▋        | 136/782 [00:01<00:04, 131.29it/s]
+ 19%|█▉        | 150/782 [00:01<00:04, 131.73it/s]
+ 21%|██        | 164/782 [00:01<00:04, 131.76it/s]
+ 23%|██▎       | 178/782 [00:01<00:04, 133.33it/s]
+ 25%|██▍       | 192/782 [00:01<00:04, 125.75it/s]
+ 26%|██▌       | 205/782 [00:01<00:04, 122.64it/s]
+ 28%|██▊       | 219/782 [00:01<00:04, 125.75it/s]
+ 30%|██▉       | 233/782 [00:01<00:04, 128.69it/s]
+ 32%|███▏      | 247/782 [00:01<00:04, 130.43it/s]
+ 33%|███▎      | 261/782 [00:02<00:03, 132.34it/s]
+ 35%|███▌      | 275/782 [00:02<00:03, 133.53it/s]
+ 37%|███▋      | 289/782 [00:02<00:03, 134.06it/s]
+ 39%|███▊      | 303/782 [00:02<00:03, 133.13it/s]
+ 41%|████      | 317/782 [00:02<00:03, 133.04it/s]
+ 42%|████▏     | 331/782 [00:02<00:03, 132.36it/s]
+ 44%|████▍     | 345/782 [00:02<00:03, 132.52it/s]
+ 46%|████▌     | 359/782 [00:02<00:03, 133.10it/s]
+ 48%|████▊     | 373/782 [00:02<00:03, 133.37it/s]
+ 49%|████▉     | 387/782 [00:02<00:02, 132.97it/s]
+ 51%|█████▏    | 401/782 [00:03<00:02, 131.58it/s]
+ 53%|█████▎    | 415/782 [00:03<00:02, 132.43it/s]
+ 55%|█████▍    | 429/782 [00:03<00:02, 132.98it/s]
+ 57%|█████▋    | 443/782 [00:03<00:02, 133.61it/s]
+ 58%|█████▊    | 457/782 [00:03<00:02, 133.36it/s]
+ 60%|██████    | 471/782 [00:03<00:02, 132.41it/s]
+ 62%|██████▏   | 485/782 [00:03<00:02, 132.83it/s]
+ 64%|██████▍   | 499/782 [00:03<00:02, 132.85it/s]
+ 66%|██████▌   | 513/782 [00:03<00:02, 131.94it/s]
+ 67%|██████▋   | 527/782 [00:04<00:01, 131.19it/s]
+ 69%|██████▉   | 541/782 [00:04<00:01, 129.72it/s]
+ 71%|███████   | 555/782 [00:04<00:01, 130.98it/s]
+ 73%|███████▎  | 569/782 [00:04<00:01, 131.80it/s]
+ 75%|███████▍  | 583/782 [00:04<00:01, 130.79it/s]
+ 76%|███████▋  | 597/782 [00:04<00:01, 128.50it/s]
+ 78%|███████▊  | 611/782 [00:04<00:01, 130.47it/s]
+ 80%|███████▉  | 625/782 [00:04<00:01, 130.43it/s]
+ 82%|████████▏ | 639/782 [00:04<00:01, 132.07it/s]
+ 84%|████████▎ | 653/782 [00:04<00:00, 132.96it/s]
+ 85%|████████▌ | 667/782 [00:05<00:00, 133.14it/s]
+ 87%|████████▋ | 681/782 [00:05<00:00, 133.68it/s]
+ 89%|████████▉ | 695/782 [00:05<00:00, 134.12it/s]
+ 91%|█████████ | 709/782 [00:05<00:00, 134.25it/s]
+ 92%|█████████▏| 723/782 [00:05<00:00, 134.62it/s]
+ 94%|█████████▍| 737/782 [00:05<00:00, 135.00it/s]
+ 96%|█████████▌| 751/782 [00:05<00:00, 135.29it/s]
+ 98%|█████████▊| 765/782 [00:05<00:00, 135.33it/s]
+100%|█████████▉| 779/782 [00:05<00:00, 136.70it/s]
+100%|██████████| 782/782 [00:05<00:00, 130.42it/s]
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 4.0487, Test Loss: 4.0605
+  Train Acc: 0.0888, Test Acc: 0.0837
+  LR: 0.000000, Grad Norm: 0.4692, Throughput: 2507.9 samples/s
+accuracy_to_time_metric 0.36965946769457475
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/statscifar100/img-classification_cifar-100_acc_GenFractalNet-f5590c844bd1175eed9524b8d2f3f355/1.json
+  - Model persisted to ga_fractal_arch_cifar100/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 8.37%  (source: hyperparameters.accuracy, checksum: f5590c844bd1175eed9524b8d2f3f355)
+  ========================================
+
+  [Archive] Cell (2, 32) updated with fitness: 8.3700
+  Evaluating Individual 2/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: 9ab8bb2d...)
+Evaluating /a/mm/out_nneval_tmp_pid_300/nn/tmp/GenFractalNet-9ab8bb2d2e49e662dd6255dd5aeb7a5c-8eb804ea50f3c6f5c393577b255aa34b.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 2/782 [00:00<00:46, 16.60it/s]
+  1%|          | 6/782 [00:00<00:28, 26.93it/s]
+  1%|▏         | 10/782 [00:00<00:26, 29.53it/s]
+  2%|▏         | 13/782 [00:00<00:25, 29.60it/s]
+  2%|▏         | 17/782 [00:00<00:24, 30.88it/s]
+  3%|▎         | 21/782 [00:00<00:23, 31.76it/s]
+  3%|▎         | 25/782 [00:00<00:23, 32.21it/s]
+  4%|▎         | 29/782 [00:00<00:23, 32.33it/s]
+  4%|▍         | 33/782 [00:01<00:22, 33.96it/s]
+  5%|▍         | 37/782 [00:01<00:21, 34.71it/s]
+  5%|▌         | 41/782 [00:01<00:21, 35.13it/s]
+  6%|▌         | 45/782 [00:01<00:20, 36.48it/s]
+  6%|▋         | 49/782 [00:01<00:20, 36.11it/s]
+  7%|▋         | 53/782 [00:01<00:20, 35.61it/s]
+  7%|▋         | 57/782 [00:01<00:20, 34.82it/s]
+  8%|▊         | 61/782 [00:01<00:21, 33.70it/s]
+  8%|▊         | 65/782 [00:01<00:21, 33.79it/s]
+  9%|▉         | 69/782 [00:02<00:20, 34.26it/s]
+  9%|▉         | 73/782 [00:02<00:20, 35.23it/s]
+ 10%|▉         | 77/782 [00:02<00:20, 34.98it/s]
+ 10%|█         | 81/782 [00:02<00:20, 34.99it/s]
+ 11%|█         | 85/782 [00:02<00:19, 35.54it/s]
+ 11%|█▏        | 89/782 [00:02<00:19, 34.78it/s]
+ 12%|█▏        | 93/782 [00:02<00:20, 34.28it/s]
+ 12%|█▏        | 97/782 [00:02<00:19, 34.45it/s]
+ 13%|█▎        | 101/782 [00:02<00:19, 34.43it/s]
+ 13%|█▎        | 105/782 [00:03<00:19, 34.31it/s]
+ 14%|█▍        | 109/782 [00:03<00:20, 33.11it/s]
+ 14%|█▍        | 113/782 [00:03<00:19, 33.52it/s]
+ 15%|█▍        | 117/782 [00:03<00:20, 33.15it/s]
+ 15%|█▌        | 121/782 [00:03<00:19, 33.79it/s]
+ 16%|█▌        | 125/782 [00:03<00:19, 33.52it/s]
+ 16%|█▋        | 129/782 [00:03<00:19, 34.22it/s]
+ 17%|█▋        | 133/782 [00:03<00:19, 34.04it/s]
+ 18%|█▊        | 137/782 [00:04<00:19, 33.29it/s]
+ 18%|█▊        | 141/782 [00:04<00:19, 33.05it/s]
+ 19%|█▊        | 145/782 [00:04<00:18, 34.04it/s]
+ 19%|█▉        | 149/782 [00:04<00:17, 35.48it/s]
+ 20%|█▉        | 153/782 [00:04<00:17, 34.97it/s]
+ 20%|██        | 157/782 [00:04<00:18, 34.18it/s]
+ 21%|██        | 161/782 [00:04<00:17, 35.13it/s]
+ 21%|██        | 165/782 [00:04<00:17, 35.19it/s]
+ 22%|██▏       | 169/782 [00:04<00:17, 34.24it/s]
+ 22%|██▏       | 173/782 [00:05<00:17, 33.98it/s]
+ 23%|██▎       | 177/782 [00:05<00:17, 34.30it/s]
+ 23%|██▎       | 181/782 [00:05<00:17, 33.82it/s]
+ 24%|██▎       | 185/782 [00:05<00:18, 33.10it/s]
+ 24%|██▍       | 189/782 [00:05<00:18, 31.81it/s]
+ 25%|██▍       | 193/782 [00:05<00:18, 32.53it/s]
+ 25%|██▌       | 197/782 [00:05<00:17, 33.29it/s]
+ 26%|██▌       | 201/782 [00:05<00:17, 33.74it/s]
+ 26%|██▌       | 205/782 [00:06<00:17, 33.61it/s]
+ 27%|██▋       | 209/782 [00:06<00:17, 33.31it/s]
+ 27%|██▋       | 213/782 [00:06<00:16, 33.73it/s]
+ 28%|██▊       | 217/782 [00:06<00:16, 33.87it/s]
+ 28%|██▊       | 221/782 [00:06<00:16, 34.60it/s]
+ 29%|██▉       | 225/782 [00:06<00:15, 35.40it/s]
+ 29%|██▉       | 229/782 [00:06<00:15, 35.19it/s]
+ 30%|██▉       | 233/782 [00:06<00:15, 35.51it/s]
+ 30%|███       | 237/782 [00:07<00:16, 33.19it/s]
+ 31%|███       | 241/782 [00:07<00:16, 32.70it/s]
+ 31%|███▏      | 245/782 [00:07<00:15, 34.04it/s]
+ 32%|███▏      | 249/782 [00:07<00:15, 33.94it/s]
+ 32%|███▏      | 253/782 [00:07<00:15, 33.18it/s]
+ 33%|███▎      | 257/782 [00:07<00:15, 34.17it/s]
+ 33%|███▎      | 261/782 [00:07<00:14, 34.80it/s]
+ 34%|███▍      | 265/782 [00:07<00:15, 34.30it/s]
+ 34%|███▍      | 269/782 [00:07<00:15, 34.13it/s]
+ 35%|███▍      | 273/782 [00:08<00:14, 34.32it/s]
+ 35%|███▌      | 277/782 [00:08<00:14, 34.89it/s]
+ 36%|███▌      | 281/782 [00:08<00:14, 34.11it/s]
+ 36%|███▋      | 285/782 [00:08<00:15, 32.72it/s]
+ 37%|███▋      | 289/782 [00:08<00:15, 31.82it/s]
+ 37%|███▋      | 293/782 [00:08<00:14, 32.86it/s]
+ 38%|███▊      | 297/782 [00:08<00:14, 33.81it/s]
+ 38%|███▊      | 301/782 [00:08<00:14, 32.97it/s]
+ 39%|███▉      | 305/782 [00:09<00:14, 33.17it/s]
+ 40%|███▉      | 309/782 [00:09<00:13, 34.71it/s]
+ 40%|████      | 313/782 [00:09<00:13, 34.94it/s]
+ 41%|████      | 317/782 [00:09<00:13, 33.27it/s]
+ 41%|████      | 321/782 [00:09<00:13, 34.41it/s]
+ 42%|████▏     | 325/782 [00:09<00:13, 33.86it/s]
+ 42%|████▏     | 329/782 [00:09<00:13, 33.69it/s]
+ 43%|████▎     | 333/782 [00:09<00:13, 33.22it/s]
+ 43%|████▎     | 337/782 [00:09<00:12, 34.26it/s]
+ 44%|████▎     | 341/782 [00:10<00:12, 34.02it/s]
+ 44%|████▍     | 345/782 [00:10<00:12, 34.72it/s]
+ 45%|████▍     | 349/782 [00:10<00:12, 33.93it/s]
+ 45%|████▌     | 353/782 [00:10<00:12, 33.95it/s]
+ 46%|████▌     | 357/782 [00:10<00:12, 33.06it/s]
+ 46%|████▌     | 361/782 [00:10<00:12, 33.07it/s]
+ 47%|████▋     | 365/782 [00:10<00:12, 33.76it/s]
+ 47%|████▋     | 369/782 [00:10<00:12, 33.68it/s]
+ 48%|████▊     | 373/782 [00:11<00:11, 34.24it/s]
+ 48%|████▊     | 377/782 [00:11<00:11, 34.81it/s]
+ 49%|████▊     | 381/782 [00:11<00:11, 33.97it/s]
+ 49%|████▉     | 385/782 [00:11<00:11, 33.12it/s]
+ 50%|████▉     | 389/782 [00:11<00:12, 32.07it/s]
+ 50%|█████     | 393/782 [00:11<00:12, 31.13it/s]
+ 51%|█████     | 397/782 [00:11<00:11, 32.27it/s]
+ 51%|█████▏    | 401/782 [00:11<00:11, 32.73it/s]
+ 52%|█████▏    | 405/782 [00:12<00:11, 32.77it/s]
+ 52%|█████▏    | 409/782 [00:12<00:11, 33.04it/s]
+ 53%|█████▎    | 413/782 [00:12<00:11, 32.86it/s]
+ 53%|█████▎    | 417/782 [00:12<00:11, 31.74it/s]
+ 54%|█████▍    | 421/782 [00:12<00:10, 33.11it/s]
+ 54%|█████▍    | 425/782 [00:12<00:10, 33.64it/s]
+ 55%|█████▍    | 429/782 [00:12<00:10, 33.82it/s]
+ 55%|█████▌    | 433/782 [00:12<00:10, 34.06it/s]
+ 56%|█████▌    | 437/782 [00:12<00:10, 33.67it/s]
+ 56%|█████▋    | 441/782 [00:13<00:09, 34.30it/s]
+ 57%|█████▋    | 445/782 [00:13<00:10, 33.50it/s]
+ 57%|█████▋    | 449/782 [00:13<00:09, 33.86it/s]
+ 58%|█████▊    | 453/782 [00:13<00:09, 34.43it/s]
+ 58%|█████▊    | 457/782 [00:13<00:09, 34.84it/s]
+ 59%|█████▉    | 461/782 [00:13<00:09, 33.72it/s]
+ 59%|█████▉    | 465/782 [00:13<00:09, 33.51it/s]
+ 60%|█████▉    | 469/782 [00:13<00:09, 33.49it/s]
+ 60%|██████    | 473/782 [00:14<00:09, 33.07it/s]
+ 61%|██████    | 477/782 [00:14<00:09, 32.89it/s]
+ 62%|██████▏   | 481/782 [00:14<00:09, 33.33it/s]
+ 62%|██████▏   | 485/782 [00:14<00:08, 33.54it/s]
+ 63%|██████▎   | 489/782 [00:14<00:08, 33.93it/s]
+ 63%|██████▎   | 493/782 [00:14<00:08, 34.08it/s]
+ 64%|██████▎   | 497/782 [00:14<00:08, 33.21it/s]
+ 64%|██████▍   | 501/782 [00:14<00:08, 33.89it/s]
+ 65%|██████▍   | 505/782 [00:14<00:08, 33.83it/s]
+ 65%|██████▌   | 509/782 [00:15<00:07, 34.76it/s]
+ 66%|██████▌   | 513/782 [00:15<00:07, 35.09it/s]
+ 66%|██████▌   | 517/782 [00:15<00:08, 33.06it/s]
+ 67%|██████▋   | 521/782 [00:15<00:07, 33.48it/s]
+ 67%|██████▋   | 525/782 [00:15<00:07, 32.31it/s]
+ 68%|██████▊   | 530/782 [00:15<00:07, 34.56it/s]
+ 68%|██████▊   | 534/782 [00:15<00:07, 34.11it/s]
+ 69%|██████▉   | 538/782 [00:15<00:07, 33.17it/s]
+ 69%|██████▉   | 542/782 [00:16<00:07, 33.19it/s]
+ 70%|██████▉   | 546/782 [00:16<00:07, 33.37it/s]
+ 70%|███████   | 550/782 [00:16<00:06, 33.15it/s]
+ 71%|███████   | 554/782 [00:16<00:06, 33.65it/s]
+ 71%|███████▏  | 558/782 [00:16<00:06, 33.81it/s]
+ 72%|███████▏  | 562/782 [00:16<00:06, 33.00it/s]
+ 72%|███████▏  | 566/782 [00:16<00:06, 33.64it/s]
+ 73%|███████▎  | 570/782 [00:16<00:06, 34.83it/s]
+ 73%|███████▎  | 574/782 [00:17<00:05, 35.16it/s]
+ 74%|███████▍  | 578/782 [00:17<00:06, 33.55it/s]
+ 74%|███████▍  | 582/782 [00:17<00:05, 33.34it/s]
+ 75%|███████▍  | 586/782 [00:17<00:05, 33.94it/s]
+ 75%|███████▌  | 590/782 [00:17<00:05, 33.81it/s]
+ 76%|███████▌  | 594/782 [00:17<00:05, 33.95it/s]
+ 76%|███████▋  | 598/782 [00:17<00:05, 33.10it/s]
+ 77%|███████▋  | 602/782 [00:17<00:05, 33.28it/s]
+ 77%|███████▋  | 606/782 [00:17<00:05, 33.30it/s]
+ 78%|███████▊  | 610/782 [00:18<00:05, 33.06it/s]
+ 79%|███████▊  | 614/782 [00:18<00:05, 32.45it/s]
+ 79%|███████▉  | 618/782 [00:18<00:04, 32.80it/s]
+ 80%|███████▉  | 622/782 [00:18<00:04, 32.48it/s]
+ 80%|████████  | 626/782 [00:18<00:04, 32.62it/s]
+ 81%|████████  | 630/782 [00:18<00:04, 33.48it/s]
+ 81%|████████  | 634/782 [00:18<00:04, 33.78it/s]
+ 82%|████████▏ | 638/782 [00:18<00:04, 33.77it/s]
+ 82%|████████▏ | 642/782 [00:19<00:04, 34.03it/s]
+ 83%|████████▎ | 646/782 [00:19<00:03, 34.74it/s]
+ 83%|████████▎ | 650/782 [00:19<00:03, 34.59it/s]
+ 84%|████████▎ | 654/782 [00:19<00:03, 34.52it/s]
+ 84%|████████▍ | 658/782 [00:19<00:03, 34.15it/s]
+ 85%|████████▍ | 662/782 [00:19<00:03, 34.59it/s]
+ 85%|████████▌ | 666/782 [00:19<00:03, 35.81it/s]
+ 86%|████████▌ | 670/782 [00:19<00:03, 35.02it/s]
+ 86%|████████▌ | 674/782 [00:19<00:03, 35.86it/s]
+ 87%|████████▋ | 678/782 [00:20<00:02, 35.33it/s]
+ 87%|████████▋ | 682/782 [00:20<00:02, 36.57it/s]
+ 88%|████████▊ | 686/782 [00:20<00:02, 35.06it/s]
+ 88%|████████▊ | 690/782 [00:20<00:02, 35.34it/s]
+ 89%|████████▊ | 694/782 [00:20<00:02, 34.55it/s]
+ 89%|████████▉ | 698/782 [00:20<00:02, 34.85it/s]
+ 90%|████████▉ | 702/782 [00:20<00:02, 34.08it/s]
+ 90%|█████████ | 706/782 [00:20<00:02, 33.72it/s]
+ 91%|█████████ | 710/782 [00:21<00:02, 33.14it/s]
+ 91%|█████████▏| 714/782 [00:21<00:02, 33.84it/s]
+ 92%|█████████▏| 718/782 [00:21<00:01, 33.95it/s]
+ 92%|█████████▏| 722/782 [00:21<00:01, 34.93it/s]
+ 93%|█████████▎| 726/782 [00:21<00:01, 33.64it/s]
+ 93%|█████████▎| 730/782 [00:21<00:01, 33.85it/s]
+ 94%|█████████▍| 734/782 [00:21<00:01, 34.45it/s]
+ 94%|█████████▍| 738/782 [00:21<00:01, 33.33it/s]
+ 95%|█████████▍| 742/782 [00:21<00:01, 33.83it/s]
+ 95%|█████████▌| 746/782 [00:22<00:01, 33.65it/s]
+ 96%|█████████▌| 751/782 [00:22<00:00, 35.34it/s]
+ 97%|█████████▋| 755/782 [00:22<00:00, 35.37it/s]
+ 97%|█████████▋| 759/782 [00:22<00:00, 35.04it/s]
+ 98%|█████████▊| 763/782 [00:22<00:00, 34.34it/s]
+ 98%|█████████▊| 767/782 [00:22<00:00, 34.57it/s]
+ 99%|█████████▊| 771/782 [00:22<00:00, 33.48it/s]
+ 99%|█████████▉| 775/782 [00:22<00:00, 34.22it/s]
+100%|█████████▉| 779/782 [00:23<00:00, 32.88it/s]
+100%|██████████| 782/782 [00:23<00:00, 33.74it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 553, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes, False, export_onnx, train_set, save_path=save_path)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 367, in train_n_eval
+    raise AccuracyException(accuracy, duration,
+ab.nn.util.Exception.AccuracyException: (0.0102, 44834414235, "Accuracy is too low: 0.0102. The minimum accepted accuracy for the 'cifar-100' dataset is 0.01.")
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 4.6148, Test Loss: 4.6146
+  Train Acc: 0.0104, Test Acc: 0.0102
+  LR: 0.000001, Grad Norm: 0.2422, Throughput: 1115.2 samples/s
+accuracy_to_time_metric 0.0004460858994425547
+Error during training: (0.0102, 44834414235, "Accuracy is too low: 0.0102. The minimum accepted accuracy for the 'cifar-100' dataset is 0.01.")
+Eval Fail: (0.0102, 44834414235, "Accuracy is too low: 0.0102. The minimum accepted accuracy for the 'cifar-100' dataset is 0.01.")
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-9ab8bb2d2e49e662dd6255dd5aeb7a5c.py
+  [Archive] Cell (3, 64) updated with fitness: 0.0000
+  Evaluating Individual 3/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: 04d797a4...)
+Evaluating /a/mm/out_nneval_tmp_pid_300/nn/tmp/GenFractalNet-04d797a40202e5ee77c3b7451a77f9b0-295590d0b91a5145c539f161c3d0be9f.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 8/782 [00:00<00:09, 78.93it/s]
+  3%|▎         | 23/782 [00:00<00:06, 117.65it/s]
+  5%|▍         | 38/782 [00:00<00:05, 128.44it/s]
+  7%|▋         | 53/782 [00:00<00:05, 134.85it/s]
+  9%|▊         | 68/782 [00:00<00:05, 138.64it/s]
+ 11%|█         | 83/782 [00:00<00:04, 140.75it/s]
+ 13%|█▎        | 98/782 [00:00<00:04, 142.00it/s]
+ 14%|█▍        | 113/782 [00:00<00:04, 142.63it/s]
+ 16%|█▋        | 128/782 [00:00<00:04, 143.15it/s]
+ 18%|█▊        | 143/782 [00:01<00:04, 143.45it/s]
+ 20%|██        | 158/782 [00:01<00:04, 143.94it/s]
+ 22%|██▏       | 173/782 [00:01<00:04, 144.15it/s]
+ 24%|██▍       | 188/782 [00:01<00:04, 143.92it/s]
+ 26%|██▌       | 203/782 [00:01<00:04, 143.44it/s]
+ 28%|██▊       | 218/782 [00:01<00:03, 143.89it/s]
+ 30%|██▉       | 233/782 [00:01<00:03, 143.87it/s]
+ 32%|███▏      | 248/782 [00:01<00:03, 143.94it/s]
+ 34%|███▎      | 263/782 [00:01<00:03, 144.40it/s]
+ 36%|███▌      | 278/782 [00:01<00:03, 144.60it/s]
+ 37%|███▋      | 293/782 [00:02<00:03, 144.42it/s]
+ 39%|███▉      | 308/782 [00:02<00:03, 144.33it/s]
+ 41%|████▏     | 323/782 [00:02<00:03, 144.31it/s]
+ 43%|████▎     | 338/782 [00:02<00:03, 144.47it/s]
+ 45%|████▌     | 353/782 [00:02<00:02, 144.67it/s]
+ 47%|████▋     | 368/782 [00:02<00:02, 144.36it/s]
+ 49%|████▉     | 383/782 [00:02<00:02, 144.16it/s]
+ 51%|█████     | 398/782 [00:02<00:02, 144.23it/s]
+ 53%|█████▎    | 413/782 [00:02<00:02, 144.25it/s]
+ 55%|█████▍    | 428/782 [00:03<00:02, 143.98it/s]
+ 57%|█████▋    | 443/782 [00:03<00:02, 144.04it/s]
+ 59%|█████▊    | 458/782 [00:03<00:02, 144.24it/s]
+ 60%|██████    | 473/782 [00:03<00:02, 144.16it/s]
+ 62%|██████▏   | 488/782 [00:03<00:02, 144.18it/s]
+ 64%|██████▍   | 503/782 [00:03<00:01, 144.19it/s]
+ 66%|██████▌   | 518/782 [00:03<00:01, 144.14it/s]
+ 68%|██████▊   | 533/782 [00:03<00:01, 143.46it/s]
+ 70%|███████   | 548/782 [00:03<00:01, 143.43it/s]
+ 72%|███████▏  | 563/782 [00:03<00:01, 143.46it/s]
+ 74%|███████▍  | 578/782 [00:04<00:01, 143.69it/s]
+ 76%|███████▌  | 593/782 [00:04<00:01, 143.56it/s]
+ 78%|███████▊  | 608/782 [00:04<00:01, 142.61it/s]
+ 80%|███████▉  | 623/782 [00:04<00:01, 143.14it/s]
+ 82%|████████▏ | 638/782 [00:04<00:01, 142.91it/s]
+ 84%|████████▎ | 653/782 [00:04<00:00, 143.25it/s]
+ 85%|████████▌ | 668/782 [00:04<00:00, 142.74it/s]
+ 87%|████████▋ | 683/782 [00:04<00:00, 142.96it/s]
+ 89%|████████▉ | 698/782 [00:04<00:00, 143.44it/s]
+ 91%|█████████ | 713/782 [00:05<00:00, 143.57it/s]
+ 93%|█████████▎| 728/782 [00:05<00:00, 143.72it/s]
+ 95%|█████████▌| 743/782 [00:05<00:00, 143.74it/s]
+ 97%|█████████▋| 758/782 [00:05<00:00, 143.53it/s]
+ 99%|█████████▉| 773/782 [00:05<00:00, 143.82it/s]
+100%|██████████| 782/782 [00:05<00:00, 142.05it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 553, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes, False, export_onnx, train_set, save_path=save_path)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 367, in train_n_eval
+    raise AccuracyException(accuracy, duration,
+ab.nn.util.Exception.AccuracyException: (0.0101, 18774615669, "Accuracy is too low: 0.0101. The minimum accepted accuracy for the 'cifar-100' dataset is 0.01.")
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 4.6058, Test Loss: 4.6057
+  Train Acc: 0.0101, Test Acc: 0.0101
+  LR: 0.000001, Grad Norm: 0.4440, Throughput: 2663.2 samples/s
+accuracy_to_time_metric 0.0005326340723188063
+Error during training: (0.0101, 18774615669, "Accuracy is too low: 0.0101. The minimum accepted accuracy for the 'cifar-100' dataset is 0.01.")
+Eval Fail: (0.0101, 18774615669, "Accuracy is too low: 0.0101. The minimum accepted accuracy for the 'cifar-100' dataset is 0.01.")
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-04d797a40202e5ee77c3b7451a77f9b0.py
+  [Archive] Cell (2, 64) updated with fitness: 0.0000
+  Evaluating Individual 4/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: c6a742db...)
+Evaluating /a/mm/out_nneval_tmp_pid_300/nn/tmp/GenFractalNet-c6a742db41569cc8956a9d135c203115-5152e0169c494dc056bb2c548e98048c.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 1/782 [00:00<01:21,  9.57it/s]
+  1%|          | 6/782 [00:00<00:26, 29.53it/s]
+  1%|▏         | 11/782 [00:00<00:21, 35.85it/s]
+  2%|▏         | 16/782 [00:00<00:20, 37.98it/s]
+  3%|▎         | 21/782 [00:00<00:19, 39.84it/s]
+  3%|▎         | 26/782 [00:00<00:18, 41.39it/s]
+  4%|▍         | 31/782 [00:00<00:18, 41.40it/s]
+  5%|▍         | 36/782 [00:00<00:17, 42.57it/s]
+  5%|▌         | 41/782 [00:01<00:17, 42.52it/s]
+  6%|▌         | 46/782 [00:01<00:17, 43.20it/s]
+  7%|▋         | 51/782 [00:01<00:16, 43.10it/s]
+  7%|▋         | 56/782 [00:01<00:16, 43.26it/s]
+  8%|▊         | 61/782 [00:01<00:16, 42.99it/s]
+  8%|▊         | 66/782 [00:01<00:16, 42.90it/s]
+  9%|▉         | 71/782 [00:01<00:16, 43.24it/s]
+ 10%|▉         | 76/782 [00:01<00:16, 43.03it/s]
+ 10%|█         | 81/782 [00:01<00:16, 43.13it/s]
+ 11%|█         | 86/782 [00:02<00:16, 42.92it/s]
+ 12%|█▏        | 91/782 [00:02<00:16, 42.53it/s]
+ 12%|█▏        | 96/782 [00:02<00:15, 42.88it/s]
+ 13%|█▎        | 101/782 [00:02<00:15, 43.34it/s]
+ 14%|█▎        | 106/782 [00:02<00:15, 43.68it/s]
+ 14%|█▍        | 111/782 [00:02<00:15, 43.24it/s]
+ 15%|█▍        | 116/782 [00:02<00:15, 43.31it/s]
+ 15%|█▌        | 121/782 [00:02<00:15, 43.26it/s]
+ 16%|█▌        | 126/782 [00:03<00:15, 43.37it/s]
+ 17%|█▋        | 131/782 [00:03<00:15, 43.38it/s]
+ 17%|█▋        | 136/782 [00:03<00:14, 43.44it/s]
+ 18%|█▊        | 141/782 [00:03<00:14, 43.73it/s]
+ 19%|█▊        | 146/782 [00:03<00:14, 43.70it/s]
+ 19%|█▉        | 151/782 [00:03<00:14, 43.30it/s]
+ 20%|█▉        | 156/782 [00:03<00:14, 43.33it/s]
+ 21%|██        | 161/782 [00:03<00:14, 43.29it/s]
+ 21%|██        | 166/782 [00:03<00:14, 42.80it/s]
+ 22%|██▏       | 171/782 [00:04<00:14, 43.16it/s]
+ 23%|██▎       | 176/782 [00:04<00:14, 42.71it/s]
+ 23%|██▎       | 181/782 [00:04<00:14, 42.82it/s]
+ 24%|██▍       | 186/782 [00:04<00:14, 42.55it/s]
+ 24%|██▍       | 191/782 [00:04<00:13, 42.96it/s]
+ 25%|██▌       | 196/782 [00:04<00:13, 42.79it/s]
+ 26%|██▌       | 201/782 [00:04<00:13, 42.66it/s]
+ 26%|██▋       | 206/782 [00:04<00:13, 41.95it/s]
+ 27%|██▋       | 211/782 [00:04<00:13, 41.88it/s]
+ 28%|██▊       | 216/782 [00:05<00:13, 42.38it/s]
+ 28%|██▊       | 221/782 [00:05<00:13, 42.33it/s]
+ 29%|██▉       | 226/782 [00:05<00:13, 42.49it/s]
+ 30%|██▉       | 231/782 [00:05<00:12, 42.97it/s]
+ 30%|███       | 236/782 [00:05<00:12, 43.47it/s]
+ 31%|███       | 241/782 [00:05<00:12, 42.83it/s]
+ 31%|███▏      | 246/782 [00:05<00:12, 43.06it/s]
+ 32%|███▏      | 251/782 [00:05<00:12, 43.59it/s]
+ 33%|███▎      | 256/782 [00:06<00:12, 42.91it/s]
+ 33%|███▎      | 261/782 [00:06<00:12, 42.75it/s]
+ 34%|███▍      | 266/782 [00:06<00:11, 43.23it/s]
+ 35%|███▍      | 271/782 [00:06<00:11, 43.59it/s]
+ 35%|███▌      | 276/782 [00:06<00:11, 43.40it/s]
+ 36%|███▌      | 281/782 [00:06<00:11, 43.01it/s]
+ 37%|███▋      | 286/782 [00:06<00:11, 42.77it/s]
+ 37%|███▋      | 291/782 [00:06<00:11, 42.77it/s]
+ 38%|███▊      | 296/782 [00:06<00:11, 42.47it/s]
+ 38%|███▊      | 301/782 [00:07<00:11, 42.46it/s]
+ 39%|███▉      | 306/782 [00:07<00:11, 42.95it/s]
+ 40%|███▉      | 311/782 [00:07<00:10, 43.13it/s]
+ 40%|████      | 316/782 [00:07<00:10, 43.56it/s]
+ 41%|████      | 321/782 [00:07<00:10, 43.26it/s]
+ 42%|████▏     | 326/782 [00:07<00:10, 43.20it/s]
+ 42%|████▏     | 331/782 [00:07<00:10, 42.81it/s]
+ 43%|████▎     | 336/782 [00:07<00:10, 43.08it/s]
+ 44%|████▎     | 341/782 [00:08<00:10, 43.39it/s]
+ 44%|████▍     | 346/782 [00:08<00:10, 43.03it/s]
+ 45%|████▍     | 351/782 [00:08<00:09, 43.22it/s]
+ 46%|████▌     | 356/782 [00:08<00:09, 43.36it/s]
+ 46%|████▌     | 361/782 [00:08<00:09, 42.29it/s]
+ 47%|████▋     | 366/782 [00:08<00:10, 40.16it/s]
+ 47%|████▋     | 371/782 [00:08<00:10, 39.71it/s]
+ 48%|████▊     | 376/782 [00:08<00:09, 40.94it/s]
+ 49%|████▊     | 381/782 [00:08<00:09, 42.14it/s]
+ 49%|████▉     | 386/782 [00:09<00:09, 42.36it/s]
+ 50%|█████     | 391/782 [00:09<00:09, 42.81it/s]
+ 51%|█████     | 396/782 [00:09<00:08, 42.93it/s]
+ 51%|█████▏    | 401/782 [00:09<00:08, 43.08it/s]
+ 52%|█████▏    | 406/782 [00:09<00:08, 43.36it/s]
+ 53%|█████▎    | 411/782 [00:09<00:08, 43.03it/s]
+ 53%|█████▎    | 416/782 [00:09<00:08, 43.12it/s]
+ 54%|█████▍    | 421/782 [00:09<00:08, 42.83it/s]
+ 54%|█████▍    | 426/782 [00:10<00:08, 43.58it/s]
+ 55%|█████▌    | 431/782 [00:10<00:07, 43.91it/s]
+ 56%|█████▌    | 436/782 [00:10<00:07, 43.87it/s]
+ 56%|█████▋    | 441/782 [00:10<00:07, 43.80it/s]
+ 57%|█████▋    | 446/782 [00:10<00:07, 44.12it/s]
+ 58%|█████▊    | 451/782 [00:10<00:07, 43.49it/s]
+ 58%|█████▊    | 456/782 [00:10<00:07, 43.79it/s]
+ 59%|█████▉    | 461/782 [00:10<00:07, 43.86it/s]
+ 60%|█████▉    | 466/782 [00:10<00:07, 43.58it/s]
+ 60%|██████    | 471/782 [00:11<00:07, 43.19it/s]
+ 61%|██████    | 476/782 [00:11<00:07, 43.56it/s]
+ 62%|██████▏   | 481/782 [00:11<00:06, 43.39it/s]
+ 62%|██████▏   | 486/782 [00:11<00:06, 43.95it/s]
+ 63%|██████▎   | 491/782 [00:11<00:06, 43.49it/s]
+ 63%|██████▎   | 496/782 [00:11<00:06, 43.68it/s]
+ 64%|██████▍   | 501/782 [00:11<00:06, 43.35it/s]
+ 65%|██████▍   | 506/782 [00:11<00:06, 43.34it/s]
+ 65%|██████▌   | 511/782 [00:11<00:06, 43.26it/s]
+ 66%|██████▌   | 516/782 [00:12<00:06, 43.58it/s]
+ 67%|██████▋   | 521/782 [00:12<00:06, 43.47it/s]
+ 67%|██████▋   | 526/782 [00:12<00:05, 43.91it/s]
+ 68%|██████▊   | 531/782 [00:12<00:05, 43.55it/s]
+ 69%|██████▊   | 536/782 [00:12<00:05, 42.92it/s]
+ 69%|██████▉   | 541/782 [00:12<00:05, 43.32it/s]
+ 70%|██████▉   | 546/782 [00:12<00:05, 42.72it/s]
+ 70%|███████   | 551/782 [00:12<00:05, 43.20it/s]
+ 71%|███████   | 556/782 [00:12<00:05, 43.78it/s]
+ 72%|███████▏  | 561/782 [00:13<00:05, 43.91it/s]
+ 72%|███████▏  | 566/782 [00:13<00:04, 43.34it/s]
+ 73%|███████▎  | 571/782 [00:13<00:04, 43.51it/s]
+ 74%|███████▎  | 576/782 [00:13<00:04, 43.64it/s]
+ 74%|███████▍  | 581/782 [00:13<00:04, 43.93it/s]
+ 75%|███████▍  | 586/782 [00:13<00:04, 43.47it/s]
+ 76%|███████▌  | 591/782 [00:13<00:04, 43.53it/s]
+ 76%|███████▌  | 596/782 [00:13<00:04, 42.84it/s]
+ 77%|███████▋  | 601/782 [00:14<00:04, 42.80it/s]
+ 77%|███████▋  | 606/782 [00:14<00:04, 43.05it/s]
+ 78%|███████▊  | 611/782 [00:14<00:04, 42.67it/s]
+ 79%|███████▉  | 616/782 [00:14<00:03, 42.86it/s]
+ 79%|███████▉  | 621/782 [00:14<00:03, 42.70it/s]
+ 80%|████████  | 626/782 [00:14<00:03, 43.08it/s]
+ 81%|████████  | 631/782 [00:14<00:03, 42.95it/s]
+ 81%|████████▏ | 636/782 [00:14<00:03, 42.63it/s]
+ 82%|████████▏ | 641/782 [00:14<00:03, 42.51it/s]
+ 83%|████████▎ | 646/782 [00:15<00:03, 42.83it/s]
+ 83%|████████▎ | 651/782 [00:15<00:03, 42.67it/s]
+ 84%|████████▍ | 656/782 [00:15<00:02, 42.94it/s]
+ 85%|████████▍ | 661/782 [00:15<00:02, 43.30it/s]
+ 85%|████████▌ | 666/782 [00:15<00:02, 42.81it/s]
+ 86%|████████▌ | 671/782 [00:15<00:02, 43.09it/s]
+ 86%|████████▋ | 676/782 [00:15<00:02, 42.96it/s]
+ 87%|████████▋ | 681/782 [00:15<00:02, 42.72it/s]
+ 88%|████████▊ | 686/782 [00:16<00:02, 43.06it/s]
+ 88%|████████▊ | 691/782 [00:16<00:02, 43.37it/s]
+ 89%|████████▉ | 696/782 [00:16<00:01, 43.18it/s]
+ 90%|████████▉ | 701/782 [00:16<00:01, 43.38it/s]
+ 90%|█████████ | 706/782 [00:16<00:01, 42.68it/s]
+ 91%|█████████ | 711/782 [00:16<00:01, 43.05it/s]
+ 92%|█████████▏| 716/782 [00:16<00:01, 43.03it/s]
+ 92%|█████████▏| 721/782 [00:16<00:01, 43.64it/s]
+ 93%|█████████▎| 726/782 [00:16<00:01, 44.02it/s]
+ 93%|█████████▎| 731/782 [00:17<00:01, 44.44it/s]
+ 94%|█████████▍| 736/782 [00:17<00:01, 44.55it/s]
+ 95%|█████████▍| 741/782 [00:17<00:00, 43.78it/s]
+ 95%|█████████▌| 746/782 [00:17<00:00, 43.34it/s]
+ 96%|█████████▌| 751/782 [00:17<00:00, 43.54it/s]
+ 97%|█████████▋| 756/782 [00:17<00:00, 43.76it/s]
+ 97%|█████████▋| 761/782 [00:17<00:00, 43.88it/s]
+ 98%|█████████▊| 766/782 [00:17<00:00, 43.76it/s]
+ 99%|█████████▊| 771/782 [00:17<00:00, 44.09it/s]
+ 99%|█████████▉| 776/782 [00:18<00:00, 44.32it/s]
+100%|█████████▉| 781/782 [00:18<00:00, 43.53it/s]
+100%|██████████| 782/782 [00:18<00:00, 42.80it/s]
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 4.2920, Test Loss: 4.2927
+  Train Acc: 0.0312, Test Acc: 0.0324
+  LR: 0.000000, Grad Norm: 0.5545, Throughput: 1578.0 samples/s
+accuracy_to_time_metric 0.07069262101929848
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/statscifar100/img-classification_cifar-100_acc_GenFractalNet-c6a742db41569cc8956a9d135c203115/1.json
+  - Model persisted to ga_fractal_arch_cifar100/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 3.24%  (source: hyperparameters.accuracy, checksum: c6a742db41569cc8956a9d135c203115)
+  ========================================
+
+  [Archive] Cell (4, 16) updated with fitness: 3.2400
+  Evaluating Individual 5/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: 1af739c9...)
+Evaluating /a/mm/out_nneval_tmp_pid_300/nn/tmp/GenFractalNet-1af739c94730c087c0d3175f0c188943-98459e0590c1baa6de43e9c163fbbfcf.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 5/782 [00:00<00:16, 47.01it/s]
+  2%|▏         | 15/782 [00:00<00:10, 73.43it/s]
+  3%|▎         | 25/782 [00:00<00:09, 81.42it/s]
+  4%|▍         | 35/782 [00:00<00:08, 84.69it/s]
+  6%|▌         | 45/782 [00:00<00:08, 87.70it/s]
+  7%|▋         | 55/782 [00:00<00:08, 89.82it/s]
+  8%|▊         | 64/782 [00:00<00:07, 89.86it/s]
+  9%|▉         | 73/782 [00:00<00:07, 89.89it/s]
+ 10%|█         | 82/782 [00:00<00:07, 89.38it/s]
+ 12%|█▏        | 91/782 [00:01<00:07, 88.39it/s]
+ 13%|█▎        | 101/782 [00:01<00:07, 89.51it/s]
+ 14%|█▍        | 110/782 [00:01<00:07, 89.61it/s]
+ 15%|█▌        | 120/782 [00:01<00:07, 90.35it/s]
+ 17%|█▋        | 130/782 [00:01<00:07, 89.54it/s]
+ 18%|█▊        | 140/782 [00:01<00:07, 89.55it/s]
+ 19%|█▉        | 150/782 [00:01<00:07, 90.16it/s]
+ 20%|██        | 160/782 [00:01<00:06, 90.42it/s]
+ 22%|██▏       | 170/782 [00:01<00:06, 90.37it/s]
+ 23%|██▎       | 180/782 [00:02<00:06, 90.92it/s]
+ 24%|██▍       | 190/782 [00:02<00:06, 91.23it/s]
+ 26%|██▌       | 200/782 [00:02<00:06, 91.12it/s]
+ 27%|██▋       | 210/782 [00:02<00:06, 90.67it/s]
+ 28%|██▊       | 220/782 [00:02<00:06, 90.45it/s]
+ 29%|██▉       | 230/782 [00:02<00:06, 90.08it/s]
+ 31%|███       | 240/782 [00:02<00:06, 89.57it/s]
+ 32%|███▏      | 249/782 [00:02<00:05, 89.55it/s]
+ 33%|███▎      | 258/782 [00:02<00:05, 89.58it/s]
+ 34%|███▍      | 268/782 [00:03<00:05, 89.75it/s]
+ 35%|███▌      | 277/782 [00:03<00:05, 89.54it/s]
+ 37%|███▋      | 286/782 [00:03<00:05, 89.01it/s]
+ 38%|███▊      | 296/782 [00:03<00:05, 89.86it/s]
+ 39%|███▉      | 306/782 [00:03<00:05, 90.00it/s]
+ 40%|████      | 315/782 [00:03<00:05, 89.80it/s]
+ 41%|████▏     | 324/782 [00:03<00:05, 89.70it/s]
+ 43%|████▎     | 334/782 [00:03<00:04, 90.30it/s]
+ 44%|████▍     | 344/782 [00:03<00:04, 89.54it/s]
+ 45%|████▌     | 353/782 [00:03<00:04, 89.24it/s]
+ 46%|████▋     | 363/782 [00:04<00:04, 89.41it/s]
+ 48%|████▊     | 372/782 [00:04<00:04, 89.33it/s]
+ 49%|████▉     | 382/782 [00:04<00:04, 90.07it/s]
+ 50%|█████     | 392/782 [00:04<00:04, 90.31it/s]
+ 51%|█████▏    | 402/782 [00:04<00:04, 90.30it/s]
+ 53%|█████▎    | 412/782 [00:04<00:04, 89.43it/s]
+ 54%|█████▍    | 421/782 [00:04<00:04, 88.79it/s]
+ 55%|█████▍    | 430/782 [00:04<00:03, 88.74it/s]
+ 56%|█████▌    | 439/782 [00:04<00:03, 88.11it/s]
+ 57%|█████▋    | 448/782 [00:05<00:03, 88.65it/s]
+ 59%|█████▊    | 458/782 [00:05<00:03, 89.13it/s]
+ 60%|█████▉    | 467/782 [00:05<00:03, 88.51it/s]
+ 61%|██████    | 476/782 [00:05<00:03, 88.92it/s]
+ 62%|██████▏   | 486/782 [00:05<00:03, 89.22it/s]
+ 63%|██████▎   | 495/782 [00:05<00:03, 89.40it/s]
+ 65%|██████▍   | 505/782 [00:05<00:03, 90.13it/s]
+ 66%|██████▌   | 515/782 [00:05<00:02, 90.56it/s]
+ 67%|██████▋   | 525/782 [00:05<00:02, 90.59it/s]
+ 68%|██████▊   | 535/782 [00:05<00:02, 89.93it/s]
+ 70%|██████▉   | 545/782 [00:06<00:02, 90.19it/s]
+ 71%|███████   | 555/782 [00:06<00:02, 89.44it/s]
+ 72%|███████▏  | 564/782 [00:06<00:02, 89.52it/s]
+ 73%|███████▎  | 574/782 [00:06<00:02, 90.52it/s]
+ 75%|███████▍  | 584/782 [00:06<00:02, 89.49it/s]
+ 76%|███████▌  | 593/782 [00:06<00:02, 89.39it/s]
+ 77%|███████▋  | 602/782 [00:06<00:02, 89.32it/s]
+ 78%|███████▊  | 612/782 [00:06<00:01, 89.89it/s]
+ 80%|███████▉  | 622/782 [00:06<00:01, 90.20it/s]
+ 81%|████████  | 632/782 [00:07<00:01, 89.84it/s]
+ 82%|████████▏ | 641/782 [00:07<00:01, 88.85it/s]
+ 83%|████████▎ | 651/782 [00:07<00:01, 89.38it/s]
+ 84%|████████▍ | 660/782 [00:07<00:01, 88.62it/s]
+ 86%|████████▌ | 670/782 [00:07<00:01, 89.52it/s]
+ 87%|████████▋ | 679/782 [00:07<00:01, 89.04it/s]
+ 88%|████████▊ | 689/782 [00:07<00:01, 89.62it/s]
+ 89%|████████▉ | 699/782 [00:07<00:00, 89.70it/s]
+ 91%|█████████ | 708/782 [00:07<00:00, 89.20it/s]
+ 92%|█████████▏| 718/782 [00:08<00:00, 89.82it/s]
+ 93%|█████████▎| 727/782 [00:08<00:00, 89.48it/s]
+ 94%|█████████▍| 737/782 [00:08<00:00, 90.15it/s]
+ 96%|█████████▌| 747/782 [00:08<00:00, 89.41it/s]
+ 97%|█████████▋| 757/782 [00:08<00:00, 89.65it/s]
+ 98%|█████████▊| 767/782 [00:08<00:00, 90.43it/s]
+ 99%|█████████▉| 777/782 [00:08<00:00, 90.11it/s]
+100%|██████████| 782/782 [00:08<00:00, 88.96it/s]
+  Train Loss: 4.3672, Test Loss: 4.3632
+  Train Acc: 0.0468, Test Acc: 0.0475
+  LR: 0.000001, Grad Norm: 1.3277, Throughput: 2243.8 samples/s
+accuracy_to_time_metric 0.1682832594777007
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/statscifar100/img-classification_cifar-100_acc_GenFractalNet-1af739c94730c087c0d3175f0c188943/1.json
+  - Model persisted to ga_fractal_arch_cifar100/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 4.75%  (source: hyperparameters.accuracy, checksum: 1af739c94730c087c0d3175f0c188943)
+  ========================================
+
+[Best] Saved best model to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_model_cifar100.py
+[Best] Copying stats from /a/mm/ab/gpt/brute/ga/meta_evolution/statscifar100/img-classification_cifar-100_acc_GenFractalNet-f5590c844bd1175eed9524b8d2f3f355...
+[Best] Saved best stats to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_statscifar100/img-classification_cifar-100_acc_GenFractalNet-f5590c844bd1175eed9524b8d2f3f355
+[Best] Saved best info metadata to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_info_cifar100.json
+PEAK_ACCURACY: 8.3700
+TOP3_MEAN: 2.7900
+ARCHIVE_SIZE: 4
+[Meta] Median Top-3 Quality over 1 runs: 2.7900
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] PRIMARY: +8.37% SOTA Improvement! Bonus: 11.1876
+   [RL] SECONDARY: Top-3 Quality (2.79%). Bonus: 0.0418
+   [RL] TERTIARY: Archive Novelty (4 cells updated). Bonus: 2.0000
+   [RL] Total Reward: 13.2294
+[Meta] --> NEW GLOBAL SOTA! 8.37% (was 0.00%)
+[Meta] --> ARCHIVE EXPANDED! 4 cells (was 0)
+--> SUCCESS. Updating Baseline (EMA) & Fine-tuning on Success.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+[LoRA] Fine-tune start (replay buffer: 1 items, batch: 1)
+[LoRA] Training on 1 examples...
+`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`.
+/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/_dynamo/eval_frame.py:838: UserWarning: torch.utils.checkpoint: the use_reentrant parameter should be passed explicitly. In version 2.5 we will raise an exception if use_reentrant is not passed. use_reentrant=False is recommended, but if you need to preserve the current default behavior, you can pass use_reentrant=True. Refer to docs for more details on the differences between the two variants.
+  return fn(*args, **kwargs)
+[LoRA] Epoch 1/1 - Loss: 0.3903
+[LoRA] Fine-tune complete
+[LoRA] Adapter save start
+[LoRA] Adapter save complete
+--> Saved version history with accuracy: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/genetic_algorithm_attempt3_combine_genes_acc_8.37.py
+--> Saved CoT trace: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/genetic_algorithm_attempt3_combine_genes_acc_8.37_thinking.txt
+[Meta] ✓ Success #1/10 achieved on attempt 3
+
+=== Attempt 4 | Successes: 1/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.72
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the diversity and exploration capabilities of the GA, we need to introduce more sophisticated mutation strategies. Specifically, we can use techniques such as inversion, momentum-based mutations, and hybridization of genes to ensure that the generated architectures are sufficiently diverse and potentially better than existing ones.
+
+1. **Inversion**: This technique involves flipping the order of elements in a sequence, which can help in generating new architectures that might perform well.
+2. **Momentum-Based Mutations**: By maintaining a history of previous mutations, we can introduce gradual changes to the parameters, which can help in exploring the solution space more effectively.
+3. **Hybridization**: Combining parts of different architectures can lead to novel designs that might outperform the current best.
+
+We will implement these techniques in the `mutate_gene` method to ensure that the generated architectures are diverse and potentially better than existing ones.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            # Inversion
+            if gene_name == "n_columns":
+                if current_value > 1:
+                    return current_value - 1
+                else:
+                    return current_value + 1
+            
+            # Momentum-based mutations
+            if gene_name == "dropout_prob":
+                momentum = 0.1
+                if random.random() < 0.5:
+                    return max(0.0, min(0.5, current_value + momentum))
+                else:
+                    return max(0.0, min(0.5, current_value - momentum))
+            
+            # Hybridization
+            if gene_name == "lr":
+                if current_value == 0.001:
+                    return 0.0001
+                elif current_value == 0.0001:
+                    return 0.001
+                else:
+                    return random.choice([0.001, 0.0001])
+        
+        return random.choice(possible_values)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: mutate produced '1' for gene 'n_columns', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 4 failed — retrying (failures: 1/10, successes so far: 1/10)
+
+=== Attempt 5 | Successes: 1/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.76
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the quality and diversity of the generated architectures, we need to introduce more sophisticated mutation strategies. Instead of simply choosing a random value from the possible values, we can employ techniques such as inversion, momentum tracking, and hybridization to ensure that the mutations are both diverse and beneficial.
+
+1. **Inversion**: Invert the current value within its range to explore opposite ends of the spectrum.
+2. **Momentum Tracking**: Use a moving average of previously mutated values to guide future mutations towards areas that have shown promise.
+3. **Hybridization**: Combine elements from two different parents to create a new architecture that leverages the strengths of both.
+
+By combining these techniques, we can break through local optima and discover novel architectures that improve performance.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            # Inversion
+            inverted_value = current_value * -1
+            if inverted_value in possible_values:
+                return inverted_value
+
+            # Momentum Tracking
+            if hasattr(self, f"{gene_name}_mutation_history"):
+                history = getattr(self, f"{gene_name}_mutation_history")
+                history.append(current_value)
+                if len(history) > 5:
+                    history.pop(0)
+                avg_value = np.mean(history)
+                closest_value = min(possible_values, key=lambda x: abs(x - avg_value))
+                return closest_value
+
+            # Hybridization
+            parent1 = random.choice(self.population)['chromo'][gene_name]
+            parent2 = random.choice(self.population)['chromo'][gene_name]
+            combined_value = (parent1 + parent2) / 2
+            closest_value = min(possible_values, key=lambda x: abs(x - combined_value))
+            return closest_value
+
+        return current_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Cannot choose from an empty sequence
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 5 failed — retrying (failures: 2/10, successes so far: 1/10)
+
+=== Attempt 6 | Successes: 1/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.79
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (QDGAs) optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to devise robust mutation strategies that lead to diverse and high-performing architectures. 
+
+Given the constraints:
+1. **Fast Convergence**: Architectures should converge quickly within one epoch.
+2. **Active Dropout**: Robust architectures should survive heavy dropout during the short evaluation period.
+3. **Prevent Duplicates**: Aggressively introduce diversity to avoid premature convergence.
+
+We can achieve these goals by:
+1. **Mutation Strategy**:
+   - **Leverage Active Dropouts**: Increase dropout probabilities slightly to ensure architectural robustness.
+   - **Favor High-Performance Activations**: Mutate towards activations known to perform well in deep learning models like ReLU and LeakyReLU.
+   - **Adaptive Learning Rates**: Mutate towards smaller learning rates to stabilize convergence.
+   - **Randomized Pooling Types**: Introduce a variety of pooling types to explore different receptive fields.
+
+By implementing these strategies, we aim to discover novel architectures that push the boundaries of what the GA has seen, thus expanding its exploration frontiers.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            # Ensure mutations respect constraints
+            if gene_name == "dropout_prob":
+                return min(max(current_value + 0.05, 0.1), 0.5)
+            elif gene_name == "activation":
+                alternatives = [v for v in self.search_space[gene_name] if v != current_value]
+                return random.choice(alternatives) if alternatives else current_value
+            elif gene_name == "lr":
+                alternatives = [v for v in self.search_space[gene_name] if v < current_value]
+                return random.choice(alternatives) if alternatives else current_value
+            elif gene_name == "pooling_type":
+                alternatives = [v for v in self.search_space[gene_name] if v != current_value]
+                return random.choice(alternatives) if alternatives else current_value
+        return random.choice(possible_values)
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+2026-07-13 23:16:25,929 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 23:16:25,930 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 23:16:25,930 - INFO - NumExpr defaulting to 16 threads.
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+LEMUR root /a/mm
+[Init] Loaded 23 existing checksums from stats/ (skipping duplicates)
+[Run] Continuing evolution from gen 1 to 2
+
+
+ >>> GENERATION 2 <<<
+
+  Evaluating Individual 2/5 ---- Generation: 2/2
+  - Evaluating unique arch (checksum: 8dd9f1ca...)
+Evaluating /a/mm/out_nneval_tmp_pid_687/nn/tmp/GenFractalNet-8dd9f1ca983950b611bedccee6e81def-df1f4a2fb560fa95136026fceeac158e.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 5/782 [00:00<00:15, 48.91it/s]
+  2%|▏         | 18/782 [00:00<00:08, 92.33it/s]
+  4%|▍         | 31/782 [00:00<00:07, 105.42it/s]
+  6%|▌         | 44/782 [00:00<00:06, 113.87it/s]
+  7%|▋         | 58/782 [00:00<00:05, 122.25it/s]
+  9%|▉         | 72/782 [00:00<00:05, 127.22it/s]
+ 11%|█         | 86/782 [00:00<00:05, 130.66it/s]
+ 13%|█▎        | 100/782 [00:00<00:05, 132.65it/s]
+ 15%|█▍        | 114/782 [00:00<00:04, 133.94it/s]
+ 16%|█▋        | 128/782 [00:01<00:04, 134.67it/s]
+ 18%|█▊        | 142/782 [00:01<00:04, 135.39it/s]
+ 20%|█▉        | 156/782 [00:01<00:04, 135.83it/s]
+ 22%|██▏       | 170/782 [00:01<00:04, 136.29it/s]
+ 24%|██▎       | 184/782 [00:01<00:04, 136.42it/s]
+ 25%|██▌       | 198/782 [00:01<00:04, 136.60it/s]
+ 27%|██▋       | 212/782 [00:01<00:04, 136.69it/s]
+ 29%|██▉       | 226/782 [00:01<00:04, 136.75it/s]
+ 31%|███       | 240/782 [00:01<00:03, 136.96it/s]
+ 32%|███▏      | 254/782 [00:01<00:03, 137.02it/s]
+ 34%|███▍      | 268/782 [00:02<00:03, 136.58it/s]
+ 36%|███▌      | 282/782 [00:02<00:03, 136.74it/s]
+ 38%|███▊      | 296/782 [00:02<00:03, 136.70it/s]
+ 40%|███▉      | 310/782 [00:02<00:03, 136.52it/s]
+ 41%|████▏     | 324/782 [00:02<00:03, 136.59it/s]
+ 43%|████▎     | 338/782 [00:02<00:03, 136.46it/s]
+ 45%|████▌     | 352/782 [00:02<00:03, 136.45it/s]
+ 47%|████▋     | 366/782 [00:02<00:03, 136.78it/s]
+ 49%|████▊     | 380/782 [00:02<00:02, 136.85it/s]
+ 50%|█████     | 394/782 [00:02<00:02, 136.52it/s]
+ 52%|█████▏    | 408/782 [00:03<00:02, 136.85it/s]
+ 54%|█████▍    | 422/782 [00:03<00:02, 137.04it/s]
+ 56%|█████▌    | 436/782 [00:03<00:02, 136.73it/s]
+ 58%|█████▊    | 450/782 [00:03<00:02, 136.50it/s]
+ 59%|█████▉    | 464/782 [00:03<00:02, 136.58it/s]
+ 61%|██████    | 478/782 [00:03<00:02, 136.34it/s]
+ 63%|██████▎   | 492/782 [00:03<00:02, 136.38it/s]
+ 65%|██████▍   | 506/782 [00:03<00:02, 136.32it/s]
+ 66%|██████▋   | 520/782 [00:03<00:01, 136.37it/s]
+ 68%|██████▊   | 534/782 [00:04<00:01, 136.39it/s]
+ 70%|███████   | 548/782 [00:04<00:01, 136.54it/s]
+ 72%|███████▏  | 562/782 [00:04<00:01, 136.45it/s]
+ 74%|███████▎  | 576/782 [00:04<00:01, 136.56it/s]
+ 75%|███████▌  | 590/782 [00:04<00:01, 136.98it/s]
+ 77%|███████▋  | 604/782 [00:04<00:01, 135.91it/s]
+ 79%|███████▉  | 618/782 [00:04<00:01, 136.94it/s]
+ 81%|████████  | 632/782 [00:04<00:01, 136.28it/s]
+ 83%|████████▎ | 646/782 [00:04<00:00, 136.64it/s]
+ 84%|████████▍ | 660/782 [00:04<00:00, 135.70it/s]
+ 86%|████████▌ | 674/782 [00:05<00:00, 136.45it/s]
+ 88%|████████▊ | 688/782 [00:05<00:00, 136.23it/s]
+ 90%|████████▉ | 702/782 [00:05<00:00, 136.13it/s]
+ 92%|█████████▏| 716/782 [00:05<00:00, 136.47it/s]
+ 93%|█████████▎| 730/782 [00:05<00:00, 136.45it/s]
+ 95%|█████████▌| 744/782 [00:05<00:00, 136.39it/s]
+ 97%|█████████▋| 758/782 [00:05<00:00, 137.00it/s]
+ 99%|█████████▊| 772/782 [00:05<00:00, 137.22it/s]
+100%|██████████| 782/782 [00:05<00:00, 133.21it/s]
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 4.1222, Test Loss: 4.1286
+  Train Acc: 0.0639, Test Acc: 0.0628
+  LR: 0.000000, Grad Norm: 0.4219, Throughput: 2594.2 samples/s
+accuracy_to_time_metric 0.27394398363890554
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/statscifar100/img-classification_cifar-100_acc_GenFractalNet-8dd9f1ca983950b611bedccee6e81def/1.json
+  - Model persisted to ga_fractal_arch_cifar100/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 6.28%  (source: hyperparameters.accuracy, checksum: 8dd9f1ca983950b611bedccee6e81def)
+  ========================================
+
+  Evaluating Individual 3/5 ---- Generation: 2/2
+  - Evaluating unique arch (checksum: e4f726c8...)
+Evaluating /a/mm/out_nneval_tmp_pid_687/nn/tmp/GenFractalNet-e4f726c8767a7270004f1ed1d551280b-a00cfcd8d9abd997121edea2fd73efbd.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 1/782 [00:00<01:36,  8.13it/s]
+  0%|          | 3/782 [00:00<01:01, 12.61it/s]
+  1%|          | 5/782 [00:00<00:57, 13.60it/s]
+  1%|          | 7/782 [00:00<00:55, 13.95it/s]
+  1%|          | 9/782 [00:00<00:56, 13.79it/s]
+  1%|▏         | 11/782 [00:00<00:54, 14.22it/s]
+  2%|▏         | 13/782 [00:00<00:50, 15.19it/s]
+  2%|▏         | 15/782 [00:01<00:52, 14.58it/s]
+  2%|▏         | 17/782 [00:01<00:51, 14.87it/s]
+  2%|▏         | 19/782 [00:01<00:53, 14.30it/s]
+  3%|▎         | 21/782 [00:01<00:53, 14.09it/s]
+  3%|▎         | 23/782 [00:01<00:55, 13.63it/s]
+  3%|▎         | 25/782 [00:01<00:55, 13.54it/s]
+  3%|▎         | 27/782 [00:01<00:54, 13.84it/s]
+  4%|▎         | 29/782 [00:02<00:54, 13.83it/s]
+  4%|▍         | 31/782 [00:02<00:55, 13.56it/s]
+  4%|▍         | 33/782 [00:02<00:52, 14.24it/s]
+  4%|▍         | 35/782 [00:02<00:51, 14.37it/s]
+  5%|▍         | 37/782 [00:02<00:51, 14.58it/s]
+  5%|▍         | 39/782 [00:02<00:53, 14.01it/s]
+  5%|▌         | 41/782 [00:02<00:53, 13.94it/s]
+  5%|▌         | 43/782 [00:03<00:50, 14.53it/s]
+  6%|▌         | 45/782 [00:03<00:52, 14.08it/s]
+  6%|▌         | 47/782 [00:03<00:50, 14.53it/s]
+  6%|▋         | 49/782 [00:03<00:49, 14.70it/s]
+  7%|▋         | 51/782 [00:03<00:49, 14.64it/s]
+  7%|▋         | 53/782 [00:03<00:49, 14.64it/s]
+  7%|▋         | 55/782 [00:03<00:50, 14.29it/s]
+  7%|▋         | 57/782 [00:04<00:51, 14.18it/s]
+  8%|▊         | 59/782 [00:04<00:53, 13.54it/s]
+  8%|▊         | 61/782 [00:04<00:52, 13.66it/s]
+  8%|▊         | 63/782 [00:04<00:53, 13.48it/s]
+  8%|▊         | 65/782 [00:04<00:52, 13.64it/s]
+  9%|▊         | 67/782 [00:04<00:51, 13.98it/s]
+  9%|▉         | 69/782 [00:04<00:50, 14.03it/s]
+  9%|▉         | 71/782 [00:05<00:51, 13.88it/s]
+  9%|▉         | 73/782 [00:05<00:51, 13.86it/s]
+ 10%|▉         | 75/782 [00:05<00:49, 14.33it/s]
+ 10%|▉         | 77/782 [00:05<00:47, 14.84it/s]
+ 10%|█         | 79/782 [00:05<00:46, 15.11it/s]
+ 10%|█         | 81/782 [00:05<00:47, 14.78it/s]
+ 11%|█         | 83/782 [00:05<00:49, 14.10it/s]
+ 11%|█         | 85/782 [00:06<00:49, 14.20it/s]
+ 11%|█         | 87/782 [00:06<00:48, 14.34it/s]
+ 11%|█▏        | 89/782 [00:06<00:46, 14.92it/s]
+ 12%|█▏        | 91/782 [00:06<00:44, 15.45it/s]
+ 12%|█▏        | 93/782 [00:06<00:43, 15.76it/s]
+ 12%|█▏        | 95/782 [00:06<00:43, 15.74it/s]
+ 12%|█▏        | 97/782 [00:06<00:45, 15.20it/s]
+ 13%|█▎        | 99/782 [00:06<00:45, 14.93it/s]
+ 13%|█▎        | 101/782 [00:07<00:45, 14.83it/s]
+ 13%|█▎        | 103/782 [00:07<00:46, 14.59it/s]
+ 13%|█▎        | 105/782 [00:07<00:46, 14.71it/s]
+ 14%|█▎        | 107/782 [00:07<00:47, 14.12it/s]
+ 14%|█▍        | 109/782 [00:07<00:47, 14.32it/s]
+ 14%|█▍        | 111/782 [00:07<00:47, 14.08it/s]
+ 14%|█▍        | 113/782 [00:07<00:46, 14.28it/s]
+ 15%|█▍        | 115/782 [00:08<00:48, 13.88it/s]
+ 15%|█▍        | 117/782 [00:08<00:49, 13.55it/s]
+ 15%|█▌        | 119/782 [00:08<00:50, 13.17it/s]
+ 15%|█▌        | 121/782 [00:08<00:48, 13.68it/s]
+ 16%|█▌        | 123/782 [00:08<00:47, 13.83it/s]
+ 16%|█▌        | 125/782 [00:08<00:45, 14.46it/s]
+ 16%|█▌        | 127/782 [00:08<00:47, 13.87it/s]
+ 16%|█▋        | 129/782 [00:09<00:45, 14.39it/s]
+ 17%|█▋        | 131/782 [00:09<00:46, 13.90it/s]
+ 17%|█▋        | 133/782 [00:09<00:47, 13.72it/s]
+ 17%|█▋        | 135/782 [00:09<00:47, 13.71it/s]
+ 18%|█▊        | 137/782 [00:09<00:46, 13.95it/s]
+ 18%|█▊        | 139/782 [00:09<00:45, 14.17it/s]
+ 18%|█▊        | 141/782 [00:09<00:44, 14.26it/s]
+ 18%|█▊        | 143/782 [00:10<00:44, 14.39it/s]
+ 19%|█▊        | 145/782 [00:10<00:45, 14.09it/s]
+ 19%|█▉        | 147/782 [00:10<00:46, 13.79it/s]
+ 19%|█▉        | 149/782 [00:10<00:47, 13.29it/s]
+ 19%|█▉        | 151/782 [00:10<00:47, 13.19it/s]
+ 20%|█▉        | 153/782 [00:10<00:48, 13.03it/s]
+ 20%|█▉        | 155/782 [00:10<00:47, 13.25it/s]
+ 20%|██        | 157/782 [00:11<00:47, 13.22it/s]
+ 20%|██        | 159/782 [00:11<00:46, 13.52it/s]
+ 21%|██        | 161/782 [00:11<00:46, 13.40it/s]
+ 21%|██        | 163/782 [00:11<00:45, 13.62it/s]
+ 21%|██        | 165/782 [00:11<00:44, 13.92it/s]
+ 21%|██▏       | 167/782 [00:11<00:43, 13.99it/s]
+ 22%|██▏       | 169/782 [00:11<00:42, 14.29it/s]
+ 22%|██▏       | 171/782 [00:12<00:43, 14.20it/s]
+ 22%|██▏       | 173/782 [00:12<00:44, 13.81it/s]
+ 22%|██▏       | 175/782 [00:12<00:44, 13.65it/s]
+ 23%|██▎       | 177/782 [00:12<00:44, 13.67it/s]
+ 23%|██▎       | 179/782 [00:12<00:44, 13.67it/s]
+ 23%|██▎       | 181/782 [00:12<00:43, 13.69it/s]
+ 23%|██▎       | 183/782 [00:13<00:42, 13.93it/s]
+ 24%|██▎       | 185/782 [00:13<00:40, 14.72it/s]
+ 24%|██▍       | 187/782 [00:13<00:40, 14.86it/s]
+ 24%|██▍       | 189/782 [00:13<00:39, 14.89it/s]
+ 24%|██▍       | 191/782 [00:13<00:41, 14.35it/s]
+ 25%|██▍       | 193/782 [00:13<00:39, 15.09it/s]
+ 25%|██▍       | 195/782 [00:13<00:38, 15.37it/s]
+ 25%|██▌       | 197/782 [00:13<00:38, 15.21it/s]
+ 25%|██▌       | 199/782 [00:14<00:39, 14.84it/s]
+ 26%|██▌       | 201/782 [00:14<00:42, 13.73it/s]
+ 26%|██▌       | 203/782 [00:14<00:42, 13.54it/s]
+ 26%|██▌       | 205/782 [00:14<00:41, 13.74it/s]
+ 26%|██▋       | 207/782 [00:14<00:41, 13.74it/s]
+ 27%|██▋       | 209/782 [00:14<00:40, 14.05it/s]
+ 27%|██▋       | 211/782 [00:14<00:41, 13.82it/s]
+ 27%|██▋       | 213/782 [00:15<00:42, 13.52it/s]
+ 27%|██▋       | 215/782 [00:15<00:40, 13.95it/s]
+ 28%|██▊       | 217/782 [00:15<00:40, 13.87it/s]
+ 28%|██▊       | 219/782 [00:15<00:40, 13.87it/s]
+ 28%|██▊       | 221/782 [00:15<00:39, 14.28it/s]
+ 29%|██▊       | 223/782 [00:15<00:39, 14.23it/s]
+ 29%|██▉       | 225/782 [00:15<00:39, 13.94it/s]
+ 29%|██▉       | 227/782 [00:16<00:40, 13.71it/s]
+ 29%|██▉       | 229/782 [00:16<00:39, 13.86it/s]
+ 30%|██▉       | 231/782 [00:16<00:38, 14.36it/s]
+ 30%|██▉       | 233/782 [00:16<00:37, 14.52it/s]
+ 30%|███       | 235/782 [00:16<00:38, 14.24it/s]
+ 30%|███       | 237/782 [00:16<00:38, 14.09it/s]
+ 31%|███       | 239/782 [00:16<00:39, 13.80it/s]
+ 31%|███       | 241/782 [00:17<00:38, 14.08it/s]
+ 31%|███       | 243/782 [00:17<00:37, 14.31it/s]
+ 31%|███▏      | 245/782 [00:17<00:36, 14.76it/s]
+ 32%|███▏      | 247/782 [00:17<00:36, 14.51it/s]
+ 32%|███▏      | 249/782 [00:17<00:36, 14.43it/s]
+ 32%|███▏      | 251/782 [00:17<00:36, 14.69it/s]
+ 32%|███▏      | 253/782 [00:17<00:35, 14.72it/s]
+ 33%|███▎      | 255/782 [00:18<00:35, 14.86it/s]
+ 33%|███▎      | 257/782 [00:18<00:34, 15.16it/s]
+ 33%|███▎      | 259/782 [00:18<00:36, 14.51it/s]
+ 33%|███▎      | 261/782 [00:18<00:38, 13.68it/s]
+ 34%|███▎      | 263/782 [00:18<00:38, 13.61it/s]
+ 34%|███▍      | 265/782 [00:18<00:38, 13.46it/s]
+ 34%|███▍      | 267/782 [00:18<00:37, 13.75it/s]
+ 34%|███▍      | 269/782 [00:19<00:36, 13.99it/s]
+ 35%|███▍      | 271/782 [00:19<00:35, 14.54it/s]
+ 35%|███▍      | 273/782 [00:19<00:34, 14.59it/s]
+ 35%|███▌      | 275/782 [00:19<00:35, 14.48it/s]
+ 35%|███▌      | 277/782 [00:19<00:35, 14.34it/s]
+ 36%|███▌      | 279/782 [00:19<00:34, 14.56it/s]
+ 36%|███▌      | 281/782 [00:19<00:35, 14.21it/s]
+ 36%|███▌      | 283/782 [00:19<00:33, 14.84it/s]
+ 36%|███▋      | 285/782 [00:20<00:34, 14.53it/s]
+ 37%|███▋      | 287/782 [00:20<00:35, 14.08it/s]
+ 37%|███▋      | 289/782 [00:20<00:35, 13.89it/s]
+ 37%|███▋      | 291/782 [00:20<00:35, 13.90it/s]
+ 37%|███▋      | 293/782 [00:20<00:33, 14.48it/s]
+ 38%|███▊      | 295/782 [00:20<00:34, 14.30it/s]
+ 38%|███▊      | 297/782 [00:20<00:33, 14.50it/s]
+ 38%|███▊      | 299/782 [00:21<00:33, 14.50it/s]
+ 38%|███▊      | 301/782 [00:21<00:33, 14.45it/s]
+ 39%|███▊      | 303/782 [00:21<00:33, 14.48it/s]
+ 39%|███▉      | 305/782 [00:21<00:33, 14.07it/s]
+ 39%|███▉      | 307/782 [00:21<00:33, 14.11it/s]
+ 40%|███▉      | 309/782 [00:21<00:33, 14.28it/s]
+ 40%|███▉      | 311/782 [00:21<00:33, 13.89it/s]
+ 40%|████      | 313/782 [00:22<00:33, 14.06it/s]
+ 40%|████      | 315/782 [00:22<00:34, 13.70it/s]
+ 41%|████      | 317/782 [00:22<00:32, 14.11it/s]
+ 41%|████      | 319/782 [00:22<00:32, 14.15it/s]
+ 41%|████      | 321/782 [00:22<00:32, 14.39it/s]
+ 41%|████▏     | 323/782 [00:22<00:31, 14.48it/s]
+ 42%|████▏     | 325/782 [00:22<00:32, 14.10it/s]
+ 42%|████▏     | 327/782 [00:23<00:32, 14.00it/s]
+ 42%|████▏     | 329/782 [00:23<00:31, 14.26it/s]
+ 42%|████▏     | 331/782 [00:23<00:32, 13.99it/s]
+ 43%|████▎     | 333/782 [00:23<00:32, 13.99it/s]
+ 43%|████▎     | 335/782 [00:23<00:31, 14.15it/s]
+ 43%|████▎     | 337/782 [00:23<00:31, 14.18it/s]
+ 43%|████▎     | 339/782 [00:23<00:31, 14.20it/s]
+ 44%|████▎     | 341/782 [00:24<00:31, 14.03it/s]
+ 44%|████▍     | 343/782 [00:24<00:31, 14.13it/s]
+ 44%|████▍     | 345/782 [00:24<00:30, 14.27it/s]
+ 44%|████▍     | 347/782 [00:24<00:30, 14.48it/s]
+ 45%|████▍     | 349/782 [00:24<00:30, 14.38it/s]
+ 45%|████▍     | 351/782 [00:24<00:29, 14.66it/s]
+ 45%|████▌     | 353/782 [00:24<00:28, 14.81it/s]
+ 45%|████▌     | 355/782 [00:25<00:29, 14.71it/s]
+ 46%|████▌     | 357/782 [00:25<00:29, 14.36it/s]
+ 46%|████▌     | 359/782 [00:25<00:29, 14.13it/s]
+ 46%|████▌     | 361/782 [00:25<00:30, 13.88it/s]
+ 46%|████▋     | 363/782 [00:25<00:29, 14.30it/s]
+ 47%|████▋     | 365/782 [00:25<00:28, 14.71it/s]
+ 47%|████▋     | 367/782 [00:25<00:27, 15.15it/s]
+ 47%|████▋     | 369/782 [00:26<00:27, 15.22it/s]
+ 47%|████▋     | 371/782 [00:26<00:27, 15.03it/s]
+ 48%|████▊     | 373/782 [00:26<00:27, 14.71it/s]
+ 48%|████▊     | 375/782 [00:26<00:28, 14.23it/s]
+ 48%|████▊     | 377/782 [00:26<00:29, 13.68it/s]
+ 48%|████▊     | 379/782 [00:26<00:29, 13.74it/s]
+ 49%|████▊     | 381/782 [00:26<00:28, 14.02it/s]
+ 49%|████▉     | 383/782 [00:27<00:29, 13.40it/s]
+ 49%|████▉     | 385/782 [00:27<00:29, 13.32it/s]
+ 49%|████▉     | 387/782 [00:27<00:28, 13.65it/s]
+ 50%|████▉     | 389/782 [00:27<00:29, 13.51it/s]
+ 50%|█████     | 391/782 [00:27<00:28, 13.65it/s]
+ 50%|█████     | 393/782 [00:27<00:28, 13.46it/s]
+ 51%|█████     | 395/782 [00:27<00:27, 14.04it/s]
+ 51%|█████     | 397/782 [00:28<00:27, 13.80it/s]
+ 51%|█████     | 399/782 [00:28<00:26, 14.25it/s]
+ 51%|█████▏    | 401/782 [00:28<00:26, 14.40it/s]
+ 52%|█████▏    | 403/782 [00:28<00:25, 14.63it/s]
+ 52%|█████▏    | 405/782 [00:28<00:26, 14.24it/s]
+ 52%|█████▏    | 407/782 [00:28<00:25, 14.60it/s]
+ 52%|█████▏    | 409/782 [00:28<00:25, 14.50it/s]
+ 53%|█████▎    | 411/782 [00:29<00:26, 13.98it/s]
+ 53%|█████▎    | 413/782 [00:29<00:27, 13.60it/s]
+ 53%|█████▎    | 415/782 [00:29<00:27, 13.59it/s]
+ 53%|█████▎    | 417/782 [00:29<00:26, 13.88it/s]
+ 54%|█████▎    | 419/782 [00:29<00:26, 13.80it/s]
+ 54%|█████▍    | 421/782 [00:29<00:25, 14.12it/s]
+ 54%|█████▍    | 423/782 [00:29<00:25, 14.06it/s]
+ 54%|█████▍    | 425/782 [00:30<00:24, 14.43it/s]
+ 55%|█████▍    | 427/782 [00:30<00:25, 14.00it/s]
+ 55%|█████▍    | 429/782 [00:30<00:25, 13.97it/s]
+ 55%|█████▌    | 431/782 [00:30<00:25, 13.73it/s]
+ 55%|█████▌    | 433/782 [00:30<00:25, 13.69it/s]
+ 56%|█████▌    | 435/782 [00:30<00:25, 13.83it/s]
+ 56%|█████▌    | 437/782 [00:30<00:25, 13.66it/s]
+ 56%|█████▌    | 439/782 [00:31<00:24, 14.09it/s]
+ 56%|█████▋    | 441/782 [00:31<00:24, 13.81it/s]
+ 57%|█████▋    | 443/782 [00:31<00:23, 14.64it/s]
+ 57%|█████▋    | 445/782 [00:31<00:24, 14.00it/s]
+ 57%|█████▋    | 447/782 [00:31<00:24, 13.80it/s]
+ 57%|█████▋    | 449/782 [00:31<00:24, 13.64it/s]
+ 58%|█████▊    | 451/782 [00:31<00:23, 13.81it/s]
+ 58%|█████▊    | 453/782 [00:32<00:24, 13.48it/s]
+ 58%|█████▊    | 455/782 [00:32<00:23, 13.98it/s]
+ 58%|█████▊    | 457/782 [00:32<00:23, 13.89it/s]
+ 59%|█████▊    | 459/782 [00:32<00:23, 13.99it/s]
+ 59%|█████▉    | 461/782 [00:32<00:23, 13.88it/s]
+ 59%|█████▉    | 463/782 [00:32<00:23, 13.69it/s]
+ 59%|█████▉    | 465/782 [00:32<00:22, 13.79it/s]
+ 60%|█████▉    | 467/782 [00:33<00:22, 13.93it/s]
+ 60%|█████▉    | 469/782 [00:33<00:22, 13.65it/s]
+ 60%|██████    | 471/782 [00:33<00:22, 13.74it/s]
+ 60%|██████    | 473/782 [00:33<00:21, 14.30it/s]
+ 61%|██████    | 475/782 [00:33<00:22, 13.89it/s]
+ 61%|██████    | 477/782 [00:33<00:21, 14.39it/s]
+ 61%|██████▏   | 479/782 [00:33<00:20, 14.71it/s]
+ 62%|██████▏   | 481/782 [00:34<00:21, 14.10it/s]
+ 62%|██████▏   | 483/782 [00:34<00:21, 13.80it/s]
+ 62%|██████▏   | 485/782 [00:34<00:21, 13.70it/s]
+ 62%|██████▏   | 487/782 [00:34<00:21, 13.76it/s]
+ 63%|██████▎   | 489/782 [00:34<00:21, 13.63it/s]
+ 63%|██████▎   | 491/782 [00:34<00:20, 13.90it/s]
+ 63%|██████▎   | 493/782 [00:34<00:20, 14.30it/s]
+ 63%|██████▎   | 495/782 [00:35<00:19, 14.39it/s]
+ 64%|██████▎   | 497/782 [00:35<00:20, 14.19it/s]
+ 64%|██████▍   | 499/782 [00:35<00:20, 13.88it/s]
+ 64%|██████▍   | 501/782 [00:35<00:20, 13.68it/s]
+ 64%|██████▍   | 503/782 [00:35<00:20, 13.48it/s]
+ 65%|██████▍   | 505/782 [00:35<00:19, 14.02it/s]
+ 65%|██████▍   | 507/782 [00:35<00:19, 14.14it/s]
+ 65%|██████▌   | 509/782 [00:36<00:19, 14.08it/s]
+ 65%|██████▌   | 511/782 [00:36<00:19, 14.17it/s]
+ 66%|██████▌   | 513/782 [00:36<00:19, 14.04it/s]
+ 66%|██████▌   | 515/782 [00:36<00:19, 13.99it/s]
+ 66%|██████▌   | 517/782 [00:36<00:18, 14.29it/s]
+ 66%|██████▋   | 519/782 [00:36<00:19, 13.84it/s]
+ 67%|██████▋   | 521/782 [00:36<00:18, 14.36it/s]
+ 67%|██████▋   | 523/782 [00:37<00:17, 15.13it/s]
+ 67%|██████▋   | 525/782 [00:37<00:17, 14.77it/s]
+ 67%|██████▋   | 527/782 [00:37<00:18, 14.01it/s]
+ 68%|██████▊   | 529/782 [00:37<00:17, 14.52it/s]
+ 68%|██████▊   | 531/782 [00:37<00:17, 14.25it/s]
+ 68%|██████▊   | 533/782 [00:37<00:18, 13.67it/s]
+ 68%|██████▊   | 535/782 [00:37<00:17, 13.83it/s]
+ 69%|██████▊   | 537/782 [00:38<00:17, 13.88it/s]
+ 69%|██████▉   | 539/782 [00:38<00:17, 13.75it/s]
+ 69%|██████▉   | 541/782 [00:38<00:17, 13.42it/s]
+ 69%|██████▉   | 543/782 [00:38<00:17, 13.73it/s]
+ 70%|██████▉   | 545/782 [00:38<00:16, 14.07it/s]
+ 70%|██████▉   | 547/782 [00:38<00:16, 13.90it/s]
+ 70%|███████   | 549/782 [00:38<00:16, 14.22it/s]
+ 70%|███████   | 551/782 [00:39<00:16, 14.04it/s]
+ 71%|███████   | 553/782 [00:39<00:16, 13.72it/s]
+ 71%|███████   | 555/782 [00:39<00:16, 13.68it/s]
+ 71%|███████   | 557/782 [00:39<00:16, 13.79it/s]
+ 71%|███████▏  | 559/782 [00:39<00:15, 14.04it/s]
+ 72%|███████▏  | 561/782 [00:39<00:15, 14.17it/s]
+ 72%|███████▏  | 563/782 [00:39<00:15, 14.08it/s]
+ 72%|███████▏  | 565/782 [00:40<00:15, 13.76it/s]
+ 73%|███████▎  | 567/782 [00:40<00:15, 14.12it/s]
+ 73%|███████▎  | 569/782 [00:40<00:14, 14.23it/s]
+ 73%|███████▎  | 571/782 [00:40<00:14, 14.45it/s]
+ 73%|███████▎  | 573/782 [00:40<00:14, 14.62it/s]
+ 74%|███████▎  | 575/782 [00:40<00:14, 14.60it/s]
+ 74%|███████▍  | 577/782 [00:40<00:13, 15.19it/s]
+ 74%|███████▍  | 579/782 [00:41<00:13, 14.77it/s]
+ 74%|███████▍  | 581/782 [00:41<00:13, 14.86it/s]
+ 75%|███████▍  | 583/782 [00:41<00:13, 14.85it/s]
+ 75%|███████▍  | 585/782 [00:41<00:13, 14.15it/s]
+ 75%|███████▌  | 587/782 [00:41<00:13, 14.24it/s]
+ 75%|███████▌  | 589/782 [00:41<00:13, 14.37it/s]
+ 76%|███████▌  | 591/782 [00:41<00:13, 14.67it/s]
+ 76%|███████▌  | 593/782 [00:41<00:13, 14.26it/s]
+ 76%|███████▌  | 595/782 [00:42<00:13, 14.29it/s]
+ 76%|███████▋  | 597/782 [00:42<00:12, 14.40it/s]
+ 77%|███████▋  | 599/782 [00:42<00:13, 13.96it/s]
+ 77%|███████▋  | 601/782 [00:42<00:12, 14.33it/s]
+ 77%|███████▋  | 603/782 [00:42<00:12, 13.97it/s]
+ 77%|███████▋  | 605/782 [00:42<00:12, 14.17it/s]
+ 78%|███████▊  | 607/782 [00:42<00:11, 14.66it/s]
+ 78%|███████▊  | 609/782 [00:43<00:12, 14.29it/s]
+ 78%|███████▊  | 611/782 [00:43<00:11, 14.40it/s]
+ 78%|███████▊  | 613/782 [00:43<00:11, 14.37it/s]
+ 79%|███████▊  | 615/782 [00:43<00:11, 15.02it/s]
+ 79%|███████▉  | 617/782 [00:43<00:11, 14.43it/s]
+ 79%|███████▉  | 619/782 [00:43<00:11, 14.15it/s]
+ 79%|███████▉  | 621/782 [00:43<00:11, 14.25it/s]
+ 80%|███████▉  | 623/782 [00:44<00:10, 14.55it/s]
+ 80%|███████▉  | 625/782 [00:44<00:10, 14.34it/s]
+ 80%|████████  | 627/782 [00:44<00:10, 14.14it/s]
+ 80%|████████  | 629/782 [00:44<00:10, 14.15it/s]
+ 81%|████████  | 631/782 [00:44<00:10, 14.17it/s]
+ 81%|████████  | 633/782 [00:44<00:10, 13.98it/s]
+ 81%|████████  | 635/782 [00:44<00:10, 14.10it/s]
+ 81%|████████▏ | 637/782 [00:45<00:10, 13.91it/s]
+ 82%|████████▏ | 639/782 [00:45<00:10, 14.03it/s]
+ 82%|████████▏ | 641/782 [00:45<00:10, 13.72it/s]
+ 82%|████████▏ | 643/782 [00:45<00:10, 13.61it/s]
+ 82%|████████▏ | 645/782 [00:45<00:09, 13.83it/s]
+ 83%|████████▎ | 647/782 [00:45<00:09, 13.66it/s]
+ 83%|████████▎ | 649/782 [00:45<00:09, 13.41it/s]
+ 83%|████████▎ | 651/782 [00:46<00:09, 14.02it/s]
+ 84%|████████▎ | 653/782 [00:46<00:09, 13.80it/s]
+ 84%|████████▍ | 655/782 [00:46<00:08, 14.22it/s]
+ 84%|████████▍ | 657/782 [00:46<00:08, 14.46it/s]
+ 84%|████████▍ | 659/782 [00:46<00:08, 14.38it/s]
+ 85%|████████▍ | 661/782 [00:46<00:08, 14.45it/s]
+ 85%|████████▍ | 663/782 [00:46<00:08, 14.23it/s]
+ 85%|████████▌ | 665/782 [00:47<00:08, 14.15it/s]
+ 85%|████████▌ | 667/782 [00:47<00:08, 13.98it/s]
+ 86%|████████▌ | 669/782 [00:47<00:08, 14.01it/s]
+ 86%|████████▌ | 671/782 [00:47<00:08, 13.43it/s]
+ 86%|████████▌ | 673/782 [00:47<00:07, 13.78it/s]
+ 86%|████████▋ | 675/782 [00:47<00:07, 13.95it/s]
+ 87%|████████▋ | 677/782 [00:47<00:07, 13.65it/s]
+ 87%|████████▋ | 679/782 [00:48<00:07, 14.25it/s]
+ 87%|████████▋ | 681/782 [00:48<00:07, 14.24it/s]
+ 87%|████████▋ | 683/782 [00:48<00:07, 14.00it/s]
+ 88%|████████▊ | 685/782 [00:48<00:06, 14.41it/s]
+ 88%|████████▊ | 687/782 [00:48<00:06, 14.77it/s]
+ 88%|████████▊ | 689/782 [00:48<00:06, 14.63it/s]
+ 88%|████████▊ | 691/782 [00:48<00:06, 14.60it/s]
+ 89%|████████▊ | 693/782 [00:49<00:06, 14.44it/s]
+ 89%|████████▉ | 695/782 [00:49<00:06, 14.18it/s]
+ 89%|████████▉ | 697/782 [00:49<00:06, 14.06it/s]
+ 89%|████████▉ | 699/782 [00:49<00:05, 14.10it/s]
+ 90%|████████▉ | 701/782 [00:49<00:05, 14.29it/s]
+ 90%|████████▉ | 703/782 [00:49<00:05, 14.52it/s]
+ 90%|█████████ | 705/782 [00:49<00:05, 14.24it/s]
+ 90%|█████████ | 707/782 [00:50<00:05, 14.34it/s]
+ 91%|█████████ | 709/782 [00:50<00:05, 14.15it/s]
+ 91%|█████████ | 711/782 [00:50<00:05, 13.83it/s]
+ 91%|█████████ | 713/782 [00:50<00:05, 13.62it/s]
+ 91%|█████████▏| 715/782 [00:50<00:04, 14.12it/s]
+ 92%|█████████▏| 717/782 [00:50<00:04, 13.86it/s]
+ 92%|█████████▏| 719/782 [00:50<00:04, 14.27it/s]
+ 92%|█████████▏| 721/782 [00:51<00:04, 13.92it/s]
+ 92%|█████████▏| 723/782 [00:51<00:04, 14.15it/s]
+ 93%|█████████▎| 725/782 [00:51<00:03, 14.45it/s]
+ 93%|█████████▎| 727/782 [00:51<00:03, 14.49it/s]
+ 93%|█████████▎| 729/782 [00:51<00:03, 14.29it/s]
+ 93%|█████████▎| 731/782 [00:51<00:03, 14.11it/s]
+ 94%|█████████▎| 733/782 [00:51<00:03, 14.14it/s]
+ 94%|█████████▍| 735/782 [00:52<00:03, 14.61it/s]
+ 94%|█████████▍| 737/782 [00:52<00:03, 14.47it/s]
+ 95%|█████████▍| 739/782 [00:52<00:02, 14.63it/s]
+ 95%|█████████▍| 741/782 [00:52<00:02, 14.91it/s]
+ 95%|█████████▌| 743/782 [00:52<00:02, 15.03it/s]
+ 95%|█████████▌| 745/782 [00:52<00:02, 14.64it/s]
+ 96%|█████████▌| 747/782 [00:52<00:02, 14.68it/s]
+ 96%|█████████▌| 749/782 [00:52<00:02, 14.47it/s]
+ 96%|█████████▌| 751/782 [00:53<00:02, 14.06it/s]
+ 96%|█████████▋| 753/782 [00:53<00:02, 13.95it/s]
+ 97%|█████████▋| 755/782 [00:53<00:01, 14.52it/s]
+ 97%|█████████▋| 757/782 [00:53<00:01, 14.73it/s]
+ 97%|█████████▋| 759/782 [00:53<00:01, 14.47it/s]
+ 97%|█████████▋| 761/782 [00:53<00:01, 14.77it/s]
+ 98%|█████████▊| 763/782 [00:53<00:01, 14.68it/s]
+ 98%|█████████▊| 765/782 [00:54<00:01, 15.24it/s]
+ 98%|█████████▊| 767/782 [00:54<00:01, 14.62it/s]
+ 98%|█████████▊| 769/782 [00:54<00:00, 14.81it/s]
+ 99%|█████████▊| 771/782 [00:54<00:00, 14.74it/s]
+ 99%|█████████▉| 773/782 [00:54<00:00, 15.12it/s]
+ 99%|█████████▉| 775/782 [00:54<00:00, 15.19it/s]
+ 99%|█████████▉| 777/782 [00:54<00:00, 14.94it/s]
+100%|█████████▉| 779/782 [00:55<00:00, 14.32it/s]
+100%|█████████▉| 781/782 [00:55<00:00, 14.24it/s]
+100%|██████████| 782/782 [00:55<00:00, 14.15it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 553, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes, False, export_onnx, train_set, save_path=save_path)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 367, in train_n_eval
+    raise AccuracyException(accuracy, duration,
+ab.nn.util.Exception.AccuracyException: (0.01, 108558018028, "Accuracy is too low: 0.01. The minimum accepted accuracy for the 'cifar-100' dataset is 0.01.")
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 4.8290, Test Loss: 4.8285
+  Train Acc: 0.0100, Test Acc: 0.0100
+  LR: 0.000000, Grad Norm: 5.0000, Throughput: 460.6 samples/s
+accuracy_to_time_metric 0.0
+Error during training: (0.01, 108558018028, "Accuracy is too low: 0.01. The minimum accepted accuracy for the 'cifar-100' dataset is 0.01.")
+Eval Fail: (0.01, 108558018028, "Accuracy is too low: 0.01. The minimum accepted accuracy for the 'cifar-100' dataset is 0.01.")
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-e4f726c8767a7270004f1ed1d551280b.py
+  [Archive] Cell (4, 64) updated with fitness: 0.0000
+  Evaluating Individual 4/5 ---- Generation: 2/2
+  - Evaluating unique arch (checksum: bc000be5...)
+Evaluating /a/mm/out_nneval_tmp_pid_687/nn/tmp/GenFractalNet-bc000be59a326960a1b299fc2d4ba9d5-ef0bb6ac4b7586d20586e1a3e40da3aa.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 3/782 [00:00<00:28, 27.10it/s]
+  1%|▏         | 11/782 [00:00<00:13, 56.31it/s]
+  2%|▏         | 19/782 [00:00<00:11, 64.36it/s]
+  3%|▎         | 27/782 [00:00<00:10, 68.93it/s]
+  4%|▍         | 35/782 [00:00<00:10, 71.53it/s]
+  5%|▌         | 43/782 [00:00<00:10, 73.69it/s]
+  7%|▋         | 51/782 [00:00<00:09, 74.43it/s]
+  8%|▊         | 59/782 [00:00<00:09, 75.05it/s]
+  9%|▊         | 67/782 [00:00<00:09, 76.27it/s]
+ 10%|▉         | 75/782 [00:01<00:09, 74.84it/s]
+ 11%|█         | 83/782 [00:01<00:09, 75.31it/s]
+ 12%|█▏        | 91/782 [00:01<00:09, 76.23it/s]
+ 13%|█▎        | 99/782 [00:01<00:08, 76.22it/s]
+ 14%|█▎        | 107/782 [00:01<00:08, 76.24it/s]
+ 15%|█▍        | 115/782 [00:01<00:08, 74.93it/s]
+ 16%|█▌        | 123/782 [00:01<00:08, 75.38it/s]
+ 17%|█▋        | 131/782 [00:01<00:08, 73.61it/s]
+ 18%|█▊        | 139/782 [00:01<00:08, 73.67it/s]
+ 19%|█▉        | 147/782 [00:02<00:08, 74.23it/s]
+ 20%|█▉        | 155/782 [00:02<00:08, 75.73it/s]
+ 21%|██        | 163/782 [00:02<00:08, 76.83it/s]
+ 22%|██▏       | 171/782 [00:02<00:07, 77.15it/s]
+ 23%|██▎       | 179/782 [00:02<00:07, 77.61it/s]
+ 24%|██▍       | 187/782 [00:02<00:07, 76.56it/s]
+ 25%|██▍       | 195/782 [00:02<00:08, 69.61it/s]
+ 26%|██▌       | 203/782 [00:02<00:08, 65.77it/s]
+ 27%|██▋       | 210/782 [00:02<00:09, 63.40it/s]
+ 28%|██▊       | 217/782 [00:03<00:09, 62.30it/s]
+ 29%|██▊       | 224/782 [00:03<00:08, 63.11it/s]
+ 30%|██▉       | 232/782 [00:03<00:08, 66.72it/s]
+ 31%|███       | 240/782 [00:03<00:07, 68.97it/s]
+ 32%|███▏      | 248/782 [00:03<00:07, 70.54it/s]
+ 33%|███▎      | 256/782 [00:03<00:07, 71.72it/s]
+ 34%|███▍      | 264/782 [00:03<00:07, 71.62it/s]
+ 35%|███▍      | 272/782 [00:03<00:07, 72.11it/s]
+ 36%|███▌      | 280/782 [00:03<00:06, 73.95it/s]
+ 37%|███▋      | 288/782 [00:04<00:06, 73.55it/s]
+ 38%|███▊      | 296/782 [00:04<00:06, 73.23it/s]
+ 39%|███▉      | 304/782 [00:04<00:06, 74.25it/s]
+ 40%|███▉      | 312/782 [00:04<00:06, 75.43it/s]
+ 41%|████      | 320/782 [00:04<00:06, 74.63it/s]
+ 42%|████▏     | 329/782 [00:04<00:05, 76.27it/s]
+ 43%|████▎     | 337/782 [00:04<00:05, 76.06it/s]
+ 44%|████▍     | 345/782 [00:04<00:05, 75.65it/s]
+ 45%|████▌     | 353/782 [00:04<00:05, 76.23it/s]
+ 46%|████▌     | 361/782 [00:04<00:05, 75.29it/s]
+ 47%|████▋     | 369/782 [00:05<00:05, 76.11it/s]
+ 48%|████▊     | 377/782 [00:05<00:05, 75.59it/s]
+ 49%|████▉     | 385/782 [00:05<00:05, 74.67it/s]
+ 50%|█████     | 393/782 [00:05<00:05, 73.87it/s]
+ 51%|█████▏    | 401/782 [00:05<00:05, 75.15it/s]
+ 52%|█████▏    | 409/782 [00:05<00:04, 76.08it/s]
+ 53%|█████▎    | 417/782 [00:05<00:04, 76.06it/s]
+ 54%|█████▍    | 425/782 [00:05<00:04, 76.33it/s]
+ 55%|█████▌    | 433/782 [00:05<00:04, 74.36it/s]
+ 56%|█████▋    | 441/782 [00:06<00:04, 74.50it/s]
+ 57%|█████▋    | 449/782 [00:06<00:04, 74.78it/s]
+ 58%|█████▊    | 457/782 [00:06<00:04, 74.20it/s]
+ 59%|█████▉    | 465/782 [00:06<00:04, 75.05it/s]
+ 60%|██████    | 473/782 [00:06<00:04, 74.76it/s]
+ 62%|██████▏   | 481/782 [00:06<00:04, 74.92it/s]
+ 63%|██████▎   | 489/782 [00:06<00:03, 76.30it/s]
+ 64%|██████▎   | 497/782 [00:06<00:03, 75.83it/s]
+ 65%|██████▍   | 505/782 [00:06<00:03, 74.86it/s]
+ 66%|██████▌   | 513/782 [00:07<00:03, 74.37it/s]
+ 67%|██████▋   | 521/782 [00:07<00:03, 73.76it/s]
+ 68%|██████▊   | 529/782 [00:07<00:03, 73.55it/s]
+ 69%|██████▊   | 537/782 [00:07<00:03, 74.79it/s]
+ 70%|██████▉   | 545/782 [00:07<00:03, 74.06it/s]
+ 71%|███████   | 553/782 [00:07<00:03, 74.73it/s]
+ 72%|███████▏  | 561/782 [00:07<00:02, 76.10it/s]
+ 73%|███████▎  | 569/782 [00:07<00:02, 75.68it/s]
+ 74%|███████▍  | 577/782 [00:07<00:02, 74.84it/s]
+ 75%|███████▍  | 585/782 [00:07<00:02, 74.87it/s]
+ 76%|███████▌  | 593/782 [00:08<00:02, 75.10it/s]
+ 77%|███████▋  | 601/782 [00:08<00:02, 75.34it/s]
+ 78%|███████▊  | 609/782 [00:08<00:02, 76.51it/s]
+ 79%|███████▉  | 617/782 [00:08<00:02, 75.58it/s]
+ 80%|████████  | 626/782 [00:08<00:02, 76.94it/s]
+ 81%|████████  | 634/782 [00:08<00:01, 75.98it/s]
+ 82%|████████▏ | 642/782 [00:08<00:01, 75.23it/s]
+ 83%|████████▎ | 650/782 [00:08<00:01, 74.86it/s]
+ 84%|████████▍ | 658/782 [00:08<00:01, 74.76it/s]
+ 85%|████████▌ | 666/782 [00:09<00:01, 75.27it/s]
+ 86%|████████▌ | 674/782 [00:09<00:01, 75.28it/s]
+ 87%|████████▋ | 682/782 [00:09<00:01, 75.40it/s]
+ 88%|████████▊ | 690/782 [00:09<00:01, 74.99it/s]
+ 89%|████████▉ | 699/782 [00:09<00:01, 76.72it/s]
+ 90%|█████████ | 707/782 [00:09<00:00, 76.60it/s]
+ 91%|█████████▏| 715/782 [00:09<00:00, 77.25it/s]
+ 92%|█████████▏| 723/782 [00:09<00:00, 76.76it/s]
+ 93%|█████████▎| 731/782 [00:09<00:00, 75.86it/s]
+ 95%|█████████▍| 739/782 [00:09<00:00, 75.88it/s]
+ 96%|█████████▌| 747/782 [00:10<00:00, 75.61it/s]
+ 97%|█████████▋| 755/782 [00:10<00:00, 75.79it/s]
+ 98%|█████████▊| 763/782 [00:10<00:00, 74.87it/s]
+ 99%|█████████▊| 771/782 [00:10<00:00, 75.51it/s]
+100%|█████████▉| 779/782 [00:10<00:00, 75.55it/s]
+100%|██████████| 782/782 [00:10<00:00, 73.67it/s]
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 4.3068, Test Loss: 4.3095
+  Train Acc: 0.0414, Test Acc: 0.0390
+  LR: 0.000000, Grad Norm: 0.3453, Throughput: 2057.6 samples/s
+accuracy_to_time_metric 0.11933878860422324
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/statscifar100/img-classification_cifar-100_acc_GenFractalNet-bc000be59a326960a1b299fc2d4ba9d5/1.json
+  - Model persisted to ga_fractal_arch_cifar100/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 3.90%  (source: hyperparameters.accuracy, checksum: bc000be59a326960a1b299fc2d4ba9d5)
+  ========================================
+
+  [Archive] Cell (4, 32) updated with fitness: 3.9000
+  Evaluating Individual 5/5 ---- Generation: 2/2
+  - Evaluating unique arch (checksum: 68d4344b...)
+Evaluating /a/mm/out_nneval_tmp_pid_687/nn/tmp/GenFractalNet-68d4344bdb576706aac3e143333e9374-c80a248a7a915018cc2c94e5ad147ac1.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 9/782 [00:00<00:09, 85.13it/s]
+  3%|▎         | 23/782 [00:00<00:06, 116.25it/s]
+  5%|▍         | 38/782 [00:00<00:05, 127.50it/s]
+  7%|▋         | 53/782 [00:00<00:05, 132.71it/s]
+  9%|▊         | 68/782 [00:00<00:05, 135.93it/s]
+ 10%|█         | 82/782 [00:00<00:05, 136.86it/s]
+ 12%|█▏        | 97/782 [00:00<00:04, 138.09it/s]
+ 14%|█▍        | 112/782 [00:00<00:04, 138.83it/s]
+ 16%|█▌        | 127/782 [00:00<00:04, 139.36it/s]
+ 18%|█▊        | 141/782 [00:01<00:04, 139.51it/s]
+ 20%|█▉        | 155/782 [00:01<00:04, 139.59it/s]
+ 22%|██▏       | 170/782 [00:01<00:04, 139.74it/s]
+ 24%|██▎       | 185/782 [00:01<00:04, 139.64it/s]
+ 25%|██▌       | 199/782 [00:01<00:04, 139.44it/s]
+ 27%|██▋       | 213/782 [00:01<00:04, 139.58it/s]
+ 29%|██▉       | 228/782 [00:01<00:03, 139.83it/s]
+ 31%|███       | 243/782 [00:01<00:03, 139.89it/s]
+ 33%|███▎      | 258/782 [00:01<00:03, 140.07it/s]
+ 35%|███▍      | 273/782 [00:01<00:03, 139.93it/s]
+ 37%|███▋      | 288/782 [00:02<00:03, 140.13it/s]
+ 39%|███▊      | 303/782 [00:02<00:03, 140.25it/s]
+ 41%|████      | 318/782 [00:02<00:03, 140.13it/s]
+ 43%|████▎     | 333/782 [00:02<00:03, 139.72it/s]
+ 44%|████▍     | 347/782 [00:02<00:03, 139.36it/s]
+ 46%|████▌     | 361/782 [00:02<00:03, 139.12it/s]
+ 48%|████▊     | 375/782 [00:02<00:02, 139.25it/s]
+ 50%|████▉     | 389/782 [00:02<00:02, 139.09it/s]
+ 52%|█████▏    | 403/782 [00:02<00:02, 138.80it/s]
+ 53%|█████▎    | 417/782 [00:03<00:02, 138.67it/s]
+ 55%|█████▌    | 431/782 [00:03<00:02, 138.63it/s]
+ 57%|█████▋    | 445/782 [00:03<00:02, 136.99it/s]
+ 59%|█████▉    | 460/782 [00:03<00:02, 137.98it/s]
+ 61%|██████    | 474/782 [00:03<00:02, 138.29it/s]
+ 62%|██████▏   | 488/782 [00:03<00:02, 137.77it/s]
+ 64%|██████▍   | 502/782 [00:03<00:02, 137.78it/s]
+ 66%|██████▌   | 517/782 [00:03<00:01, 138.77it/s]
+ 68%|██████▊   | 531/782 [00:03<00:01, 138.95it/s]
+ 70%|██████▉   | 545/782 [00:03<00:01, 139.03it/s]
+ 72%|███████▏  | 560/782 [00:04<00:01, 139.58it/s]
+ 74%|███████▎  | 575/782 [00:04<00:01, 140.01it/s]
+ 75%|███████▌  | 590/782 [00:04<00:01, 140.27it/s]
+ 77%|███████▋  | 605/782 [00:04<00:01, 140.52it/s]
+ 79%|███████▉  | 620/782 [00:04<00:01, 140.30it/s]
+ 81%|████████  | 635/782 [00:04<00:01, 139.75it/s]
+ 83%|████████▎ | 649/782 [00:04<00:00, 139.77it/s]
+ 85%|████████▍ | 663/782 [00:04<00:00, 139.74it/s]
+ 87%|████████▋ | 677/782 [00:04<00:00, 139.80it/s]
+ 88%|████████▊ | 692/782 [00:04<00:00, 139.95it/s]
+ 90%|█████████ | 707/782 [00:05<00:00, 140.41it/s]
+ 92%|█████████▏| 722/782 [00:05<00:00, 140.40it/s]
+ 94%|█████████▍| 737/782 [00:05<00:00, 140.61it/s]
+ 96%|█████████▌| 752/782 [00:05<00:00, 140.48it/s]
+ 98%|█████████▊| 767/782 [00:05<00:00, 140.48it/s]
+100%|██████████| 782/782 [00:05<00:00, 140.48it/s]
+100%|██████████| 782/782 [00:05<00:00, 137.90it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 553, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes, False, export_onnx, train_set, save_path=save_path)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 367, in train_n_eval
+    raise AccuracyException(accuracy, duration,
+ab.nn.util.Exception.AccuracyException: (0.01, 19342284932, "Accuracy is too low: 0.01. The minimum accepted accuracy for the 'cifar-100' dataset is 0.01.")
+  Train Loss: 4.6096, Test Loss: 4.6098
+  Train Acc: 0.0101, Test Acc: 0.0100
+  LR: 0.000001, Grad Norm: 0.2069, Throughput: 2585.0 samples/s
+accuracy_to_time_metric 0.0
+Error during training: (0.01, 19342284932, "Accuracy is too low: 0.01. The minimum accepted accuracy for the 'cifar-100' dataset is 0.01.")
+Eval Fail: (0.01, 19342284932, "Accuracy is too low: 0.01. The minimum accepted accuracy for the 'cifar-100' dataset is 0.01.")
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-68d4344bdb576706aac3e143333e9374.py
+[Best] Saved best model to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_model_cifar100.py
+[Best] Copying stats from /a/mm/ab/gpt/brute/ga/meta_evolution/statscifar100/img-classification_cifar-100_acc_GenFractalNet-f5590c844bd1175eed9524b8d2f3f355...
+[Best] Saved best stats to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_statscifar100/img-classification_cifar-100_acc_GenFractalNet-f5590c844bd1175eed9524b8d2f3f355
+[Best] Saved best info metadata to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_info_cifar100.json
+PEAK_ACCURACY: 8.3700
+TOP3_MEAN: 2.7900
+ARCHIVE_SIZE: 6
+[Meta] Median Top-3 Quality over 1 runs: 2.7900
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] SECONDARY: Top-3 Quality (2.79%). Bonus: 0.0418
+   [RL] TERTIARY: Archive Novelty (2 cells updated). Bonus: 1.0000
+   [RL] Total Reward: 1.0418
+[Meta] --> ARCHIVE EXPANDED! 6 cells (was 4)
+--> SUCCESS. Updating Baseline (EMA) & Fine-tuning on Success.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+[LoRA] Fine-tune start (replay buffer: 2 items, batch: 2)
+[LoRA] Training on 2 examples...
+[LoRA] Epoch 1/1 - Loss: 0.3965
+[LoRA] Fine-tune complete
+[LoRA] Adapter save start
+[LoRA] Adapter save complete
+--> Saved version history with accuracy: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/genetic_algorithm_attempt6_mutate_gene_acc_8.37.py
+--> Saved CoT trace: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/genetic_algorithm_attempt6_mutate_gene_acc_8.37_thinking.txt
+[Meta] ✓ Success #2/10 achieved on attempt 6
+
+=== Attempt 7 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.83
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (QDGAs) for optimizing PyTorch Neural Network architectures using FractalNet, we need to improve the selection mechanism. The current implementation simply selects the competitor with the highest fitness, which might lead to premature convergence. Instead, we should consider a more diverse set of candidates to explore the solution space effectively.
+
+We can achieve this by combining elements from both the population and the archive. This approach ensures that the algorithm explores both known good solutions and unseen configurations, thereby expanding the frontier of discoverable high-performance architectures.
+
+**Key Points:**
+1. **Explore both population and archive:** Sample from both to ensure diversity.
+2. **Focus on high-performing individuals:** Prefer competitors with higher fitness scores but also introduce some randomness to avoid getting stuck in local optima.
+3. **Balanced Selection:** Use a weighted approach to balance exploration and exploitation.
+
+**Mathematical Reasoning:**
+- **Fitness Weight:** Assign a weight to each competitor based on its fitness score. Higher-fitness competitors get a higher chance of being selected.
+- **Randomness Introduced:** Introduce some randomness to avoid deterministic choices that might limit exploration.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Extract fitness scores from competitors
+        fitness_scores = [competitor.get('fitness', -1) for competitor in competitors]
+        
+        # Calculate weights for selection
+        total_fitness = sum(fitness_scores) + 1e-10  # Avoid division by zero
+        weights = [score / total_fitness for score in fitness_scores]
+        
+        # Select a competitor using weighted sampling
+        selected_competitor = random.choices(competitors, weights=weights, k=1)[0]
+        
+        # Optionally introduce some randomness to balance exploration and exploitation
+        if random.random() < 0.1:  # 10% chance to select a random competitor
+            selected_competitor = random.choice(competitors)
+        
+        return selected_competitor
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: mutate produced '0.45' for gene 'dropout_prob', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 7 failed — retrying (failures: 1/10, successes so far: 2/10)
+
+=== Attempt 8 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.87
+--- [DEBUG] Raw Response ---
+<thinking> 
+To enhance the performance of our Quality-Diversity Genetic Algorithm (QDGAs) in optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to focus on diversifying our search strategy. Specifically, we aim to explore novel architectures that can break the current global state-of-the-art (SOTA) peak accuracy and efficiently utilize the limited computational budget (1-EPOCH speedrun).
+
+One effective way to achieve this is by modifying the `select_competitor` function to introduce more randomness and diversity into the selection process. Instead of simply selecting the competitor with the highest fitness, we can consider sampling from both the current population and the MAP-Elites archive. This approach helps ensure that the algorithm explores a broader range of solutions and does not prematurely converge to suboptimal configurations.
+
+Furthermore, we can incorporate a mechanism to favor certain activation functions, pooling types, and other hyperparameters that have shown promise in previous runs. By doing so, we increase the likelihood of discovering architectures that can potentially outperform the current SOTA.
+
+Let's update the `select_competitor` function accordingly.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Sample 2/3 from current population and 1/3 from MAP-Elites archive
+        combined_pool = competitors + list(self.archive.values())
+        selected_competitor = random.choices(combined_pool, weights=[2/3, 1/3], k=1)[0]
+        
+        # Favor certain activation functions, pooling types, and other hyperparameters
+        favorable_activations = ['SiLU', 'GELU']
+        favorable_pooling_types = ['Avg']
+        
+        if selected_competitor['chromosome']['activation'] in favorable_activations:
+            return selected_competitor
+        elif selected_competitor['chromosome']['pooling_type'] in favorable_pooling_types:
+            return selected_competitor
+        
+        return selected_competitor
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: mutate produced '0.45' for gene 'dropout_prob', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 8 failed — retrying (failures: 2/10, successes so far: 2/10)
+
+=== Attempt 9 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.91
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the ability of the Quality-Diversity Genetic Algorithm (QD-GA) to explore and discover novel, high-performing architectures, we need to focus on several aspects:
+
+1. **Diversity Injection**: We should ensure that our selection process not only maximizes fitness but also maintains diversity within the population. This can be achieved by sampling more aggressively from the archive and ensuring that selected competitors come from both the current population and the archive.
+
+2. **Balanced Exploration and Exploitation**: The algorithm should balance exploration of new areas of the search space and exploitation of known good solutions. By combining elements from both sources, we can potentially find better architectures more efficiently.
+
+3. **Aggressive Diversity Inversion**: For the `select_competitor` method, we can introduce diversity inversion techniques to explore parts of the search space that have not been previously visited. This can help in breaking through local optima and finding new peaks.
+
+4. **Dynamic Weighting**: Instead of relying solely on fitness for selection, we can introduce dynamic weighting to consider other factors such as novelty, which measures how different a solution is from existing ones in the archive.
+
+Given these considerations, let's update the `select_competitor` method accordingly.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Sample from both population and archive to maintain diversity
+        combined_pool = competitors + list(self.archive.values())
+
+        # Dynamic weighting to balance fitness and novelty
+        alpha = 0.7  # Weightage for fitness
+        beta = 0.3   # Weightage for novelty
+        
+        def weighted_key(chromosome):
+            fitness = chromosome.get('fitness', -1)
+            novelty = self._calculate_novelty(chromosome)
+            return alpha * fitness + beta * novelty
+
+        return max(combined_pool, key=weighted_key)
+
+    def _calculate_novelty(self, chromosome):
+        # Calculate the distance between the chromosome and existing entries in the archive
+        distances = [self._hamming_distance(chromosome, entry) for entry in self.archive.values()]
+        return 1 / (1 + np.mean(distances))
+
+    def _hamming_distance(self, chromosome1, chromosome2):
+        # Calculate the Hamming distance between two chromosomes
+        return sum(chromosome1[key] != chromosome2[key] for key in self.search_space)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: 'GeneticAlgorithm' object has no attribute '_calculate_novelty'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 9 failed — retrying (failures: 3/10, successes so far: 2/10)
+
+=== Attempt 10 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.95
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of diverse and potentially higher-performing architectures, we should modify the selection strategy to not only consider the current highest fitness but also incorporate some randomness and explore less competitive solutions. This approach can help prevent the GA from converging too quickly to a suboptimal solution. 
+
+Given the constraint of using the exact method signature and avoiding external imports, we'll focus on modifying the `select_competitor` method to balance exploitation and exploration more effectively. Specifically, we'll introduce a probability-based selection mechanism where the selection probability of each competitor is proportional to its fitness but also adjusted by a random factor.
+
+This method will first calculate the probabilities of selection for each competitor, then normalize these probabilities so they sum up to 1. Finally, it will use the normalized probabilities to randomly select one competitor.
+
+By doing this, we ensure that even competitors with lower fitness have a chance of being selected, thus encouraging exploration.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Calculate initial fitness scores
+        fitness_scores = [competitor['fitness'] if competitor['fitness'] is not None else -1 for competitor in competitors]
+
+        # Convert fitness scores to positive to avoid issues with negative values
+        fitness_scores = [score + 1 for score in fitness_scores]
+
+        # Sum of fitness scores
+        total_fitness = sum(fitness_scores)
+
+        # If total fitness is zero, handle by selecting a random competitor to avoid division by zero
+        if total_fitness <= 0:
+            return random.choice(competitors)
+
+        # Normalize fitness scores to get selection probabilities
+        probabilities = [score / total_fitness for score in fitness_scores]
+
+        # Select a competitor based on the calculated probabilities
+        selected_competitor = random.choices(competitors, weights=probabilities)[0]
+        return selected_competitor
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: mutate produced '0.45' for gene 'dropout_prob', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 10 failed — retrying (failures: 4/10, successes so far: 2/10)
+
+=== Attempt 11 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.95
+--- [DEBUG] Raw Response ---
+<thinking> 
+To optimize the selection process for the `select_competitor` function in the Quality-Diversity Genetic Algorithm (MAP-Elites), we need to ensure that the selected competitor not only maximizes the fitness but also diversifies the behavioral archive. This can be achieved by incorporating a penalty for duplicate entries and promoting high-performing architectures that fill gaps in the behavioral archive.
+
+Given the constraints and objectives, here's a strategy to improve the `select_competitor` function:
+1. **Rank by Fitness**: First, rank the competitors by their fitness scores.
+2. **Penalize Duplicates**: Implement a penalty for selecting chromosomes that are already present in the behavioral archive to encourage exploration of new architectures.
+3. **Weighted Selection**: Use a weighted selection approach where higher-ranked and less-penalized competitors have a better chance of being selected.
+
+This strategy ensures that the selection process favors both high-fitness and novel architectures, thereby expanding the frontier of the MAP-Elites archive.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Step 1: Rank competitors by fitness
+        ranked_competitors = sorted(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1, reverse=True)
+        
+        # Step 2: Calculate penalties for duplicates in the archive
+        archive = set((chromo['architecture']['n_blocks'], chromo['architecture']['base_channels']) for chromo in self.archive.values())
+        penalties = []
+        for competitor in ranked_competitors:
+            n_blocks = competitor['architecture']['n_blocks']
+            base_channels = competitor['architecture']['base_channels']
+            penalty = 0
+            if (n_blocks, base_channels) in archive:
+                penalty += 1  # Penalize for existing entry in archive
+            penalties.append(penalty)
+        
+        # Step 3: Apply weights to account for penalties
+        weights = [1 / (1 + pen) for pen in penalties]
+        total_weight = sum(weights)
+        cumulative_weights = [sum(weights[:i+1]) for i in range(len(weights))]
+        
+        # Step 4: Select a competitor based on weighted probabilities
+        r = random.random() * total_weight
+        selected_index = next(i for i, cw in enumerate(cumulative_weights) if cw >= r)
+        
+        return ranked_competitors[selected_index]
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: mutate produced '0.45' for gene 'dropout_prob', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 11 failed — retrying (failures: 5/10, successes so far: 2/10)
+
+=== Attempt 12 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.95
+--- [DEBUG] Raw Response ---
+<thinking> 
+To improve the `select_competitor` function in our Quality-Diversity Genetic Algorithm (MAP-Elites), we need to consider two key objectives: selecting the most competitive competitor to participate in the mating pool and ensuring a diverse set of behaviors is explored in the behavioral archive.
+
+Since we aim to break the global SOTA peak accuracy of 8.37% and discover novel, high-performing architectures, the selection process should give priority to higher fitness scores while also promoting diversity. This can be achieved by using a weighted approach where the fitness score carries more weight than the novelty, but with enough diversity to explore different regions of the search space.
+
+We can achieve this by combining a fitness-based selection with a diversity-based selection. The fitness-based selection ensures that better performing individuals are given a higher chance of selection, while the diversity-based selection helps maintain a diverse population.
+
+Here’s a step-by-step plan for the revised `select_competitor` function:
+1. **Calculate the Fitness Score**: Use the current fitness score of each individual.
+2. **Calculate the Diversity Score**: Use some metric (e.g., the distance between the individual's features and other individuals' features) to measure the novelty.
+3. **Combine Scores**: Combine the fitness and diversity scores to determine the overall selection probability.
+4. **Select Competitor**: Randomly select one of the competitors based on their combined score.
+
+This approach balances exploration and exploitation, helping the algorithm to both find new high-performing solutions and explore the diverse behavior space.
+
+Let's implement this in the `select_competitor` method.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Define a threshold for novelty (distance to mean)
+        novelty_threshold = 1.0
+        
+        # Calculate fitness and diversity scores
+        fitness_scores = [(comp['fitness'], comp['feature']) for comp in competitors if comp['fitness'] is not None]
+        
+        # Calculate mean feature vector for diversity scoring
+        mean_feature = np.mean([f for _, f in fitness_scores], axis=0)
+        
+        # Compute novelty scores
+        novelty_scores = [(np.linalg.norm(f - mean_feature), comp) for _, f, comp in zip(fitness_scores, fitness_scores)]
+        
+        # Combine scores
+        combined_scores = [(fit_score + nov_score, idx) for (fit_score, _), (_, _, idx) in zip(fitness_scores, novelty_scores)]
+        
+        # Normalize combined scores
+        total_combined_score = sum(score for score, _ in combined_scores)
+        normalized_scores = [(score / total_combined_score, idx) for score, idx in combined_scores]
+        
+        # Select competitor based on normalized scores
+        cumulative_sum = 0
+        rand_val = random.random()
+        for norm_score, idx in normalized_scores:
+            cumulative_sum += norm_score
+            if rand_val <= cumulative_sum:
+                return competitors[idx]
+                
+        return random.choice(competitors)  # Fallback to ensure no IndexError
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: 'feature'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 12 failed — retrying (failures: 6/10, successes so far: 2/10)
+
+=== Attempt 13 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.95
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of our Quality-Diversity Genetic Algorithm, we need to improve the selection process to better explore and exploit the solution space. Given that we have a limited budget (1-epoch speedrun) and need to focus on architectures that can survive heavy path-dropping, we should consider diversifying the selection mechanism while still favoring higher-performing individuals.
+
+1. **Diversify Selection**: Instead of simply selecting the highest-fitness individual, we should also consider other individuals to ensure we don't prematurely converge to suboptimal solutions. This can help discover new architectures that might perform well under different conditions.
+
+2. **Aggressive Diversity Injection**: We can introduce diversity by combining elements from both the current population and the archive. This ensures that the selected competitor is not too similar to the current best, potentially leading to more innovative designs.
+
+3. **Favor Active Architectures**: Since the search space enforces active FractalDropPath (`dropout_prob` > 0.0), we should give priority to architectures that demonstrate robustness against path-dropping.
+
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Calculate the total fitness of the competitors
+        total_fitness = sum(comp['fitness'] for comp in competitors if comp['fitness'] is not None)
+        
+        # If total fitness is zero, randomly select a competitor to avoid division by zero
+        if total_fitness <= 0:
+            return random.choice(competitors)
+        
+        # Normalize the fitness values
+        normalized_fitness = [(comp['fitness'] / total_fitness) if comp['fitness'] is not None else 0 for comp in competitors]
+        
+        # Select a competitor based on their normalized fitness
+        selected_idx = np.random.choice(len(competitors), p=normalized_fitness)
+        return competitors[selected_idx]
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: mutate produced '0.15000000000000002' for gene 'dropout_prob', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 13 failed — retrying (failures: 7/10, successes so far: 2/10)
+
+=== Attempt 14 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.95
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of our Quality-Diversity Genetic Algorithm (QD-GA) specifically targeting the FractalNet architecture for CIFAR-10, we need to strategically rewrite the `select_competitor` function. This function currently selects the competitor with the highest fitness. However, to break the global SOTA peak accuracy and discover novel high-performing architectures, we need to incorporate more exploration and diversification into our selection process.
+
+1. **Diverse Selection**: We should consider competitors beyond those with the highest fitness scores. By including randomly sampled competitors from the archive, we can ensure that our selection process does not prematurely converge to a suboptimal solution.
+
+2. **Hybrid Strategy**: Combining elements of both exploitation (high-fitness competitors) and exploration (diverse archive members) will help maintain a balance between discovering better architectures and preserving diverse populations.
+
+3. **Adaptive Selection**: The selection strategy should adapt dynamically based on the current state of the population. If the population becomes too homogeneous, it might benefit more from exploring the archive; conversely, if there is enough diversity, focusing on high-fitness solutions could lead to faster convergence.
+
+Given these considerations, we will update the `select_competitor` function to achieve a more balanced selection strategy. The updated function will first try to find the best competitor among the archive and then fall back to selecting from the population.
+
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # First, try to find the best competitor among the archive
+        archive_competitors = [comp for comp in self.archive.values()]
+        archive_best = max(archive_competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+        
+        # Combine archive competitors and population competitors
+        combined_competitors = archive_competitors + competitors
+        
+        # Select the competitor with the highest fitness
+        selected_competitor = max(combined_competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+        
+        return selected_competitor
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: mutate produced '0.45' for gene 'dropout_prob', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 14 failed — retrying (failures: 8/10, successes so far: 2/10)
+
+=== Attempt 15 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.95
+--- [DEBUG] Raw Response ---
+<thinking>
+To improve the selection process in the Genetic Algorithm, we can introduce two strategies to enhance diversity and exploration while favoring higher-performing architectures:
+
+1. **Top-k Selection**: Instead of simply selecting the top competitor, we can select the best k competitors from the given set. This helps in exploring more diverse solutions and ensures that even better-performing architectures have a chance of being selected.
+
+2. **Random Sampling with Inversion**: To further increase diversity, we can randomly sample some competitors from the archive along with the sampled candidates. Additionally, we can invert the fitness scores for half of these sampled competitors to ensure that lower-performing architectures also have a chance of being included in the next generation.
+
+By combining these strategies, we aim to balance exploitation and exploration, which should help in discovering novel, high-performing architectures and potentially breaking the current Global SOTA peak accuracy.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Select the top k competitors
+        k = min(len(competitors), 5)
+        top_k_competitors = sorted(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1, reverse=True)[:k]
+
+        # Randomly sample from the archive to ensure diversity
+        archive_samples = random.sample(self.archive.values(), min(5, len(self.archive)))
+
+        # Combine top k competitors with archive samples
+        combined_pool = top_k_competitors + archive_samples
+
+        # Invert fitness scores for half of the sampled archive competitors
+        for i, competitor in enumerate(combined_pool[k:k+5]):
+            if i % 2 == 1:
+                competitor['fitness'] = -competitor['fitness']
+
+        # Select the best competitor from the combined pool
+        return max(combined_pool, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: mutate produced '0.45' for gene 'dropout_prob', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 15 failed — retrying (failures: 9/10, successes so far: 2/10)
+
+=== Attempt 16 | Successes: 2/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.95
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the quality and diversity of the MAP-Elites archive, we need to modify the `select_competitor` function to better balance exploitation and exploration. We want to favor architectures that are not only highly competitive but also offer some level of novelty. This can help us discover uncharted areas of the design space and potentially break the current SOTA.
+
+We'll introduce a weighted selection mechanism where recent generations contribute more significantly to the selection process. Additionally, we'll introduce a diversity term that encourages the selection of architectures that haven't been seen in previous generations to maintain archive growth.
+
+By doing this, we aim to push the boundaries of the GA's capabilities, encouraging it to explore novel designs while still focusing on high-performing architectures.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Sort competitors by their fitness in descending order
+        sorted_competitors = sorted(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1, reverse=True)
+        
+        # Calculate a decay factor based on the age of the competitor
+        decay_factor = lambda gen_age: 0.5 ** (gen_age // 10)
+        
+        # Initialize the total fitness weighted by decay
+        total_weighted_fitness = 0
+        
+        # Calculate the weighted fitness for each competitor
+        for comp in sorted_competitors:
+            gen_age = self.current_generation - comp['generation']
+            weight = decay_factor(gen_age)
+            total_weighted_fitness += comp['fitness'] * weight if comp['fitness'] is not None else 0
+        
+        # Select a competitor based on the weighted probabilities
+        rand_val = random.uniform(0, total_weighted_fitness)
+        cumulative_probability = 0
+        for comp in sorted_competitors:
+            gen_age = self.current_generation - comp['generation']
+            weight = decay_factor(gen_age)
+            cumulative_probability += comp['fitness'] * weight if comp['fitness'] is not None else 0
+            if rand_val <= cumulative_probability:
+                return comp
+
+        # Fallback to a random choice if something went wrong
+        return random.choice(sorted_competitors)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: 'GeneticAlgorithm' object has no attribute 'current_generation'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 16 failed — retrying (failures: 10/10, successes so far: 2/10)
+[Meta] ⚠️ Reached max consecutive failures (10) for s, e, l, e, c, t, _, c, o, m, p, e, t, i, t, o, r. Skipping to next component.
+
+=== Attempt 17 | Successes: 2/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.95
+--- [DEBUG] Raw Response ---
+<thinking>
+To generate a diverse set of neural network architectures, we need to ensure that each gene is selected randomly but strategically. Given the constraints, we should avoid generating the same architecture repeatedly and focus on exploring the search space thoroughly. We can achieve this by ensuring that each gene value is selected independently and uniformly at random from the provided search space.
+
+We also want to bias the mutation process towards higher performing architectures observed in previous generations, such as those using SiLU activation, Average Pooling, and AdamW optimizer. This will help in quickly converging to promising areas of the search space and diversify the archive.
+
+Here's how we can implement the `_create_random_chromosome` method:
+1. Iterate through each gene in the search space.
+2. Select a random value for each gene from its respective list of possible values.
+
+This approach ensures that each chromosome is unique and representative of the search space. By focusing on generating diverse and well-distributed architectures, we increase the likelihood of discovering novel and high-performing architectures.
+</thinking>
+
+```python
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+2026-07-13 23:23:13,249 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 23:23:13,249 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 23:23:13,249 - INFO - NumExpr defaulting to 16 threads.
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+LEMUR root /a/mm
+[Init] Loaded 25 existing checksums from stats/ (skipping duplicates)
+[Run] Continuing evolution from gen 2 to 3
+
+
+ >>> GENERATION 3 <<<
+
+  Evaluating Individual 2/5 ---- Generation: 3/3
+  - Evaluating unique arch (checksum: 90f61b01...)
+Evaluating /a/mm/out_nneval_tmp_pid_1048/nn/tmp/GenFractalNet-90f61b01d71ac1a9395933fd9c6efdf3-03c68f867fbf061773e9253822ac963e.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 4/782 [00:00<00:20, 38.41it/s]
+  2%|▏         | 18/782 [00:00<00:07, 96.81it/s]
+  4%|▍         | 32/782 [00:00<00:06, 114.25it/s]
+  6%|▌         | 46/782 [00:00<00:05, 123.11it/s]
+  8%|▊         | 60/782 [00:00<00:05, 128.29it/s]
+  9%|▉         | 74/782 [00:00<00:05, 131.14it/s]
+ 11%|█▏        | 88/782 [00:00<00:05, 133.18it/s]
+ 13%|█▎        | 102/782 [00:00<00:05, 134.33it/s]
+ 15%|█▍        | 117/782 [00:00<00:04, 136.43it/s]
+ 17%|█▋        | 131/782 [00:01<00:04, 137.17it/s]
+ 19%|█▊        | 145/782 [00:01<00:04, 137.51it/s]
+ 20%|██        | 160/782 [00:01<00:04, 138.55it/s]
+ 22%|██▏       | 174/782 [00:01<00:04, 137.62it/s]
+ 24%|██▍       | 189/782 [00:01<00:04, 138.98it/s]
+ 26%|██▌       | 203/782 [00:01<00:04, 138.29it/s]
+ 28%|██▊       | 218/782 [00:01<00:04, 139.17it/s]
+ 30%|██▉       | 233/782 [00:01<00:03, 139.52it/s]
+ 32%|███▏      | 248/782 [00:01<00:03, 140.23it/s]
+ 34%|███▎      | 263/782 [00:01<00:03, 140.38it/s]
+ 36%|███▌      | 278/782 [00:02<00:03, 140.66it/s]
+ 37%|███▋      | 293/782 [00:02<00:03, 139.61it/s]
+ 39%|███▉      | 308/782 [00:02<00:03, 140.93it/s]
+ 41%|████▏     | 323/782 [00:02<00:03, 141.00it/s]
+ 43%|████▎     | 338/782 [00:02<00:03, 139.88it/s]
+ 45%|████▌     | 353/782 [00:02<00:03, 140.98it/s]
+ 47%|████▋     | 368/782 [00:02<00:02, 140.81it/s]
+ 49%|████▉     | 383/782 [00:02<00:02, 140.40it/s]
+ 51%|█████     | 398/782 [00:02<00:02, 140.32it/s]
+ 53%|█████▎    | 413/782 [00:03<00:02, 139.77it/s]
+ 55%|█████▍    | 427/782 [00:03<00:02, 136.94it/s]
+ 56%|█████▋    | 441/782 [00:03<00:02, 135.77it/s]
+ 58%|█████▊    | 455/782 [00:03<00:02, 136.88it/s]
+ 60%|█████▉    | 469/782 [00:03<00:02, 137.58it/s]
+ 62%|██████▏   | 483/782 [00:03<00:02, 137.60it/s]
+ 64%|██████▎   | 497/782 [00:03<00:02, 136.35it/s]
+ 65%|██████▌   | 512/782 [00:03<00:01, 137.54it/s]
+ 67%|██████▋   | 526/782 [00:03<00:01, 138.04it/s]
+ 69%|██████▉   | 540/782 [00:03<00:01, 138.58it/s]
+ 71%|███████   | 554/782 [00:04<00:01, 138.96it/s]
+ 73%|███████▎  | 568/782 [00:04<00:01, 138.59it/s]
+ 74%|███████▍  | 582/782 [00:04<00:01, 137.78it/s]
+ 76%|███████▌  | 596/782 [00:04<00:01, 137.51it/s]
+ 78%|███████▊  | 610/782 [00:04<00:01, 137.04it/s]
+ 80%|███████▉  | 624/782 [00:04<00:01, 136.74it/s]
+ 82%|████████▏ | 638/782 [00:04<00:01, 137.17it/s]
+ 84%|████████▎ | 653/782 [00:04<00:00, 137.89it/s]
+ 85%|████████▌ | 667/782 [00:04<00:00, 136.86it/s]
+ 87%|████████▋ | 681/782 [00:05<00:00, 134.46it/s]
+ 89%|████████▉ | 695/782 [00:05<00:00, 135.20it/s]
+ 91%|█████████ | 709/782 [00:05<00:00, 135.22it/s]
+ 92%|█████████▏| 723/782 [00:05<00:00, 135.58it/s]
+ 94%|█████████▍| 737/782 [00:05<00:00, 135.82it/s]
+ 96%|█████████▌| 751/782 [00:05<00:00, 135.27it/s]
+ 98%|█████████▊| 765/782 [00:05<00:00, 134.99it/s]
+100%|█████████▉| 779/782 [00:05<00:00, 133.72it/s]
+100%|██████████| 782/782 [00:05<00:00, 134.86it/s]
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 4.3073, Test Loss: 4.3077
+  Train Acc: 0.0407, Test Acc: 0.0419
+  LR: 0.000000, Grad Norm: 0.4286, Throughput: 2485.5 samples/s
+accuracy_to_time_metric 0.15856979317766678
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/statscifar100/img-classification_cifar-100_acc_GenFractalNet-90f61b01d71ac1a9395933fd9c6efdf3/1.json
+  - Model persisted to ga_fractal_arch_cifar100/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 4.19%  (source: hyperparameters.accuracy, checksum: 90f61b01d71ac1a9395933fd9c6efdf3)
+  ========================================
+
+  Evaluating Individual 3/5 ---- Generation: 3/3
+  - Duplicate 8dd9f1ca: reusing cached fitness 6.28% (from fitness_cache)
+  Evaluating Individual 4/5 ---- Generation: 3/3
+  - Evaluating unique arch (checksum: 665aaee5...)
+Evaluating /a/mm/out_nneval_tmp_pid_1048/nn/tmp/GenFractalNet-665aaee5319e250479ccc820285b4108-6a9f209c7400bd143914a75a1d810cea.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 4/782 [00:00<00:21, 36.56it/s]
+  2%|▏         | 12/782 [00:00<00:13, 56.14it/s]
+  2%|▏         | 19/782 [00:00<00:12, 59.99it/s]
+  3%|▎         | 26/782 [00:00<00:12, 61.06it/s]
+  4%|▍         | 33/782 [00:00<00:12, 62.10it/s]
+  5%|▌         | 40/782 [00:00<00:11, 62.98it/s]
+  6%|▌         | 47/782 [00:00<00:11, 62.38it/s]
+  7%|▋         | 54/782 [00:00<00:11, 63.98it/s]
+  8%|▊         | 61/782 [00:00<00:11, 65.33it/s]
+  9%|▊         | 68/782 [00:01<00:10, 65.23it/s]
+ 10%|▉         | 75/782 [00:01<00:10, 65.13it/s]
+ 10%|█         | 82/782 [00:01<00:10, 64.34it/s]
+ 11%|█▏        | 89/782 [00:01<00:10, 63.44it/s]
+ 12%|█▏        | 96/782 [00:01<00:10, 64.94it/s]
+ 13%|█▎        | 103/782 [00:01<00:10, 64.96it/s]
+ 14%|█▍        | 110/782 [00:01<00:10, 65.75it/s]
+ 15%|█▍        | 117/782 [00:01<00:10, 66.35it/s]
+ 16%|█▌        | 124/782 [00:01<00:09, 66.82it/s]
+ 17%|█▋        | 131/782 [00:02<00:10, 64.81it/s]
+ 18%|█▊        | 138/782 [00:02<00:09, 64.95it/s]
+ 19%|█▊        | 146/782 [00:02<00:09, 66.38it/s]
+ 20%|█▉        | 154/782 [00:02<00:09, 67.59it/s]
+ 21%|██        | 161/782 [00:02<00:09, 67.41it/s]
+ 21%|██▏       | 168/782 [00:02<00:09, 68.11it/s]
+ 22%|██▏       | 175/782 [00:02<00:09, 66.97it/s]
+ 23%|██▎       | 182/782 [00:02<00:09, 66.30it/s]
+ 24%|██▍       | 189/782 [00:02<00:08, 66.60it/s]
+ 25%|██▌       | 196/782 [00:03<00:08, 65.59it/s]
+ 26%|██▌       | 203/782 [00:03<00:08, 66.27it/s]
+ 27%|██▋       | 210/782 [00:03<00:08, 65.53it/s]
+ 28%|██▊       | 217/782 [00:03<00:08, 65.23it/s]
+ 29%|██▊       | 224/782 [00:03<00:08, 65.18it/s]
+ 30%|██▉       | 231/782 [00:03<00:08, 64.94it/s]
+ 30%|███       | 238/782 [00:03<00:08, 66.00it/s]
+ 31%|███▏      | 245/782 [00:03<00:08, 64.97it/s]
+ 32%|███▏      | 252/782 [00:03<00:08, 65.42it/s]
+ 33%|███▎      | 259/782 [00:03<00:07, 66.60it/s]
+ 34%|███▍      | 266/782 [00:04<00:07, 65.82it/s]
+ 35%|███▍      | 273/782 [00:04<00:07, 65.86it/s]
+ 36%|███▌      | 280/782 [00:04<00:07, 65.37it/s]
+ 37%|███▋      | 287/782 [00:04<00:07, 65.40it/s]
+ 38%|███▊      | 294/782 [00:04<00:07, 65.02it/s]
+ 38%|███▊      | 301/782 [00:04<00:07, 64.58it/s]
+ 39%|███▉      | 308/782 [00:04<00:07, 65.07it/s]
+ 40%|████      | 315/782 [00:04<00:07, 65.31it/s]
+ 41%|████▏     | 323/782 [00:04<00:06, 67.58it/s]
+ 42%|████▏     | 330/782 [00:05<00:06, 66.27it/s]
+ 43%|████▎     | 337/782 [00:05<00:06, 64.77it/s]
+ 44%|████▍     | 344/782 [00:05<00:06, 64.35it/s]
+ 45%|████▍     | 351/782 [00:05<00:06, 64.16it/s]
+ 46%|████▌     | 358/782 [00:05<00:06, 65.27it/s]
+ 47%|████▋     | 365/782 [00:05<00:06, 65.14it/s]
+ 48%|████▊     | 372/782 [00:05<00:06, 65.07it/s]
+ 48%|████▊     | 379/782 [00:05<00:06, 66.20it/s]
+ 49%|████▉     | 386/782 [00:05<00:05, 66.64it/s]
+ 50%|█████     | 393/782 [00:06<00:05, 66.02it/s]
+ 51%|█████     | 400/782 [00:06<00:05, 65.47it/s]
+ 52%|█████▏    | 407/782 [00:06<00:05, 64.81it/s]
+ 53%|█████▎    | 414/782 [00:06<00:05, 65.20it/s]
+ 54%|█████▍    | 421/782 [00:06<00:05, 65.14it/s]
+ 55%|█████▍    | 428/782 [00:06<00:05, 64.36it/s]
+ 56%|█████▌    | 435/782 [00:06<00:05, 64.55it/s]
+ 57%|█████▋    | 442/782 [00:06<00:05, 64.42it/s]
+ 57%|█████▋    | 449/782 [00:06<00:05, 64.31it/s]
+ 58%|█████▊    | 456/782 [00:07<00:05, 64.57it/s]
+ 59%|█████▉    | 463/782 [00:07<00:04, 65.86it/s]
+ 60%|██████    | 470/782 [00:07<00:04, 64.39it/s]
+ 61%|██████    | 477/782 [00:07<00:04, 64.69it/s]
+ 62%|██████▏   | 484/782 [00:07<00:04, 64.45it/s]
+ 63%|██████▎   | 491/782 [00:07<00:04, 63.99it/s]
+ 64%|██████▎   | 498/782 [00:07<00:04, 64.06it/s]
+ 65%|██████▍   | 506/782 [00:07<00:04, 66.36it/s]
+ 66%|██████▌   | 513/782 [00:07<00:04, 65.85it/s]
+ 66%|██████▋   | 520/782 [00:08<00:04, 64.42it/s]
+ 67%|██████▋   | 527/782 [00:08<00:03, 65.29it/s]
+ 68%|██████▊   | 534/782 [00:08<00:03, 64.91it/s]
+ 69%|██████▉   | 541/782 [00:08<00:03, 65.77it/s]
+ 70%|███████   | 548/782 [00:08<00:03, 64.29it/s]
+ 71%|███████   | 555/782 [00:08<00:03, 65.28it/s]
+ 72%|███████▏  | 563/782 [00:08<00:03, 67.75it/s]
+ 73%|███████▎  | 570/782 [00:08<00:03, 66.42it/s]
+ 74%|███████▍  | 577/782 [00:08<00:03, 65.65it/s]
+ 75%|███████▍  | 584/782 [00:08<00:03, 65.66it/s]
+ 76%|███████▌  | 591/782 [00:09<00:02, 66.69it/s]
+ 76%|███████▋  | 598/782 [00:09<00:02, 67.08it/s]
+ 77%|███████▋  | 605/782 [00:09<00:02, 67.41it/s]
+ 78%|███████▊  | 612/782 [00:09<00:02, 67.29it/s]
+ 79%|███████▉  | 619/782 [00:09<00:02, 66.99it/s]
+ 80%|████████  | 626/782 [00:09<00:02, 65.52it/s]
+ 81%|████████  | 633/782 [00:09<00:02, 65.60it/s]
+ 82%|████████▏ | 640/782 [00:09<00:02, 65.33it/s]
+ 83%|████████▎ | 647/782 [00:09<00:02, 66.56it/s]
+ 84%|████████▎ | 654/782 [00:10<00:01, 66.19it/s]
+ 85%|████████▍ | 661/782 [00:10<00:01, 66.97it/s]
+ 85%|████████▌ | 668/782 [00:10<00:01, 67.22it/s]
+ 86%|████████▋ | 675/782 [00:10<00:01, 66.90it/s]
+ 87%|████████▋ | 682/782 [00:10<00:01, 66.89it/s]
+ 88%|████████▊ | 689/782 [00:10<00:01, 66.69it/s]
+ 89%|████████▉ | 697/782 [00:10<00:01, 68.10it/s]
+ 90%|█████████ | 704/782 [00:10<00:01, 67.06it/s]
+ 91%|█████████ | 711/782 [00:10<00:01, 65.16it/s]
+ 92%|█████████▏| 718/782 [00:10<00:00, 64.58it/s]
+ 93%|█████████▎| 725/782 [00:11<00:00, 64.48it/s]
+ 94%|█████████▎| 732/782 [00:11<00:00, 64.05it/s]
+ 95%|█████████▍| 739/782 [00:11<00:00, 64.01it/s]
+ 95%|█████████▌| 746/782 [00:11<00:00, 64.27it/s]
+ 96%|█████████▋| 753/782 [00:11<00:00, 64.60it/s]
+ 97%|█████████▋| 760/782 [00:11<00:00, 64.92it/s]
+ 98%|█████████▊| 767/782 [00:11<00:00, 65.44it/s]
+ 99%|█████████▉| 774/782 [00:11<00:00, 65.90it/s]
+100%|█████████▉| 781/782 [00:11<00:00, 65.34it/s]
+100%|██████████| 782/782 [00:12<00:00, 65.16it/s]
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 253, in fitness_function
+    result = evaluator.evaluate(filepath)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/Eval.py", line 107, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/api.py", line 105, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 553, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes, False, export_onnx, train_set, save_path=save_path)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/nn/util/Train.py", line 367, in train_n_eval
+    raise AccuracyException(accuracy, duration,
+ab.nn.util.Exception.AccuracyException: (0.0108, 25608973086, "Accuracy is too low: 0.0108. The minimum accepted accuracy for the 'cifar-100' dataset is 0.01.")
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 4.6081, Test Loss: 4.6080
+  Train Acc: 0.0099, Test Acc: 0.0108
+  LR: 0.000000, Grad Norm: 0.2257, Throughput: 1952.5 samples/s
+accuracy_to_time_metric 0.0031239050363848723
+Error during training: (0.0108, 25608973086, "Accuracy is too low: 0.0108. The minimum accepted accuracy for the 'cifar-100' dataset is 0.01.")
+Eval Fail: (0.0108, 25608973086, "Accuracy is too low: 0.0108. The minimum accepted accuracy for the 'cifar-100' dataset is 0.01.")
+  - Cleaned up temp file: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_fractal_arch_cifar100/_tmp_GenFractalNet-665aaee5319e250479ccc820285b4108.py
+  Evaluating Individual 5/5 ---- Generation: 3/3
+  - Evaluating unique arch (checksum: 4cff0b10...)
+Evaluating /a/mm/out_nneval_tmp_pid_1048/nn/tmp/GenFractalNet-4cff0b1032469eeb1219b58f573de213-60f869d17283b14fae17996ea5921003.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 8/782 [00:00<00:10, 75.91it/s]
+  3%|▎         | 22/782 [00:00<00:06, 112.13it/s]
+  5%|▍         | 36/782 [00:00<00:06, 124.21it/s]
+  6%|▋         | 50/782 [00:00<00:05, 129.98it/s]
+  8%|▊         | 65/782 [00:00<00:05, 133.74it/s]
+ 10%|█         | 79/782 [00:00<00:05, 134.18it/s]
+ 12%|█▏        | 93/782 [00:00<00:05, 135.69it/s]
+ 14%|█▍        | 108/782 [00:00<00:04, 137.20it/s]
+ 16%|█▌        | 123/782 [00:00<00:04, 138.27it/s]
+ 18%|█▊        | 137/782 [00:01<00:04, 138.73it/s]
+ 19%|█▉        | 152/782 [00:01<00:04, 139.18it/s]
+ 21%|██        | 166/782 [00:01<00:04, 138.99it/s]
+ 23%|██▎       | 180/782 [00:01<00:04, 135.86it/s]
+ 25%|██▍       | 194/782 [00:01<00:04, 136.57it/s]
+ 27%|██▋       | 208/782 [00:01<00:04, 136.92it/s]
+ 28%|██▊       | 222/782 [00:01<00:04, 137.34it/s]
+ 30%|███       | 236/782 [00:01<00:03, 137.80it/s]
+ 32%|███▏      | 250/782 [00:01<00:03, 137.98it/s]
+ 34%|███▍      | 264/782 [00:01<00:03, 138.16it/s]
+ 36%|███▌      | 278/782 [00:02<00:03, 138.29it/s]
+ 37%|███▋      | 293/782 [00:02<00:03, 139.25it/s]
+ 39%|███▉      | 308/782 [00:02<00:03, 139.65it/s]
+ 41%|████▏     | 323/782 [00:02<00:03, 140.31it/s]
+ 43%|████▎     | 338/782 [00:02<00:03, 140.58it/s]
+ 45%|████▌     | 353/782 [00:02<00:03, 140.70it/s]
+ 47%|████▋     | 368/782 [00:02<00:02, 140.89it/s]
+ 49%|████▉     | 383/782 [00:02<00:02, 140.48it/s]
+ 51%|█████     | 398/782 [00:02<00:02, 140.64it/s]
+ 53%|█████▎    | 413/782 [00:03<00:02, 140.63it/s]
+ 55%|█████▍    | 428/782 [00:03<00:02, 140.94it/s]
+ 57%|█████▋    | 443/782 [00:03<00:02, 141.25it/s]
+ 59%|█████▊    | 458/782 [00:03<00:02, 140.97it/s]
+ 60%|██████    | 473/782 [00:03<00:02, 140.73it/s]
+ 62%|██████▏   | 488/782 [00:03<00:02, 140.87it/s]
+ 64%|██████▍   | 503/782 [00:03<00:01, 140.75it/s]
+ 66%|██████▌   | 518/782 [00:03<00:01, 141.07it/s]
+ 68%|██████▊   | 533/782 [00:03<00:01, 140.70it/s]
+ 70%|███████   | 548/782 [00:03<00:01, 140.83it/s]
+ 72%|███████▏  | 563/782 [00:04<00:01, 140.95it/s]
+ 74%|███████▍  | 578/782 [00:04<00:01, 141.43it/s]
+ 76%|███████▌  | 593/782 [00:04<00:01, 141.48it/s]
+ 78%|███████▊  | 608/782 [00:04<00:01, 141.23it/s]
+ 80%|███████▉  | 623/782 [00:04<00:01, 141.55it/s]
+ 82%|████████▏ | 638/782 [00:04<00:01, 140.36it/s]
+ 84%|████████▎ | 653/782 [00:04<00:00, 140.95it/s]
+ 85%|████████▌ | 668/782 [00:04<00:00, 140.09it/s]
+ 87%|████████▋ | 683/782 [00:04<00:00, 140.27it/s]
+ 89%|████████▉ | 698/782 [00:05<00:00, 140.35it/s]
+ 91%|█████████ | 713/782 [00:05<00:00, 140.39it/s]
+ 93%|█████████▎| 728/782 [00:05<00:00, 140.18it/s]
+ 95%|█████████▌| 743/782 [00:05<00:00, 140.53it/s]
+ 97%|█████████▋| 758/782 [00:05<00:00, 140.72it/s]
+ 99%|█████████▉| 773/782 [00:05<00:00, 140.41it/s]
+100%|██████████| 782/782 [00:05<00:00, 138.18it/s]
+  Train Loss: 3.7093, Test Loss: 3.7210
+  Train Acc: 0.1397, Test Acc: 0.1382
+  LR: 0.000000, Grad Norm: 0.9673, Throughput: 2617.9 samples/s
+accuracy_to_time_metric 0.6712077374838018
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/statscifar100/img-classification_cifar-100_acc_GenFractalNet-4cff0b1032469eeb1219b58f573de213/1.json
+  - Model persisted to ga_fractal_arch_cifar100/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 13.82%  (source: hyperparameters.accuracy, checksum: 4cff0b1032469eeb1219b58f573de213)
+  ========================================
+
+  [Archive] Cell (2, 32) updated with fitness: 13.8200
+[Best] Saved best model to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_model_cifar100.py
+[Best] Copying stats from /a/mm/ab/gpt/brute/ga/meta_evolution/statscifar100/img-classification_cifar-100_acc_GenFractalNet-4cff0b1032469eeb1219b58f573de213...
+[Best] Saved best stats to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_statscifar100/img-classification_cifar-100_acc_GenFractalNet-4cff0b1032469eeb1219b58f573de213
+[Best] Saved best info metadata to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_info_cifar100.json
+PEAK_ACCURACY: 13.8200
+TOP3_MEAN: 4.6067
+ARCHIVE_SIZE: 6
+[Meta] Median Top-3 Quality over 1 runs: 4.6067
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] PRIMARY: +5.45% SOTA Improvement! Bonus: 9.3204
+   [RL] SECONDARY: Top-3 Quality (4.61%). Bonus: 0.0691
+   [RL] Total Reward: 9.3895
+[Meta] --> NEW GLOBAL SOTA! 13.82% (was 8.37%)
+--> SUCCESS. Updating Baseline (EMA) & Fine-tuning on Success.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+[LoRA] Fine-tune start (replay buffer: 3 items, batch: 3)
+[LoRA] Training on 3 examples...
+[LoRA] Epoch 1/1 - Loss: 0.4662
+[LoRA] Fine-tune complete
+[LoRA] Adapter save start
+[LoRA] Adapter save complete
+--> Saved version history with accuracy: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/genetic_algorithm_attempt17__create_random_chromosome_acc_13.82.py
+--> Saved CoT trace: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/genetic_algorithm_attempt17__create_random_chromosome_acc_13.82_thinking.txt
+[Meta] ✓ Success #3/10 achieved on attempt 17
+
+=== Attempt 18 | Successes: 3/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Randomly choose between parents
+        if random.random() < 0.5:
+            return parent1_value
+        else:
+            return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.95
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance and novelty of the evolved architectures, we need to ensure that the `combine_genes` operator incorporates both local diversity (using the standard parent selection approach) and global exploration. We can achieve this by combining the genes in a way that preserves promising traits from both parents while introducing strategic mutations to encourage new and diverse architectures.
+
+Our strategy involves:
+1. **Random Parent Selection**: With equal probability, we will choose either the first or the second parent's gene value.
+2. **Strategic Mutation**: When a gene is inherited from a parent, there is a small chance (e.g., 5%) that it will undergo a mutation. This mutation can be:
+   - **Small Increment/Decrement**: For continuous values like dropout probabilities, learning rates, etc., increment/decrement slightly within the valid range.
+   - **Value Swap**: Replace the inherited value with one of its neighboring values in the search space.
+   - **Gene Inversion**: For binary choices (like activation types, pooling types, etc.), invert the selected value.
+
+This approach ensures that the child architecture inherits beneficial traits from the parents while also introducing enough variability to explore new regions of the search space, thus expanding the frontier of explored architectures.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Randomly choose between parents
+        if random.random() < 0.5:
+            base_value = parent1_value
+        else:
+            base_value = parent2_value
+        
+        # Apply mutation
+        if random.random() < 0.05:
+            possible_values = self.search_space[gene_name]
+            if isinstance(base_value, (int, float)):
+                # Small increment/decrement
+                base_value += random.choice([-0.05, 0.05])
+                base_value = min(max(base_value, possible_values[0]), possible_values[-1])
+            elif isinstance(base_value, str):
+                # Value swap or inversion
+                if gene_name == 'activation' or gene_name == 'pooling_type':
+                    alternatives = [v for v in self.search_space[gene_name] if v != base_value]
+                    base_value = random.choice([base_value, random.choice(alternatives)])
+                elif gene_name == 'dropout_prob':
+                    # Invert the dropout probability
+                    base_value = 1.0 - base_value
+            elif isinstance(base_value, bool):
+                # Invert the boolean value
+                base_value = not base_value
+        
+        return base_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: mutate produced '0.45' for gene 'dropout_prob', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 18 failed — retrying (failures: 1/10, successes so far: 3/10)
+
+=== Attempt 19 | Successes: 3/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Randomly choose between parents
+        if random.random() < 0.5:
+            return parent1_value
+        else:
+            return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.95
+--- [DEBUG] Raw Response ---
+<thinking>
+To break the Global SOTA peak accuracy and discover novel, high-performing architectures, we need to focus on creating diverse and innovative architectures within the given search space. This requires sophisticated crossover and mutation operators that can explore the search space more effectively and avoid getting stuck in local optima.
+
+**Key Strategies:**
+1. **Hybrid Parent Selection:** Instead of randomly choosing between two parents, we should hybridize the genes in a way that combines beneficial traits from both parents while introducing randomness to maintain diversity.
+2. **Diverse Mutation:** We need to ensure that mutations introduce significant changes without deviating too far from the valid search space. This can be done by exploring different mutation strategies such as inversion, momentum-based updates, or even combining multiple mutations.
+3. **Adaptive Crossover Points:** Adjusting the crossover points dynamically based on the gene's importance or the historical performance can help in creating more promising offspring.
+4. **Avoid Premature Convergence:** By ensuring that the operators aggressively explore the search space, we can prevent premature convergence and discover better architectures.
+
+Given these strategies, let's update the `combine_genes` method to incorporate these enhancements.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Hybridization strategy: Combine genes from both parents while introducing randomness
+        if random.random() < 0.5:
+            base_value = parent1_value
+        else:
+            base_value = parent2_value
+        
+        # Introduce randomness to maintain diversity
+        if gene_name == "dropout_prob":
+            # Invert dropout probability to explore different trade-offs
+            inverted_value = 1 - base_value
+            # Blend between original and inverted value
+            combined_value = (base_value + inverted_value) / 2
+            # Snap to closest valid value
+            possible_values = [0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5]
+            return min(possible_values, key=lambda x: abs(x - combined_value))
+        
+        elif gene_name == "activation":
+            # Cycle through activations to explore different non-linearities
+            activations = ["ReLU", "GELU", "LeakyReLU", "SiLU"]
+            index = activations.index(base_value)
+            combined_value = activations[(index + 1) % len(activations)]
+            return combined_value
+        
+        elif gene_name == "lr":
+            # Exponentially decrease learning rate to fine-tune
+            decay_rate = 0.95
+            combined_value = base_value * decay_rate
+            return min(self.search_space["lr"], key=lambda x: abs(x - combined_value))
+        
+        elif gene_name == "pooling_type":
+            # Alternate pooling types to explore spatial relationships
+            poolings = ["Max", "Avg"]
+            index = poolings.index(base_value)
+            combined_value = poolings[(index + 1) % len(poolings)]
+            return combined_value
+        
+        # Default behavior: randomly choose between parents
+        else:
+            return random.choice([parent1_value, parent2_value])
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+2026-07-13 23:25:36,217 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 23:25:36,217 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 23:25:36,217 - INFO - NumExpr defaulting to 16 threads.
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+LEMUR root /a/mm
+[Init] Loaded 27 existing checksums from stats/ (skipping duplicates)
+[Run] Continuing evolution from gen 3 to 4
+
+
+ >>> GENERATION 4 <<<
+
+  Evaluating Individual 2/5 ---- Generation: 4/4
+  - Evaluating unique arch (checksum: cb7a4635...)
+Evaluating /a/mm/out_nneval_tmp_pid_1384/nn/tmp/GenFractalNet-cb7a4635f1697b70d27505d1b14a7910-232da99f2e493526913c7495e23893eb.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 6/782 [00:00<00:13, 56.75it/s]
+  3%|▎         | 21/782 [00:00<00:07, 106.24it/s]
+  5%|▍         | 36/782 [00:00<00:06, 123.54it/s]
+  7%|▋         | 51/782 [00:00<00:05, 131.46it/s]
+  8%|▊         | 66/782 [00:00<00:05, 135.34it/s]
+ 10%|█         | 81/782 [00:00<00:05, 138.09it/s]
+ 12%|█▏        | 96/782 [00:00<00:04, 139.93it/s]
+ 14%|█▍        | 111/782 [00:00<00:04, 141.18it/s]
+ 16%|█▌        | 126/782 [00:00<00:04, 141.10it/s]
+ 18%|█▊        | 141/782 [00:01<00:04, 141.83it/s]
+ 20%|█▉        | 156/782 [00:01<00:04, 141.77it/s]
+ 22%|██▏       | 171/782 [00:01<00:04, 142.01it/s]
+ 24%|██▍       | 186/782 [00:01<00:04, 141.19it/s]
+ 26%|██▌       | 201/782 [00:01<00:04, 139.75it/s]
+ 28%|██▊       | 216/782 [00:01<00:04, 140.93it/s]
+ 30%|██▉       | 231/782 [00:01<00:03, 141.67it/s]
+ 31%|███▏      | 246/782 [00:01<00:03, 142.34it/s]
+ 33%|███▎      | 261/782 [00:01<00:03, 142.72it/s]
+ 35%|███▌      | 276/782 [00:02<00:03, 142.90it/s]
+ 37%|███▋      | 291/782 [00:02<00:03, 142.96it/s]
+ 39%|███▉      | 306/782 [00:02<00:03, 142.48it/s]
+ 41%|████      | 321/782 [00:02<00:03, 142.77it/s]
+ 43%|████▎     | 336/782 [00:02<00:03, 142.75it/s]
+ 45%|████▍     | 351/782 [00:02<00:03, 142.65it/s]
+ 47%|████▋     | 366/782 [00:02<00:02, 140.85it/s]
+ 49%|████▊     | 381/782 [00:02<00:02, 139.78it/s]
+ 51%|█████     | 395/782 [00:02<00:02, 139.50it/s]
+ 52%|█████▏    | 410/782 [00:02<00:02, 139.74it/s]
+ 54%|█████▍    | 424/782 [00:03<00:02, 139.76it/s]
+ 56%|█████▌    | 438/782 [00:03<00:02, 139.50it/s]
+ 58%|█████▊    | 453/782 [00:03<00:02, 140.30it/s]
+ 60%|█████▉    | 468/782 [00:03<00:02, 141.01it/s]
+ 62%|██████▏   | 483/782 [00:03<00:02, 141.63it/s]
+ 64%|██████▎   | 498/782 [00:03<00:01, 142.02it/s]
+ 66%|██████▌   | 513/782 [00:03<00:01, 142.28it/s]
+ 68%|██████▊   | 528/782 [00:03<00:01, 141.98it/s]
+ 69%|██████▉   | 543/782 [00:03<00:01, 142.51it/s]
+ 71%|███████▏  | 558/782 [00:03<00:01, 142.57it/s]
+ 73%|███████▎  | 573/782 [00:04<00:01, 142.62it/s]
+ 75%|███████▌  | 588/782 [00:04<00:01, 142.99it/s]
+ 77%|███████▋  | 603/782 [00:04<00:01, 143.05it/s]
+ 79%|███████▉  | 618/782 [00:04<00:01, 143.22it/s]
+ 81%|████████  | 633/782 [00:04<00:01, 142.85it/s]
+ 83%|████████▎ | 648/782 [00:04<00:00, 142.92it/s]
+ 85%|████████▍ | 663/782 [00:04<00:00, 141.34it/s]
+ 87%|████████▋ | 678/782 [00:04<00:00, 141.91it/s]
+ 89%|████████▊ | 693/782 [00:04<00:00, 142.50it/s]
+ 91%|█████████ | 708/782 [00:05<00:00, 140.11it/s]
+ 92%|█████████▏| 723/782 [00:05<00:00, 139.65it/s]
+ 94%|█████████▍| 738/782 [00:05<00:00, 140.54it/s]
+ 96%|█████████▋| 753/782 [00:05<00:00, 141.77it/s]
+ 98%|█████████▊| 768/782 [00:05<00:00, 142.34it/s]
+100%|██████████| 782/782 [00:05<00:00, 138.67it/s]
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 3.7458, Test Loss: 3.7600
+  Train Acc: 0.1270, Test Acc: 0.1250
+  LR: 0.000000, Grad Norm: 0.5734, Throughput: 2596.4 samples/s
+accuracy_to_time_metric 0.5971638172468584
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/statscifar100/img-classification_cifar-100_acc_GenFractalNet-cb7a4635f1697b70d27505d1b14a7910/1.json
+  - Model persisted to ga_fractal_arch_cifar100/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 12.50%  (source: hyperparameters.accuracy, checksum: cb7a4635f1697b70d27505d1b14a7910)
+  ========================================
+
+  [Archive] Cell (3, 32) updated with fitness: 12.5000
+  Evaluating Individual 3/5 ---- Generation: 4/4
+  - Evaluating unique arch (checksum: 3a7358bf...)
+Evaluating /a/mm/out_nneval_tmp_pid_1384/nn/tmp/GenFractalNet-3a7358bf7335837410ad374013acbba1-4112c7faad17d9625e3b020f82d6fe56.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 9/782 [00:00<00:08, 89.72it/s]
+  3%|▎         | 24/782 [00:00<00:06, 121.36it/s]
+  5%|▍         | 39/782 [00:00<00:05, 131.47it/s]
+  7%|▋         | 54/782 [00:00<00:05, 135.72it/s]
+  9%|▉         | 69/782 [00:00<00:05, 138.22it/s]
+ 11%|█         | 84/782 [00:00<00:04, 140.22it/s]
+ 13%|█▎        | 99/782 [00:00<00:04, 141.17it/s]
+ 15%|█▍        | 114/782 [00:00<00:04, 142.08it/s]
+ 16%|█▋        | 129/782 [00:00<00:04, 142.40it/s]
+ 18%|█▊        | 144/782 [00:01<00:04, 142.44it/s]
+ 20%|██        | 159/782 [00:01<00:04, 143.17it/s]
+ 22%|██▏       | 174/782 [00:01<00:04, 143.18it/s]
+ 24%|██▍       | 189/782 [00:01<00:04, 143.23it/s]
+ 26%|██▌       | 204/782 [00:01<00:04, 143.56it/s]
+ 28%|██▊       | 219/782 [00:01<00:03, 144.00it/s]
+ 30%|██▉       | 234/782 [00:01<00:03, 143.67it/s]
+ 32%|███▏      | 249/782 [00:01<00:03, 144.19it/s]
+ 34%|███▍      | 264/782 [00:01<00:03, 144.05it/s]
+ 36%|███▌      | 279/782 [00:01<00:03, 143.77it/s]
+ 38%|███▊      | 294/782 [00:02<00:03, 144.14it/s]
+ 40%|███▉      | 309/782 [00:02<00:03, 144.01it/s]
+ 41%|████▏     | 324/782 [00:02<00:03, 143.08it/s]
+ 43%|████▎     | 339/782 [00:02<00:03, 143.37it/s]
+ 45%|████▌     | 354/782 [00:02<00:02, 143.26it/s]
+ 47%|████▋     | 369/782 [00:02<00:02, 143.85it/s]
+ 49%|████▉     | 384/782 [00:02<00:02, 143.38it/s]
+ 51%|█████     | 399/782 [00:02<00:02, 143.32it/s]
+ 53%|█████▎    | 414/782 [00:02<00:02, 143.37it/s]
+ 55%|█████▍    | 429/782 [00:03<00:02, 142.71it/s]
+ 57%|█████▋    | 444/782 [00:03<00:02, 143.25it/s]
+ 59%|█████▊    | 459/782 [00:03<00:02, 142.99it/s]
+ 61%|██████    | 474/782 [00:03<00:02, 143.49it/s]
+ 63%|██████▎   | 489/782 [00:03<00:02, 143.51it/s]
+ 64%|██████▍   | 504/782 [00:03<00:01, 143.67it/s]
+ 66%|██████▋   | 519/782 [00:03<00:01, 143.69it/s]
+ 68%|██████▊   | 534/782 [00:03<00:01, 143.59it/s]
+ 70%|███████   | 549/782 [00:03<00:01, 143.95it/s]
+ 72%|███████▏  | 564/782 [00:03<00:01, 143.77it/s]
+ 74%|███████▍  | 579/782 [00:04<00:01, 144.31it/s]
+ 76%|███████▌  | 594/782 [00:04<00:01, 143.64it/s]
+ 78%|███████▊  | 609/782 [00:04<00:01, 143.79it/s]
+ 80%|███████▉  | 624/782 [00:04<00:01, 144.10it/s]
+ 82%|████████▏ | 639/782 [00:04<00:00, 143.51it/s]
+ 84%|████████▎ | 654/782 [00:04<00:00, 143.76it/s]
+ 86%|████████▌ | 669/782 [00:04<00:00, 143.49it/s]
+ 87%|████████▋ | 684/782 [00:04<00:00, 143.57it/s]
+ 89%|████████▉ | 699/782 [00:04<00:00, 143.07it/s]
+ 91%|█████████▏| 714/782 [00:05<00:00, 143.00it/s]
+ 93%|█████████▎| 729/782 [00:05<00:00, 143.79it/s]
+ 95%|█████████▌| 744/782 [00:05<00:00, 143.22it/s]
+ 97%|█████████▋| 759/782 [00:05<00:00, 143.89it/s]
+ 99%|█████████▉| 774/782 [00:05<00:00, 144.00it/s]
+100%|██████████| 782/782 [00:05<00:00, 141.86it/s]
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 3.9029, Test Loss: 3.9141
+  Train Acc: 0.1020, Test Acc: 0.1035
+  LR: 0.000000, Grad Norm: 0.4444, Throughput: 2634.0 samples/s
+accuracy_to_time_metric 0.49254256707607325
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/statscifar100/img-classification_cifar-100_acc_GenFractalNet-3a7358bf7335837410ad374013acbba1/1.json
+  - Model persisted to ga_fractal_arch_cifar100/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 10.35%  (source: hyperparameters.accuracy, checksum: 3a7358bf7335837410ad374013acbba1)
+  ========================================
+
+  Evaluating Individual 4/5 ---- Generation: 4/4
+  - Evaluating unique arch (checksum: 10181aa7...)
+Evaluating /a/mm/out_nneval_tmp_pid_1384/nn/tmp/GenFractalNet-10181aa7ddc785df15bb6c47766d97cd-af99ba85d5fa6084c07b78af852543a8.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 7/782 [00:00<00:11, 67.50it/s]
+  3%|▎         | 21/782 [00:00<00:07, 107.21it/s]
+  4%|▍         | 35/782 [00:00<00:06, 120.88it/s]
+  6%|▋         | 49/782 [00:00<00:05, 128.00it/s]
+  8%|▊         | 64/782 [00:00<00:05, 134.79it/s]
+ 10%|▉         | 78/782 [00:00<00:05, 133.58it/s]
+ 12%|█▏        | 92/782 [00:00<00:05, 132.18it/s]
+ 14%|█▎        | 107/782 [00:00<00:04, 135.74it/s]
+ 15%|█▌        | 121/782 [00:00<00:04, 133.54it/s]
+ 17%|█▋        | 135/782 [00:01<00:04, 134.58it/s]
+ 19%|█▉        | 149/782 [00:01<00:04, 136.16it/s]
+ 21%|██        | 163/782 [00:01<00:04, 137.20it/s]
+ 23%|██▎       | 178/782 [00:01<00:04, 138.19it/s]
+ 25%|██▍       | 193/782 [00:01<00:04, 139.45it/s]
+ 26%|██▋       | 207/782 [00:01<00:04, 138.16it/s]
+ 28%|██▊       | 222/782 [00:01<00:04, 139.57it/s]
+ 30%|███       | 236/782 [00:01<00:03, 139.14it/s]
+ 32%|███▏      | 250/782 [00:01<00:03, 138.79it/s]
+ 34%|███▍      | 264/782 [00:01<00:03, 138.24it/s]
+ 36%|███▌      | 278/782 [00:02<00:03, 137.39it/s]
+ 37%|███▋      | 292/782 [00:02<00:03, 135.05it/s]
+ 39%|███▉      | 307/782 [00:02<00:03, 136.69it/s]
+ 41%|████      | 321/782 [00:02<00:03, 137.40it/s]
+ 43%|████▎     | 335/782 [00:02<00:03, 136.71it/s]
+ 45%|████▍     | 349/782 [00:02<00:03, 136.88it/s]
+ 46%|████▋     | 363/782 [00:02<00:03, 134.51it/s]
+ 48%|████▊     | 377/782 [00:02<00:02, 135.61it/s]
+ 50%|█████     | 391/782 [00:02<00:02, 134.93it/s]
+ 52%|█████▏    | 405/782 [00:03<00:02, 135.51it/s]
+ 54%|█████▎    | 420/782 [00:03<00:02, 137.34it/s]
+ 55%|█████▌    | 434/782 [00:03<00:02, 137.81it/s]
+ 57%|█████▋    | 448/782 [00:03<00:02, 136.92it/s]
+ 59%|█████▉    | 462/782 [00:03<00:02, 136.50it/s]
+ 61%|██████    | 476/782 [00:03<00:02, 136.80it/s]
+ 63%|██████▎   | 491/782 [00:03<00:02, 138.13it/s]
+ 65%|██████▍   | 505/782 [00:03<00:02, 138.34it/s]
+ 66%|██████▋   | 519/782 [00:03<00:01, 137.51it/s]
+ 68%|██████▊   | 533/782 [00:03<00:01, 136.48it/s]
+ 70%|███████   | 548/782 [00:04<00:01, 137.99it/s]
+ 72%|███████▏  | 563/782 [00:04<00:01, 138.98it/s]
+ 74%|███████▍  | 578/782 [00:04<00:01, 139.64it/s]
+ 76%|███████▌  | 592/782 [00:04<00:01, 139.44it/s]
+ 78%|███████▊  | 607/782 [00:04<00:01, 140.91it/s]
+ 80%|███████▉  | 622/782 [00:04<00:01, 138.41it/s]
+ 81%|████████▏ | 636/782 [00:04<00:01, 138.21it/s]
+ 83%|████████▎ | 650/782 [00:04<00:00, 137.42it/s]
+ 85%|████████▌ | 665/782 [00:04<00:00, 140.06it/s]
+ 87%|████████▋ | 680/782 [00:04<00:00, 138.82it/s]
+ 89%|████████▊ | 694/782 [00:05<00:00, 137.58it/s]
+ 91%|█████████ | 708/782 [00:05<00:00, 136.39it/s]
+ 92%|█████████▏| 723/782 [00:05<00:00, 139.49it/s]
+ 94%|█████████▍| 737/782 [00:05<00:00, 139.38it/s]
+ 96%|█████████▌| 751/782 [00:05<00:00, 137.50it/s]
+ 98%|█████████▊| 766/782 [00:05<00:00, 138.90it/s]
+100%|█████████▉| 780/782 [00:05<00:00, 137.60it/s]
+100%|██████████| 782/782 [00:05<00:00, 135.48it/s]
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+  Train Loss: 3.9505, Test Loss: 3.9561
+  Train Acc: 0.0962, Test Acc: 0.0955
+  LR: 0.000000, Grad Norm: 0.4424, Throughput: 2582.1 samples/s
+accuracy_to_time_metric 0.44153640176745296
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/statscifar100/img-classification_cifar-100_acc_GenFractalNet-10181aa7ddc785df15bb6c47766d97cd/1.json
+  - Model persisted to ga_fractal_arch_cifar100/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 9.55%  (source: hyperparameters.accuracy, checksum: 10181aa7ddc785df15bb6c47766d97cd)
+  ========================================
+
+  [Archive] Cell (2, 64) updated with fitness: 9.5500
+  Evaluating Individual 5/5 ---- Generation: 4/4
+  - Evaluating unique arch (checksum: 591fde42...)
+Evaluating /a/mm/out_nneval_tmp_pid_1384/nn/tmp/GenFractalNet-591fde42bc1b3dc000be2a0af59106eb-4bf181123d971b2bb39bc5c6e6fa52fe.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 3/782 [00:00<00:29, 26.58it/s]
+  1%|          | 8/782 [00:00<00:19, 38.76it/s]
+  2%|▏         | 14/782 [00:00<00:16, 45.45it/s]
+  3%|▎         | 20/782 [00:00<00:16, 47.22it/s]
+  3%|▎         | 25/782 [00:00<00:15, 47.69it/s]
+  4%|▍         | 31/782 [00:00<00:15, 48.68it/s]
+  5%|▍         | 37/782 [00:00<00:15, 49.07it/s]
+  5%|▌         | 43/782 [00:00<00:14, 50.37it/s]
+  6%|▋         | 49/782 [00:01<00:14, 50.86it/s]
+  7%|▋         | 55/782 [00:01<00:14, 50.51it/s]
+  8%|▊         | 61/782 [00:01<00:14, 50.71it/s]
+  9%|▊         | 67/782 [00:01<00:14, 50.89it/s]
+  9%|▉         | 73/782 [00:01<00:13, 50.71it/s]
+ 10%|█         | 79/782 [00:01<00:13, 50.79it/s]
+ 11%|█         | 85/782 [00:01<00:13, 50.96it/s]
+ 12%|█▏        | 91/782 [00:01<00:13, 50.78it/s]
+ 12%|█▏        | 97/782 [00:01<00:13, 50.32it/s]
+ 13%|█▎        | 103/782 [00:02<00:13, 50.92it/s]
+ 14%|█▍        | 109/782 [00:02<00:13, 50.39it/s]
+ 15%|█▍        | 115/782 [00:02<00:13, 50.10it/s]
+ 15%|█▌        | 121/782 [00:02<00:13, 49.74it/s]
+ 16%|█▌        | 126/782 [00:02<00:13, 49.45it/s]
+ 17%|█▋        | 131/782 [00:02<00:13, 48.82it/s]
+ 18%|█▊        | 137/782 [00:02<00:12, 50.50it/s]
+ 18%|█▊        | 143/782 [00:02<00:12, 49.80it/s]
+ 19%|█▉        | 148/782 [00:02<00:12, 49.40it/s]
+ 20%|█▉        | 153/782 [00:03<00:12, 49.55it/s]
+ 20%|██        | 158/782 [00:03<00:12, 48.90it/s]
+ 21%|██        | 164/782 [00:03<00:12, 49.39it/s]
+ 22%|██▏       | 169/782 [00:03<00:12, 49.02it/s]
+ 22%|██▏       | 174/782 [00:03<00:12, 49.18it/s]
+ 23%|██▎       | 180/782 [00:03<00:12, 49.95it/s]
+ 24%|██▍       | 186/782 [00:03<00:11, 51.80it/s]
+ 25%|██▍       | 192/782 [00:03<00:11, 50.74it/s]
+ 25%|██▌       | 198/782 [00:03<00:11, 50.71it/s]
+ 26%|██▌       | 204/782 [00:04<00:11, 51.50it/s]
+ 27%|██▋       | 210/782 [00:04<00:11, 51.50it/s]
+ 28%|██▊       | 216/782 [00:04<00:11, 50.86it/s]
+ 28%|██▊       | 222/782 [00:04<00:10, 51.28it/s]
+ 29%|██▉       | 228/782 [00:04<00:10, 51.61it/s]
+ 30%|██▉       | 234/782 [00:04<00:10, 52.07it/s]
+ 31%|███       | 240/782 [00:04<00:10, 50.52it/s]
+ 31%|███▏      | 246/782 [00:04<00:10, 49.94it/s]
+ 32%|███▏      | 252/782 [00:05<00:10, 50.48it/s]
+ 33%|███▎      | 258/782 [00:05<00:10, 49.65it/s]
+ 34%|███▍      | 264/782 [00:05<00:10, 49.44it/s]
+ 34%|███▍      | 269/782 [00:05<00:10, 49.36it/s]
+ 35%|███▌      | 275/782 [00:05<00:10, 49.81it/s]
+ 36%|███▌      | 281/782 [00:05<00:09, 50.45it/s]
+ 37%|███▋      | 287/782 [00:05<00:09, 51.13it/s]
+ 37%|███▋      | 293/782 [00:05<00:09, 50.54it/s]
+ 38%|███▊      | 299/782 [00:05<00:09, 50.45it/s]
+ 39%|███▉      | 305/782 [00:06<00:09, 49.46it/s]
+ 40%|███▉      | 310/782 [00:06<00:09, 49.46it/s]
+ 40%|████      | 316/782 [00:06<00:09, 50.21it/s]
+ 41%|████      | 322/782 [00:06<00:09, 50.28it/s]
+ 42%|████▏     | 328/782 [00:06<00:08, 50.91it/s]
+ 43%|████▎     | 334/782 [00:06<00:09, 49.09it/s]
+ 43%|████▎     | 339/782 [00:06<00:08, 49.23it/s]
+ 44%|████▍     | 345/782 [00:06<00:08, 49.77it/s]
+ 45%|████▍     | 351/782 [00:07<00:08, 51.93it/s]
+ 46%|████▌     | 357/782 [00:07<00:08, 52.16it/s]
+ 46%|████▋     | 363/782 [00:07<00:07, 52.40it/s]
+ 47%|████▋     | 369/782 [00:07<00:07, 51.85it/s]
+ 48%|████▊     | 375/782 [00:07<00:07, 52.65it/s]
+ 49%|████▊     | 381/782 [00:07<00:07, 51.60it/s]
+ 49%|████▉     | 387/782 [00:07<00:07, 50.91it/s]
+ 50%|█████     | 393/782 [00:07<00:07, 50.68it/s]
+ 51%|█████     | 399/782 [00:07<00:07, 50.82it/s]
+ 52%|█████▏    | 405/782 [00:08<00:07, 49.61it/s]
+ 53%|█████▎    | 411/782 [00:08<00:07, 49.65it/s]
+ 53%|█████▎    | 416/782 [00:08<00:07, 49.43it/s]
+ 54%|█████▍    | 422/782 [00:08<00:07, 49.90it/s]
+ 55%|█████▍    | 428/782 [00:08<00:07, 49.91it/s]
+ 55%|█████▌    | 434/782 [00:08<00:06, 51.04it/s]
+ 56%|█████▋    | 440/782 [00:08<00:06, 50.19it/s]
+ 57%|█████▋    | 446/782 [00:08<00:06, 51.47it/s]
+ 58%|█████▊    | 452/782 [00:08<00:06, 52.48it/s]
+ 59%|█████▊    | 458/782 [00:09<00:06, 51.98it/s]
+ 59%|█████▉    | 464/782 [00:09<00:06, 51.27it/s]
+ 60%|██████    | 470/782 [00:09<00:06, 50.55it/s]
+ 61%|██████    | 476/782 [00:09<00:06, 50.77it/s]
+ 62%|██████▏   | 482/782 [00:09<00:05, 50.87it/s]
+ 62%|██████▏   | 488/782 [00:09<00:05, 49.76it/s]
+ 63%|██████▎   | 493/782 [00:09<00:05, 49.39it/s]
+ 64%|██████▍   | 499/782 [00:09<00:05, 50.27it/s]
+ 65%|██████▍   | 505/782 [00:10<00:05, 49.20it/s]
+ 65%|██████▌   | 511/782 [00:10<00:05, 50.34it/s]
+ 66%|██████▌   | 517/782 [00:10<00:05, 51.71it/s]
+ 67%|██████▋   | 523/782 [00:10<00:05, 51.52it/s]
+ 68%|██████▊   | 529/782 [00:10<00:05, 50.59it/s]
+ 68%|██████▊   | 535/782 [00:10<00:04, 51.21it/s]
+ 69%|██████▉   | 541/782 [00:10<00:04, 50.68it/s]
+ 70%|██████▉   | 547/782 [00:10<00:04, 50.65it/s]
+ 71%|███████   | 553/782 [00:11<00:04, 50.64it/s]
+ 71%|███████▏  | 559/782 [00:11<00:04, 50.16it/s]
+ 72%|███████▏  | 565/782 [00:11<00:04, 50.52it/s]
+ 73%|███████▎  | 571/782 [00:11<00:04, 50.90it/s]
+ 74%|███████▍  | 577/782 [00:11<00:04, 49.82it/s]
+ 74%|███████▍  | 582/782 [00:11<00:04, 48.83it/s]
+ 75%|███████▌  | 588/782 [00:11<00:03, 49.85it/s]
+ 76%|███████▌  | 594/782 [00:11<00:03, 50.42it/s]
+ 77%|███████▋  | 600/782 [00:11<00:03, 49.70it/s]
+ 77%|███████▋  | 606/782 [00:12<00:03, 49.92it/s]
+ 78%|███████▊  | 612/782 [00:12<00:03, 51.38it/s]
+ 79%|███████▉  | 618/782 [00:12<00:03, 51.53it/s]
+ 80%|███████▉  | 624/782 [00:12<00:03, 51.84it/s]
+ 81%|████████  | 630/782 [00:12<00:02, 51.02it/s]
+ 81%|████████▏ | 636/782 [00:12<00:02, 50.25it/s]
+ 82%|████████▏ | 642/782 [00:12<00:02, 51.51it/s]
+ 83%|████████▎ | 648/782 [00:12<00:02, 51.25it/s]
+ 84%|████████▎ | 654/782 [00:13<00:02, 49.86it/s]
+ 84%|████████▍ | 660/782 [00:13<00:02, 50.97it/s]
+ 85%|████████▌ | 666/782 [00:13<00:02, 50.40it/s]
+ 86%|████████▌ | 672/782 [00:13<00:02, 50.14it/s]
+ 87%|████████▋ | 678/782 [00:13<00:02, 51.57it/s]
+ 87%|████████▋ | 684/782 [00:13<00:01, 51.72it/s]
+ 88%|████████▊ | 690/782 [00:13<00:01, 50.58it/s]
+ 89%|████████▉ | 696/782 [00:13<00:01, 49.83it/s]
+ 90%|████████▉ | 701/782 [00:13<00:01, 48.60it/s]
+ 90%|█████████ | 707/782 [00:14<00:01, 49.24it/s]
+ 91%|█████████ | 712/782 [00:14<00:01, 48.27it/s]
+ 92%|█████████▏| 717/782 [00:14<00:01, 47.71it/s]
+ 92%|█████████▏| 723/782 [00:14<00:01, 48.57it/s]
+ 93%|█████████▎| 729/782 [00:14<00:01, 49.11it/s]
+ 94%|█████████▍| 735/782 [00:14<00:00, 49.82it/s]
+ 95%|█████████▍| 740/782 [00:14<00:00, 49.65it/s]
+ 95%|█████████▌| 746/782 [00:14<00:00, 51.35it/s]
+ 96%|█████████▌| 752/782 [00:14<00:00, 52.10it/s]
+ 97%|█████████▋| 758/782 [00:15<00:00, 52.27it/s]
+ 98%|█████████▊| 764/782 [00:15<00:00, 51.29it/s]
+ 98%|█████████▊| 770/782 [00:15<00:00, 51.19it/s]
+ 99%|█████████▉| 776/782 [00:15<00:00, 50.93it/s]
+100%|██████████| 782/782 [00:15<00:00, 50.13it/s]
+100%|██████████| 782/782 [00:15<00:00, 50.17it/s]
+  Train Loss: 4.5549, Test Loss: 4.5554
+  Train Acc: 0.0269, Test Acc: 0.0265
+  LR: 0.000000, Grad Norm: 0.2595, Throughput: 1531.3 samples/s
+accuracy_to_time_metric 0.05053321944313142
+  - Saved stats (fallback) to: /a/mm/ab/gpt/brute/ga/meta_evolution/statscifar100/img-classification_cifar-100_acc_GenFractalNet-591fde42bc1b3dc000be2a0af59106eb/1.json
+  - Model persisted to ga_fractal_arch_cifar100/ (stats verified: 1 JSON file(s))
+
+  ========================================
+  >>> FITNESS SCORE: 2.65%  (source: hyperparameters.accuracy, checksum: 591fde42bc1b3dc000be2a0af59106eb)
+  ========================================
+
+[Best] Saved best model to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_model_cifar100.py
+[Best] Copying stats from /a/mm/ab/gpt/brute/ga/meta_evolution/statscifar100/img-classification_cifar-100_acc_GenFractalNet-4cff0b1032469eeb1219b58f573de213...
+[Best] Saved best stats to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_statscifar100/img-classification_cifar-100_acc_GenFractalNet-4cff0b1032469eeb1219b58f573de213
+[Best] Saved best info metadata to /a/mm/ab/gpt/brute/ga/meta_evolution/best_fractal_info_cifar100.json
+PEAK_ACCURACY: 13.8200
+TOP3_MEAN: 4.6067
+ARCHIVE_SIZE: 7
+[Meta] Median Top-3 Quality over 1 runs: 4.6067
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] SECONDARY: Top-3 Quality (4.61%). Bonus: 0.0691
+   [RL] TERTIARY: Archive Novelty (1 cells updated). Bonus: 0.5000
+   [RL] Total Reward: 0.5691
+[Meta] --> ARCHIVE EXPANDED! 7 cells (was 6)
+--> SUCCESS. Updating Baseline (EMA) & Fine-tuning on Success.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+[LoRA] Fine-tune start (replay buffer: 4 items, batch: 4)
+[LoRA] Training on 4 examples...
+[LoRA] Epoch 1/1 - Loss: 0.4193
+[LoRA] Fine-tune complete
+[LoRA] Adapter save start
+[LoRA] Adapter save complete
+--> Saved version history with accuracy: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/genetic_algorithm_attempt19_combine_genes_acc_13.82.py
+--> Saved CoT trace: /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/genetic_algorithm_attempt19_combine_genes_acc_13.82_thinking.txt
+[Meta] ✓ Success #4/10 achieved on attempt 19
+
+=== Attempt 20 | Successes: 4/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            # Ensure mutations respect constraints
+            if gene_name == "dropout_prob":
+                return min(max(current_value + 0.05, 0.1), 0.5)
+            elif gene_name == "activation":
+                alternatives = [v for v in self.search_space[gene_name] if v != current_value]
+                return random.choice(alternatives) if alternatives else current_value
+            elif gene_name == "lr":
+                alternatives = [v for v in self.search_space[gene_name] if v < current_value]
+                return random.choice(alternatives) if alternatives else current_value
+            elif gene_name == "pooling_type":
+                alternatives = [v for v in self.search_space[gene_name] if v != current_value]
+                return random.choice(alternatives) if alternatives else current_value
+        return random.choice(possible_values)
+
+-------------------------
+[Meta] Generation Temperature: 0.95

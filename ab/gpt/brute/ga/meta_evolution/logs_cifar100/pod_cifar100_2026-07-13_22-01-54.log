@@ -1,0 +1,568 @@
+LEMUR root /a/mm
+2026-07-13 22:01:56,313 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 22:01:56,313 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 22:01:56,313 - INFO - NumExpr defaulting to 16 threads.
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/historic_runs/run_2026-07-13_22-01-58 for fresh start.
+[Meta] Moved LLM LoRA weights to /a/mm/ab/gpt/brute/ga/meta_evolution/fine_tuned_adapter_cifar100/historic_runs/run_2026-07-13_22-01-58 for fresh start.
+[Config] Loaded model_config.json  (context_length=4096)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-07-13 22:02:00,085 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:02<00:08,  2.97s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:06<00:06,  3.34s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:09<00:03,  3.26s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  2.05s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  2.48s/it]
+[LoRA] Adapter directory exists at /a/mm/ab/gpt/brute/ga/meta_evolution/fine_tuned_adapter_cifar100 but no weight files found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+
+[Meta] Target: 10 SUCCESSFUL evolutions (will retry up to 10 times per component)
+
+=== Attempt 1 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.90
+--- [DEBUG] Raw Response ---
+### combine_genes ###
+To enhance the exploration of the search space and avoid converging prematurely, we can introduce more sophisticated gene combination techniques. Specifically, we can use a combination of simple arithmetic operations (modulus) and geometric mean (for continuous values) along with a random selection mechanism to ensure diversity.
+
+For discrete values, we'll use the `min` operation with respect to the Euclidean distance to encourage the GA to explore nearby configurations. This helps in maintaining diversity while still allowing some meaningful combination of genes.
+
+For continuous values, we will use both the geometric mean and a random choice to maintain the balance between exploitation and exploration.
+
+#### Reasoning:
+1. **Discrete Values**: Using the `min` function with respect to Euclidean distance ensures that the combined value stays within the valid range of the search space. This prevents the GA from selecting unrealistic or out-of-range values.
+   
+2. **Continuous Values**: Using the geometric mean allows for a more nuanced combination of floating-point numbers. However, since geometric mean does not always provide diversity, we also incorporate a random choice to ensure that the GA does not get stuck in local optima.
+
+#### Implementation:
+```python
+def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+    if gene_index < crossover_point:
+        return parent1_value
+    
+    # Check if the gene is discrete or continuous
+    if isinstance(parent1_value, (int, float)) and isinstance(parent2_value, (int, float)):
+        # Combine continuous values using geometric mean and random choice
+        avg_val = (parent1_value * parent2_value) ** 0.5
+        random_choice = random.choice([parent1_value, parent2_value])
+        
+        # Select the final value using a weighted average
+        weight = random.random()
+        combined_value = weight * avg_val + (1 - weight) * random_choice
+        
+        # Clamp the value to the search space range
+        valid_range = self.search_space[gene_name]
+        combined_value = min(max(combined_value, min(valid_range)), max(valid_range))
+        
+        return combined_value
+    
+    else:
+        # Combine discrete values using min function to maintain within valid range
+        combined_value = min(parent1_value, parent2_value)
+        return combined_value
+```
+
+This approach ensures that the combined gene values are well within the allowable ranges specified in the search space, thereby fostering a diverse exploration of the design space.
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar10.genetic_algorithm_evolved import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt.brute.ga.meta_evolution.modified_GA_cifar10.genetic_algorithm_evolved'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 1 failed — retrying (failures: 1/10, successes so far: 0/10)
+
+=== Attempt 2 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.84
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the `combine_genes` operator for the Quality-Diversity Genetic Algorithm, we aim to explore diverse combinations of genes while maintaining a balance between exploitation and exploration. Given that the goal is to break the global SOTA peak accuracy and discover novel high-performing architectures, we can employ a few strategies:
+
+1. **Weighted Combination**: Introduce a weighted approach where the probability of inheriting a gene value from either parent depends on their fitness scores. This encourages higher-performing architectures to dominate but also allows some variability to maintain diversity.
+
+2. **Inversion Mutation**: With a small probability, invert a subset of the genes to introduce novelty. This helps in exploring architectures that might be overlooked otherwise.
+
+3. **Hybridization**: Combine elements from both parents in a more complex manner, such as swapping parts of the architecture or combining different layers. This can lead to innovative designs.
+
+By implementing these strategies, we ensure that the evolved architectures are not only diverse but also promising candidates for improving performance.
+
+Let's define the `combine_genes` method accordingly.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Weighted combination based on fitness
+        if gene_index < crossover_point:
+            alpha = random.random()  # Random weight between 0 and 1
+            combined_value = alpha * parent1_value + (1 - alpha) * parent2_value
+        else:
+            combined_value = parent2_value
+
+        # Inversion mutation with low probability
+        if random.random() < 0.05:
+            if gene_name in ["activation", "pooling_type", "conv_type", "norm_type", "optimizer_type"]:
+                possible_values = [v for v in self.search_space[gene_name] if v != combined_value]
+                combined_value = random.choice(possible_values)
+        
+        return combined_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '2.0071411389738767' for gene 'n_columns', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 2 failed — retrying (failures: 2/10, successes so far: 0/10)
+
+=== Attempt 3 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.79
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (QD-GA) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to focus on improving both exploration and exploitation. Here's our plan:
+
+1. **Exploration**: We need to ensure that the offspring created through crossover and mutation are diverse enough to explore the search space effectively. This can be achieved by using techniques such as gene inversion, momentum tracking, or hybridizing parents intelligently.
+
+2. **Exploitation**: We need to prioritize the creation of high-performing architectures. This can be done by favoring combinations of parameters that have historically led to good performance.
+
+Given these goals, let's modify the `combine_genes` function to incorporate these strategies.
+
+**Key Changes**:
+- Use a more sophisticated method to combine genes, such as averaging or a weighted sum, to balance exploration and exploitation.
+- Introduce a mechanism to encourage diversity, such as flipping bits randomly or introducing small perturbations to the genes.
+- Prioritize combining genes that have historically led to high-performing architectures.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Define weights for the combination
+        alpha = 0.5  # Weight for parent1
+        beta = 0.5   # Weight for parent2
+        
+        # Combine genes using a weighted average
+        combined_value = alpha * parent1_value + beta * parent2_value
+        
+        # Introduce small perturbations to encourage diversity
+        if random.random() < 0.1:  # 10% chance to introduce a perturbation
+            perturbation = random.choice([-0.05, 0.05])  # Perturbation range
+            combined_value += perturbation
+        
+        # Ensure the combined value remains within the valid range
+        valid_values = self.search_space[gene_name]
+        if combined_value < valid_values[0]:
+            combined_value = valid_values[0]
+        elif combined_value > valid_values[-1]:
+            combined_value = valid_values[-1]
+        
+        return combined_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: can't multiply sequence by non-int of type 'float'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 3 failed — retrying (failures: 3/10, successes so far: 0/10)
+
+=== Attempt 4 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.73
+--- [DEBUG] Raw Response ---
+<thinking> 
+To enhance the performance of the FractalNet architecture, we need to introduce more diversity while ensuring that the new architectures are robust against dropout. By combining genes from two parent chromosomes at random points and applying some strategic mutations, we can explore a broader space of architectures. This approach should help break the global SOTA peak accuracy and discover novel, high-performing architectures.
+
+For `combine_genes`, we will use a hybrid strategy that combines elements from both parents but introduces randomness to ensure diversity. We will also apply mutations to the combined genes to further explore different configurations.
+
+Steps to improve `combine_genes`:
+1. Randomly choose a crossover point within the gene length.
+2. Combine elements from both parents up to the crossover point.
+3. Apply mutations to the combined genes to diversify the offspring.
+
+This method ensures that each offspring is a blend of the parents' traits while introducing enough variability to escape local optima.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Hybrid combine genes
+        combined_value = []
+        for i in range(len(parent1_value)):
+            if i < crossover_point:
+                combined_value.append(parent1_value[i])
+            else:
+                combined_value.append(parent2_value[i])
+
+        # Apply mutations
+        if random.random() < 0.1:  # Mutation rate
+            gene_index_to_mutate = random.randint(0, len(combined_value) - 1)
+            possible_values = self.search_space[gene_name]
+            combined_value[gene_index_to_mutate] = random.choice(possible_values)
+
+        return tuple(combined_value)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: object of type 'int' has no len()
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 4 failed — retrying (failures: 4/10, successes so far: 0/10)
+
+=== Attempt 5 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.68
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the frontiers of the quality-diversity landscape, we need to ensure that our `combine_genes` operator introduces enough diversity while still maintaining some semblance of the parent's characteristics. Given the constraints, we can leverage techniques such as gene inversion, momentum tracking, and hybridizing parents to achieve this goal. 
+
+1. **Gene Inversion**: This technique involves flipping the order of operations or parameters in a way that introduces randomness and novelty.
+2. **Momentum Tracking**: By keeping track of past decisions, we can introduce gradual changes that lead to more diverse solutions over time.
+3. **Hybridizing Parents**: Combining elements from both parents can help in creating novel configurations that might outperform either parent individually.
+
+Let's implement these ideas in the `combine_genes` method.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Determine the type of value based on the gene name
+        if isinstance(parent1_value, int) or isinstance(parent1_value, float):
+            return self._combine_numerical_gene(gene_name, parent1_value, parent2_value, crossover_point)
+        elif isinstance(parent1_value, str):
+            return self._combine_categorical_gene(gene_name, parent1_value, parent2_value, crossover_point)
+        else:
+            return random.choice([parent1_value, parent2_value])
+
+    def _combine_numerical_gene(self, gene_name, parent1_value, parent2_value, crossover_point):
+        if gene_index < crossover_point:
+            # Use a weighted average with a small bias towards the first parent
+            alpha = 0.7
+            return parent1_value * alpha + parent2_value * (1 - alpha)
+        else:
+            # Introduce randomness with a step size
+            step_size = 0.1
+            return parent1_value + random.choice([-step_size, step_size])
+
+    def _combine_categorical_gene(self, gene_name, parent1_value, parent2_value, crossover_point):
+        if gene_index < crossover_point:
+            # Choose the first parent's value with higher probability
+            if random.random() < 0.7:
+                return parent1_value
+            else:
+                return parent2_value
+        else:
+            # Introduce a random choice from the possible values
+            possible_values = self.search_space[gene_name]
+            return random.choice(possible_values)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: name 'gene_index' is not defined
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 5 failed — retrying (failures: 5/10, successes so far: 0/10)
+
+=== Attempt 6 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.62
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the quality and diversity of the generated architectures, we need to modify the `combine_genes` method to better explore the search space. Instead of simply inheriting genes from one parent or the other at a fixed crossover point, we can introduce more sophisticated mechanisms such as averaging, inversion, or hybridization.
+
+Given the constraints, we should avoid inventing new values and instead focus on combining existing values in a way that maximizes diversity while still maintaining a reasonable chance of producing viable architectures. We can also introduce randomness to ensure that the selection process is stochastic and less likely to converge prematurely.
+
+Let's define a few rules for combining genes:
+1. **Averaging**: For numerical values, take the average of the two parent values.
+2. **Inversion**: For binary choices or discrete values, randomly choose between the two parent values.
+3. **Hybridization**: For some genes, we can blend their values in a non-linear manner.
+
+We'll implement these rules in the `combine_genes` method, ensuring that we handle each gene type appropriately.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_name in ["n_columns", "n_blocks"]:
+            # Average for integers
+            return int((parent1_value + parent2_value) / 2)
+        
+        elif gene_name in ["base_channels", "dropout_prob", "fc_dropout", "lr", "momentum"]:
+            # Average for floats
+            return (parent1_value + parent2_value) / 2
+        
+        elif gene_name in ["activation", "kernel_size", "pooling_type", "conv_type", "norm_type", "optimizer_type"]:
+            # Invert for categorical values
+            if random.random() < 0.5:
+                return parent1_value
+            else:
+                return parent2_value
+        
+        else:
+            # Return a random choice if unknown gene
+            return random.choice([parent1_value, parent2_value])
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '24.0' for gene 'base_channels', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 6 failed — retrying (failures: 6/10, successes so far: 0/10)
+
+=== Attempt 7 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.57
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (QD-GA) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-10, we need to design more sophisticated crossover and mutation operators. Specifically, we aim to break the global SOTA peak accuracy and discover novel, high-performing architectures.
+
+#### Crossover Strategy:
+1. **Hybridization**: Combine elements from both parents to create a unique architecture. This ensures that the offspring inherits beneficial traits from both parents while introducing diversity.
+2. **Active Path Selection**: Since the search space enforces active FractalDropPath (`dropout_prob` > 0.0), we should ensure that the dropout paths are selected in a way that maximizes robustness and convergence speed.
+
+#### Mutation Strategy:
+1. **Randomized Inversion**: Introduce mutations by randomly inverting some parts of the architecture. This helps in exploring new configurations that might lead to higher performance.
+2. **Momentum Tracking**: Use momentum to track changes over time and avoid converging prematurely. This ensures that the GA explores the search space more thoroughly.
+
+By implementing these strategies, we can effectively expand the frontier of what the GA has seen and potentially break the global SOTA peak accuracy.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        else:
+            # Hybridize parent values with a small probability
+            if random.random() < 0.2:
+                return random.choice([parent1_value, parent2_value])
+            else:
+                return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution.py", line 38, in <module>
+    from ab.gpt.brute.ga.meta_evolution.modified_GA_cifar10.genetic_algorithm_evolved import GeneticAlgorithm
+ModuleNotFoundError: No module named 'ab.gpt.brute.ga.meta_evolution.modified_GA_cifar10.genetic_algorithm_evolved'
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] Total Reward: 0.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 7 failed — retrying (failures: 7/10, successes so far: 0/10)
+
+=== Attempt 8 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.51
+--- [DEBUG] Raw Response ---
+### thinking ...
+To enhance the quality and diversity of the generated architectures, we need to ensure that the crossover and mutation operations are designed to explore the search space more effectively. Specifically, we should aim to maintain diversity while also allowing for meaningful improvements in performance.
+
+#### Crossover Strategy
+For the `combine_genes` method, we can introduce a strategy that combines the strengths of both parents while introducing some randomness to encourage exploration. One approach is to use a weighted average of the parent values, but since our genes are discrete, we'll instead use a simple majority voting mechanism. This ensures that the combined gene inherits traits from both parents, promoting diversity while still maintaining a balance between them.
+
+#### Mutation Strategy
+For the `mutate_gene` method, we can introduce a strategy that not only randomly selects a new value from the possible values but also considers the historical context of the gene's evolution. This can help in avoiding premature convergence by encouraging the exploration of less frequently visited regions of the search space.
+
+By combining these strategies, we can create a more effective evolutionary operator that balances exploration and exploitation, potentially leading to higher performance and more diverse architectures.
+
+### Implementation
+Below is the updated `combine_genes` method using the described strategies.
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Use majority voting to combine genes
+        if gene_name in ["n_columns", "n_blocks", "kernel_size"]:
+            return max([parent1_value, parent2_value], key=self.search_space[gene_name].count)
+        elif gene_name in ["dropout_prob", "fc_dropout", "lr", "momentum"]:
+            return random.choice([parent1_value, parent2_value])
+        elif gene_name in ["activation", "pooling_type", "conv_type", "norm_type", "optimizer_type"]:
+            return random.choice([parent1_value, parent2_value])
+        else:
+            return random.choice(self.search_space[gene_name])
+
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        # Use historical context to mutate genes
+        history_key = f"{gene_name}_history"
+        if hasattr(self, history_key):
+            history = getattr(self, history_key)
+            most_common = max(set(history), key=history.count)
+        else:
+            most_common = random.choice(possible_values)
+        
+        # Mutate towards the most common value
+        mutated_value = random.choice([most_common, random.choice(possible_values)])
+        
+        # Update history
+        setattr(self, history_key, history + [mutated_value])
+        
+        return mutated_value
+```
+
+This implementation ensures that the crossover operation maintains diversity by using majority voting, while the mutation operation encourages exploration by considering historical trends.
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+2026-07-13 22:04:45,228 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 22:04:45,228 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 22:04:45,228 - INFO - NumExpr defaulting to 16 threads.
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+LEMUR root /a/mm
+[Init] Loaded 209 existing checksums from stats/ (skipping duplicates)
+[Run] Continuing evolution from gen 0 to 1
+
+
+ >>> GENERATION 1 <<<
+
+  Evaluating Individual 1/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: 3967e22b...)
+Evaluating /a/mm/out_nneval_tmp_pid_557/nn/tmp/GenFractalNet-3967e22bb1bf6755c742988401c4b177-e1f6519e126cc8eb08a296e1190c2294.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 4/782 [00:00<00:20, 37.83it/s]
+  2%|▏         | 18/782 [00:00<00:08, 95.47it/s]
+  4%|▍         | 32/782 [00:00<00:06, 112.54it/s]
+  6%|▌         | 46/782 [00:00<00:06, 120.34it/s]
+  8%|▊         | 59/782 [00:00<00:05, 123.03it/s]
+  9%|▉         | 72/782 [00:00<00:05, 124.42it/s]
+ 11%|█         | 85/782 [00:00<00:05, 126.06it/s]
+ 13%|█▎        | 99/782 [00:00<00:05, 128.41it/s]
+ 14%|█▍        | 112/782 [00:00<00:05, 128.45it/s]
+ 16%|█▌        | 125/782 [00:01<00:05, 128.85it/s]
+ 18%|█▊        | 138/782 [00:01<00:05, 128.14it/s]
+ 19%|█▉        | 151/782 [00:01<00:04, 127.64it/s]
+ 21%|██        | 164/782 [00:01<00:04, 127.20it/s]
+ 23%|██▎       | 177/782 [00:01<00:04, 127.24it/s]
+ 24%|██▍       | 191/782 [00:01<00:04, 128.52it/s]
+ 26%|██▌       | 205/782 [00:01<00:04, 130.05it/s]
+ 28%|██▊       | 219/782 [00:01<00:04, 131.66it/s]
+ 30%|██▉       | 233/782 [00:01<00:04, 130.63it/s]
+ 32%|███▏      | 247/782 [00:01<00:04, 127.37it/s]
+ 33%|███▎      | 261/782 [00:02<00:04, 128.67it/s]
+ 35%|███▌      | 275/782 [00:02<00:03, 130.04it/s]
+ 37%|███▋      | 289/782 [00:02<00:03, 130.42it/s]
+ 39%|███▊      | 303/782 [00:02<00:03, 131.27it/s]
+ 41%|████      | 317/782 [00:02<00:03, 126.50it/s]
+ 42%|████▏     | 330/782 [00:02<00:03, 123.41it/s]
+ 44%|████▍     | 344/782 [00:02<00:03, 125.58it/s]
+ 46%|████▌     | 358/782 [00:02<00:03, 127.69it/s]
+ 48%|████▊     | 372/782 [00:02<00:03, 128.93it/s]
+ 49%|████▉     | 386/782 [00:03<00:03, 130.97it/s]
+ 51%|█████     | 400/782 [00:03<00:02, 131.04it/s]
+ 53%|█████▎    | 414/782 [00:03<00:02, 128.17it/s]
+ 55%|█████▍    | 428/782 [00:03<00:02, 129.42it/s]
+ 56%|█████▋    | 441/782 [00:03<00:02, 127.83it/s]
+ 58%|█████▊    | 455/782 [00:03<00:02, 131.05it/s]
+ 60%|██████    | 470/782 [00:03<00:02, 134.28it/s]
+ 62%|██████▏   | 484/782 [00:03<00:02, 135.27it/s]
+ 64%|██████▎   | 498/782 [00:03<00:02, 136.05it/s]
+ 66%|██████▌   | 513/782 [00:04<00:01, 138.07it/s]
+ 68%|██████▊   | 528/782 [00:04<00:01, 139.15it/s]
+ 69%|██████▉   | 543/782 [00:04<00:01, 139.49it/s]
+ 71%|███████▏  | 558/782 [00:04<00:01, 140.06it/s]
+ 73%|███████▎  | 573/782 [00:04<00:01, 140.42it/s]
+ 75%|███████▌  | 588/782 [00:04<00:01, 140.53it/s]
+ 77%|███████▋  | 603/782 [00:04<00:01, 141.10it/s]
+ 79%|███████▉  | 618/782 [00:04<00:01, 142.21it/s]
+ 81%|████████  | 633/782 [00:04<00:01, 143.19it/s]
+ 83%|████████▎ | 648/782 [00:04<00:00, 142.88it/s]
+ 85%|████████▍ | 663/782 [00:05<00:00, 143.52it/s]
+ 87%|████████▋ | 678/782 [00:05<00:00, 144.01it/s]
+ 89%|████████▊ | 693/782 [00:05<00:00, 143.42it/s]
+ 91%|█████████ | 708/782 [00:05<00:00, 143.90it/s]
+ 92%|█████████▏| 723/782 [00:05<00:00, 144.45it/s]
+ 94%|█████████▍| 738/782 [00:05<00:00, 143.64it/s]
+ 96%|█████████▋| 753/782 [00:05<00:00, 144.29it/s]
+ 98%|█████████▊| 768/782 [00:05<00:00, 144.56it/s]
+100%|██████████| 782/782 [00:05<00:00, 132.03it/s]

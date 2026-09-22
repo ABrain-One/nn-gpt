@@ -1,6 +1,6 @@
 import argparse
 
-from ab.gpt.util.AlterNN import alter
+from ab.gpt.util.nn.AlterNN import alter
 
 
 # Purpose: Verify that batch generation works correctly.

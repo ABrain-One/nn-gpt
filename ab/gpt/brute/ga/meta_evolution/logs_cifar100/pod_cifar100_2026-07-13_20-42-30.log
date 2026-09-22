@@ -1,0 +1,93 @@
+LEMUR root /a/mm
+2026-07-13 20:42:32,154 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 20:42:32,154 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 20:42:32,154 - INFO - NumExpr defaulting to 16 threads.
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/historic_runs/run_2026-07-13_20-42-34 for fresh start.
+[Config] Loaded model_config.json  (context_length=4096)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-07-13 20:42:35,831 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:02<00:08,  2.87s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:06<00:06,  3.22s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:09<00:03,  3.15s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  1.97s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  2.39s/it]
+[LoRA] No adapter directory found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+
+[Meta] Target: 10 SUCCESSFUL evolutions (will retry up to 5 times per component)
+
+=== Attempt 1 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.90
+--- [DEBUG] Raw Response ---
+### combine_genes ###
+
+To enhance the exploratory power of our Genetic Algorithm and ensure we're injecting diversity, we can use a more sophisticated combination strategy for the genes. Instead of simply inheriting values from one parent at random points, we'll implement a hybridization strategy that blends elements from both parents while maintaining some randomness to keep the search dynamic. This approach helps avoid local optima and encourages exploration of novel configurations.
+
+**Mathematical Reasoning:**
+1. **Hybrid Inheritance:** We'll blend values linearly between parent1 and parent2, ensuring that the child retains a reasonable mix of both parent's characteristics.
+2. **Random Perturbation:** Introduce small, random changes to the combined values to further diversify the population.
+3. **Fallback Mechanism:** If combining leads to invalid values (not within the search space), revert to the original values with a small probability to maintain diversity.
+
+By implementing these steps, the GA will be better equipped to discover high-performing architectures while expanding its search space significantly.
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Extract possible values for the given gene
+        possible_values = self.search_space[gene_name]
+
+        # Define the blending ratio
+        alpha = random.random()
+
+        # Combine values linearly between parent1 and parent2
+        blended_value = alpha * parent1_value + (1 - alpha) * parent2_value
+
+        # Check if the combined value is within the possible values
+        if blended_value in possible_values:
+            return blended_value
+
+        # Introduce random perturbation if the combined value is invalid
+        perturbation = random.choice([-0.1, 0, 0.1])  # Small range to encourage exploration
+        perturbed_value = blended_value + perturbation
+
+        # Ensure the perturbed value is still within the possible values
+        if perturbed_value in possible_values:
+            return perturbed_value
+
+        # Revert to original values with a small probability
+        if random.random() < 0.1:
+            choice = random.choice([parent1_value, parent2_value])
+            if choice in possible_values:
+                return choice
+
+        # Return the original value if none of the above conditions apply
+        return parent1_value
+```
+
+This implementation ensures that the GA combines genetic material from two parents in a balanced way while adding enough randomness to escape local optima and explore uncharted territories. By focusing on blending rather than simple inheritance, we increase the likelihood of discovering novel, high-performing architectures.
+--------------------------
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/meta_evolver_cifar100.py", line 800, in <module>
+    success = evolver.evolve_component(component, attempt=total_attempts, total_attempts=META_ITERATIONS)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/meta_evolver_cifar100.py", line 517, in evolve_component
+    bkp = os.path.join(BACKUP_DIR, f"{target_filename}_{method_name}.bak")
+                                                        ^^^^^^^^^^^
+NameError: name 'method_name' is not defined. Did you mean: 'method_names'?

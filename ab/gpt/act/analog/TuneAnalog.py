@@ -19,11 +19,11 @@ from peft import (PeftModel)
 from tqdm import tqdm
 
 from ab.gpt.analog import NNEvalAnalog as NNEval
-from ab.gpt.util.Chatbot import ChatBot
+from ab.gpt.util.llm.Chatbot import ChatBot
 from ab.gpt.util.Const import *
 
-from ab.gpt.util.LLMUtil import quantization_config_4bit
-from ab.gpt.util.LoRA import LoRA
+from ab.gpt.util.llm.LLMUtil import quantization_config_4bit
+from ab.gpt.util.llm.LoRA import LoRA
 from ab.gpt.act.analog.UtilAnalog import (
     exists,
     extract_delta,
@@ -42,8 +42,8 @@ from ab.gpt.act.analog.UtilAnalog import (
     validate_generated_nn_smoke,
 )
 from ab.gpt.act.analog.NNGenPromptAnalog import NNGenPrompt
-from ab.gpt.util.DeltaUtil import apply_delta, validate_delta, repair_code
-from ab.gpt.util.EditUtil import (
+from ab.gpt.util.nn.DeltaUtil import apply_delta, validate_delta, repair_code
+from ab.gpt.util.nn.EditUtil import (
     apply_source_edit_policy,
     apply_structured_edit,
     build_safe_edit_for_target,
@@ -943,7 +943,7 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
         lora_tuner = None
         chat_bot = None
     else:
-        from ab.gpt.util.LLM import LLM
+        from ab.gpt.util.llm.LLM import LLM
 
         # Load model and tokenizer
         model_loader = LLM(
@@ -1227,7 +1227,7 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
                 )
 
                 if use_backbone:
-                    from ab.gpt.util.SFTUtil import skeleton_code
+                    from ab.gpt.util.llm.SFTUtil import skeleton_code
                     import textwrap
 
                     # Extract full blocks (including signatures)

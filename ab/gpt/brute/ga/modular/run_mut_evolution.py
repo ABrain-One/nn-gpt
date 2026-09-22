@@ -9,7 +9,7 @@ import sys
 import hashlib
 from MutNet_evolvable import Net, SEARCH_SPACE, generate_model_code_string
 from genetic_algorithm import GeneticAlgorithm
-from ab.gpt.util.Eval import Eval
+from ab.gpt.util.eval.Eval import Eval
 
 # --- CONFIGURATION (Defaults) ---
 DEFAULT_POP_SIZE = 60

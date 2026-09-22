@@ -1,0 +1,278 @@
+LEMUR root /a/mm
+2026-07-25 11:00:12,454 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-25 11:00:12,454 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-25 11:00:12,454 - INFO - NumExpr defaulting to 16 threads.
+2026-07-25 11:00:13,983 - WARNING - Skipping import of cpp extensions due to incompatible torch version 2.7.1+cu126 for torchao version 0.15.0+cu126             Please see https://github.com/pytorch/ao/issues/2919 for more info
+[Config] Loaded model_config.json  (context_length=8192)
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/historic_runs/run_2026-07-25_11-00-15 for fresh start.
+[Config] Loaded model_config.json  (context_length=8192)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-07-25 11:00:16,319 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:02<00:08,  2.98s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:06<00:06,  3.35s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:09<00:03,  3.27s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  2.04s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  2.48s/it]
+[LoRA] No adapter directory found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+[Meta] Loaded Baseline Score: 0.00%
+[Meta] Running Baseline Benchmark...
+
+[Meta] Running Benchmark 1/1...
+Skipping import of cpp extensions due to incompatible torch version 2.7.1+cu126 for torchao version 0.15.0+cu126             Please see https://github.com/pytorch/ao/issues/2919 for more info
+LEMUR root /a/mm
+[Init] Loaded 2889 existing checksums from stats/ (skipping duplicates)
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 488, in <module>
+    parser = argparse.ArgumentParser()
+             ^^^^^^^^
+NameError: name 'argparse' is not defined. Did you forget to import 'argparse'?
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+[Meta] Calculated Baseline: 0.0000%
+
+[Meta] Target: 5 EXACT evolutions. No retries.
+
+=== Iteration 1/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+    def _sanitize_chromosome(self, chromosome):
+        sanitized_chromosome = {}
+        for key, value in chromosome.items():
+            if isinstance(value, float):
+                sanitized_chromosome[key] = round(value, 6)
+            elif isinstance(value, int):
+                sanitized_chromosome[key] = value
+            else:
+                sanitized_chromosome[key] = value
+        return sanitized_chromosome
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Skipping import of cpp extensions due to incompatible torch version 2.7.1+cu126 for torchao version 0.15.0+cu126             Please see https://github.com/pytorch/ao/issues/2919 for more info
+LEMUR root /a/mm
+[Init] Loaded 2889 existing checksums from stats/ (skipping duplicates)
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 488, in <module>
+    parser = argparse.ArgumentParser()
+             ^^^^^^^^
+NameError: name 'argparse' is not defined. Did you forget to import 'argparse'?
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] PENALTY: Zero Archive Novelty (Stagnation/Premature Convergence). Penalty: -2.0000
+   [RL] Total Reward: -2.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Iteration 1 failed (regression or syntax error). Code reverted.
+
+=== Iteration 2/5 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        mutated_chromo = chromosome.copy()
+        for gene in self.search_space.keys():
+            if random.random() < self.mutation_rate:
+                possibles = [v for v in self.search_space[gene] if v != mutated_chromo[gene]]
+                mutated_chromo[gene] = random.choice(possibles)
+        
+        # Introduce bold mutations
+        bold_mutation_chance = 0.1
+        if random.random() < bold_mutation_chance:
+            bold_gene = random.choice(list(self.search_space.keys()))
+            bold_possibles = [v for v in self.search_space[bold_gene] if v != mutated_chromo[bold_gene]]
+            mutated_chromo[bold_gene] = random.choice(bold_possibles)
+        
+        return self._sanitize_chromosome(mutated_chromo)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: name 'chromosome' is not defined
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Iteration 2 failed (regression or syntax error). Code reverted.
+
+=== Iteration 3/5 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def select_competitor(self, competitors):
+        k = 3
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Skipping import of cpp extensions due to incompatible torch version 2.7.1+cu126 for torchao version 0.15.0+cu126             Please see https://github.com/pytorch/ao/issues/2919 for more info
+LEMUR root /a/mm
+[Init] Loaded 2889 existing checksums from stats/ (skipping duplicates)
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 488, in <module>
+    parser = argparse.ArgumentParser()
+             ^^^^^^^^
+NameError: name 'argparse' is not defined. Did you forget to import 'argparse'?
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] PENALTY: Zero Archive Novelty (Stagnation/Premature Convergence). Penalty: -2.0000
+   [RL] Total Reward: -2.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Iteration 3 failed (regression or syntax error). Code reverted.
+
+=== Iteration 4/5 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+def _create_random_chromosome(self):
+    return {key: random.choice(values) for key, values in self.search_space.items()}
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Skipping import of cpp extensions due to incompatible torch version 2.7.1+cu126 for torchao version 0.15.0+cu126             Please see https://github.com/pytorch/ao/issues/2919 for more info
+LEMUR root /a/mm
+[Init] Loaded 2889 existing checksums from stats/ (skipping duplicates)
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 488, in <module>
+    parser = argparse.ArgumentParser()
+             ^^^^^^^^
+NameError: name 'argparse' is not defined. Did you forget to import 'argparse'?
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] PENALTY: Zero Archive Novelty (Stagnation/Premature Convergence). Penalty: -2.0000
+   [RL] Total Reward: -2.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Iteration 4 failed (regression or syntax error). Code reverted.
+
+=== Iteration 5/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        else:
+            # Introduce variation by randomly choosing between parent values
+            return random.choice([parent1_value, parent2_value])
+```
+
+This updated `combine_genes` function ensures that there is a higher probability of introducing diversity into the offspring by sometimes choosing from both parents' gene values instead of always taking one. This helps to avoid premature convergence by maintaining a balance between exploration and exploitation during the evolutionary process.
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+
+[Meta] Running Benchmark 1/1...
+Skipping import of cpp extensions due to incompatible torch version 2.7.1+cu126 for torchao version 0.15.0+cu126             Please see https://github.com/pytorch/ao/issues/2919 for more info
+LEMUR root /a/mm
+[Init] Loaded 2889 existing checksums from stats/ (skipping duplicates)
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/run_fractal_evolution_cifar100.py", line 488, in <module>
+    parser = argparse.ArgumentParser()
+             ^^^^^^^^
+NameError: name 'argparse' is not defined. Did you forget to import 'argparse'?
+[Meta] Median Top-3 Quality over 1 runs: 0.0000
+[Meta] GPU cleanup attempted (gc + empty_cache)
+   [RL] PENALTY: Zero Archive Novelty (Stagnation/Premature Convergence). Penalty: -2.0000
+   [RL] Total Reward: -2.0000
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Iteration 5 failed (regression or syntax error). Code reverted.
+
+=== Meta-Evolution Complete: 0 successful evolutions out of 5 strict attempts ===
+
+=== Generating Visualizations ===
+
+============================================================
+  visualize_meta_generation.py — run: 2026-07-25_11-00-15
+  Output root: visualizations/visualization_meta_cifar100_2026-07-25_11-00-15
+============================================================
+
+
+[1/2] Loading LLM evolution logs …
+  [WARN]  No LLM-evolution-logs_2026-07-25_11-00-15.jsonl files found
+      Found 0 log entry(ies).
+
+[2/2] Loading stats records …
+  [WARN]  No ga_evaluations_2026-07-25_11-00-15.jsonl files found
+      Found 0 evaluated model(s).
+
+  Generating GA evolution plots …
+  [WARN]  No grouped records found — skipping generation_accuracy.png
+  [WARN]  No records found — skipping time_per_generation.png
+  [WARN]  No records found — skipping population_diversity.png
+  [WARN]  No records found — skipping best_vs_avg_accuracy.png
+  Generating fine-tuning plots …
+  [WARN]  No LLM log entries — skipping reward_over_iterations.png
+  [WARN]  No LLM log entries — skipping score_improvement.png
+  [WARN]  No LLM log entries — skipping meta_peak_accuracy.png
+  [WARN]  No LLM log entries — skipping llm_success_rates.png
+
+============================================================
+  Saved 0 plot(s):
+    (none — check warnings above)
+============================================================
+

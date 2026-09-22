@@ -1,0 +1,2538 @@
+LEMUR root /a/mm
+2026-07-13 20:44:14,217 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-07-13 20:44:14,217 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-07-13 20:44:14,217 - INFO - NumExpr defaulting to 16 threads.
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/ga_history_backup_cifar100/historic_runs/run_2026-07-13_20-44-16 for fresh start.
+[Config] Loaded model_config.json  (context_length=4096)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-07-13 20:44:18,031 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:02<00:08,  2.94s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:06<00:06,  3.23s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:09<00:03,  3.13s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  1.96s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:09<00:00,  2.39s/it]
+[LoRA] No adapter directory found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+
+[Meta] Target: 10 SUCCESSFUL evolutions (will retry up to 5 times per component)
+
+=== Attempt 1 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.90
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and diversify the population while focusing on robust architectures, I'll modify the `combine_genes` method as follows:
+
+1. **Crossover with Inversion**: Introduce an inversion mechanism where, instead of simply combining genes linearly, we invert parts of the genes to increase diversity.
+2. **Hybridization**: Combine elements of both parent genes more intelligently to create a balanced offspring.
+3. **Stochastic Selection**: Randomly decide whether to inherit from one parent or create a hybrid, ensuring that the offspring is neither too similar to either parent nor identical.
+
+This approach aims to balance exploitation and exploration, leveraging the strengths of both parent architectures while introducing sufficient diversity to escape local optima.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Randomly decide whether to inherit from one parent or create a hybrid
+        if random.random() < 0.5:
+            # Hybridize the genes
+            hybrid_value = (parent1_value + parent2_value) / 2
+            # Ensure the hybrid value is within the valid range for the gene
+            hybrid_value = min(max(hybrid_value, self.search_space[gene_name][0]), self.search_space[gene_name][-1])
+            return hybrid_value
+        else:
+            # Invert part of the gene
+            inverted_value = parent1_value * (-1) + self.search_space[gene_name][-1] + self.search_space[gene_name][0]
+            # Ensure the inverted value is within the valid range for the gene
+            inverted_value = min(max(inverted_value, self.search_space[gene_name][0]), self.search_space[gene_name][-1])
+            return inverted_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 1 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 2 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.84
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the quality and diversity of the generated architectures, we need to ensure that the `combine_genes` method not only preserves the best parts of both parent chromosomes but also introduces enough variability to explore new areas of the search space. Here's a detailed plan:
+
+1. **Hybridization**: Combine elements from both parents to form a new gene value.
+2. **Mutation**: Introduce small perturbations to the hybridized gene value to encourage exploration.
+3. **Clipping**: Ensure the new gene value remains within the valid range defined by the search space.
+4. **Stochastic Selection**: With a small probability, select either parent's value to introduce further diversity.
+
+By implementing these steps, we aim to create more diverse and potentially better-performing architectures while ensuring they still adhere to the constraints of the search space.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Define the probability of selecting a parent value instead of creating a hybrid
+        mutation_rate = 0.1
+        
+        if random.random() < mutation_rate:
+            # Select either parent's value randomly
+            return random.choice([parent1_value, parent2_value])
+        
+        # Create a hybrid value by averaging the two parent values
+        hybrid_value = (parent1_value + parent2_value) / 2
+        
+        # Get the valid range for the gene
+        valid_range = self.search_space[gene_name]
+        min_val, max_val = valid_range[0], valid_range[-1]
+        
+        # Clip the hybrid value to ensure it stays within the valid range
+        clipped_hybrid_value = min(max(hybrid_value, min_val), max_val)
+        
+        return clipped_hybrid_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 2 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 3 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.79
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the quality-diversity genetic algorithm for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-100, we need to develop a sophisticated `combine_genes` function that incorporates diverse strategies to explore the search space effectively. The goal is to balance exploration and exploitation while ensuring that the resulting architectures are robust and converge quickly during a single epoch.
+
+#### Key Strategies:
+1. **Hybridization**: Combine genes from both parents to create a more innovative architecture.
+2. **Inversion**: Introduce novelty by inverting parts of the genes.
+3. **Momentum Tracking**: Use historical data to guide the next generation towards previously promising areas.
+4. **Active Stochastic Depth**: Focus on architectures that can survive heavy path-dropping during the short 1-epoch evaluation.
+
+#### Implementation Plan:
+1. **Hybridization**: Average the gene values from both parents but clip the result to stay within the valid range.
+2. **Inversion**: Invert the gene value by adding its negative counterpart and then clamping it to the valid range.
+3. **Momentum Tracking**: Use a moving average of the best gene values observed so far to guide the next generation.
+4. **Active Stochastic Depth**: Ensure that the dropout probability remains high to make the architecture robust against heavy path-dropping.
+
+By combining these strategies, we aim to generate a diverse set of architectures that can potentially break the global SOTA peak accuracy and discover novel, high-performing architectures.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Define the probability of selecting a parent value instead of creating a hybrid
+        mutation_rate = 0.1
+        
+        # Hybridization: Combine genes from both parents
+        hybrid_value = (parent1_value + parent2_value) / 2
+        
+        # Inversion: Introduce novelty by inverting parts of the gene
+        inverted_value = parent1_value * (-1) + self.search_space[gene_name][-1] + self.search_space[gene_name][0]
+        
+        # Momentum Tracking: Use historical data to guide the next generation
+        if hasattr(self, 'best_genes') and gene_name in self.best_genes:
+            momentum_value = self.best_genes[gene_name] * 0.9 + hybrid_value * 0.1
+        
+        # Active Stochastic Depth: Ensure dropout probability remains high
+        if gene_name == 'dropout_prob':
+            if hybrid_value < 0.25:
+                hybrid_value += 0.05
+            if inverted_value < 0.25:
+                inverted_value += 0.05
+        
+        # Choose the best value based on the mutation rate
+        if random.random() < mutation_rate:
+            if random.random() < 0.5:
+                return parent1_value
+            else:
+                return parent2_value
+        elif random.random() < mutation_rate:
+            return momentum_value
+        else:
+            return min(max(hybrid_value, self.search_space[gene_name][0]), self.search_space[gene_name][-1])
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 3 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 4 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.73
+--- [DEBUG] Raw Response ---
+<thinking>
+To break the Global SOTA peak accuracy and discover novel, high-performing architectures, we need to introduce more diversity and exploration in our evolutionary process. Specifically, for `combine_genes`, we should focus on creating hybrid architectures that blend the strengths of both parents while ensuring they remain within the valid gene range. We'll also incorporate momentum tracking to leverage historical data and encourage long-term stability. Additionally, we'll introduce a higher chance of selecting parent values to maintain robustness during the short 1-epoch evaluations.
+
+### Plan:
+1. **Hybridization**: Blend genes from both parents but ensure they stay within the valid range.
+2. **Momentum Tracking**: Use historical data to guide the next generation, especially for dropout probabilities.
+3. **Parent Value Selection**: Increase the probability of selecting parent values to ensure robust architectures.
+
+### Key Changes:
+- **Hybridization**: Calculate a weighted average of the parent values.
+- **Momentum Tracking**: Adjust the hybrid value based on historical data if available.
+- **Parent Value Selection**: Increase the mutation rate for parent value selection.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Define the probability of selecting a parent value instead of creating a hybrid
+        mutation_rate = 0.2
+        
+        # Hybridization: Combine genes from both parents
+        hybrid_value = (parent1_value + parent2_value) / 2
+        
+        # Momentum Tracking: Use historical data to guide the next generation
+        if hasattr(self, 'best_genes') and gene_name in self.best_genes:
+            momentum_value = self.best_genes[gene_name] * 0.9 + hybrid_value * 0.1
+        
+        # Active Stochastic Depth: Ensure dropout probability remains high
+        if gene_name == 'dropout_prob':
+            if hybrid_value < 0.25:
+                hybrid_value += 0.05
+            if inverted_value < 0.25:
+                inverted_value += 0.05
+        
+        # Choose the best value based on the mutation rate
+        if random.random() < mutation_rate:
+            if random.random() < 0.5:
+                return parent1_value
+            else:
+                return parent2_value
+        elif random.random() < mutation_rate:
+            return momentum_value
+        else:
+            return min(max(hybrid_value, self.search_space[gene_name][0]), self.search_space[gene_name][-1])
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 4 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 5 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.68
+--- [DEBUG] Raw Response ---
+<thinking>
+To improve the `combine_genes` function, we need to focus on diversifying the offspring while maintaining the potential for improvement. Given that we are working with a discrete search space and aiming for a fast-converging architecture, we should avoid simple averaging and instead use more sophisticated methods like hybridization, inversion, and momentum tracking.
+
+1. **Hybridization**: Combine elements from both parents to create a new value.
+2. **Inversion**: Invert parts of the gene to introduce novelty.
+3. **Momentum Tracking**: Use historical data to guide the next generation towards better solutions.
+4. **Active Stochastic Depth**: Ensure that the dropout probability remains high to maintain robustness during short evaluations.
+
+By combining these techniques, we can create offspring that are more likely to explore uncharted areas of the search space and potentially discover novel, high-performing architectures.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Define the probability of selecting a parent value instead of creating a hybrid
+        mutation_rate = 0.2
+        
+        # Hybridization: Combine genes from both parents
+        hybrid_value = (parent1_value + parent2_value) / 2
+        
+        # Inversion: Introduce novelty by inverting parts of the gene
+        inverted_value = parent1_value * (-1) + self.search_space[gene_name][-1] + self.search_space[gene_name][0]
+        
+        # Momentum Tracking: Use historical data to guide the next generation
+        if hasattr(self, 'best_genes') and gene_name in self.best_genes:
+            momentum_value = self.best_genes[gene_name] * 0.9 + hybrid_value * 0.1
+        
+        # Active Stochastic Depth: Ensure dropout probability remains high
+        if gene_name == 'dropout_prob':
+            if hybrid_value < 0.25:
+                hybrid_value += 0.05
+            if inverted_value < 0.25:
+                inverted_value += 0.05
+        
+        # Choose the best value based on the mutation rate
+        if random.random() < mutation_rate:
+            if random.random() < 0.5:
+                return parent1_value
+            else:
+                return parent2_value
+        elif random.random() < mutation_rate:
+            return momentum_value
+        else:
+            return min(max(hybrid_value, self.search_space[gene_name][0]), self.search_space[gene_name][-1])
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 5 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for combine_genes. Skipping to next component.
+
+=== Attempt 6 | Successes: 0/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.62
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and ensure the discovery of diverse and high-performing architectures, we need to modify the `mutate_gene` method. The current implementation simply randomly selects a value from the possible values, which can lead to premature convergence. Instead, we should introduce more sophisticated mutation strategies that favor novel architectures and maintain robustness.
+
+**Strategies to consider:**
+1. **Inversion**: Randomly invert parts of the gene to introduce novelty.
+2. **Momentum Tracking**: Use historical data to guide the next generation towards better solutions.
+3. **Active Stochastic Depth**: Ensure that dropout probabilities remain high to maintain robustness during short 1-epoch evaluations.
+
+By combining these strategies, we can create more diverse and adaptive mutations that help the genetic algorithm explore the search space effectively.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        # Define the probability of applying each mutation strategy
+        inversion_rate = 0.1
+        momentum_rate = 0.2
+        stochastic_depth_rate = 0.1
+        
+        # Apply inversion mutation
+        if random.random() < inversion_rate:
+            inverted_value = current_value * (-1) + possible_values[-1] + possible_values[0]
+            if inverted_value in possible_values:
+                return inverted_value
+        
+        # Apply momentum tracking mutation
+        if random.random() < momentum_rate:
+            if hasattr(self, 'best_genes') and gene_name in self.best_genes:
+                momentum_value = self.best_genes[gene_name] * 0.9 + current_value * 0.1
+                if momentum_value in possible_values:
+                    return momentum_value
+        
+        # Apply active stochastic depth mutation
+        if random.random() < stochastic_depth_rate and gene_name == 'dropout_prob':
+            if current_value < 0.25:
+                new_value = current_value + 0.05
+                if new_value in possible_values:
+                    return new_value
+        
+        # If no mutation is applied, return a random choice from possible values
+        return random.choice(possible_values)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 6 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 7 | Successes: 0/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.57
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and avoid premature convergence, we will implement a more sophisticated mutation strategy that incorporates inversion, momentum tracking, and active stochastic depth adjustments. This approach aims to introduce diversity while maintaining a focus on improving performance within the constraints of the given search space.
+
+1. **Inversion Mutation**: Randomly invert parts of the gene to explore novel configurations.
+2. **Momentum Tracking**: Use historical data to guide the next generation towards promising regions of the search space.
+3. **Active Stochastic Depth Adjustment**: Ensure that dropout probabilities remain high to maintain robustness during short evaluations.
+
+By combining these techniques, we can generate more diverse and potentially higher-performing architectures.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        # Define the probability of applying each mutation strategy
+        inversion_rate = 0.1
+        momentum_rate = 0.2
+        stochastic_depth_rate = 0.1
+        
+        # Apply inversion mutation
+        if random.random() < inversion_rate:
+            inverted_value = current_value * (-1) + possible_values[-1] + possible_values[0]
+            if inverted_value in possible_values:
+                return inverted_value
+        
+        # Apply momentum tracking mutation
+        if random.random() < momentum_rate:
+            if hasattr(self, 'best_genes') and gene_name in self.best_genes:
+                momentum_value = self.best_genes[gene_name] * 0.9 + current_value * 0.1
+                if momentum_value in possible_values:
+                    return momentum_value
+        
+        # Apply active stochastic depth mutation
+        if random.random() < stochastic_depth_rate and gene_name == 'dropout_prob':
+            if current_value < 0.25:
+                new_value = current_value + 0.05
+                if new_value in possible_values:
+                    return new_value
+        
+        # If no mutation is applied, return a random choice from possible values
+        return random.choice(possible_values)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 7 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 8 | Successes: 0/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.51
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the mutation strategy, we need to introduce more diversity while ensuring that the mutations remain within the defined search space. We can achieve this by combining several mutation techniques:
+
+1. **Inversion Mutation**: This technique flips the sign of the current value and adjusts it to stay within the bounds of the possible values.
+2. **Momentum Tracking Mutation**: This technique uses a historical best value to guide the mutation towards better performing solutions.
+3. **Active Stochastic Depth Mutation**: Since the dropout probability should remain high, we ensure that any mutation does not reduce the dropout probability below a certain threshold.
+
+By combining these techniques, we can ensure that the mutations are both novel and effective in improving the performance of the neural network.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        # Define the probability of applying each mutation strategy
+        inversion_rate = 0.1
+        momentum_rate = 0.2
+        stochastic_depth_rate = 0.1
+        
+        # Apply inversion mutation
+        if random.random() < inversion_rate:
+            inverted_value = current_value * (-1) + possible_values[-1] + possible_values[0]
+            if inverted_value in possible_values:
+                return inverted_value
+        
+        # Apply momentum tracking mutation
+        if random.random() < momentum_rate:
+            if hasattr(self, 'best_genes') and gene_name in self.best_genes:
+                momentum_value = self.best_genes[gene_name] * 0.9 + current_value * 0.1
+                if momentum_value in possible_values:
+                    return momentum_value
+        
+        # Apply active stochastic depth mutation
+        if random.random() < stochastic_depth_rate and gene_name == 'dropout_prob':
+            if current_value < 0.25:
+                new_value = current_value + 0.05
+                if new_value in possible_values:
+                    return new_value
+        
+        # If no mutation is applied, return a random choice from possible values
+        return random.choice(possible_values)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 8 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 9 | Successes: 0/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.46
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the genetic algorithm and break through the global SOTA peak accuracy, we need to introduce more sophisticated mutation strategies that promote diversity and exploration. Here's our plan:
+
+1. **Inversion Mutation**: This will help in exploring the opposite side of the current value within the possible range.
+2. **Momentum Tracking Mutation**: This will leverage previously observed good genes to guide future mutations towards better regions.
+3. **Active Stochastic Depth Mutation**: Since dropout probabilities should be low to ensure robustness, we'll increase these probabilities slightly but not excessively.
+
+We'll also ensure that the mutation rate is higher for genes that are critical for performance, such as `dropout_prob`, `lr`, and `momentum`.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        # Define the probability of applying each mutation strategy
+        inversion_rate = 0.1
+        momentum_rate = 0.2
+        stochastic_depth_rate = 0.1
+        
+        # Apply inversion mutation
+        if random.random() < inversion_rate:
+            inverted_value = current_value * (-1) + possible_values[-1] + possible_values[0]
+            if inverted_value in possible_values:
+                return inverted_value
+        
+        # Apply momentum tracking mutation
+        if random.random() < momentum_rate:
+            if hasattr(self, 'best_genes') and gene_name in self.best_genes:
+                momentum_value = self.best_genes[gene_name] * 0.9 + current_value * 0.1
+                if momentum_value in possible_values:
+                    return momentum_value
+        
+        # Apply active stochastic depth mutation
+        if random.random() < stochastic_depth_rate and gene_name == 'dropout_prob':
+            if current_value < 0.25:
+                new_value = current_value + 0.05
+                if new_value in possible_values:
+                    return new_value
+        
+        # If no mutation is applied, return a random choice from possible values
+        return random.choice(possible_values)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 9 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 10 | Successes: 0/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and increase diversity, we need to introduce more sophisticated mutation strategies. Specifically, we can apply inversion mutations, momentum-based updates, and stochastic depth adjustments. These strategies will help in generating new architectures that are diverse and potentially better suited for the given problem.
+
+1. **Inversion Mutation**: This will flip the sign of the current value and adjust it within the bounds of the possible values.
+2. **Momentum-Based Update**: This will update the value based on a weighted average of the best observed value and the current value.
+3. **Stochastic Depth Adjustment**: This will randomly adjust the dropout probability to encourage exploration of architectures with varying levels of stochasticity.
+
+By combining these strategies, we can ensure that the mutation process is both explorative and exploitative, leading to a wider range of architectures being explored.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        # Define the probability of applying each mutation strategy
+        inversion_rate = 0.1
+        momentum_rate = 0.2
+        stochastic_depth_rate = 0.1
+        
+        # Apply inversion mutation
+        if random.random() < inversion_rate:
+            inverted_value = current_value * (-1) + possible_values[-1] + possible_values[0]
+            if inverted_value in possible_values:
+                return inverted_value
+        
+        # Apply momentum tracking mutation
+        if random.random() < momentum_rate:
+            if hasattr(self, 'best_genes') and gene_name in self.best_genes:
+                momentum_value = self.best_genes[gene_name] * 0.9 + current_value * 0.1
+                if momentum_value in possible_values:
+                    return momentum_value
+        
+        # Apply active stochastic depth mutation
+        if random.random() < stochastic_depth_rate and gene_name == 'dropout_prob':
+            if current_value < 0.25:
+                new_value = current_value + 0.05
+                if new_value in possible_values:
+                    return new_value
+        
+        # If no mutation is applied, return a random choice from possible values
+        return random.choice(possible_values)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 10 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for mutate_gene. Skipping to next component.
+
+=== Attempt 11 | Successes: 0/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and avoid premature convergence, we need to introduce more diversity in our selection process. Instead of simply selecting the competitor with the highest fitness, we can consider a more nuanced approach that balances exploitation and exploration. Here's a plan:
+
+1. **Fitness-Based Selection**: We will still prioritize competitors based on their fitness scores.
+2. **Random Sampling**: We will also randomly sample some competitors to ensure that we explore different parts of the search space.
+3. **Hybrid Approach**: By combining both approaches, we aim to find better-performing architectures while also populating empty cells in the MAP-Elites Behavioral Archive.
+
+This hybrid approach should help us break the global SOTA peak accuracy and discover novel, high-performing architectures.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        if not competitors:
+            return None
+        
+        # Calculate the number of competitors to sample randomly
+        num_random_samples = int(len(competitors) * 0.1)
+        
+        # Select the best competitor based on fitness
+        best_competitor = max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+        
+        # Randomly sample other competitors
+        random_competitors = random.sample(competitors, min(num_random_samples, len(competitors)))
+        
+        # Combine the best competitor with the sampled competitors
+        combined_competitors = [best_competitor] + random_competitors
+        
+        # Select the final competitor based on fitness
+        return max(combined_competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 11 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 12 | Successes: 0/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and avoid premature convergence, we need to modify the `select_competitor` method. Instead of simply selecting the competitor with the highest fitness, we should sample heavily from the archive values along with the population. This will introduce more diversity and encourage the algorithm to explore uncharted areas of the search space.
+
+We can achieve this by combining the competitors from the archive and the population, then selecting the best one based on fitness. If the archive is empty, we can fall back to selecting from the population.
+
+Here's the plan:
+1. Sample a subset of competitors from the archive.
+2. Sample a subset of competitors from the population.
+3. Combine these samples.
+4. Select the best competitor based on fitness.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        if not competitors:
+            return None
+        
+        # Number of competitors to sample from the archive and population
+        num_archive_samples = int(len(competitors) * 0.5)
+        num_population_samples = int(len(competitors) * 0.5)
+        
+        # Ensure we don't sample more than available
+        num_archive_samples = min(num_archive_samples, len(self.archive.values()))
+        num_population_samples = min(num_population_samples, len(self.population))
+        
+        # Sample competitors from the archive and population
+        archive_competitors = random.sample(list(self.archive.values()), num_archive_samples)
+        population_competitors = random.sample(self.population, num_population_samples)
+        
+        # Combine the samples
+        combined_competitors = archive_competitors + population_competitors
+        
+        # Select the best competitor based on fitness
+        return max(combined_competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 12 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 13 | Successes: 0/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and avoid premature convergence, I will modify the `select_competitor` method to sample heavily from both the archive and the population. This ensures that the GA can discover novel, high-performing architectures even if they are not immediately competitive but could potentially lead to better solutions through further evolution. Additionally, I will introduce a mechanism to balance the selection between the archive and the population, ensuring that the GA does not get stuck in local optima.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        if not competitors:
+            return None
+        
+        # Number of competitors to sample from the archive and population
+        num_archive_samples = int(len(competitors) * 0.5)
+        num_population_samples = int(len(competitors) * 0.5)
+        
+        # Ensure we don't sample more than available
+        num_archive_samples = min(num_archive_samples, len(self.archive.values()))
+        num_population_samples = min(num_population_samples, len(self.population))
+        
+        # Sample competitors from the archive and population
+        archive_competitors = random.sample(list(self.archive.values()), num_archive_samples)
+        population_competitors = random.sample(self.population, num_population_samples)
+        
+        # Combine the samples
+        combined_competitors = archive_competitors + population_competitors
+        
+        # Select the best competitor based on fitness
+        return max(combined_competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 13 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 14 | Successes: 0/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (MAP-Elites) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-100, we need to focus on selecting diverse and competitive competitors. The current implementation simply selects the best competitor based on fitness, which may lead to premature convergence. Instead, we will modify the `select_competitor` method to sample from both the archive and the population, ensuring a broader exploration of the search space. This approach will help in discovering novel, high-performing architectures and expanding the frontier of what the GA has seen.
+
+We will also introduce a mechanism to favor robust architectures capable of surviving heavy path-dropping during the short 1-epoch evaluation. This can be achieved by incorporating dropout probability and other related parameters into the selection process.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        if not competitors:
+            return None
+        
+        # Number of competitors to sample from the archive and population
+        num_archive_samples = int(len(competitors) * 0.5)
+        num_population_samples = int(len(competitors) * 0.5)
+        
+        # Ensure we don't sample more than available
+        num_archive_samples = min(num_archive_samples, len(self.archive.values()))
+        num_population_samples = min(num_population_samples, len(self.population))
+        
+        # Sample competitors from the archive and population
+        archive_competitors = random.sample(list(self.archive.values()), num_archive_samples)
+        population_competitors = random.sample(self.population, num_population_samples)
+        
+        # Combine the samples
+        combined_competitors = archive_competitors + population_competitors
+        
+        # Sort competitors by their fitness in descending order
+        sorted_competitors = sorted(combined_competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1, reverse=True)
+        
+        # Select the top competitor
+        selected_competitor = sorted_competitors[0]
+        
+        # Favor robust architectures by checking dropout probability
+        if selected_competitor['chromo']['dropout_prob'] > 0.2:
+            return selected_competitor
+        
+        # If no robust architecture is found, select the best competitor
+        return max(sorted_competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 14 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 15 | Successes: 0/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and avoid premature convergence, I will modify the `select_competitor` method to sample heavily from both the archive and the population. This strategy ensures that the algorithm can discover novel architectures while also leveraging existing knowledge. Additionally, I will introduce a mechanism to favor robust architectures, which are crucial for survival under heavy path-dropping during the short 1-epoch evaluations.
+
+**Steps:**
+1. **Sample from Archive and Population:** Randomly sample a subset of competitors from both the archive and the population.
+2. **Combine Samples:** Merge the sampled competitors into a single list.
+3. **Sort by Fitness:** Sort the combined list by fitness in descending order.
+4. **Select Top Competitor:** Select the top competitor from the sorted list.
+5. **Favor Robust Architectures:** Check if the selected competitor's dropout probability is greater than 0.2. If so, return it; otherwise, return the best competitor from the sorted list.
+
+This approach ensures that the algorithm explores diverse architectures while prioritizing robustness, thereby expanding the frontier of what the GA has seen.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        if not competitors:
+            return None
+        
+        # Number of competitors to sample from the archive and population
+        num_archive_samples = int(len(competitors) * 0.5)
+        num_population_samples = int(len(competitors) * 0.5)
+        
+        # Ensure we don't sample more than available
+        num_archive_samples = min(num_archive_samples, len(self.archive.values()))
+        num_population_samples = min(num_population_samples, len(self.population))
+        
+        # Sample competitors from the archive and population
+        archive_competitors = random.sample(list(self.archive.values()), num_archive_samples)
+        population_competitors = random.sample(self.population, num_population_samples)
+        
+        # Combine the samples
+        combined_competitors = archive_competitors + population_competitors
+        
+        # Sort competitors by their fitness in descending order
+        sorted_competitors = sorted(combined_competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1, reverse=True)
+        
+        # Select the top competitor
+        selected_competitor = sorted_competitors[0]
+        
+        # Favor robust architectures by checking dropout probability
+        if selected_competitor['chromo']['dropout_prob'] > 0.2:
+            return selected_competitor
+        
+        # If no robust architecture is found, select the best competitor
+        return max(sorted_competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 15 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for select_competitor. Skipping to next component.
+
+=== Attempt 16 | Successes: 0/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and ensure diversity, I will introduce a strategy that combines elements from both the archive and the population. This approach aims to balance exploitation of known good solutions with exploration of uncharted territories. Specifically, I will use a weighted sampling technique where recent generations contribute more to the new chromosome, ensuring that the population remains diverse while also leveraging promising areas identified by the archive.
+
+For each gene, I will randomly choose between two options:
+1. A value sampled from the current population.
+2. A value sampled from the archive.
+
+The choice will be biased towards the population, but with a small chance of selecting from the archive to encourage exploration. This method helps in maintaining a balance between exploitation and exploration, which is crucial for breaking through local optima and discovering novel architectures.
+</thinking>
+
+```python
+    def _create_random_chromosome(self):
+        chromosome = {}
+        for gene_name, values in self.search_space.items():
+            if random.random() < 0.7:  # Bias towards the population
+                chromosome[gene_name] = random.choice([p[gene_name] for p in self.population])
+            else:  # Sample from the archive
+                chromosome[gene_name] = random.choice(list(self.archive.values())[0][gene_name])
+        return chromosome
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 16 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 17 | Successes: 0/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of diverse architectures, we need to ensure that the randomly created chromosomes are not only within the bounds of the search space but also introduce some level of novelty and diversity. This can be achieved by combining elements from both the population and the archive, while ensuring that the resulting chromosome is still valid and within the specified search space.
+
+We will achieve this by:
+1. Randomly selecting a fraction of genes from the population.
+2. Randomly selecting a fraction of genes from the archive.
+3. Combining these two sets of genes to form the new chromosome.
+4. Ensuring that the resulting chromosome does not exceed the maximum number of columns allowed.
+
+By doing so, we can ensure that the new chromosomes are both diverse and representative of the population and archive, which should help in expanding the frontier of the MAP-Elites archive.
+</thinking>
+
+```python
+    def _create_random_chromosome(self):
+        chromosome = {}
+        population_fraction = 0.5
+        archive_fraction = 0.5
+        
+        # Calculate the number of genes to sample from each source
+        num_from_population = int(len(self.search_space) * population_fraction)
+        num_from_archive = int(len(self.search_space) * archive_fraction)
+        
+        # Randomly select genes from the population
+        population_genes = random.sample(self.population, min(num_from_population, len(self.population)))
+        for gene in population_genes:
+            for key, value in gene.items():
+                if key not in chromosome:
+                    chromosome[key] = value
+        
+        # Randomly select genes from the archive
+        archive_genes = random.sample(list(self.archive.values()), min(num_from_archive, len(self.archive)))
+        for gene in archive_genes:
+            for key, value in gene.items():
+                if key not in chromosome:
+                    chromosome[key] = value
+        
+        # Ensure the number of columns does not exceed the maximum allowed
+        if 'n_columns' in chromosome:
+            chromosome['n_columns'] = min(chromosome['n_columns'], max(self.search_space['n_columns']))
+        
+        return chromosome
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 17 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 18 | Successes: 0/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and ensure diversity, I will implement a strategy that combines elements from both the population and the archive. This approach aims to balance exploitation of known good solutions with exploration of uncharted territories. By giving higher priority to genes sampled from the population, we can leverage existing knowledge while still introducing enough diversity through occasional sampling from the archive.
+
+Additionally, I will introduce a mechanism to favor architectures with lower dropout probabilities, as these tend to generalize better and are more likely to perform well under heavy path-dropping during the short 1-epoch evaluations.
+</thinking>
+
+```python
+    def _create_random_chromosome(self):
+        chromosome = {}
+        population_fraction = 0.7
+        archive_fraction = 0.3
+        
+        # Calculate the number of genes to sample from each source
+        num_from_population = int(len(self.search_space) * population_fraction)
+        num_from_archive = int(len(self.search_space) * archive_fraction)
+        
+        # Randomly select genes from the population
+        population_genes = random.sample(self.population, min(num_from_population, len(self.population)))
+        for gene in population_genes:
+            for key, value in gene.items():
+                if key not in chromosome:
+                    chromosome[key] = value
+        
+        # Randomly select genes from the archive
+        archive_genes = random.sample(list(self.archive.values()), min(num_from_archive, len(self.archive)))
+        for gene in archive_genes:
+            for key, value in gene.items():
+                if key not in chromosome:
+                    chromosome[key] = value
+        
+        # Ensure the number of columns does not exceed the maximum allowed
+        if 'n_columns' in chromosome:
+            chromosome['n_columns'] = min(chromosome['n_columns'], max(self.search_space['n_columns']))
+        
+        # Favor architectures with lower dropout probabilities
+        if 'dropout_prob' in chromosome:
+            chromosome['dropout_prob'] = min(chromosome['dropout_prob'], 0.2)
+        
+        return chromosome
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 18 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 19 | Successes: 0/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and diversify the population, we need to ensure that the newly created chromosomes are not only random but also introduce some strategic diversity. Here's our plan:
+
+1. **Random Sampling**: We'll start by randomly sampling genes from both the population and the archive.
+2. **Strategic Selection**: We'll give more weight to genes sampled from the archive, especially those that have higher fitness scores, to encourage exploitation of known good solutions.
+3. **Diversity Injection**: We'll introduce occasional mutations to ensure that the population remains diverse and doesn't converge prematurely.
+4. **Bias Towards High-Fitness Parents**: We'll preferentially select genes from parents with higher fitness scores to guide the evolution towards better solutions.
+
+By combining these strategies, we aim to balance exploration and exploitation while ensuring that the population remains diverse and capable of discovering new, high-performing architectures.
+</thinking>
+
+```python
+    def _create_random_chromosome(self):
+        chromosome = {}
+        population_fraction = 0.6
+        archive_fraction = 0.4
+        
+        # Calculate the number of genes to sample from each source
+        num_from_population = int(len(self.search_space) * population_fraction)
+        num_from_archive = int(len(self.search_space) * archive_fraction)
+        
+        # Randomly select genes from the population
+        population_genes = random.sample(self.population, min(num_from_population, len(self.population)))
+        for gene in population_genes:
+            for key, value in gene.items():
+                if key not in chromosome:
+                    chromosome[key] = value
+        
+        # Randomly select genes from the archive
+        archive_genes = random.sample(list(self.archive.values()), min(num_from_archive, len(self.archive)))
+        for gene in archive_genes:
+            for key, value in gene.items():
+                if key not in chromosome:
+                    chromosome[key] = value
+        
+        # Ensure the number of columns does not exceed the maximum allowed
+        if 'n_columns' in chromosome:
+            chromosome['n_columns'] = min(chromosome['n_columns'], max(self.search_space['n_columns']))
+        
+        # Introduce occasional mutations to maintain diversity
+        for gene in self.search_space.keys():
+            if random.random() < 0.1:
+                possibles = [v for v in self.search_space[gene] if v != chromosome[gene]]
+                chromosome[gene] = self.mutate_gene(gene, chromosome[gene], possibles)
+        
+        return chromosome
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 19 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 20 | Successes: 0/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and ensure diversity, we need to carefully balance the contribution from both the population and the archive. By giving more weight to the archive, we can introduce novel architectures that might not have been explored before. Additionally, we should introduce some controlled randomness to avoid getting stuck in local optima.
+
+We will use a weighted sampling strategy where the probability of selecting a gene from the archive is higher than from the population. This ensures that the archive contributes more to the new chromosome, promoting diversity. We will also introduce occasional mutations to further explore the search space.
+
+Steps:
+1. Define the fractions of genes to sample from the population and the archive.
+2. Sample genes from the population and the archive based on their weights.
+3. Combine the sampled genes into a new chromosome.
+4. Introduce mutations to maintain diversity.
+</thinking>
+
+```python
+    def _create_random_chromosome(self):
+        chromosome = {}
+        population_fraction = 0.3
+        archive_fraction = 0.7
+        
+        # Calculate the number of genes to sample from each source
+        num_from_population = int(len(self.search_space) * population_fraction)
+        num_from_archive = int(len(self.search_space) * archive_fraction)
+        
+        # Randomly select genes from the population
+        population_genes = random.sample(self.population, min(num_from_population, len(self.population)))
+        for gene in population_genes:
+            for key, value in gene.items():
+                if key not in chromosome:
+                    chromosome[key] = value
+        
+        # Randomly select genes from the archive
+        archive_genes = random.sample(list(self.archive.values()), min(num_from_archive, len(self.archive)))
+        for gene in archive_genes:
+            for key, value in gene.items():
+                if key not in chromosome:
+                    chromosome[key] = value
+        
+        # Ensure the number of columns does not exceed the maximum allowed
+        if 'n_columns' in chromosome:
+            chromosome['n_columns'] = min(chromosome['n_columns'], max(self.search_space['n_columns']))
+        
+        # Introduce occasional mutations to maintain diversity
+        for gene in self.search_space.keys():
+            if random.random() < 0.1:
+                possibles = [v for v in self.search_space[gene] if v != chromosome[gene]]
+                chromosome[gene] = self.mutate_gene(gene, chromosome[gene], possibles)
+        
+        return chromosome
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 20 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for _create_random_chromosome. Skipping to next component.
+
+=== Attempt 21 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (MAP-Elites) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-100, we need to focus on strategies that promote both high accuracy and diversity. Specifically, we aim to break the global SOTA peak accuracy and discover novel, high-performing architectures.
+
+Given the constraints, we need to ensure that our `combine_genes` function is designed to favor robust architectures capable of surviving heavy path-dropping during the short 1-epoch evaluation. This involves combining genes in a way that maintains diversity while also leveraging the best attributes from both parents.
+
+We can achieve this by implementing a hybrid approach that combines the genes from both parents, but with a twist. Instead of simply taking the value from one parent at a time, we can use a weighted average or a more sophisticated combination strategy that balances the contributions from both parents. Additionally, we can introduce some randomness to ensure that the offspring remains diverse and avoids premature convergence.
+
+Let's define two constants: `ALPHA` and `BETA`, which control the weighting of the parent genes. By adjusting these values, we can experimentally determine the optimal balance between exploration and exploitation.
+
+Finally, we need to ensure that the combined gene values are snapped to the nearest valid value in the search space, as per the hard constraint.
+
+Here's the updated `combine_genes` function:
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        ALPHA = 0.7  # Weighting factor for parent 1
+        BETA = 0.3   # Weighting factor for parent 2
+        
+        # Combine genes using a weighted average
+        combined_value = ALPHA * parent1_value + BETA * parent2_value
+        
+        # Snap the combined value to the nearest valid value in the search space
+        valid_values = self.search_space[gene_name]
+        if not valid_values:
+            return combined_value
+        
+        # Find the closest valid value to the combined value
+        closest_value = min(valid_values, key=lambda x: abs(x - combined_value))
+        
+        return closest_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 21 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 22 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and break through the global SOTA peak accuracy, we need to introduce more diversity and creativity in combining genes from parent chromosomes. Instead of simply inheriting genes from one parent or the other, we can use a weighted average approach to blend the two sets of parameters. This method ensures that the offspring inherits traits from both parents while introducing some randomness to encourage exploration.
+
+We will use a weighting factor to determine how much influence each parent has on the final gene value. By adjusting these weights, we can control the balance between exploitation (favoring the parent with higher performance) and exploration (incorporating diverse traits).
+
+Additionally, we will ensure that the resulting gene value remains within the valid range defined by the search space. This prevents the algorithm from generating invalid or nonsensical configurations that could hinder its performance.
+
+By implementing this strategy, we aim to discover novel, high-performing architectures that populate empty cells in the MAP-Elites Behavioral Archive and potentially break the global SOTA peak accuracy.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        ALPHA = 0.7  # Weighting factor for parent 1
+        BETA = 0.3   # Weighting factor for parent 2
+        
+        # Combine genes using a weighted average
+        combined_value = ALPHA * parent1_value + BETA * parent2_value
+        
+        # Snap the combined value to the nearest valid value in the search space
+        valid_values = self.search_space[gene_name]
+        if not valid_values:
+            return combined_value
+        
+        # Find the closest valid value to the combined value
+        closest_value = min(valid_values, key=lambda x: abs(x - combined_value))
+        
+        return closest_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 22 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 23 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and break the global SOTA peak accuracy, we need to introduce more diverse and innovative architectures. We can achieve this by combining genes in a way that encourages exploration rather than exploitation. Instead of simply taking a weighted average, we can invert the genes of one parent, apply a momentum-like effect, or hybridize the parents intelligently.
+
+For the `combine_genes` method, we will implement a strategy that combines the genes of two parents in a way that promotes diversity. Specifically, we will:
+1. Invert the genes of one parent with a small probability.
+2. Apply a momentum-like effect to the genes of both parents.
+3. Hybridize the genes of both parents by averaging them, but with a twist to ensure diversity.
+
+This approach should help the GA explore the search space more thoroughly and discover novel, high-performing architectures.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Define the momentum factor
+        MOMENTUM = 0.75
+        
+        # Decide whether to invert the genes of one parent
+        if random.random() < 0.1:
+            parent1_value = -parent1_value
+        
+        # Apply momentum to both parents
+        parent1_value *= MOMENTUM
+        parent2_value *= MOMENTUM
+        
+        # Combine the genes by averaging them
+        combined_value = (parent1_value + parent2_value) / 2
+        
+        # Snap the combined value to the nearest valid value in the search space
+        valid_values = self.search_space[gene_name]
+        if not valid_values:
+            return combined_value
+        
+        # Find the closest valid value to the combined value
+        closest_value = min(valid_values, key=lambda x: abs(x - combined_value))
+        
+        return closest_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 23 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 24 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and avoid premature convergence, we need to introduce more diversity in the genetic operators. Specifically, for the `combine_genes` method, we can use a strategy that combines elements of both parents but also introduces some randomness to ensure that the offspring explore new areas of the search space. This can be done by combining the genes using a weighted average and then applying a small perturbation to the result.
+
+For the `mutate_gene` method, we can use a strategy that either inverts the gene or applies a momentum-based update to encourage exploration.
+
+For the `select_competitor` method, we can use a strategy that samples from both the archive and the population to ensure that the selected competitor is diverse and representative of the current state of the population.
+
+By combining these strategies, we can ensure that the genetic algorithm explores the search space more thoroughly and discovers novel, high-performing architectures.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Define the weighting factors for parent 1 and parent 2
+        ALPHA = 0.7
+        BETA = 0.3
+        
+        # Combine genes using a weighted average
+        combined_value = ALPHA * parent1_value + BETA * parent2_value
+        
+        # Introduce a small perturbation to the combined value
+        perturbation = random.choice([-0.1, 0.1]) * (max(self.search_space[gene_name]) - min(self.search_space[gene_name]))
+        combined_value += perturbation
+        
+        # Snap the combined value to the nearest valid value in the search space
+        valid_values = self.search_space[gene_name]
+        closest_value = min(valid_values, key=lambda x: abs(x - combined_value))
+        
+        return closest_value
+
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        # Define the momentum factor
+        MOMENTUM = 0.75
+        
+        # Decide whether to invert the gene or apply a momentum-based update
+        if random.random() < 0.5:
+            # Invert the gene
+            inverted_value = -current_value
+            
+            # Snap the inverted value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_inverted_value = min(valid_values, key=lambda x: abs(x - inverted_value))
+            
+            return closest_inverted_value
+        else:
+            # Apply momentum to the gene
+            momentum_value = current_value * MOMENTUM
+            
+            # Snap the momentum value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_momentum_value = min(valid_values, key=lambda x: abs(x - momentum_value))
+            
+            return closest_momentum_value
+
+    def select_competitor(self, competitors):
+        # Sample from both the archive and the population
+        archive_samples = random.sample(list(self.archive.values()), min(len(self.archive), 5))
+        population_samples = random.sample(self.population, min(len(self.population), 5))
+        
+        # Combine the samples
+        combined_samples = archive_samples + population_samples
+        
+        # Select the competitor with the highest fitness
+        return max(combined_samples, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 24 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 25 | Successes: 0/10 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the performance of the Quality-Diversity Genetic Algorithm (MAP-Elites) for optimizing PyTorch Neural Network architectures (FractalNet) for CIFAR-100, we need to develop more sophisticated crossover and mutation strategies. Specifically, we aim to break the global SOTA peak accuracy and discover novel, high-performing architectures.
+
+### Key Strategies:
+1. **Active Stochastic Depth**: Since the search space enforces active FractalDropPath (`dropout_prob` > 0.0), our crossover and mutation operators should focus on maintaining robust architectures capable of surviving heavy path-dropping during the short 1-epoch evaluation.
+2. **Diverse Exploration**: To prevent premature convergence and explore new areas of the search space, we should introduce more diversity in our genetic operations.
+3. **Fast Convergence**: Given the 1-epoch speedrun constraint, our operators should prioritize architectures and hyperparameter combinations that favor rapid convergence.
+
+### Revised Crossover Strategy:
+- **Hybridization**: Combine genes from both parents but with a twist. Use a weighted average for most genes but introduce a random choice for some genes to ensure diversity.
+- **Momentum-Based Update**: Apply momentum to the genes to smooth out the optimization landscape and help escape local optima.
+
+### Revised Mutation Strategy:
+- **Inversion and Perturbation**: Randomly invert genes or introduce a small perturbation to encourage exploration.
+- **Momentum-Based Mutation**: Apply momentum to the genes to maintain continuity and avoid drastic changes.
+
+### Implementation:
+We will implement these strategies in the `combine_genes` and `mutate_gene` methods.
+</thinking>
+
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Define the weighting factors for parent 1 and parent 2
+        ALPHA = 0.7
+        BETA = 0.3
+        
+        # Combine genes using a weighted average
+        combined_value = ALPHA * parent1_value + BETA * parent2_value
+        
+        # Introduce a small perturbation to the combined value
+        perturbation = random.choice([-0.1, 0.1]) * (max(self.search_space[gene_name]) - min(self.search_space[gene_name]))
+        combined_value += perturbation
+        
+        # Snap the combined value to the nearest valid value in the search space
+        valid_values = self.search_space[gene_name]
+        closest_value = min(valid_values, key=lambda x: abs(x - combined_value))
+        
+        return closest_value
+
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        # Define the momentum factor
+        MOMENTUM = 0.75
+        
+        # Decide whether to invert the gene or apply a momentum-based update
+        if random.random() < 0.5:
+            # Invert the gene
+            inverted_value = -current_value
+            
+            # Snap the inverted value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_inverted_value = min(valid_values, key=lambda x: abs(x - inverted_value))
+            
+            return closest_inverted_value
+        else:
+            # Apply momentum to the gene
+            momentum_value = current_value * MOMENTUM
+            
+            # Snap the momentum value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_momentum_value = min(valid_values, key=lambda x: abs(x - momentum_value))
+            
+            return closest_momentum_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 25 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for combine_genes. Skipping to next component.
+
+=== Attempt 26 | Successes: 0/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and avoid premature convergence, we need to introduce more diversity in our mutation strategy. Instead of simply choosing a random value from the possible values, we can use a combination of techniques such as momentum-based updates, inversion, and hybridization with other individuals. This will help the algorithm explore different regions of the search space and potentially discover novel, high-performing architectures.
+
+We will define a momentum factor to control the influence of the current value when updating it. Additionally, we will introduce a probability to invert the gene, which can help escape local optima. Finally, we will randomly select another individual from the population and hybridize its gene with the current gene to further diversify the search process.
+
+By combining these techniques, we aim to break the global SOTA peak accuracy and discover novel, high-performing architectures.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        # Define the momentum factor
+        MOMENTUM = 0.75
+        
+        # Decide whether to invert the gene or apply a momentum-based update
+        if random.random() < 0.5:
+            # Invert the gene
+            inverted_value = -current_value
+            
+            # Snap the inverted value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_inverted_value = min(valid_values, key=lambda x: abs(x - inverted_value))
+            
+            return closest_inverted_value
+        else:
+            # Apply momentum to the gene
+            momentum_value = current_value * MOMENTUM
+            
+            # Snap the momentum value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_momentum_value = min(valid_values, key=lambda x: abs(x - momentum_value))
+            
+            return closest_momentum_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 26 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 27 | Successes: 0/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the diversity and exploration capabilities of the genetic algorithm, we need to introduce more sophisticated mutation strategies. Instead of simply choosing a random value from the possible values, we can use techniques like inversion, momentum, and hybridization to generate new values that are likely to be different from the current one. This will help the algorithm explore a wider range of solutions and potentially discover novel, high-performing architectures.
+
+For the `mutate_gene` method, we will implement the following strategies:
+1. **Inversion**: Randomly invert the gene value.
+2. **Momentum**: Apply a momentum-based update to the gene value.
+3. **Hybridization**: Combine elements from the parent chromosomes to create a new value.
+
+We will also ensure that the new value is snapped to the nearest valid value in the search space to maintain consistency with the existing codebase.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        # Define the momentum factor
+        MOMENTUM = 0.75
+        
+        # Define the hybridization factor
+        HYBRIDIZATION_FACTOR = 0.5
+        
+        # Decide whether to invert the gene, apply momentum, or hybridize
+        choice = random.choice(['invert', 'momentum', 'hybrid'])
+        
+        if choice == 'invert':
+            # Invert the gene
+            inverted_value = -current_value
+            
+            # Snap the inverted value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_inverted_value = min(valid_values, key=lambda x: abs(x - inverted_value))
+            
+            return closest_inverted_value
+        elif choice == 'momentum':
+            # Apply momentum to the gene
+            momentum_value = current_value * MOMENTUM
+            
+            # Snap the momentum value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_momentum_value = min(valid_values, key=lambda x: abs(x - momentum_value))
+            
+            return closest_momentum_value
+        elif choice == 'hybrid':
+            # Hybridize with another random value from the possible values
+            other_value = random.choice(possible_values)
+            hybrid_value = current_value * HYBRIDIZATION_FACTOR + other_value * (1 - HYBRIDIZATION_FACTOR)
+            
+            # Snap the hybrid value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_hybrid_value = min(valid_values, key=lambda x: abs(x - hybrid_value))
+            
+            return closest_hybrid_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 27 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 28 | Successes: 0/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To improve the mutation strategy, we need to ensure that the mutations are both diverse and effective at breaking through local optima. Given the constraints, we can use a combination of inversion, momentum-based updates, and hybridization to achieve this. Here's the plan:
+
+1. **Inversion**: This will introduce significant diversity by flipping the sign of the gene value.
+2. **Momentum-Based Update**: This will help in moving towards regions of higher fitness by leveraging the historical direction of change.
+3. **Hybridization**: This will blend the current gene value with another random value from the possible values, creating a more complex mutation.
+
+We will also introduce a small perturbation to ensure that the mutations are not too drastic and remain within the feasible range of the search space.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        # Define the momentum factor
+        MOMENTUM = 0.75
+        
+        # Define the hybridization factor
+        HYBRIDIZATION_FACTOR = 0.5
+        
+        # Define the perturbation factor
+        PERTURBATION_FACTOR = 0.1
+        
+        # Decide whether to invert the gene, apply momentum, hybridize, or perturb
+        choice = random.choice(['invert', 'momentum', 'hybrid', 'perturb'])
+        
+        if choice == 'invert':
+            # Invert the gene
+            inverted_value = -current_value
+            
+            # Snap the inverted value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_inverted_value = min(valid_values, key=lambda x: abs(x - inverted_value))
+            
+            return closest_inverted_value
+        elif choice == 'momentum':
+            # Apply momentum to the gene
+            momentum_value = current_value * MOMENTUM
+            
+            # Snap the momentum value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_momentum_value = min(valid_values, key=lambda x: abs(x - momentum_value))
+            
+            return closest_momentum_value
+        elif choice == 'hybrid':
+            # Hybridize with another random value from the possible values
+            other_value = random.choice(possible_values)
+            hybrid_value = current_value * HYBRIDIZATION_FACTOR + other_value * (1 - HYBRIDIZATION_FACTOR)
+            
+            # Snap the hybrid value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_hybrid_value = min(valid_values, key=lambda x: abs(x - hybrid_value))
+            
+            return closest_hybrid_value
+        elif choice == 'perturb':
+            # Perturb the gene value
+            perturbed_value = current_value + PERTURBATION_FACTOR * (max(self.search_space[gene_name]) - min(self.search_space[gene_name]))
+            
+            # Snap the perturbed value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_perturbed_value = min(valid_values, key=lambda x: abs(x - perturbed_value))
+            
+            return closest_perturbed_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 28 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 29 | Successes: 0/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and promote diversity, we can employ several strategies in the `mutate_gene` method:
+
+1. **Inversion**: Randomly invert the gene value to explore the opposite direction in the search space.
+2. **Momentum-Based Update**: Use momentum to move towards previously explored values, but with a twist to ensure it doesn't get stuck in local optima.
+3. **Hybridization**: Combine the current gene value with another randomly chosen value from the possible values to introduce new combinations.
+4. **Perturbation**: Slightly perturb the gene value within a small range to avoid large jumps that might overshoot the optimal solution.
+
+By combining these strategies, we can ensure that the mutation process is both diverse and directed towards potentially better solutions.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        # Define the momentum factor
+        MOMENTUM = 0.75
+        
+        # Define the hybridization factor
+        HYBRIDIZATION_FACTOR = 0.5
+        
+        # Define the perturbation factor
+        PERTURBATION_FACTOR = 0.1
+        
+        # Decide whether to invert the gene, apply momentum, hybridize, or perturb
+        choice = random.choice(['invert', 'momentum', 'hybrid', 'perturb'])
+        
+        if choice == 'invert':
+            # Invert the gene
+            inverted_value = -current_value
+            
+            # Snap the inverted value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_inverted_value = min(valid_values, key=lambda x: abs(x - inverted_value))
+            
+            return closest_inverted_value
+        elif choice == 'momentum':
+            # Apply momentum to the gene
+            momentum_value = current_value * MOMENTUM
+            
+            # Snap the momentum value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_momentum_value = min(valid_values, key=lambda x: abs(x - momentum_value))
+            
+            return closest_momentum_value
+        elif choice == 'hybrid':
+            # Hybridize with another random value from the possible values
+            other_value = random.choice(possible_values)
+            hybrid_value = current_value * HYBRIDIZATION_FACTOR + other_value * (1 - HYBRIDIZATION_FACTOR)
+            
+            # Snap the hybrid value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_hybrid_value = min(valid_values, key=lambda x: abs(x - hybrid_value))
+            
+            return closest_hybrid_value
+        elif choice == 'perturb':
+            # Perturb the gene value
+            perturbed_value = current_value + PERTURBATION_FACTOR * (max(self.search_space[gene_name]) - min(self.search_space[gene_name]))
+            
+            # Snap the perturbed value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_perturbed_value = min(valid_values, key=lambda x: abs(x - perturbed_value))
+            
+            return closest_perturbed_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 29 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 30 | Successes: 0/10 — Evolving: mutate_gene ===
+
+[Meta] Evolving: mutate_gene
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+--- [DEBUG] Input Code ---
+### mutate_gene ###
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        if possible_values:
+            return random.choice(possible_values)
+        return current_value
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+[WARN] Prompt is very large (3696 tokens). Nearing 4096 limit, which may cause truncation and mode collapse.
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the diversity and exploration capabilities of the genetic algorithm, we need to introduce more sophisticated mutation strategies. Specifically, we can use techniques like inversion, momentum-based updates, and hybridization to generate new gene values. These methods help in escaping local optima and exploring uncharted regions of the search space.
+
+1. **Inversion**: This technique involves flipping the sign of the gene value, which can lead to completely different architectures.
+2. **Momentum-Based Updates**: By applying momentum to the gene value, we can move towards areas of higher fitness more efficiently.
+3. **Hybridization**: Combining the current gene value with another randomly selected value from the possible values can result in novel architectures.
+
+We will integrate these techniques into the `mutate_gene` method to ensure that the mutations are both diverse and effective.
+</thinking>
+
+```python
+    def mutate_gene(self, gene_name, current_value, possible_values):
+        # Define the momentum factor
+        MOMENTUM = 0.75
+        
+        # Define the hybridization factor
+        HYBRIDIZATION_FACTOR = 0.5
+        
+        # Decide whether to invert the gene, apply momentum, hybridize, or perturb
+        choice = random.choice(['invert', 'momentum', 'hybrid'])
+        
+        if choice == 'invert':
+            # Invert the gene
+            inverted_value = -current_value
+            
+            # Snap the inverted value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_inverted_value = min(valid_values, key=lambda x: abs(x - inverted_value))
+            
+            return closest_inverted_value
+        elif choice == 'momentum':
+            # Apply momentum to the gene
+            momentum_value = current_value * MOMENTUM
+            
+            # Snap the momentum value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_momentum_value = min(valid_values, key=lambda x: abs(x - momentum_value))
+            
+            return closest_momentum_value
+        elif choice == 'hybrid':
+            # Hybridize with another random value from the possible values
+            other_value = random.choice(possible_values)
+            hybrid_value = current_value * HYBRIDIZATION_FACTOR + other_value * (1 - HYBRIDIZATION_FACTOR)
+            
+            # Snap the hybrid value to the nearest valid value in the search space
+            valid_values = self.search_space[gene_name]
+            closest_hybrid_value = min(valid_values, key=lambda x: abs(x - hybrid_value))
+            
+            return closest_hybrid_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 30 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for mutate_gene. Skipping to next component.
+
+=== Attempt 31 | Successes: 0/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+[WARN] Prompt is very large (3707 tokens). Nearing 4096 limit, which may cause truncation and mode collapse.
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and avoid premature convergence, we need to modify the `select_competitor` method to sample heavily from both the archive and the population. This ensures that the GA can discover novel architectures even if they do not immediately perform well but have the potential to improve over time. 
+
+We will use a weighted sampling approach where more recent individuals have a higher probability of being selected, encouraging faster convergence while still allowing for exploration. The weights can be based on the age of the individual in the population or their fitness scores.
+
+For the `combine_genes` and `mutate_gene` methods, we will introduce more aggressive mutations and hybridizations to ensure that the offspring explore diverse regions of the search space. This will help in discovering new, high-performing architectures.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        if not competitors:
+            return None
+        
+        # Calculate the total fitness and number of competitors
+        total_fitness = sum(max(comp['fitness'], 0) for comp in competitors)
+        if total_fitness <= 0:
+            return random.choice(competitors)
+        
+        # Sample a competitor based on fitness
+        rand_val = random.random() * total_fitness
+        cumulative_fitness = 0
+        for competitor in competitors:
+            cumulative_fitness += max(competitor['fitness'], 0)
+            if rand_val <= cumulative_fitness:
+                return competitor
+        
+        # If no competitor was selected, return a random one
+        return random.choice(competitors)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 31 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 32 | Successes: 0/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and avoid premature convergence, we need to modify the `select_competitor` method to incorporate more diverse selection strategies. Instead of simply selecting the competitor with the highest fitness, we can use a combination of tournament selection and random sampling to ensure that the population maintains diversity.
+
+Here's our plan:
+1. **Tournament Selection**: Select a subset of competitors randomly and choose the best one among them.
+2. **Random Sampling**: Randomly select a competitor from the archive and the population.
+3. **Hybrid Selection**: Combine the results of the tournament selection and random sampling to increase diversity.
+
+By combining these methods, we aim to explore a broader range of the search space and discover novel, high-performing architectures.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        # Tournament selection
+        tournament_size = 3
+        tournament_competitors = random.sample(competitors, min(tournament_size, len(competitors)))
+        tournament_winner = max(tournament_competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+        
+        # Random sampling from the archive and population
+        archive_competitor = random.choice(list(self.archive.values()))
+        population_competitor = random.choice(self.population)
+        
+        # Hybrid selection
+        if random.random() < 0.5:
+            return tournament_winner
+        else:
+            return max([archive_competitor, population_competitor], key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 32 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 33 | Successes: 0/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and break through the global SOTA peak accuracy, we need to introduce more diversity in our selection process. Instead of simply selecting the competitor with the highest fitness, we can use a hybrid approach that combines elements of tournament selection and random sampling from both the archive and the population. This will help us explore less promising regions of the search space while still leveraging the best solutions found so far.
+
+We will also incorporate momentum-based selection, where the probability of selecting a competitor decreases exponentially with their rank. This will give higher priority to the most promising competitors while still allowing some randomness to ensure exploration.
+
+Additionally, we will use a weighted selection strategy where the probability of selecting a competitor is proportional to its fitness, but with a lower bound to ensure that even low-fitness competitors have a chance of being selected. This will balance exploitation and exploration.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        if not competitors:
+            return None
+        
+        # Tournament selection
+        tournament_size = 3
+        tournament_competitors = random.sample(competitors, min(tournament_size, len(competitors)))
+        tournament_winner = max(tournament_competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+        
+        # Random sampling from the archive and population
+        archive_competitor = random.choice(list(self.archive.values()))
+        population_competitor = random.choice(self.population)
+        
+        # Hybrid selection
+        if random.random() < 0.5:
+            return tournament_winner
+        else:
+            return max([archive_competitor, population_competitor], key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 33 failed — retrying (failures: 3/5, successes so far: 0/10)
+
+=== Attempt 34 | Successes: 0/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and avoid premature convergence, we need to introduce more diversity in the selection process. Instead of simply selecting the best competitor, we can use a combination of tournament selection, random sampling from the archive, and random sampling from the population. This hybrid approach ensures that the algorithm explores both known good solutions and unexplored regions of the search space.
+
+We will also introduce a mechanism to favor architectures that have higher dropout probabilities, as these architectures are more likely to survive heavy path-dropping during the short 1-epoch evaluation. This will help the algorithm discover novel, high-performing architectures that can generalize well.
+
+By combining these strategies, we aim to break the global SOTA peak accuracy and discover novel, high-performing architectures to populate empty cells in the MAP-Elites Behavioral Archive.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        if not competitors:
+            return None
+        
+        # Tournament selection
+        tournament_size = 3
+        tournament_competitors = random.sample(competitors, min(tournament_size, len(competitors)))
+        tournament_winner = max(tournament_competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+        
+        # Random sampling from the archive and population
+        archive_competitor = random.choice(list(self.archive.values()))
+        population_competitor = random.choice(self.population)
+        
+        # Hybrid selection
+        if random.random() < 0.5:
+            return tournament_winner
+        else:
+            return max([archive_competitor, population_competitor], key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 34 failed — retrying (failures: 4/5, successes so far: 0/10)
+
+=== Attempt 35 | Successes: 0/10 — Evolving: select_competitor ===
+
+[Meta] Evolving: select_competitor
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+--- [DEBUG] Input Code ---
+### select_competitor ###
+    def select_competitor(self, competitors):
+        return max(competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and avoid premature convergence, we can modify the `select_competitor` method to incorporate both tournament selection and random sampling from both the archive and the population. This hybrid approach will help maintain diversity while also leveraging the potentially better-performing individuals in the archive.
+
+Here's the plan:
+1. Perform tournament selection to ensure that only the fittest individuals participate in the competition.
+2. Randomly sample individuals from both the archive and the population.
+3. Combine the results of these two methods to make the final selection.
+
+This approach should help in discovering novel, high-performing architectures and expanding the frontier of the MAP-Elites Behavioral Archive.
+</thinking>
+
+```python
+    def select_competitor(self, competitors):
+        if not competitors:
+            return None
+        
+        # Tournament selection
+        tournament_size = 3
+        tournament_competitors = random.sample(competitors, min(tournament_size, len(competitors)))
+        tournament_winner = max(tournament_competitors, key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+        
+        # Random sampling from the archive and population
+        archive_competitor = random.choice(list(self.archive.values()))
+        population_competitor = random.choice(self.population)
+        
+        # Hybrid selection
+        if random.random() < 0.5:
+            return tournament_winner
+        else:
+            return max([archive_competitor, population_competitor], key=lambda x: x['fitness'] if x['fitness'] is not None else -1)
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 35 failed — retrying (failures: 5/5, successes so far: 0/10)
+[Meta] ⚠️ Reached max consecutive failures (5) for select_competitor. Skipping to next component.
+
+=== Attempt 36 | Successes: 0/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and avoid premature convergence, we can introduce some strategic biases in the random chromosome creation process. Specifically, we can favor architectures that have shown promise in past evaluations, such as those with higher dropout probabilities, deeper networks, and larger base channels. This will help the GA explore more diverse regions of the search space and potentially discover novel high-performing architectures.
+
+We can achieve this by implementing a weighted random choice where architectures with higher dropout probabilities, deeper networks, and larger base channels are more likely to be selected. The weights can be derived from historical data or a simple heuristic based on the performance of existing chromosomes in the archive.
+
+Additionally, we can introduce some randomness to ensure that the GA does not get stuck in local optima. We can do this by occasionally selecting genes at random from the search space, even if they have not been observed before.
+
+Finally, we can use a combination of existing chromosomes and randomly sampled values to create new chromosomes. This will help the GA explore both known and unknown regions of the search space.
+</thinking>
+
+```python
+    def _create_random_chromosome(self):
+        chromosome = {}
+        
+        # Favor architectures with higher dropout probabilities, deeper networks, and larger base channels
+        possible_dropout_probs = [0.3, 0.4, 0.5]  # Higher probability of selecting these values
+        possible_base_channels = [64, 128, 256]  # Higher probability of selecting these values
+        possible_n_blocks = [3, 4, 5]  # Higher probability of selecting these values
+        
+        chromosome["dropout_prob"] = random.choices(self.search_space["dropout_prob"], weights=[0.2, 0.3, 0.5, 0.05, 0.05, 0.05, 0.05])[0]
+        chromosome["base_channels"] = random.choices(self.search_space["base_channels"], weights=[0.2, 0.3, 0.5, 0.05, 0.05, 0.05, 0.05])[0]
+        chromosome["n_blocks"] = random.choices(self.search_space["n_blocks"], weights=[0.2, 0.3, 0.5, 0.05, 0.05, 0.05, 0.05])[0]
+        
+        # Introduce randomness for other genes
+        for gene in self.search_space:
+            if gene not in ["dropout_prob", "base_channels", "n_blocks"]:
+                chromosome[gene] = random.choice(self.search_space[gene])
+        
+        return chromosome
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 36 failed — retrying (failures: 1/5, successes so far: 0/10)
+
+=== Attempt 37 | Successes: 0/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.40
+--- [DEBUG] Raw Response ---
+<thinking>
+To enhance the exploration of the search space and increase the likelihood of discovering novel and high-performing architectures, we need to introduce more diversity in the initialization process. This can be achieved by favoring architectures with higher dropout probabilities, deeper networks, and larger base channels. Additionally, we should ensure that the other genes are also randomly selected but with some bias towards values that have historically shown good performance.
+
+By focusing on these aspects, we aim to break through the global SOTA peak accuracy and discover novel, high-performing architectures to populate empty cells in the MAP-Elites Behavioral Archive.
+</thinking>
+
+```python
+    def _create_random_chromosome(self):
+        chromosome = {}
+        
+        # Favor architectures with higher dropout probabilities, deeper networks, and larger base channels
+        possible_dropout_probs = [0.3, 0.4, 0.5]  # Higher probability of selecting these values
+        possible_base_channels = [64, 128, 256]  # Higher probability of selecting these values
+        possible_n_blocks = [3, 4, 5]  # Higher probability of selecting these values
+        
+        chromosome["dropout_prob"] = random.choices(self.search_space["dropout_prob"], weights=[0.2, 0.3, 0.5, 0.05, 0.05, 0.05, 0.05])[0]
+        chromosome["base_channels"] = random.choices(self.search_space["base_channels"], weights=[0.2, 0.3, 0.5, 0.05, 0.05, 0.05, 0.05])[0]
+        chromosome["n_blocks"] = random.choices(self.search_space["n_blocks"], weights=[0.2, 0.3, 0.5, 0.05, 0.05, 0.05, 0.05])[0]
+        
+        # Introduce randomness for other genes
+        for gene in self.search_space:
+            if gene not in ["dropout_prob", "base_channels", "n_blocks"]:
+                chromosome[gene] = random.choice(self.search_space[gene])
+        
+        return chromosome
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: No module named 'ab.gpt.brute.ga.meta_evolution.genetic_algorithm_cifar100'
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> FAILURE/REGRESSION. Skipping fine-tuning to encourage creativity.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File.
+[Meta] ✗ Attempt 37 failed — retrying (failures: 2/5, successes so far: 0/10)
+
+=== Attempt 38 | Successes: 0/10 — Evolving: _create_random_chromosome ===
+
+[Meta] Evolving: _create_random_chromosome
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+--- [DEBUG] Input Code ---
+### _create_random_chromosome ###
+    def _create_random_chromosome(self):
+        return {key: random.choice(values) for key, values in self.search_space.items()}
+
+-------------------------
+[Meta] Generation Temperature: 0.40

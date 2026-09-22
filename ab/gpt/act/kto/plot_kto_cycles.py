@@ -79,6 +79,28 @@ def load_cycles(results_path: Path, cycles_dir: Optional[Path]) -> List[Dict[str
     return [by_cycle[k] for k in sorted(by_cycle)]
 
 
+def present_cycles(cycles_dir: Optional[Path]) -> List[int]:
+    """Cycle numbers whose FOLDER exists on disk (ground truth, not metrics), sorted.
+    A genuinely-missing folder in between is simply absent → the renumbering below
+    collapses the gap."""
+    nums: List[int] = []
+    if cycles_dir and cycles_dir.exists():
+        for p in cycles_dir.glob("cycle_*"):
+            s = p.name.split("_")
+            if p.is_dir() and len(s) > 1 and s[1].isdigit():
+                nums.append(int(s[1]))
+    return sorted(nums)
+
+
+def renumber_map(cycles_dir: Optional[Path], max_cycle: int) -> Dict[int, int]:
+    """{original_cycle -> contiguous 1..N} over present folders, capped to the first
+    max_cycle present ones (0 = no cap). Missing folders collapse the numbering."""
+    present = present_cycles(cycles_dir)
+    if max_cycle and max_cycle > 0:
+        present = present[:max_cycle]
+    return {orig: i + 1 for i, orig in enumerate(present)}
+
+
 def wilson_ci(k: int, n: int, z: float = 1.96):
     """95% Wilson score interval for a proportion k/n → (lo, hi) in [0, 1]."""
     if n <= 0:
@@ -266,7 +288,12 @@ def plot_separate(cycles: List[Dict[str, Any]], out_dir: Path,
                                 (r["pass_acc"], ct_y, ct_lo, ct_hi)):
             p = k / n if n else 0.0
             lo, hi = wilson_ci(k, n)
-            ys.append(p * 100); los.append((p - lo) * 100); his.append((hi - p) * 100)
+            # Clamp error deltas to >= 0: when p == 1.0 (e.g. all models evaluated in
+            # a sim-penalty run) the Wilson bound rounds a hair past p, and matplotlib
+            # rejects negative yerr.
+            ys.append(p * 100)
+            los.append(max(0.0, (p - lo) * 100))
+            his.append(max(0.0, (hi - p) * 100))
 
     paths = [
         acc_path,
@@ -294,28 +321,23 @@ def plot_separate(cycles: List[Dict[str, Any]], out_dir: Path,
     fig.tight_layout(); fig.savefig(bpath, dpi=130); plt.close(fig)
     paths.append(bpath)
 
-    # ── Novelty per cycle: novel vs duplicate among threshold-clearing models ──
-    # Direct read-out of whether the similarity penalty is pushing generation
-    # toward structurally new architectures. Under the penalty, non-novel passers
-    # still enter training, but a working penalty should slow their growth / lift
-    # the novelty rate over cycles relative to the no-penalty baseline.
+    # ── Novelty per cycle: novel vs not-novel counts, as labelled by the pipeline ──
+    # These labels are assigned to every generation regardless of whether it was
+    # evaluated (self-contained skips non-novel; sim-penalty evaluates all) — so the
+    # counts are plotted as recorded; interpretation is left to the reader.
     novel = [int(r["new_desirable"]) for r in cycles]
-    dup = [int(r["not_novel"]) for r in cycles]
-    rate = [100.0 * n / (n + d) if (n + d) else float("nan")
-            for n, d in zip(novel, dup)]
+    notnovel = [int(r["not_novel"]) for r in cycles]
     fig, ax = plt.subplots(figsize=(11, 5.5))
-    ax.bar(xs, novel, width=0.6, color="#2ca02c", label="Novel (unique)")
-    ax.bar(xs, dup, width=0.6, bottom=novel, color="#ff7f0e", alpha=0.85,
-           label="Duplicate (non-novel)")
-    ax.set_xlabel("Cycle"); ax.set_ylabel("Threshold-clearing models")
-    ax.set_title("Novel vs Duplicate Architectures per Cycle (with novelty rate)")
-    ax.grid(True, alpha=0.3, axis="y")
-    ax2 = ax.twinx()
-    ax2.plot(xs, rate, "o-", color="#1f77b4", label="Novelty rate")
-    ax2.set_ylabel("Novelty rate (%)"); ax2.set_ylim(0, 100)
-    h1, l1 = ax.get_legend_handles_labels()
-    h2, l2 = ax2.get_legend_handles_labels()
-    ax.legend(h1 + h2, l1 + l2, fontsize=9, loc="best")
+    w = 0.4
+    ax.bar([x - w / 2 for x in xs], novel, w, label="Novel", color="#2ca02c")
+    ax.bar([x + w / 2 for x in xs], notnovel, w, label="Not novel", color="#ff7f0e", alpha=0.85)
+    for x, v in zip(xs, novel):
+        ax.text(x - w / 2, v, str(v), ha="center", va="bottom", fontsize=7)
+    for x, v in zip(xs, notnovel):
+        ax.text(x + w / 2, v, str(v), ha="center", va="bottom", fontsize=7)
+    ax.set_title("Novel vs Not-Novel per Cycle")
+    ax.set_xlabel("Cycle"); ax.set_ylabel("Count")
+    ax.grid(True, alpha=0.3, axis="y"); ax.legend(fontsize=10)
     npath = out_dir / "kto_novelty.png"
     fig.tight_layout(); fig.savefig(npath, dpi=130); plt.close(fig)
     paths.append(npath)
@@ -343,6 +365,9 @@ def main() -> None:
     p.add_argument("--out_dir", type=str, default="kto_plots")
     p.add_argument("--cycles_dir", type=str, default=None,
                    help="Optional dir with cycle_<n>/metrics.json for full history (default: results dir)")
+    p.add_argument("--max_cycle", type=int, default=0,
+                   help="Plot only the first N present cycles (0 = all). Missing cycle "
+                        "folders are collapsed and cycles renumbered contiguously.")
     args = p.parse_args()
 
     results_path = Path(args.results)
@@ -354,6 +379,14 @@ def main() -> None:
     # metrics.json persist across resumes and give the full history.
     cycles_dir = Path(args.cycles_dir) if args.cycles_dir else results_path.parent
     cycles = load_cycles(results_path, cycles_dir)
+    # Renumber by FOLDER presence (collapse genuinely-missing cycles) and cap; keep only
+    # cycles whose folder exists, remap their number to the contiguous 1..N sequence.
+    rmap = renumber_map(cycles_dir, args.max_cycle)
+    cycles = [r for r in cycles if r["cycle"] in rmap]
+    for r in cycles:
+        r["orig_cycle"] = r["cycle"]
+        r["cycle"] = rmap[r["cycle"]]
+    cycles.sort(key=lambda r: r["cycle"])
     if not cycles:
         raise SystemExit("No cycles with metrics found in the results file.")
 
@@ -363,6 +396,7 @@ def main() -> None:
     except Exception:  # noqa: BLE001
         run_threshold = 0.40
     per_model = load_per_model_accuracies(cycles_dir)
+    per_model = {rmap[c]: v for c, v in per_model.items() if c in rmap}  # renumbered
     if per_model:
         apply_pass_average(cycles, per_model, run_threshold)
     else:
@@ -391,8 +425,15 @@ def main() -> None:
         checked = uniq + dup
         uniq_str = (f" · Unique: {uniq}/{checked} ({100.0 * uniq / checked:.1f}%)"
                     if checked else "")
+        # Mean accuracy over the ABOVE-threshold models (distinct from the ≥thr RATE
+        # below) + its t-based 95% CI, saved into the card so the report can read it.
+        am, alo, ahi = mean_t_ci(above)
+        above_str = (f" · Average (≥{run_threshold*100:.0f}%): {am*100:.2f}% "
+                     f"[95% CI {alo*100:.2f}-{ahi*100:.2f}] (n={len(above)})"
+                     if above else "")
         card = (f"Valid: {n_valid}/{denom} ({100.0 * n_valid / denom:.1f}%) · "
-                f"Average (all valid): {m*100:.2f}% [95% CI {lo*100:.2f}-{hi*100:.2f}] · "
+                f"Average (all valid): {m*100:.2f}% [95% CI {lo*100:.2f}-{hi*100:.2f}]"
+                + above_str + " · "
                 f"Median: {_median(all_valid)*100:.2f}% · "
                 f"Best: {max(all_valid)*100:.2f}% · "
                 f"≥{run_threshold*100:.0f}%: {ge:.2f}%" + uniq_str)
