@@ -231,6 +231,104 @@ def apply_delta(baseline_code: str, delta: str) -> Optional[str]:
     return None
 
 
+def apply_delta_to_optimizer_assignment(baseline_code: str, delta: str) -> Optional[str]:
+    """
+    Robust fallback for apply_delta() targeting the LLR train_setup() edit
+    specifically, for use when the model's diff hunk recites incorrect or
+    hallucinated context. This happens most often under distribution shift
+    (an out-of-distribution baseline the model has never seen): it tends to
+    recite memorized boilerplate as diff context instead of the real
+    surrounding lines (e.g. `self.criteria = (nn.CrossEntropyLoss()...)`
+    instead of the real `self.criterion = ...`, or collapses
+    `torch.optim.SGD(...)` onto one line when the real baseline wraps it),
+    which makes plain apply_delta() reject the hunk outright.
+
+    Instead of trusting the diff's own line numbers/context, this locates the
+    REAL `self.optimizer = ...` assignment in the baseline via AST (so it
+    works regardless of what the model's hunk claims is around it), and
+    splices in the delta's replacement block at that real location.
+
+    The replacement is read from the delta as every '+' line, in document
+    order, starting right after the '-' line that removes `self.optimizer =
+    ...`, and stopping at (and including) the first '+' line that ITSELF
+    assigns `self.optimizer = ...` — every LLR edit's replacement block ends
+    with exactly one such line. Truncating there discards anything the model
+    appended past the intended edit (observed once: a spuriously rewritten
+    `learn()` method with no context-line boundary, which would otherwise
+    leak into the patched file).
+
+    Returns the patched code, or None if the anchor can't be found in the
+    baseline, the matching removal/replacement can't be found in the delta,
+    or the spliced result doesn't parse as valid Python.
+    """
+    if not baseline_code or not delta:
+        return None
+
+    try:
+        tree = ast.parse(baseline_code)
+    except (SyntaxError, ValueError):
+        return None
+
+    anchor_start = anchor_end = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            tgt = node.targets[0]
+            if (isinstance(tgt, ast.Attribute) and tgt.attr == 'optimizer'
+                    and isinstance(tgt.value, ast.Name) and tgt.value.id == 'self'):
+                anchor_start, anchor_end = node.lineno, node.end_lineno
+                break
+    if anchor_start is None:
+        return None
+
+    baseline_lines = baseline_code.splitlines()
+    anchor_line = baseline_lines[anchor_start - 1]
+    anchor_indent_width = len(anchor_line) - len(anchor_line.lstrip())
+
+    delta_lines = delta.splitlines()
+    removal_re = re.compile(r'^-\s*self\.optimizer\s*=')
+    addition_re = re.compile(r'^\+\s*self\.optimizer\s*=')
+
+    start = next((i for i, l in enumerate(delta_lines) if removal_re.match(l)), None)
+    if start is None:
+        return None
+
+    replacement = []
+    found_end = False
+    for line in delta_lines[start + 1:]:
+        if line.startswith('+'):
+            replacement.append(line[1:])
+            if addition_re.match(line):
+                found_end = True
+                break
+        elif line.startswith('-'):
+            continue
+        else:
+            break
+    if not found_end or not replacement:
+        return None
+
+    # Re-indent the replacement block to the anchor's real indentation,
+    # preserving the relative indentation between the replacement's own lines.
+    non_blank_indents = [len(l) - len(l.lstrip()) for l in replacement if l.strip()]
+    base_indent = min(non_blank_indents) if non_blank_indents else 0
+    fixed = []
+    for line in replacement:
+        if not line.strip():
+            fixed.append('')
+            continue
+        cur_indent = len(line) - len(line.lstrip())
+        new_indent = ' ' * (anchor_indent_width + max(0, cur_indent - base_indent))
+        fixed.append(new_indent + line.lstrip())
+
+    new_lines = baseline_lines[:anchor_start - 1] + fixed + baseline_lines[anchor_end:]
+    result = '\n'.join(new_lines)
+
+    is_valid, _ = validate_python_syntax(result)
+    if is_valid:
+        return result
+    return repair_code(result)
+
+
 def _normalize_delta_headers(baseline_code: str, delta: str) -> str:
     """
     Rewrite each hunk's '@@ -a,b +c,d @@' header using counts/position
