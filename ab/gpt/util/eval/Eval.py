@@ -3,6 +3,7 @@ import re
 import ast
 import shutil
 import sys
+import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -154,7 +155,7 @@ def _isolated_eval_tmp_modules():
         yield
         return
 
-    isolated_out = f"{original_out}_nneval_tmp_pid_{os.getpid()}"
+    isolated_out = f"{original_out}_nneval_tmp_pid_{os.getpid()}_{uuid.uuid4().hex[:8]}"
     isolated_root = Path(ab_root_path) / isolated_out
     train_runtime.out = isolated_out
     try:
