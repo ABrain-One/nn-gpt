@@ -31,13 +31,13 @@ DATASET_DASH = "cifar-100" if DATASET == "cifar100" else "cifar-10"
 _dataset_name = get_dataset_name(__file__)
 _model_name = get_model_short_name()
 
-MODIFIED_GA_DIR = os.path.join(PIPELINE_DIR, f"modified_GA")
+MODIFIED_GA_DIR = os.path.join(PIPELINE_DIR, f"modified_GA_{_model_name}")
 os.makedirs(MODIFIED_GA_DIR, exist_ok=True)
 TARGET_FILE = os.path.join(MODIFIED_GA_DIR, "genetic_algorithm_evolved.py")
 
 # Checkpoint saving disabled — no .pkl files saved
 CHECKPOINT_FILE = None
-BACKUP_DIR = os.path.join(PIPELINE_DIR, f"ga_history_backup")
+BACKUP_DIR = os.path.join(PIPELINE_DIR, f"ga_history_backup_{_model_name}")
 ADAPTER_SAVE_PATH = os.path.join(PIPELINE_DIR, f"{_model_name}_adapter")
 
 if CHECKPOINT_FILE is None or not os.path.exists(CHECKPOINT_FILE):
@@ -199,9 +199,9 @@ class MetaEvolver:
         cmd = [sys.executable, RUNNER_SCRIPT, "--gens", str(gens), "--pop", str(BENCH_POP)]
         env = os.environ.copy()
         env["GA_EVAL_LOG"] = GA_EVAL_LOG_FILE
-        # Separate stats directory from baseline to prevent cache cross-contamination
-        env["STATS_SUBDIR"] = "meta"
-        print(f"[Meta] Setting STATS_SUBDIR=meta for subprocess → stats/meta/")
+        # Separate stats directory from baseline and other models to prevent cache cross-contamination
+        env["STATS_SUBDIR"] = f"meta_{_model_name}"
+        print(f"[Meta] Setting STATS_SUBDIR=meta_{_model_name} for subprocess → stats/meta_{_model_name}/")
 
         runs = 1
         scores = []
@@ -924,11 +924,11 @@ if __name__ == "__main__":
                 all_histories.append(h)
         
         if all_histories:
-            meta_hist_path = os.path.join(PIPELINE_DIR, f"meta_attempt_histories_{DATASET}.json")
+            meta_hist_path = os.path.join(PIPELINE_DIR, f"meta_attempt_histories_{DATASET}_{_model_name}.json")
             with open(meta_hist_path, "w") as f:
                 json.dump({"meta_attempt_histories": all_histories, "total_attempts": len(all_histories)}, f, indent=4)
             print(f"[Meta] Saved {len(all_histories)} attempt histories to {meta_hist_path}")
         
-        generate_plots(RUN_TIMESTAMP, DATASET)
+        generate_plots(RUN_TIMESTAMP, DATASET, _model_name)
     except Exception as e:
         print(f"[WARN] Visualization failed (non-fatal): {e}")

@@ -12,6 +12,18 @@ kubectl delete -f /shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt/ab/gpt/b
 **To view the live logs of the running job:**
 ```bash
 kubectl logs -f job/nngpt-fractal-meta-evo-clonescience-cifar10
+
+**To run the Mistral and DeepSeek variants (CIFAR-10):**
+```bash
+kubectl delete -f /shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt/ab/gpt/brute/ga/meta_evolution/meta_evol_tune_nngpt_cifar10_mistral.json --ignore-not-found=true && kubectl apply -f /shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt/ab/gpt/brute/ga/meta_evolution/meta_evol_tune_nngpt_cifar10_mistral.json
+
+kubectl delete -f /shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt/ab/gpt/brute/ga/meta_evolution/meta_evol_tune_nngpt_cifar10_deepseek.json --ignore-not-found=true && kubectl apply -f /shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt/ab/gpt/brute/ga/meta_evolution/meta_evol_tune_nngpt_cifar10_deepseek.json
+```
+
+**To view live logs for Mistral and DeepSeek variants:**
+```bash
+kubectl logs -f job/nngpt-fractal-meta-evo-clonescience-cifar10-mistral
+kubectl logs -f job/nngpt-fractal-meta-evo-clonescience-cifar10-deepseek
 ```
 
 **To stop and delete the job:**
@@ -65,6 +77,18 @@ kubectl delete -f /shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt/ab/gpt/b
 **To view the live logs of the running job:**
 ```bash
 kubectl logs -f job/nngpt-fractal-meta-evo-clonescience-cifar100
+
+**To run the Mistral and DeepSeek variants (CIFAR-100):**
+```bash
+kubectl delete -f /shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt/ab/gpt/brute/ga/meta_evolution/meta_evol_tune_nngpt_cifar100_mistral.json --ignore-not-found=true && kubectl apply -f /shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt/ab/gpt/brute/ga/meta_evolution/meta_evol_tune_nngpt_cifar100_mistral.json
+
+kubectl delete -f /shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt/ab/gpt/brute/ga/meta_evolution/meta_evol_tune_nngpt_cifar100_deepseek.json --ignore-not-found=true && kubectl apply -f /shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt/ab/gpt/brute/ga/meta_evolution/meta_evol_tune_nngpt_cifar100_deepseek.json
+```
+
+**To view live logs for Mistral and DeepSeek variants:**
+```bash
+kubectl logs -f job/nngpt-fractal-meta-evo-clonescience-cifar100-mistral
+kubectl logs -f job/nngpt-fractal-meta-evo-clonescience-cifar100-deepseek
 ```
 
 **To stop and delete the job:**
@@ -124,10 +148,14 @@ kubectl get jobs
 
 ## 6. Unified Start Command
 
-**To restart or run ALL 4 jobs freshly at once:**
+**To restart or run ALL 8 jobs freshly at once:**
 ```bash
-kubectl delete -f meta_evol_tune_nngpt_cifar10.json --ignore-not-found=true && kubectl apply -f meta_evol_tune_nngpt_cifar10.json && \
 kubectl delete -f base_evol_tune_nngpt_cifar10.json --ignore-not-found=true && kubectl apply -f base_evol_tune_nngpt_cifar10.json && \
+kubectl delete -f base_evol_tune_nngpt_cifar100.json --ignore-not-found=true && kubectl apply -f base_evol_tune_nngpt_cifar100.json && \
+kubectl delete -f meta_evol_tune_nngpt_cifar10.json --ignore-not-found=true && kubectl apply -f meta_evol_tune_nngpt_cifar10.json && \
+kubectl delete -f meta_evol_tune_nngpt_cifar10_mistral.json --ignore-not-found=true && kubectl apply -f meta_evol_tune_nngpt_cifar10_mistral.json && \
+kubectl delete -f meta_evol_tune_nngpt_cifar10_deepseek.json --ignore-not-found=true && kubectl apply -f meta_evol_tune_nngpt_cifar10_deepseek.json && \
 kubectl delete -f meta_evol_tune_nngpt_cifar100.json --ignore-not-found=true && kubectl apply -f meta_evol_tune_nngpt_cifar100.json && \
-kubectl delete -f base_evol_tune_nngpt_cifar100.json --ignore-not-found=true && kubectl apply -f base_evol_tune_nngpt_cifar100.json
+kubectl delete -f meta_evol_tune_nngpt_cifar100_mistral.json --ignore-not-found=true && kubectl apply -f meta_evol_tune_nngpt_cifar100_mistral.json && \
+kubectl delete -f meta_evol_tune_nngpt_cifar100_deepseek.json --ignore-not-found=true && kubectl apply -f meta_evol_tune_nngpt_cifar100_deepseek.json
 ```

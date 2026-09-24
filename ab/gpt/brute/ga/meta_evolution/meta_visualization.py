@@ -196,25 +196,31 @@ def _extract_log_timestamp(target_ts=None):
 # Data loading
 # ---------------------------------------------------------------------------
 
-def load_stats_records(target_ts=None):
+def load_stats_records(target_ts=None, target_dataset=None, target_model=None):
     """
     Read the ga_evaluations*.jsonl to get exact chronological evaluation order for the current run.
     """
     records = []
+    target_str = ""
+    if target_dataset and target_model:
+        target_str = f"_{target_dataset}_{target_model}_"
+
     if target_ts:
-        log_files = glob.glob(os.path.join(BASE_DIR, "*_pipeline", "logs_*", "*", "*", f"ga_evaluations*{target_ts}.jsonl")) + \
-                    glob.glob(os.path.join(BASE_DIR, "logs_*", "*", "*", f"ga_evaluations*{target_ts}.jsonl")) + \
-                    glob.glob(os.path.join(LOGS_DIR, f"ga_evaluations*{target_ts}.jsonl"))
-        log_files = [f for f in log_files if os.path.exists(f)]
+        log_files = glob.glob(os.path.join(BASE_DIR, "*_pipeline", "logs_*", "*", "*", f"ga_evaluations{target_str}*{target_ts}.jsonl")) + \
+                    glob.glob(os.path.join(BASE_DIR, "logs_*", "*", "*", f"ga_evaluations{target_str}*{target_ts}.jsonl")) + \
+                    glob.glob(os.path.join(LOGS_DIR, f"ga_evaluations{target_str}*{target_ts}.jsonl"))
     else:
-        log_files = glob.glob(os.path.join(BASE_DIR, "*_pipeline", "logs_*", "*", "*", "ga_evaluations*.jsonl")) + \
-                    glob.glob(os.path.join(BASE_DIR, "logs_*", "*", "*", "ga_evaluations*.jsonl")) + \
-                    glob.glob(os.path.join(LOGS_DIR, "ga_evaluations*.jsonl"))
+        log_files = glob.glob(os.path.join(BASE_DIR, "*_pipeline", "logs_*", "*", "*", f"ga_evaluations{target_str}*.jsonl")) + \
+                    glob.glob(os.path.join(BASE_DIR, "logs_*", "*", "*", f"ga_evaluations{target_str}*.jsonl")) + \
+                    glob.glob(os.path.join(LOGS_DIR, f"ga_evaluations{target_str}*.jsonl"))
         if not log_files:
-            log_files = glob.glob(os.path.join(BASE_DIR, "ga_evaluations*.jsonl"))
+            log_files = glob.glob(os.path.join(BASE_DIR, f"ga_evaluations{target_str}*.jsonl"))
+
+    # Explicitly ignore the sibling log files (_true.jsonl, _1_epoch.jsonl) so plots use the primary predicted accuracy
+    log_files = [f for f in log_files if "_true" not in f and "_1_epoch" not in f]
             
     if not log_files:
-        _warn(f"No ga_evaluations{'* ' if not target_ts else '_'+target_ts}.jsonl files found")
+        _warn(f"No ga_evaluations{target_str}{'* ' if not target_ts else '_'+target_ts}.jsonl files found")
         return records
         
     latest_log = log_files[0] if target_ts else max(log_files, key=os.path.getmtime)
@@ -256,25 +262,28 @@ def group_by_meta_iteration(records, llm_entries):
     return [a for a in attempts if a["evals"]]
 
 
-def load_llm_logs(target_ts=None):
+def load_llm_logs(target_ts=None, target_dataset=None, target_model=None):
     """
     Read the LLM-evolution-logs*.jsonl. Returns list of dicts.
     Expected fields: method, score, reward, valid_syntax, timestamp.
     """
+    target_str = ""
+    if target_dataset and target_model:
+        target_str = f"_{target_dataset}_{target_model}_"
+
     if target_ts:
-        log_files = glob.glob(os.path.join(BASE_DIR, "*_pipeline", "logs_*", "*", "*", f"LLM-evolution-logs*{target_ts}.jsonl")) + \
-                    glob.glob(os.path.join(BASE_DIR, "logs_*", "*", "*", f"LLM-evolution-logs*{target_ts}.jsonl")) + \
-                    glob.glob(os.path.join(LOGS_DIR, f"LLM-evolution-logs*{target_ts}.jsonl"))
-        log_files = [f for f in log_files if os.path.exists(f)]
+        log_files = glob.glob(os.path.join(BASE_DIR, "*_pipeline", "logs_*", "*", "*", f"LLM-evolution-logs{target_str}*{target_ts}.jsonl")) + \
+                    glob.glob(os.path.join(BASE_DIR, "logs_*", "*", "*", f"LLM-evolution-logs{target_str}*{target_ts}.jsonl")) + \
+                    glob.glob(os.path.join(LOGS_DIR, f"LLM-evolution-logs{target_str}*{target_ts}.jsonl"))
     else:
-        log_files = glob.glob(os.path.join(BASE_DIR, "*_pipeline", "logs_*", "*", "*", "LLM-evolution-logs*.jsonl")) + \
-                    glob.glob(os.path.join(BASE_DIR, "logs_*", "*", "*", "LLM-evolution-logs*.jsonl")) + \
-                    glob.glob(os.path.join(LOGS_DIR, "LLM-evolution-logs*.jsonl"))
+        log_files = glob.glob(os.path.join(BASE_DIR, "*_pipeline", "logs_*", "*", "*", f"LLM-evolution-logs{target_str}*.jsonl")) + \
+                    glob.glob(os.path.join(BASE_DIR, "logs_*", "*", "*", f"LLM-evolution-logs{target_str}*.jsonl")) + \
+                    glob.glob(os.path.join(LOGS_DIR, f"LLM-evolution-logs{target_str}*.jsonl"))
         if not log_files:
-            log_files = glob.glob(os.path.join(BASE_DIR, "LLM-evolution-logs*.jsonl"))
+            log_files = glob.glob(os.path.join(BASE_DIR, f"LLM-evolution-logs{target_str}*.jsonl"))
             
     if not log_files:
-        _warn(f"No LLM-evolution-logs{'* ' if not target_ts else '_'+target_ts}.jsonl files found")
+        _warn(f"No LLM-evolution-logs{target_str}{'* ' if not target_ts else '_'+target_ts}.jsonl files found")
         return []
         
     latest_log = log_files[0] if target_ts else max(log_files, key=os.path.getmtime)
@@ -649,19 +658,23 @@ def plot_modification_success_rate(entries, out_dir, saved_files, suffix=""):
 # Main
 # ---------------------------------------------------------------------------
 
-def main(target_ts=None, target_dataset=None):
+def main(target_ts=None, target_dataset=None, target_model=None):
     if len(sys.argv) > 1:
         target_ts = sys.argv[1]
     if len(sys.argv) > 2:
         target_dataset = sys.argv[2]
+    if len(sys.argv) > 3:
+        target_model = sys.argv[3]
         
     # Use source log timestamp so visualizations correlate with their experiment
     timestamp, dataset_name, model_name = _extract_log_timestamp(target_ts)
     if target_dataset:
         dataset_name = target_dataset
+    if target_model:
+        model_name = target_model
         
     if model_name:
-        suffix = f"{dataset_name}_{model_name}_{timestamp}"
+        suffix = f"{model_name}_{dataset_name}_{timestamp}"
         run_dir = os.path.join(VIZ_ROOT, f"meta_visualization_{suffix}")
     else:
         suffix = f"{dataset_name}_{timestamp}"
@@ -681,12 +694,12 @@ def main(target_ts=None, target_dataset=None):
 
     # ── Fine-tuning (Load First) ────────────────────────────────────────────
     print("\n[1/2] Loading LLM evolution logs …")
-    entries = load_llm_logs(timestamp)
+    entries = load_llm_logs(timestamp, dataset_name, model_name)
     print(f"      Found {len(entries)} log entry(ies).\n")
 
     # ── GA evolution ────────────────────────────────────────────────────────
     print("[2/2] Loading stats records …")
-    records = load_stats_records(timestamp)
+    records = load_stats_records(timestamp, dataset_name, model_name)
     print(f"      Found {len(records)} evaluated model(s).\n")
 
     print("  Generating GA evolution plots …")

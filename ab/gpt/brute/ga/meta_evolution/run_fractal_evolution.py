@@ -87,7 +87,8 @@ STATS_SUBDIR = os.environ.get("STATS_SUBDIR", "baseline")
 ARCH_DIR = os.path.join(PIPELINE_DIR, 'architectures')
 STATS_DIR = os.path.join(PIPELINE_DIR, 'stats', STATS_SUBDIR)
 CHECKPOINT = None
-BEST_STATS_DIR = os.path.join(PIPELINE_DIR, f'best_fractal_stats_{DATASET}')
+_model_name_for_stats = get_model_short_name()
+BEST_STATS_DIR = os.path.join(PIPELINE_DIR, f'best_fractal_stats_{DATASET}_{_model_name_for_stats}')
 
 os.makedirs(ARCH_DIR, exist_ok=True)
 os.makedirs(STATS_DIR, exist_ok=True)
@@ -151,6 +152,9 @@ def _log_eval(checksum, accuracy, is_cached, log_type="predicted"):
         # Create a sibling log file for true accuracies
         if log_file:
             log_file = log_file.replace(".jsonl", "_true.jsonl")
+    elif log_type == "1_epoch":
+        if log_file:
+            log_file = log_file.replace(".jsonl", "_1_epoch.jsonl")
             
     if log_file:
         try:
@@ -247,10 +251,11 @@ def fitness_function(chromosome: dict) -> float:
         # if model_checksum in seen_checksums:
         #     return _lookup_stored_fitness(model_checksum)
         if model_checksum in fitness_cache:
-            ultimate_fitness, true_fitness = fitness_cache[model_checksum]
-            print(f"  - Duplicate {model_checksum[:8]}: reusing cached fitness {ultimate_fitness:.2f}% (True: {true_fitness:.2f}%)")
+            ultimate_fitness, true_fitness, epoch_1_fitness = fitness_cache[model_checksum]
+            print(f"  - Duplicate {model_checksum[:8]}: reusing cached fitness {ultimate_fitness:.2f}% (True: {true_fitness:.2f}%, 1-Ep: {epoch_1_fitness:.2f}%)")
             _log_eval(model_checksum, ultimate_fitness, True, log_type="predicted")
             _log_eval(model_checksum, true_fitness, True, log_type="true")
+            _log_eval(model_checksum, epoch_1_fitness, True, log_type="1_epoch")
             chromosome['accuracy'] = ultimate_fitness
             return ultimate_fitness
             
@@ -261,7 +266,8 @@ def fitness_function(chromosome: dict) -> float:
         model_name = f"GenFractalNet-{model_checksum}"
         # filepath = os.path.join(ARCH_DIR, f"{model_name}.py")
         final_filepath = os.path.join(ARCH_DIR, f"{model_name}.py")
-        tmp_filepath = os.path.join(ARCH_DIR, f"_tmp_{model_name}.py")
+        MODEL_NAME_FOR_TMP = os.environ.get("MODEL_NAME", "unknown")
+        tmp_filepath = os.path.join(ARCH_DIR, f"_tmp_{model_name}_{MODEL_NAME_FOR_TMP}.py")
         filepath = tmp_filepath  # evaluator works on the temp file
         
         # with open(filepath, 'w') as f: 
@@ -513,22 +519,23 @@ def fitness_function(chromosome: dict) -> float:
         # print(f"  >>> FITNESS SCORE: {final_accuracy:.2f}%  (source: {_acc_source}, checksum: {model_checksum})")
         # print(f"  {'='*40}\n")
         # # seen_checksums.add(model_checksum)
-        # Per user request: ALWAYS use the 3-epoch accuracy for fitness and elitism.
-        # The LLM Predictor is ignored for selection purposes.
-        ultimate_fitness = epoch_accs[3]
-        true_fitness = epoch_accs[3]
-        fitness_source = f"3-Epoch Accuracy ({_acc_source})"
+        # Use predicted accuracy for GA fitness/elitism; use actual 3-epoch for true fitness.
+        ultimate_fitness = predicted_final_accuracy if prediction_successful and predicted_final_accuracy > 0 else final_accuracy
+        true_fitness = final_accuracy
+        fitness_source = f"LLM Predictor" if prediction_successful else f"3-Epoch Accuracy ({_acc_source})"
         
         print(f"\n  {'='*40}")
         print(f"  >>> FITNESS SCORE: {ultimate_fitness:.2f}%  (source: {fitness_source}, checksum: {model_checksum})")
         print(f"  {'='*40}\n")
         
-        fitness_cache[model_checksum] = (ultimate_fitness, true_fitness)
+        epoch_1_fitness = epoch_accs[1]
+        fitness_cache[model_checksum] = (ultimate_fitness, true_fitness, epoch_1_fitness)
         chromosome['accuracy'] = float(ultimate_fitness)
         
         # Dual Logging: Log both predicted and true accuracies
         _log_eval(model_checksum, ultimate_fitness, False, log_type="predicted")
         _log_eval(model_checksum, true_fitness, False, log_type="true")
+        _log_eval(model_checksum, epoch_1_fitness, False, log_type="1_epoch")
         return ultimate_fitness
         
     except Exception as e:
@@ -650,7 +657,7 @@ if __name__ == "__main__":
                  print(f"[Best] Warning: stats folder not found for checksum {best_checksum[:8]}")
 
              # Save Best Info Metadata
-             info_path = os.path.join(BASE_DIR, "best_fractal_info.json")
+             info_path = os.path.join(PIPELINE_DIR, f"best_fractal_info_{MODEL_NAME}.json")
              best_info = {
                  "timestamp": datetime.now().isoformat(),
                  "checksum": best_checksum,

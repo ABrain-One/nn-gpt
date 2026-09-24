@@ -51,20 +51,13 @@ stats_plain_GA/
 *.jsonl
 __pycache__/
 
-# ab/gpt/brute/ga/meta_evolution/stats*/
-# ab/gpt/brute/ga/meta_evolution/baseline_stats*/
-# ab/gpt/brute/ga/meta_evolution/best_*_stats*/
-# ab/gpt/brute/ga/meta_evolution/ga_fractal_arch*/
-# ab/gpt/brute/ga/meta_evolution/baseline_ga_fractal_arch*/
-# ab/gpt/brute/ga/meta_evolution/visualizations/
-# ab/gpt/brute/ga/meta_evolution/logs*/
-# ab/gpt/brute/ga/meta_evolution/modified_GA_*/
+
 stats*/
 baseline_stats*/
 best_*_stats*/
 ga_fractal_arch*/
 baseline_ga_fractal_arch*/
-visualizations/
+# visualizations/
 # logs*/
 modified_GA_*/
 
@@ -72,6 +65,16 @@ modified_GA_*/
 # Pipeline Directories
 # ============================
 # Ignore all dynamically generated output (logs, stats, architectures, history)
-*_pipeline/*
+#*_pipeline/*
+*_pipeline/stats/
+*_pipeline/logs*/
+*_pipeline/visualizations/
+*_pipeline/ga_history_backup/
+*_pipeline/fine_tuned_adapter/
+*_pipeline/architectures/
+*_pipeline/*.json
+*_pipeline/*.py
+*_pipeline/modified_GA/
+*_pipeline/*_adapter/
 # But preserve the manual model configuration file inside each pipeline!
 !*_pipeline/model_config.json

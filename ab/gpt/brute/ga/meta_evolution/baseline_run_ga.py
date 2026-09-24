@@ -94,6 +94,9 @@ def _log_eval(checksum, accuracy, is_cached, log_type="predicted"):
         # Create a sibling log file for true accuracies
         if log_file:
             log_file = log_file.replace(".jsonl", "_true.jsonl")
+    elif log_type == "1_epoch":
+        if log_file:
+            log_file = log_file.replace(".jsonl", "_1_epoch.jsonl")
     
     if log_file:
         try:
@@ -189,10 +192,11 @@ def fitness_function(chromosome: dict) -> float:
         # if model_checksum in seen_checksums:
         #     return _lookup_stored_fitness(model_checksum)
         if model_checksum in fitness_cache:
-            ultimate_fitness, true_fitness = fitness_cache[model_checksum]
-            print(f"  - Duplicate {model_checksum[:8]}: reusing cached fitness {ultimate_fitness:.2f}% (True: {true_fitness:.2f}%)")
+            ultimate_fitness, true_fitness, epoch_1_fitness = fitness_cache[model_checksum]
+            print(f"  - Duplicate {model_checksum[:8]}: reusing cached fitness {ultimate_fitness:.2f}% (True: {true_fitness:.2f}%, 1-Ep: {epoch_1_fitness:.2f}%)")
             _log_eval(model_checksum, ultimate_fitness, True, log_type="predicted")
             _log_eval(model_checksum, true_fitness, True, log_type="true")
+            _log_eval(model_checksum, epoch_1_fitness, True, log_type="1_epoch")
             chromosome['accuracy'] = ultimate_fitness
             return ultimate_fitness
 
@@ -472,22 +476,23 @@ def fitness_function(chromosome: dict) -> float:
         # _log_eval(model_checksum, final_accuracy, False)
         # return final_accuracy
         
-        # Per user request: ALWAYS use the 3-epoch accuracy for fitness and elitism.
-        # The LLM Predictor is ignored for selection purposes.
-        ultimate_fitness = epoch_accs[3]
-        true_fitness = epoch_accs[3]
-        fitness_source = f"3-Epoch Accuracy ({_acc_source})"
+        # Use predicted accuracy for GA fitness/elitism; use actual 3-epoch for true fitness.
+        ultimate_fitness = predicted_final_accuracy if prediction_successful and predicted_final_accuracy > 0 else final_accuracy
+        true_fitness = final_accuracy
+        fitness_source = f"LLM Predictor" if prediction_successful else f"3-Epoch Accuracy ({_acc_source})"
         
         print(f"\n  {'='*40}")
         print(f"  >>> FITNESS SCORE: {ultimate_fitness:.2f}%  (source: {fitness_source}, checksum: {model_checksum})")
         print(f"  {'='*40}\n")
         
-        fitness_cache[model_checksum] = (ultimate_fitness, true_fitness)
+        epoch_1_fitness = epoch_accs[1]
+        fitness_cache[model_checksum] = (ultimate_fitness, true_fitness, epoch_1_fitness)
         chromosome['accuracy'] = float(ultimate_fitness)
         
         # Dual Logging: Log both predicted and true accuracies
         _log_eval(model_checksum, ultimate_fitness, False, log_type="predicted")
         _log_eval(model_checksum, true_fitness, False, log_type="true")
+        _log_eval(model_checksum, epoch_1_fitness, False, log_type="1_epoch")
         return ultimate_fitness
         
     except Exception as e:

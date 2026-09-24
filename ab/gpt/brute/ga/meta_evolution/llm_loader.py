@@ -12,8 +12,15 @@ def _load_model_config():
         raise FileNotFoundError(f"[Config] model_config.json not found at {config_path}. Please create it.")
     with open(config_path, "r") as f:
         config = json.load(f)
+    
+    # Allow dynamic override from Kubernetes Job env variables
+    env_model = os.environ.get("LLM_BASE_MODEL")
+    if env_model:
+        config["base_model_name"] = env_model
+        print(f"[Config] Overriding base_model_name with ENV: {env_model}")
+        
     config["context_length"] = config.get("context_length", 4096)
-    print(f"[Config] Loaded model_config.json  (context_length={config['context_length']})")
+    print(f"[Config] Loaded model_config.json (base_model_name={config.get('base_model_name')}, context_length={config['context_length']})")
     return config
 
 def get_model_short_name():

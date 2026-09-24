@@ -2,7 +2,7 @@
   "apiVersion": "batch/v1",
   "kind": "Job",
   "metadata": {
-    "name": "nngpt-fractal-meta-evo-clonescience-cifar100"
+    "name": "nngpt-fractal-meta-evo-clonescience-cifar100-deepseek"
   },
   "spec": {
     "parallelism": 1,
@@ -30,7 +30,7 @@
             "env": [
               {
                 "name": "LLM_BASE_MODEL",
-                "value": "Qwen/Qwen2.5-Coder-7B-Instruct"
+                "value": "deepseek-ai/deepseek-coder-6.7b-instruct"
               },
               {
                 "name": "LOAD_PREVIOUS_ADAPTER",
