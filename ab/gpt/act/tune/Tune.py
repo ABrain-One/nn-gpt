@@ -150,6 +150,7 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
          max_prompts=MAX_PROMPTS, save_llm_output=SAVE_LLM_OUTPUT, max_new_tokens=MAX_NEW_TOKENS, use_deepspeed=USE_DEEPSPEED, nn_name_prefix=NN_NAME_PREFIX,
          nn_train_epochs=NN_TRAIN_EPOCHS, temperature=TEMPERATURE, top_k=TOP_K, top_p=TOP_P, data_dir=None,base_data_dir=None,output_dir=None,
          num_cycles=None, epoch_root=None,
+         suppress_thinking=False, budget_tokens=None, skip_lm_finetune=False,
          # Pipeline-specific overrides (for backward compatibility with iterative_finetune.py)
          evaluation_strategy=None, eval_steps=None, save_strategy=None, save_steps=None,
          save_total_limit=None, load_best_model_at_end=False, metric_for_best_model=None, warmup_steps=None, weight_decay=None,
@@ -428,6 +429,9 @@ use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={c
             enable_merge=enable_merge,
             classification_mode=classification_mode,
             use_backbone=use_backbone,
+            suppress_thinking=suppress_thinking,
+            budget_tokens=budget_tokens,
+            skip_lm_finetune=skip_lm_finetune,
             context_length=context_length,
             max_input_length=max_input_length,
             only_best_accuracy=only_best_accuracy,
@@ -580,6 +584,12 @@ if __name__ == '__main__':
     # Training configuration
     parser.add_argument('--num_cycles', type=int, default=None,
                         help='Number of outer generate/eval/SFT cycles (default: 100).')
+    parser.add_argument('--suppress_thinking', action='store_true', default=False,
+                        help='Close OlympicCoder-7B think block before generation (reduces thinking:code ratio).')
+    parser.add_argument('--max_output_tokens', type=int, default=None, dest='budget_tokens',
+                        help='Override max_new_tokens; enables token-budget sweep (paper Table 2).')
+    parser.add_argument('--skip_lm_finetune', action='store_true', default=False,
+                        help='Skip LoRA fine-tuning step each cycle (generation-only run).')
     parser.add_argument('-n', '--test_nn', type=int, default=TEST_NN,
                         help=f'Count of NNs to generate (default: {TEST_NN}).')
     parser.add_argument('--nn_train_epochs', type=int, default=NN_TRAIN_EPOCHS,

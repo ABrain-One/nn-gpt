@@ -95,7 +95,8 @@ def _strip_reasoning_output(text: str) -> str:
 
 class ChatBot:
     def __init__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, keep_memory=False,
-                 temperature=1.0, top_k=50, top_p=0.9, system_prompt: str = None):
+                 temperature=1.0, top_k=50, top_p=0.9, system_prompt: str = None,
+                 budget_tokens=None, suppress_thinking=False):
         self.show_additional_info = False
         self.model = model
         self.tokenizer = tokenizer
@@ -106,6 +107,8 @@ class ChatBot:
         self.system_prompt = system_prompt
         self.disable_chat_template = _env_flag("NNGPT_DISABLE_CHAT_TEMPLATE")
         self.strip_think_output = _env_flag("NNGPT_STRIP_THINK_OUTPUT")
+        self.budget_tokens = budget_tokens
+        self.suppress_thinking = suppress_thinking
 
         # Tokenizers for models like ABrain/NNGPT-UniqueArch-Rag ship without a
         # chat_template, so apply_chat_template raises ValueError during generation
@@ -233,14 +236,23 @@ class ChatBot:
         """Build a pipeline-ready text prompt using chat template when available."""
         messages = self._build_messages(prompt_text)
         if not self.disable_chat_template and hasattr(self.tokenizer, 'apply_chat_template'):
-            return self.tokenizer.apply_chat_template(
+            templated = self.tokenizer.apply_chat_template(
                 messages,
                 tokenize=False,
                 add_generation_prompt=True
             )
-        if self.system_prompt:
-            return f"System: {self.system_prompt}\nUser: {prompt_text}\nAssistant:"
-        return prompt_text
+        elif self.system_prompt:
+            templated = f"System: {self.system_prompt}\nUser: {prompt_text}\nAssistant:"
+        else:
+            templated = prompt_text
+        if self.suppress_thinking:
+            # Close OlympicCoder-7B's auto-opened <think> block immediately so the
+            # model skips chain-of-thought and writes code directly.
+            if templated.rstrip().endswith('<think>'):
+                templated = templated.rstrip() + '</think>\n\n<hp>'
+            else:
+                templated = templated.rstrip() + '<think></think>\n\n<hp>'
+        return templated
 
     def _direct_generate_batch(self, prompts, max_new_tokens=None, max_len=None):
         """Run true batched generation via model.generate and strip prompt prefixes by token length."""

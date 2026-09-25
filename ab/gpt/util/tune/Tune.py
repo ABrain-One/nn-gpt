@@ -932,6 +932,8 @@ def _finetune_epoch(
     sft_nn_prefixes=None,
     sft_dataset=None,
     data_dir=None,
+    budget_tokens=None,
+    suppress_thinking=False,
 ):
     """
     Single source of truth for one finetune epoch.
@@ -988,7 +990,8 @@ def _finetune_epoch(
     release_memory()
 
     chat_bot = ChatBot(
-        model, tokenizer, temperature=temperature, top_k=top_k, top_p=top_p)
+        model, tokenizer, temperature=temperature, top_k=top_k, top_p=top_p,
+        budget_tokens=budget_tokens, suppress_thinking=suppress_thinking)
     return model, chat_bot
 
 
@@ -998,6 +1001,7 @@ def finetune_step(state: AgentState) -> dict:
     out_path = epoch_dir(epoch)
     print(f"[DEBUG] Perform finetune at epoch {epoch}")
 
+    _prev_bot = state.get("chat_bot")
     model, chat_bot = _finetune_epoch(
         epoch, out_path,
         state["model"], state["tokenizer"], state["model_loader"], state["lora_tuner"],
@@ -1012,6 +1016,8 @@ def finetune_step(state: AgentState) -> dict:
         state.get("use_backbone", False),
         state.get("sft_nn_prefixes"),
         state.get("sft_dataset"),
+        budget_tokens=getattr(_prev_bot, "budget_tokens", None),
+        suppress_thinking=getattr(_prev_bot, "suppress_thinking", False),
     )
 
     return {
@@ -1093,6 +1099,9 @@ def tune(
     epoch_root=None,
     data_dir=None,
     llmatic=None,
+    budget_tokens=None,
+    skip_lm_finetune=False,
+    suppress_thinking=False,
 ):
     if not isinstance(conf_keys, (list, tuple)):
         conf_keys = (conf_keys,)
@@ -1123,6 +1132,10 @@ def tune(
         )
     use_deepspeed = False
     chat_template_path = config.get("chat_template_path")
+    # budget_tokens (from --max_output_tokens) must win over the config value
+    if budget_tokens is not None:
+        max_new_tokens = budget_tokens
+        print(f"[BUDGET] max_new_tokens overridden by --max_output_tokens: {max_new_tokens}")
     access_token = None
 
     print(
@@ -1188,7 +1201,8 @@ def tune(
     print('Using Max Length:', model_loader.get_max_length())
 
     chat_bot = ChatBot(
-        model, tokenizer, temperature=temperature, top_k=top_k, top_p=top_p)
+        model, tokenizer, temperature=temperature, top_k=top_k, top_p=top_p,
+        budget_tokens=budget_tokens, suppress_thinking=suppress_thinking)
 
     state = AgentState(
         experiment_id=nn_name_prefix or "exp_default",
@@ -1263,17 +1277,22 @@ def tune(
                 custom_synth_dir=synth_dir(out_path),
             )
 
-        print(f'[DEBUG]Perform finetune at epoch {epoch}.')
-        model, chat_bot = _finetune_epoch(
-            epoch, out_path, model, tokenizer, model_loader, lora_tuner,
-            context_length, use_unsloth, unsloth_max_input_length,
-            train_config_path, only_best_accuracy, max_prompts,
-            max_new_tokens, base_model_name, trans_mode,
-            temperature, top_k, top_p,
-            trainer_resume_checkpoint,
-            use_backbone=use_backbone,
-            sft_nn_prefixes=sft_nn_prefixes,
-            sft_dataset=sft_dataset,
-            data_dir=data_dir,
-        )
-        trainer_resume_checkpoint = None
+        if skip_lm_finetune:
+            print(f'[INFO] skip_lm_finetune=True — skipping LLM LoRA update at epoch {epoch}.')
+        else:
+            print(f'[DEBUG]Perform finetune at epoch {epoch}.')
+            model, chat_bot = _finetune_epoch(
+                epoch, out_path, model, tokenizer, model_loader, lora_tuner,
+                context_length, use_unsloth, unsloth_max_input_length,
+                train_config_path, only_best_accuracy, max_prompts,
+                max_new_tokens, base_model_name, trans_mode,
+                temperature, top_k, top_p,
+                trainer_resume_checkpoint,
+                use_backbone=use_backbone,
+                sft_nn_prefixes=sft_nn_prefixes,
+                sft_dataset=sft_dataset,
+                data_dir=data_dir,
+                budget_tokens=budget_tokens,
+                suppress_thinking=suppress_thinking,
+            )
+            trainer_resume_checkpoint = None

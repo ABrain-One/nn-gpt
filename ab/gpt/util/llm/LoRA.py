@@ -148,7 +148,8 @@ class LoRA:
         
         self.peft_model._hf_peft_config_loaded = True 
         # Log trainable parameters immediately after adapters are attached
-        print(f"[LoRA] Adapters attached. Effective target_modules: {self.peft_config.target_modules}")
+        target_modules = getattr(self.peft_config, 'target_modules', 'N/A (prefix tuning)')
+        print(f"[LoRA] Adapters attached. Effective target_modules: {target_modules}")
         print("[LoRA] Trainable parameter summary:")
         print_trainable_parameters(self.peft_model)
 
