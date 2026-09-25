@@ -8,7 +8,7 @@ the scripts in this directory.  All commands are run from the **repo root** (`nn
 ## Quick-start: Phase 3 closed-loop (the main experiment)
 
 ```bash
-python -m ab.gpt.TuneNNGen \
+python -m ab.gpt.act.tune.Tune \
     --llm_conf ds_coder_7b_olympic_4096.json \
     --nn_gen_conf_id improve_classification_only \
     --suppress_thinking \
@@ -28,7 +28,7 @@ python -m ab.gpt.TuneNNGen \
 ## Experiment A — CIFAR-10, 3-cycle (Table 3)
 
 ```bash
-python -m ab.gpt.TuneNNGen \
+python -m ab.gpt.act.tune.Tune \
     --llm_conf ds_coder_7b_olympic_4096.json \
     --nn_gen_conf_id improve_classification_only \
     --suppress_thinking \
@@ -41,7 +41,7 @@ python -m ab.gpt.TuneNNGen \
 ## Experiment B — CIFAR-10, 6-cycle (Table 3)
 
 ```bash
-python -m ab.gpt.TuneNNGen \
+python -m ab.gpt.act.tune.Tune \
     --llm_conf ds_coder_7b_olympic_4096.json \
     --nn_gen_conf_id improve_classification_only \
     --suppress_thinking \
@@ -54,7 +54,7 @@ python -m ab.gpt.TuneNNGen \
 ## Experiment C — CIFAR-100, 6-cycle (Table 3)
 
 ```bash
-python -m ab.gpt.TuneNNGen \
+python -m ab.gpt.act.tune.Tune \
     --llm_conf ds_coder_7b_olympic_4096.json \
     --nn_gen_conf_id improve_classification_only \
     --suppress_thinking \
@@ -74,7 +74,7 @@ Each run is generation-only (no fine-tuning), one cycle, with a fixed output cap
 
 ```bash
 for BUDGET in 512 1024 2048 4096 6144; do
-    python -m ab.gpt.TuneNNGen \
+    python -m ab.gpt.act.tune.Tune \
         --llm_conf ds_coder_7b_olympic.json \
         --nn_gen_conf_id improve_classification_only \
         --suppress_thinking \
@@ -118,7 +118,7 @@ Trains only virtual-token embeddings; zero weight changes to the base model.
 Result: below LEMUR median (prefix20 in project summary).
 
 ```bash
-python -m ab.gpt.TuneNNGen \
+python -m ab.gpt.act.tune.Tune \
     --llm_conf ds_coder_7b_olympic.json \
     --nn_gen_conf_id improve_classification_only \
     --use_prefix_tuning \
@@ -135,7 +135,7 @@ Targets only layers 26–27 (≈6 M params, 0.14 %).  Produces catastrophic forg
 by cycle A4 (paper Section 4.2).  Kept here for reproducibility only.
 
 ```bash
-python -m ab.gpt.TuneNNGen \
+python -m ab.gpt.act.tune.Tune \
     --llm_conf ds_coder_7b_olympic.json \
     --nn_gen_conf_id improve_classification_only \
     --suppress_thinking \

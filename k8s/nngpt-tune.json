@@ -10,7 +10,7 @@
     "template": {
       "spec": {
         "containers": [{
-          "args": ["python3 -u /a/mm/run.py ab.gpt.TuneNNGen --llm_conf ds_coder_7b_olympic.json --num_train_epochs 1 --test_nn 20 --learning_rate 5e-6"],
+          "args": ["python3 -u /a/mm/run.py ab.gpt.act.tune.Tune --llm_conf ds_coder_7b_olympic.json --num_train_epochs 1 --test_nn 20 --learning_rate 5e-6"],
           "securityContext": {
             "allowPrivilegeEscalation": false,
             "runAsUser": "<user id>",
