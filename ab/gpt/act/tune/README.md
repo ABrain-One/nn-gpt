@@ -9,7 +9,7 @@ the scripts in this directory.  All commands are run from the **repo root** (`nn
 
 ```bash
 python -m ab.gpt.TuneNNGen \
-    --llm_conf ds_coder_7b_olympic.json \
+    --llm_conf ds_coder_7b_olympic_4096.json \
     --nn_gen_conf_id improve_classification_only \
     --suppress_thinking \
     --num_cycles 3 \
@@ -29,7 +29,7 @@ python -m ab.gpt.TuneNNGen \
 
 ```bash
 python -m ab.gpt.TuneNNGen \
-    --llm_conf ds_coder_7b_olympic_3ep.json \
+    --llm_conf ds_coder_7b_olympic_4096.json \
     --nn_gen_conf_id improve_classification_only \
     --suppress_thinking \
     --num_cycles 3 \
@@ -42,7 +42,7 @@ python -m ab.gpt.TuneNNGen \
 
 ```bash
 python -m ab.gpt.TuneNNGen \
-    --llm_conf ds_coder_7b_olympic.json \
+    --llm_conf ds_coder_7b_olympic_4096.json \
     --nn_gen_conf_id improve_classification_only \
     --suppress_thinking \
     --num_cycles 6 \
@@ -55,7 +55,7 @@ python -m ab.gpt.TuneNNGen \
 
 ```bash
 python -m ab.gpt.TuneNNGen \
-    --llm_conf ds_coder_7b_olympic.json \
+    --llm_conf ds_coder_7b_olympic_4096.json \
     --nn_gen_conf_id improve_classification_only \
     --suppress_thinking \
     --num_cycles 6 \
@@ -163,35 +163,14 @@ Both files live in `ab/gpt/conf/llm/` and are passed via `--llm_conf`.
 | File                              | Purpose                                      |
 |-----------------------------------|----------------------------------------------|
 | `ds_coder_7b_olympic.json`        | OlympicCoder-7B base config (no epoch override) |
-| `ds_coder_7b_olympic_3ep.json`    | Experiment A config — 3 training epochs, 2 test epochs |
 
-### `ds_coder_7b_olympic_3ep.json` field reference
-
-```json
-{
-  "base_model_name": "open-r1/OlympicCoder-7B",
-  "num_epochs": 3,
-  "num_test_epochs": 2,
-  "use_deepspeed": false,
-  "token_from_file": false,
-  "only_best_accuracy": false,
-  "context_length": 4096,
-  "max_input_length": 4096,
-  "max_new_tokens": 6144
-}
-```
 
 | Field               | Description                                                                                 |
 |---------------------|---------------------------------------------------------------------------------------------|
 | `base_model_name`   | HuggingFace model id loaded by the ChatBot                                                  |
 | `num_epochs`        | LoRA fine-tuning epochs per cycle (overridden at runtime by `--num_cycles`)                 |
 | `num_test_epochs`   | Eval epochs used during validation at the end of each cycle                                 |
-| `use_deepspeed`     | Enable DeepSpeed ZeRO for multi-GPU training; `false` for single-GPU runs                  |
-| `token_from_file`   | Load HuggingFace auth token from a file instead of the environment variable                 |
 | `only_best_accuracy`| Retain only the checkpoint with the highest eval accuracy across cycles                     |
-| `context_length`    | Maximum sequence length for the model's attention window                                    |
-| `max_input_length`  | Truncation limit for the prompt portion of each sequence                                    |
-| `max_new_tokens`    | Default output token cap; overridden at runtime by `--max_output_tokens`                    |
 
 `ds_coder_7b_olympic.json` omits `num_epochs` (uses the pipeline default) and sets `default_context_length: 8192` for full-context runs.
 
@@ -346,4 +325,3 @@ out_<prefix>/
 - `ab/gpt/TuneHeadersNNGen.py` — lm_head-only fine-tuning entrypoint.
 - `ab/gpt/util/eval/static_validity.py` — AST-based structural checker (no execution).
 - `ab/gpt/util/eval/nn_cost.py` — parameter count and FLOPs for generated NNs.
-- `ab/gpt/conf/llm/ds_coder_7b_olympic_3ep.json` — OlympicCoder-7B 3-epoch config (Experiment A).
