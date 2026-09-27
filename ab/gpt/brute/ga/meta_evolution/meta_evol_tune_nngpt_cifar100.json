@@ -140,7 +140,26 @@
               "type": "Directory"
             }
           }
-        ]
+        ],
+        "affinity": {
+          "nodeAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+              "nodeSelectorTerms": [
+                {
+                  "matchExpressions": [
+                    {
+                      "key": "kubernetes.io/hostname",
+                      "operator": "In",
+                      "values": [
+                        "dgx-h100"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
       }
     }
   }

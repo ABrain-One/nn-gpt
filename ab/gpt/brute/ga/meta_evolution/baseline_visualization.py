@@ -124,8 +124,12 @@ def main(dataset=None, log_file_override=None):
                 log_files.extend(glob.glob(os.path.join(sdir, "**", "baseline_evaluations_*.jsonl"), recursive=True))
                 log_files.extend(glob.glob(os.path.join(sdir, "baseline_evaluations_*.jsonl")))
         log_files = list(set([os.path.abspath(f) for f in log_files if os.path.isfile(f)]))
+        
+        # Explicitly ignore the sibling log files (_true.jsonl, _1_epoch.jsonl)
+        log_files = [f for f in log_files if "_true" not in f and "_1_epoch" not in f]
+        
         if not log_files:
-            raise FileNotFoundError(f"No baseline_evaluations*.jsonl found in search dirs: {search_dirs}")
+            raise FileNotFoundError(f"No primary baseline_evaluations*.jsonl found in search dirs: {search_dirs}")
         LOG_FILE = max(log_files, key=os.path.getmtime)
 
     print(f"Loading: {LOG_FILE}")

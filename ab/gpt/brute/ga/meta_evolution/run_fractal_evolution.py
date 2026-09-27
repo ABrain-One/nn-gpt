@@ -452,6 +452,9 @@ def fitness_function(chromosome: dict) -> float:
                     epoch_3_accuracy=epoch_accs[3],
                 )
                 predicted_final_accuracy = float(pred_acc)
+                # Normalize decimal probabilities (e.g., 0.85) to percentages (85.0)
+                if 0.0 < predicted_final_accuracy <= 1.0:
+                    predicted_final_accuracy *= 100.0
                 predicted_final_epoch = int(pred_ep)
                 prediction_successful = True
                 print(f"  - Predictor success! Expected Max Acc: {predicted_final_accuracy:.2f}% at Epoch {predicted_final_epoch}")

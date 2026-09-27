@@ -1,7 +1,7 @@
 # CloneScience Meta-Evolution Pipeline — Current Setup
 
-> **Last Updated:** 2026-09-20  
-> **Status:** All 4 jobs (Baseline CIFAR-10, Baseline CIFAR-100, Meta CIFAR-10, Meta CIFAR-100) can run simultaneously.
+> **Last Updated:** 2026-09-27  
+> **Status:** All 8 jobs (Baseline CIFAR-10/100, Meta CIFAR-10/100 × Qwen/Mistral/DeepSeek) can run simultaneously on dgx-h100.
 
 ---
 
@@ -166,10 +166,18 @@ meta_evolution/
 
 ---
 
-## Kubernetes Job Concurrency
+## Kubernetes Job Concurrency & Node Affinity
 
-All 4 jobs can safely run simultaneously because:
+### Node Affinity (Updated 2026-09-27)
+All 8 job manifests use **strict** node affinity (`requiredDuringSchedulingIgnoredDuringExecution`) targeting the `dgx-h100` node exclusively. Jobs will **never** fall back to non-H100 nodes — they wait in `Pending` state until an H100 GPU becomes available.
+
+Each job is an independent single-replica Kubernetes `Job` requesting `nvidia.com/gpu: 1`. Scheduling is first-come-first-served on an individual basis — whichever job gets a free GPU starts immediately; others queue independently.
+
+### Concurrency Safety
+All 8 jobs can safely run simultaneously because:
 1. UUID monkeypatch guarantees unique temp directories per evaluation
 2. CIFAR-10 and CIFAR-100 pipelines write to separate `cifar10_pipeline/` and `cifar100_pipeline/` directories
 3. Baseline and Meta pipelines write to **separate stats subdirectories** within each pipeline: `stats/baseline/` and `stats/meta/`. This prevents cache cross-contamination where the meta-evo inherits the baseline's 4,570+ pre-loaded checksums into its `fitness_cache`, which would make the GA blind to actual fitness differences.
 4. Pod startup uses `[ -f /a/mm/ab/nn/train.py ]` existence check to skip redundant `cp -r` operations
+5. Model-specific log isolation: each model (qwen/mistral/deepseek/Baseline) writes to its own subdirectory under `logs_cifar10/` and `logs_cifar100/`
+
