@@ -1,8 +1,8 @@
 """Tests for ab.gpt.brute.loss_opt.VariantGen.
 
-Covers the loss/optimizer substitution: the supported catalogue, the NGL
-optimizer restriction (Adam/AdamW only), NGL class injection, and that the
-removed NLLLoss is now rejected.
+Covers the loss/optimizer substitution: the supported catalogue, NGL class
+injection across the full optimizer grid, and that the removed NLLLoss is
+now rejected.
 """
 import sys
 from pathlib import Path
@@ -89,19 +89,12 @@ def test_cel_tuple_form_preserved():
     assert "self.criteria = (nn.CrossEntropyLoss" in src  # stays a tuple
 
 
-# ---------- NGL restriction ----------
-def test_ngl_allowed_with_adam():
-    for opt in ("Adam", "AdamW"):
+# ---------- NGL ----------
+def test_ngl_works_with_every_optimizer():
+    for opt in OPTIM_SPECS:
         src, err = make_variant(SIMPLE_SRC, "NGL", opt)
         assert err is None, f"NGL+{opt} should be allowed: {err}"
         assert "class NGL(nn.Module)" in src, "NGL class should be injected"
-
-
-def test_ngl_rejected_with_other_optimizers():
-    for opt in ("SGD", "RMSprop", "Adagrad", "Adadelta"):
-        src, err = make_variant(SIMPLE_SRC, "NGL", opt)
-        assert src is None and err is not None, f"NGL+{opt} should be rejected"
-        assert "restricted" in err
 
 
 # ---------- grid ----------
@@ -110,16 +103,14 @@ def test_unknown_loss_returns_error():
     assert src is None and err is not None
 
 
-def test_iter_variants_skips_disallowed_ngl_combos():
-    # Full grid: CEL works with every optimizer; NGL only with Adam/AdamW.
+def test_iter_variants_covers_full_grid():
+    # Every loss pairs with every optimizer — no skipped combinations.
     results = list(iter_variants(SIMPLE_SRC))
     ok = [(l, o) for l, o, s, e in results if e is None]
     bad = [(l, o) for l, o, s, e in results if e is not None]
 
-    n_opt = len(OPTIM_SPECS)
-    assert len(ok) == n_opt + 2          # CEL×all + NGL×{Adam, AdamW}
-    assert all(l == "NGL" for l, o in bad)
-    assert {o for l, o in ok if l == "NGL"} == {"Adam", "AdamW"}
+    assert len(ok) == len(LOSS_SPECS) * len(OPTIM_SPECS)
+    assert not bad
 
 
 if __name__ == "__main__":

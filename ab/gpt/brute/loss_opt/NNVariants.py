@@ -22,12 +22,22 @@ import sys
 from pathlib import Path
 
 import ab.nn.api as nn_dataset
-from ab.nn.util.Const import nn_dir
+from ab.nn.util.Const import nn_dir, ab_root_path
 
-from ab.gpt.util.Const import epoch_dir, synth_dir, new_nn_file
+from ab.gpt.util.Const import new_nn_file
 from ab.gpt.brute.loss_opt.VariantGen import LOSS_SPECS, OPTIM_SPECS, iter_variants
 
 TASK = "img-classification"
+
+# Dedicated output root for this pipeline. Kept outside 'out/' on purpose:
+# NNEval scans out/nngpt/llm/epoch/A*/synth_nn, and loss_opt variants must not
+# leak into that pipeline. EvalVariants reads from here as well.
+LOSS_OPT_OUT_DIR = ab_root_path / 'out_loss_opt'
+
+
+def variants_synth_dir(out_epoch: int = 0) -> Path:
+    """synth_nn dir for one generation run: out_loss_opt/A{n}/synth_nn."""
+    return LOSS_OPT_OUT_DIR / f'A{out_epoch}' / 'synth_nn'
 
 
 def _read_nets_from_package() -> list[tuple[str, str]]:
@@ -91,7 +101,7 @@ def collect_sources(nn_names: list[str] | None, src_dir: str | None,
 
 def generate(models: list[tuple[str, str]], losses: list[str], optimizers: list[str],
              out_epoch: int, clean: bool) -> int:
-    out_base = synth_dir(epoch_dir(out_epoch))
+    out_base = variants_synth_dir(out_epoch)
     if clean:
         shutil.rmtree(out_base, ignore_errors=True)
     out_base.mkdir(parents=True, exist_ok=True)
@@ -164,7 +174,7 @@ def main():
     print(f"losses     : {args.losses or list(LOSS_SPECS)}")
     print(f"optimizers : {args.optimizers or list(OPTIM_SPECS)}")
     print(f"task       : {args.task}")
-    print(f"out dir    : {synth_dir(epoch_dir(args.out_epoch))}")
+    print(f"out dir    : {variants_synth_dir(args.out_epoch)}")
 
     models = collect_sources(args.nn, args.src_dir, args.task)
     if not models:

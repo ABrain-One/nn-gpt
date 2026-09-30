@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import ab.gpt.brute.loss_opt.NNVariants as NNV
 import ab.gpt.brute.loss_opt.EvalVariants as EV
-from ab.gpt.util.Const import epoch_dir, synth_dir
+from ab.gpt.brute.loss_opt.NNVariants import variants_synth_dir
 from ab.gpt.brute.loss_opt.VariantGen import iter_variants
 
 N_NETS = 10
@@ -83,7 +83,7 @@ def run_e2e(n=N_NETS, out_epoch=OUT_EPOCH, dataset=DATASET,
     report["generated"] = NNV.generate(models, None, None, out_epoch, clean=True)
 
     # --- 3. evaluate every generated variant with the dedicated EvalVariants ---
-    synth = synth_dir(epoch_dir(out_epoch))
+    synth = variants_synth_dir(out_epoch)
     try:
         EV.run(synth, [dataset], train_epochs, save_to_db=False, nn_name_prefix=None)
     except Exception:
@@ -109,7 +109,7 @@ def run_e2e(n=N_NETS, out_epoch=OUT_EPOCH, dataset=DATASET,
         elif (b / "eval_info.json").exists():
             report["evaluated_ok"] += 1
 
-    report_path = epoch_dir(out_epoch) / "variants_e2e_report.json"
+    report_path = variants_synth_dir(out_epoch).parent / "variants_e2e_report.json"
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
 
     print(f"\n{'=' * 60}")

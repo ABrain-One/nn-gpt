@@ -12,7 +12,8 @@ Usage:
 import argparse, json, os, random, sqlite3, sys, time, traceback
 from pathlib import Path
 
-from ab.gpt.util.Const import new_nn_file, NN_TRAIN_EPOCHS, epoch_dir, synth_dir
+from ab.gpt.util.Const import new_nn_file, NN_TRAIN_EPOCHS
+from ab.gpt.brute.loss_opt.NNVariants import variants_synth_dir
 from ab.gpt.util.Eval import Eval
 from ab.gpt.util.Util import verify_nn_code, copy_to_lemur
 from ab.nn.util.Util import release_memory
@@ -183,7 +184,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Evaluate generate_variants.py output across multiple datasets."
     )
-    default_synth = synth_dir(epoch_dir(0))
+    default_synth = variants_synth_dir(0)
     parser.add_argument('--synth_dir', default=str(default_synth),
                         help=f"Directory containing B* variant subdirs (default: {default_synth})")
     parser.add_argument('--datasets', nargs='+', default=DEFAULT_DATASETS,

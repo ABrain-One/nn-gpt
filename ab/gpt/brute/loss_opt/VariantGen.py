@@ -36,7 +36,7 @@ class NGL(nn.Module):
 #   allowed_optimizers - restrict this loss to a specific set of optimizers
 LOSS_SPECS = {
     "CrossEntropyLoss": ("nn.CrossEntropyLoss()", {}),
-    "NGL": ("NGL()", {"allowed_optimizers": ("Adam", "AdamW")}),
+    "NGL": ("NGL()", {}),
 }
 
 OPTIM_SPECS = {
