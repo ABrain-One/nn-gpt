@@ -36,23 +36,23 @@ Each step: checks DB viability → writes configs → runs LoRA fine-tuning subp
 
 ```bash
 # Full curriculum — CIFAR-10 only (takes ~7 days on RTX 4090)
-python -m ab.gpt.act.curriculum.GenerationPipeline \
+python -m ab.gpt.act.tune.curriculum.GenerationPipeline \
     --dataset cifar-10
 
 # Preview what would run without executing anything
-python -m ab.gpt.act.curriculum.GenerationPipeline \
+python -m ab.gpt.act.tune.curriculum.GenerationPipeline \
     --dataset cifar-10 --dry_run
 
 # Resume after interruption
-python -m ab.gpt.act.curriculum.GenerationPipeline \
+python -m ab.gpt.act.tune.curriculum.GenerationPipeline \
     --dataset cifar-10 --resume
 
 # Single cross-dataset level (e.g. SVHN L3)
-python -m ab.gpt.act.curriculum.GenerationPipeline \
+python -m ab.gpt.act.tune.curriculum.GenerationPipeline \
     --dataset svhn --level L3 --k 2
 
 # Show results summary of a completed or partial run
-python -m ab.gpt.act.curriculum.GenerationPipeline \
+python -m ab.gpt.act.tune.curriculum.GenerationPipeline \
     --dataset cifar-10 --show_results
 ```
 
@@ -206,14 +206,14 @@ If the pipeline crashes or is stopped mid-step:
 
 ```bash
 # Resume from last completed step
-python -m ab.gpt.act.curriculum.GenerationPipeline \
+python -m ab.gpt.act.tune.curriculum.GenerationPipeline \
     --dataset cifar-10 --resume
 ```
 
 If `progress.json` was accidentally deleted, recreate it manually:
 
 ```python
-from ab.gpt.act.curriculum.GenerationPipeline import save_progress
+from ab.gpt.act.tune.curriculum.GenerationPipeline import save_progress
 from pathlib import Path
 
 save_progress("cifar-10", {
