@@ -177,7 +177,7 @@ def score_run(dataset: str = 'cifar-10',
     tflite_dir = out_root / 'tflite'
 
     try:
-        from ab.gpt.act.iterative.novelty_checker import NoveltyChecker
+        from ab.gpt.act.tune.iterative.novelty_checker import NoveltyChecker
         checker = NoveltyChecker()
     except Exception as e:
         print(f'[WARN] NoveltyChecker unavailable ({e}) — novelty flags disabled')
