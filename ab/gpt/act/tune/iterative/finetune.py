@@ -26,13 +26,13 @@ import traceback
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 
-from ab.gpt.act.iterative.novelty_checker import NoveltyChecker
-from ab.gpt.act.iterative.training_data_manager import TrainingDataManager
-from ab.gpt.act.iterative.structural_reranker import StructuralReranker
-from ab.gpt.act.iterative.pipeline_validation import (
+from ab.gpt.act.tune.iterative.novelty_checker import NoveltyChecker
+from ab.gpt.act.tune.iterative.training_data_manager import TrainingDataManager
+from ab.gpt.act.tune.iterative.structural_reranker import StructuralReranker
+from ab.gpt.act.tune.iterative.pipeline_validation import (
     PipelineValidator, RetryHandler, StageValidator, ErrorRecovery
 )
-from ab.gpt.act.iterative.gpu_memory_manager import (
+from ab.gpt.act.tune.iterative.gpu_memory_manager import (
     ensure_gpu_memory, clear_gpu_cache, get_gpu_memory_info, check_gpu_memory,
     kill_gpu_processes
 )
@@ -1304,7 +1304,7 @@ class IterativeFinetuner:
         # Run evaluation through the NNEval wrapper so worker-pool scheduling and
         # checkpoint-aware skipping stay aligned with the main pipelines.
         cmd = [
-            "python", "-m", "ab.gpt.act.iterative.evaluate_cycle_models",
+            "python", "-m", "ab.gpt.act.tune.iterative.evaluate_cycle_models",
             "--cycle", str(cycle),
             "--nneval_dir", str(nneval_dir),
         ]
@@ -1350,7 +1350,7 @@ class IterativeFinetuner:
             # Continue to result collection - will handle empty results gracefully
         except FileNotFoundError:
             evaluation_succeeded = False
-            logger.error("Evaluation wrapper module not found: ab.gpt.act.iterative.evaluate_cycle_models")
+            logger.error("Evaluation wrapper module not found: ab.gpt.act.tune.iterative.evaluate_cycle_models")
             logger.error("Please ensure the module is properly installed")
             # Continue to result collection - will handle empty results gracefully
         except Exception as e:
@@ -1655,7 +1655,7 @@ class IterativeFinetuner:
             # Step 1: Run cycle analysis (generates cycle_analysis.json and plots)
             logger.info("Running cycle analysis...")
             analyze_cmd = [
-                "python", "-m", "ab.gpt.act.iterative.analyze_cycles",
+                "python", "-m", "ab.gpt.act.tune.iterative.analyze_cycles",
                 "--results_dir", str(self.output_dir)
             ]
 
@@ -1682,7 +1682,7 @@ class IterativeFinetuner:
             # Step 2: Generate Wilson CI plots
             logger.info("Generating Wilson confidence interval plots...")
             wilson_cmd = [
-                "python", "-m", "ab.gpt.act.iterative.plot_wilson_ci",
+                "python", "-m", "ab.gpt.act.tune.iterative.plot_wilson_ci",
                 "--results_dir", str(self.output_dir)
             ]
 
@@ -2185,14 +2185,14 @@ class IterativeFinetuner:
                 for error in report_result.get("errors", []):
                     logger.warning(f"  - {error}")
                 logger.info("\nPipeline results are saved. You can generate reports manually:")
-                logger.info(f"  python -m ab.gpt.act.iterative.analyze_cycles --results_dir {self.output_dir}")
-                logger.info(f"  python -m ab.gpt.act.iterative.plot_wilson_ci --results_dir {self.output_dir}")
+                logger.info(f"  python -m ab.gpt.act.tune.iterative.analyze_cycles --results_dir {self.output_dir}")
+                logger.info(f"  python -m ab.gpt.act.tune.iterative.plot_wilson_ci --results_dir {self.output_dir}")
 
         except Exception as e:
             logger.error(f"\n✗ Failed to generate final reports: {e}")
             logger.info("\nPipeline results are saved. Generate reports manually:")
-            logger.info(f"  python -m ab.gpt.act.iterative.analyze_cycles --results_dir {self.output_dir}")
-            logger.info(f"  python -m ab.gpt.act.iterative.plot_wilson_ci --results_dir {self.output_dir}")
+            logger.info(f"  python -m ab.gpt.act.tune.iterative.analyze_cycles --results_dir {self.output_dir}")
+            logger.info(f"  python -m ab.gpt.act.tune.iterative.plot_wilson_ci --results_dir {self.output_dir}")
 
         logger.info("")
         logger.info("")

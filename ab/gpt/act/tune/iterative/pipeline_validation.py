@@ -137,10 +137,10 @@ class PipelineValidator:
     @staticmethod
     def check_infrastructure_files() -> Tuple[bool, List[str]]:
         """Check if all required infrastructure files exist."""
-        # After the refactor, pipeline infra files live in ab/gpt/act/iterative/
+        # After the refactor, pipeline infra files live in ab/gpt/act/tune/iterative/
         # (iterative_finetune.py was renamed to finetune.py in that same directory).
         gpt_dir = ab_root_path / 'ab' / 'gpt'
-        pipeline_dir = gpt_dir / 'act' / 'iterative'
+        pipeline_dir = gpt_dir / 'act' / 'tune' / 'iterative'
 
         # Files in the pipeline directory
         pipeline_files = [
