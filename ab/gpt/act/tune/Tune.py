@@ -179,9 +179,9 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
             if mobile_deployment:
                 from ab.gpt.act.edge.iterative_finetune import MobileDeploymentFinetuner as IterativeFinetuner
             else:
-                from ab.gpt.act.iterative.finetune import IterativeFinetuner
+                from ab.gpt.act.tune.iterative.finetune import IterativeFinetuner
         except ImportError as e:
-            print(f"[ERROR] Pipeline mode requires ab.gpt.act.iterative.finetune: {e}")
+            print(f"[ERROR] Pipeline mode requires ab.gpt.act.tune.iterative.finetune: {e}")
             sys.exit(1)
         pipeline_kwargs = dict(
             llm_conf=llm_conf,
