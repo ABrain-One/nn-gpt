@@ -113,7 +113,7 @@ def _count_generated(run_dir: Path) -> int:
 def _structural_unique(codes: List[str]) -> Optional[int]:
     """Count structurally-distinct architectures via the repo's NoveltyChecker."""
     try:
-        from ab.gpt.act.iterative.novelty_checker import NoveltyChecker
+        from ab.gpt.act.tune.iterative.novelty_checker import NoveltyChecker
     except Exception:  # noqa: BLE001
         return None
     try:

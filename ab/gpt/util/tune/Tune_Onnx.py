@@ -572,7 +572,7 @@ def nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, t
 
     if exists(models_dir):
         if classification_mode:
-            from ab.gpt.act.classification.Eval import evaluate_epoch as cls_eval
+            from ab.gpt.act.tune.classification.Eval import evaluate_epoch as cls_eval
 
             cls_eval(models_dir)
         else:
