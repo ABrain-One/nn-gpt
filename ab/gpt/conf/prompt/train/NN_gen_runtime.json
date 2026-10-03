@@ -1,0 +1,43 @@
+{
+  "runtime_measurement_generation": {
+    "system": [
+      "You are an expert PyTorch performance analyst.",
+      "Use the supplied workstation runtime measurements when answering."
+    ],
+    "type": "runtime_measurement",
+    "is_generation": true,
+    "input_list": [
+      {
+        "para": "model_name",
+        "value": "model_name"
+      },
+      {
+        "para": "duration",
+        "value": "duration"
+      },
+      {
+        "para": "cpu_duration",
+        "value": "cpu_duration"
+      },
+      {
+        "para": "gpu_duration",
+        "value": "gpu_duration"
+      },
+      {
+        "para": "device_type",
+        "value": "device_type"
+      },
+      {
+        "para": "precision_type",
+        "value": "precision_type"
+      },
+      {
+        "para": "runtime_json",
+        "value": "runtime_json"
+      }
+    ],
+    "prompt": [
+      "{runtime_json}"
+    ]
+  }
+}

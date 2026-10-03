@@ -342,7 +342,13 @@ class NNGenPrompt(Prompt):
             'pruning' in key.lower()
         )
 
-        print(f"[DEBUG] Key: {key}, is_pruning: {is_pruning}")
+        # Check if this is a workstation runtime-data prompt.
+        is_runtime = (
+            key.lower().startswith('runtime') or
+            'runtime' in key.lower()
+        )
+
+        print(f"[DEBUG] Key: {key}, is_pruning: {is_pruning}, is_runtime: {is_runtime}")
 
         if is_pruning:
             # Use prun table for pruning statistics
@@ -352,6 +358,22 @@ class NNGenPrompt(Prompt):
                 data = data[data['status'] == 'success']
             print(
                 f"[PRUN] Fetched {len(data)} records from PRUN table for key: {key}")
+        elif is_runtime:
+            # Use PyTorch workstation runtime statistics from the run table.
+            data = lemur.run_data(
+                model_name=key_dict.get('model_name'),
+                duration=key_dict.get('duration'),
+                type="pt",
+                max_rows=n_training_prompts,
+            )
+            if not data.empty:
+                data = data.copy()
+                data['runtime_json'] = data.apply(
+                    lambda row: json.dumps(row.to_dict(), default=str, indent=2),
+                    axis=1,
+                )
+            print(
+                f"[RUN] Fetched {len(data)} PyTorch runtime records for key: {key}")
         else:
             # for classification tasks: Patch LEMUR's join query before the data call so that dataset_2
             # and its siblings appear in the result set.
