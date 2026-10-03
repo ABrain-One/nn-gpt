@@ -29,7 +29,89 @@ from mutator.lemur_io import (
     load_lemur_model,
     cleanup_temp_module,
     get_dataset_params,
+    load_constructor_from_string_via_file,
 )
+
+
+def _schedule_plan_on_mutator(code_mutator: CodeMutator, plan: dict, original_model) -> None:
+    """Translate a mutation plan into CodeMutator scheduling calls.
+
+    Handles both per-module mutations (dimension/activation/...) and the
+    source-level channel-configuration (bracket/scalar) mutation.
+    """
+    for full_module_name, details in plan.items():
+        mutation_type = details.get("mutation_type", "dimension")
+
+        if mutation_type == "channel_config":
+            location = details.get("source_location")
+            if location:
+                code_mutator.schedule_channel_config_modification(
+                    location,
+                    details.get("index"),
+                    details.get("new_value"),
+                    details.get("name", ""),
+                )
+                if config.DEBUG_MODE:
+                    print(f"Scheduled channel-config modification for {details.get('name')}[{details.get('index')}] = {details.get('new_value')}")
+            continue
+
+        location = details.get("source_location")
+        if not location:
+            continue
+
+        module = original_model.get_submodule(full_module_name)
+
+        if mutation_type == "dimension":
+            arg_to_change = None
+            if isinstance(module, nn.Linear):
+                arg_to_change = 'out_features' if details.get('new_out') is not None else 'in_features'
+            elif isinstance(module, nn.Conv2d):
+                arg_to_change = 'out_channels' if details.get('new_out') is not None else 'in_channels'
+            elif isinstance(module, (nn.BatchNorm2d, nn.LayerNorm)):
+                arg_to_change = 'num_features'
+
+            if details.get('symbolic') and details.get('symbolic_expression') and arg_to_change:
+                code_mutator.schedule_symbolic_modification(location, arg_to_change, details['symbolic_expression'])
+                if config.DEBUG_MODE:
+                    print(f"Scheduled symbolic modification for {full_module_name}: {arg_to_change} = {details['symbolic_expression']}")
+            else:
+                new_value = details.get('new_out') or details.get('new_in')
+                if arg_to_change and new_value is not None:
+                    code_mutator.schedule_modification(location, arg_to_change, new_value)
+                    if config.DEBUG_MODE:
+                        print(f"Scheduled fixed-value modification for {full_module_name}: {arg_to_change} = {new_value}")
+
+        elif mutation_type == "activation":
+            new_activation = details.get('new_activation')
+            if new_activation:
+                code_mutator.schedule_activation_modification(location, new_activation)
+
+        elif mutation_type == "layer_type":
+            new_layer_type = details.get('new_layer_type')
+            mutation_params = details.get('mutation_params', {})
+            if new_layer_type:
+                code_mutator.schedule_layer_type_modification(location, new_layer_type, mutation_params)
+
+        elif mutation_type == "kernel_size":
+            new_kernel_size = details.get('new_kernel_size')
+            if new_kernel_size:
+                code_mutator.schedule_kernel_size_modification(location, new_kernel_size)
+
+        elif mutation_type == "stride":
+            new_stride = details.get('new_stride')
+            if new_stride:
+                code_mutator.schedule_stride_modification(location, new_stride)
+
+
+def _instantiate_from_code(modified_code: str, h: int, w: int, out_classes: int):
+    """Build a model from mutated source code (source-level mutations)."""
+    constructor, temp_module_name, temp_module_path = load_constructor_from_string_via_file(modified_code)
+    try:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model = constructor((2, 3, h, w), (out_classes,), {'lr': 0.01, 'momentum': 0.9}, device)
+    finally:
+        cleanup_temp_module(temp_module_name, temp_module_path)
+    return model
 
 
 def fetch_base_model_sources() -> Tuple[Dict[str, str], list]:
@@ -107,7 +189,7 @@ def run_single_mutation(worker_args):
         temp_module_info = getattr(original_model, '_temp_module_info', None)
         source_map = tracer.create_source_map(original_model)
 
-        planner = ModelPlanner(original_model, source_map=source_map, search_depth=config.PRODUCER_SEARCH_DEPTH)
+        planner = ModelPlanner(original_model, source_map=source_map, search_depth=config.PRODUCER_SEARCH_DEPTH, source_code=model_source)
         plan = planner.plan_random_mutation()
 
         if not plan:
@@ -125,7 +207,21 @@ def run_single_mutation(worker_args):
             # Register this unique plan
             plan_tracker.register_plan(plan)
 
-        mutated_model = planner.apply_plan()
+        # Determine the dominant mutation type of this plan.
+        plan_mutation_type = next(
+            (d.get("mutation_type", "dimension") for d in plan.values()), "dimension"
+        )
+
+        code_mutator = CodeMutator(model_source)
+
+        if plan_mutation_type == "channel_config":
+            # Source-level mutation: apply it to the code, then build the model
+            # from the mutated code so verification matches what is saved.
+            _schedule_plan_on_mutator(code_mutator, plan, original_model)
+            modified_code = code_mutator.get_modified_code()
+            mutated_model = _instantiate_from_code(modified_code, h, w, expected_out_classes)
+        else:
+            mutated_model = planner.apply_plan()
 
         # Enhanced model verification
         try:
@@ -165,58 +261,11 @@ def run_single_mutation(worker_args):
         except Exception as e:
             raise RuntimeError(f"Model verification failed: {str(e)}")
 
-        code_mutator = CodeMutator(model_source)
-
-        for full_module_name, details in plan.items():
-            location = details.get("source_location")
-            if not location:
-                continue
-
-            mutation_type = details.get("mutation_type", "dimension")
-            module = original_model.get_submodule(full_module_name)
-
-            if mutation_type == "dimension":
-                arg_to_change = None
-                if isinstance(module, nn.Linear):
-                    arg_to_change = 'out_features' if details.get('new_out') is not None else 'in_features'
-                elif isinstance(module, nn.Conv2d):
-                    arg_to_change = 'out_channels' if details.get('new_out') is not None else 'in_channels'
-                elif isinstance(module, (nn.BatchNorm2d, nn.LayerNorm)):
-                    arg_to_change = 'num_features'
-
-                if details.get('symbolic') and details.get('symbolic_expression') and arg_to_change:
-                    code_mutator.schedule_symbolic_modification(location, arg_to_change, details['symbolic_expression'])
-                    if config.DEBUG_MODE:
-                        print(f"Scheduled symbolic modification for {full_module_name}: {arg_to_change} = {details['symbolic_expression']}")
-                else:
-                    new_value = details.get('new_out') or details.get('new_in')
-                    if arg_to_change and new_value is not None:
-                        code_mutator.schedule_modification(location, arg_to_change, new_value)
-                        if config.DEBUG_MODE:
-                            print(f"Scheduled fixed-value modification for {full_module_name}: {arg_to_change} = {new_value}")
-
-            elif mutation_type == "activation":
-                new_activation = details.get('new_activation')
-                if new_activation:
-                    code_mutator.schedule_activation_modification(location, new_activation)
-
-            elif mutation_type == "layer_type":
-                new_layer_type = details.get('new_layer_type')
-                mutation_params = details.get('mutation_params', {})
-                if new_layer_type:
-                    code_mutator.schedule_layer_type_modification(location, new_layer_type, mutation_params)
-
-            elif mutation_type == "kernel_size":
-                new_kernel_size = details.get('new_kernel_size')
-                if new_kernel_size:
-                    code_mutator.schedule_kernel_size_modification(location, new_kernel_size)
-
-            elif mutation_type == "stride":
-                new_stride = details.get('new_stride')
-                if new_stride:
-                    code_mutator.schedule_stride_modification(location, new_stride)
-
-        modified_code = code_mutator.get_modified_code()
+        if plan_mutation_type != "channel_config":
+            # Channel-config mutations were already applied to code_mutator
+            # above (before building the model).
+            _schedule_plan_on_mutator(code_mutator, plan, original_model)
+            modified_code = code_mutator.get_modified_code()
 
         # Save to nn-dataset repository
         from ab.nn.util.Util import uuid4  # use canonical hashing
@@ -248,7 +297,10 @@ def run_single_mutation(worker_args):
         # Use configurable output root from config
         model_dir = os.path.join(config.MUTATED_MODELS_OUTPUT_ROOT, model_name)
         os.makedirs(model_dir, exist_ok=True)
-        model_path = os.path.join(model_dir, f"{model_name}-ast-{mutation_type}-{checksum}.py")
+        # Channel-config and direct channel mutations share the uniform
+        # 'ast-dimension' label in the filename.
+        filename_label = "dimension" if mutation_type in ("dimension", "channel_config") else mutation_type
+        model_path = os.path.join(model_dir, f"ast-{filename_label}-{model_name}-{checksum}.py")
 
         with open(model_path, 'w', encoding='utf-8') as f:
             f.write(modified_code)
