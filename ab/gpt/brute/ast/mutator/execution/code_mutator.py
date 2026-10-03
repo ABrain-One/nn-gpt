@@ -11,6 +11,7 @@ from typing import Dict, Any, List, Optional
 from mutator import config
 from mutator.execution.constants import ARG_TO_POS_MAP
 from mutator.execution.apply_dimension import apply_dimension_modification
+from mutator.execution.apply_channel_config import apply_channel_config_modification
 from mutator.execution.apply_symbolic import apply_symbolic_modification
 from mutator.execution.apply_activation import apply_activation_modification
 from mutator.execution.apply_layer_type import apply_layer_type_modification
@@ -94,6 +95,29 @@ class CodeMutator(ast.NodeTransformer):
             self.modifications.append(mod)
             if config.DEBUG_MODE:
                 print(f"[CodeMutator] Scheduled dimension modification: {mod}")
+
+    def schedule_channel_config_modification(self, location: Dict[str, int], index: Optional[int], new_value: Any, name: str = "") -> None:
+        """
+        Schedule a channel-configuration (bracket / scalar) modification.
+
+        Args:
+            location: Source location of the container (list/tuple) or the
+                scalar value node.
+            index: Element index inside a list/tuple, or None for a scalar.
+            new_value: New integer width.
+            name: Optional container variable name (for diagnostics).
+        """
+        if location and new_value is not None:
+            mod = {
+                'type': 'channel_config',
+                'location': location,
+                'index': index,
+                'new_value': new_value,
+                'name': name,
+            }
+            self.modifications.append(mod)
+            if config.DEBUG_MODE:
+                print(f"[CodeMutator] Scheduled channel-config modification: {mod}")
 
     def schedule_symbolic_modification(self, location: Dict[str, int], arg_name: str, symbolic_expression: str) -> None:
         """
@@ -259,16 +283,37 @@ class CodeMutator(ast.NodeTransformer):
         self.generic_visit(node)
         
         for mod in self.modifications:
-            if mod['type'] == 'architectural':
-                loc = mod['location']
-                if (hasattr(node, 'lineno') and node.lineno == loc['lineno'] and
-                        hasattr(node, 'col_offset') and node.col_offset == loc['col_offset']):
-                    
-                    if config.DEBUG_MODE:
-                        print(f"[CodeMutator] Found AST List node at Line {loc['lineno']}, Col {loc['col_offset']} for architectural modification.")
-                    
-                    self._apply_architectural_modification(node, mod)
+            loc = mod['location']
+            matches = (hasattr(node, 'lineno') and node.lineno == loc['lineno'] and
+                       hasattr(node, 'col_offset') and node.col_offset == loc['col_offset'])
+
+            if mod['type'] == 'architectural' and matches:
+                if config.DEBUG_MODE:
+                    print(f"[CodeMutator] Found AST List node at Line {loc['lineno']}, Col {loc['col_offset']} for architectural modification.")
+                self._apply_architectural_modification(node, mod)
+            elif mod['type'] == 'channel_config' and matches:
+                if config.DEBUG_MODE:
+                    print(f"[CodeMutator] Found AST List node at Line {loc['lineno']}, Col {loc['col_offset']} for channel-config modification.")
+                apply_channel_config_modification(node, mod)
         
+        return node
+
+    def visit_Assign(self, node: ast.Assign) -> ast.Assign:
+        """Handle scalar channel-configuration modifications (e.g. init_block_channels = 64)."""
+        self.generic_visit(node)
+
+        for mod in self.modifications:
+            if mod['type'] != 'channel_config':
+                continue
+            loc = mod['location']
+            value = node.value
+            if (hasattr(value, 'lineno') and value.lineno == loc['lineno'] and
+                    hasattr(value, 'col_offset') and value.col_offset == loc['col_offset'] and
+                    isinstance(value, ast.Constant)):
+                if config.DEBUG_MODE:
+                    print(f"[CodeMutator] Found scalar channel-config at Line {loc['lineno']} for modification.")
+                apply_channel_config_modification(value, mod)
+
         return node
 
     def get_modified_code(self) -> str:

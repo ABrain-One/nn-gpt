@@ -12,6 +12,7 @@ This module contains all the planning logic for different types of mutations:
 
 from .base_planner import ModelPlanner
 from .dimension_planner import DimensionPlanner
+from .channel_config_planner import ChannelConfigPlanner
 from .activation_planner import ActivationPlanner
 from .layer_planner import LayerTypePlanner
 from .spatial_planner import SpatialPlanner
@@ -21,6 +22,7 @@ from .fallback_planner import FallbackPlanner
 __all__ = [
     'ModelPlanner',
     'DimensionPlanner', 
+    'ChannelConfigPlanner',
     'ActivationPlanner',
     'LayerTypePlanner',
     'SpatialPlanner',
