@@ -5,6 +5,10 @@ from the LEMUR dataset by name, substitute the loss function and optimizer, and
 write each variant into the standard ``synth_nn/B*`` layout. Evaluate the result
 with the sibling ``EvalVariants`` script.
 
+Each variant's architecture ID (nn-dataset's ``arch_uid``, the identity the DB
+stores it under) is recorded in ``variant_meta.json``. Variants whose ID already
+exists in LEMUR or earlier in the output dir are skipped (``--no-dedup`` keeps them).
+
 Usage:
     # sweep the full loss × optimizer grid for one model
     python -m ab.gpt.brute.loss_opt.NNVariants --nn ResNet
@@ -22,7 +26,8 @@ import sys
 from pathlib import Path
 
 import ab.nn.api as nn_dataset
-from ab.nn.util.Const import nn_dir, ab_root_path
+from ab.nn.util.ArchDedup import ArchIndex, INDEX as ARCH_INDEX
+from ab.nn.util.Const import nn_dir, ab_root_path, db_file
 
 from ab.gpt.util.Const import new_nn_file
 from ab.gpt.brute.loss_opt.VariantGen import LOSS_SPECS, OPTIM_SPECS, iter_variants
@@ -55,7 +60,7 @@ def _read_nets_from_package() -> list[tuple[str, str]]:
 def fetch_nets(task: str) -> list[tuple[str, str]]:
     """Retrieve ``(name, code)`` pairs using the same sequence as NNAlter.
 
-    Mirrors ab/gpt/util/AlterNN.py: pull the best-accuracy rows for the task, then
+    Mirrors ab/gpt/util/nn/AlterNN.py: pull the best-accuracy rows for the task, then
     take one row per distinct net via ``groupby('nn').sample(n=1)``, reading the
     source from the ``nn_code`` column.
 
@@ -99,8 +104,22 @@ def collect_sources(nn_names: list[str] | None, src_dir: str | None,
     return models
 
 
+def load_arch_index() -> ArchIndex:
+    """Architecture-ID index of the LEMUR dataset (nn-dataset's ArchDedup).
+
+    The DB identifies a network by its architecture certificate, and stores the
+    statistics of a second name with the same certificate under the first one.
+    The index is rebuilt whenever the DB is newer than it, so nets registered
+    since the last build count as known.
+    """
+    if ARCH_INDEX.exists() and ARCH_INDEX.stat().st_mtime >= db_file.stat().st_mtime:
+        return ArchIndex.load()
+    print("  Building the LEMUR architecture index (a few minutes, then cached) ...")
+    return ArchIndex.build()
+
+
 def generate(models: list[tuple[str, str]], losses: list[str], optimizers: list[str],
-             out_epoch: int, clean: bool) -> int:
+             out_epoch: int, clean: bool, dedup: bool = True) -> int:
     out_base = variants_synth_dir(out_epoch)
     if clean:
         shutil.rmtree(out_base, ignore_errors=True)
@@ -111,7 +130,18 @@ def generate(models: list[tuple[str, str]], losses: list[str], optimizers: list[
     # dir was just wiped, so this naturally restarts at B0.
     existing = [int(d.name[1:]) for d in out_base.glob("B*") if d.name[1:].isdigit()]
     variant_counter = max(existing) + 1 if existing else 0
-    skipped = 0
+    generated = skipped = 0
+    duplicates: list[str] = []
+
+    # Reject variants whose architecture ID is already in LEMUR, in an earlier run
+    # into this dir, or earlier in this run; training them would return no new
+    # information and their statistics would be merged into the other net.
+    idx = load_arch_index() if dedup else None
+    if idx is not None:
+        for meta_path in out_base.glob("B*/variant_meta.json"):
+            m = json.loads(meta_path.read_text(encoding="utf-8"))
+            if m.get("arch_uid"):
+                idx.run.setdefault(m["arch_uid"], f"{m['base_nn']}_{m['loss']}_{m['optimizer']}")
 
     for nn_name, src in models:
         for loss_name, optim_name, new_src, err in iter_variants(src, losses, optimizers):
@@ -120,25 +150,42 @@ def generate(models: list[tuple[str, str]], losses: list[str], optimizers: list[
                 skipped += 1
                 continue
 
+            label = f"{nn_name}_{loss_name}_{optim_name}"
+            arch_uid = None
+            if idx is not None:
+                verdict = idx.check(new_src)
+                if verdict.duplicate:
+                    duplicates.append(f"{label}: {verdict.reason}")
+                    continue
+                if verdict.status == "unparseable":
+                    print(f"  Warning: {label}: no architecture ID ({verdict.reason})")
+                idx.accept(verdict, label)
+                arch_uid = verdict.uid
+
             variant_dir = out_base / f"B{variant_counter}"
             variant_dir.mkdir(parents=True, exist_ok=True)
 
             (variant_dir / f"original_{nn_name}.py").write_text(src, encoding="utf-8")
             (variant_dir / new_nn_file).write_text(new_src, encoding="utf-8")
 
-            meta = {"base_nn": nn_name, "loss": loss_name, "optimizer": optim_name}
+            meta = {"base_nn": nn_name, "loss": loss_name, "optimizer": optim_name, "arch_uid": arch_uid}
             (variant_dir / "variant_meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
             variant_counter += 1
+            generated += 1
 
     print(f"\n{'=' * 60}")
-    print(f"Generated {variant_counter} variant(s) in: {out_base.resolve()}")
+    print(f"Generated {generated} variant(s) in: {out_base.resolve()}")
     if skipped:
         print(f"Skipped {skipped} variant(s) due to errors")
+    if duplicates:
+        print(f"Skipped {len(duplicates)} duplicate architecture(s):")
+        for d in duplicates:
+            print(f"  {d}")
     print(f"\nTo evaluate, run:")
     print(f"  python -m ab.gpt.brute.loss_opt.EvalVariants --datasets cifar-10")
     print(f"{'=' * 60}\n")
-    return variant_counter
+    return generated
 
 
 def main():
@@ -162,6 +209,9 @@ def main():
     parser.add_argument("--clean", action=argparse.BooleanOptionalAction, default=False,
                         help="Wipe the synth_nn dir before writing and restart at B0 "
                              "(default: False — new variants are appended after the last B*).")
+    parser.add_argument("--dedup", action=argparse.BooleanOptionalAction, default=True,
+                        help="Skip variants whose architecture ID already exists in LEMUR "
+                             "or earlier in this output dir (default: True).")
 
     args = parser.parse_args()
 
@@ -175,13 +225,14 @@ def main():
     print(f"optimizers : {args.optimizers or list(OPTIM_SPECS)}")
     print(f"task       : {args.task}")
     print(f"out dir    : {variants_synth_dir(args.out_epoch)}")
+    print(f"dedup      : {args.dedup}")
 
     models = collect_sources(args.nn, args.src_dir, args.task)
     if not models:
         print("No input models resolved — nothing to do.", file=sys.stderr)
         sys.exit(1)
 
-    count = generate(models, args.losses, args.optimizers, args.out_epoch, args.clean)
+    count = generate(models, args.losses, args.optimizers, args.out_epoch, args.clean, args.dedup)
     if count == 0:
         sys.exit(1)
 

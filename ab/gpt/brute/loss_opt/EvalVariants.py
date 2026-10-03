@@ -14,10 +14,10 @@ from pathlib import Path
 
 from ab.gpt.util.Const import new_nn_file, NN_TRAIN_EPOCHS
 from ab.gpt.brute.loss_opt.NNVariants import variants_synth_dir
-from ab.gpt.util.Eval import Eval
+from ab.gpt.util.eval.Eval import Eval
 from ab.gpt.util.Util import verify_nn_code, copy_to_lemur
 from ab.nn.util.Util import release_memory
-from ab.gpt.NNEval import (
+from ab.gpt.act.eval.Eval import (
     LR, BATCH, DROPOUT, MOMENTUM, TRANSFORM,
     STOCHASTIC_DEPTH_PROB, NORM_EPS, NORM_STD, TIE_WEIGHTS, DROPOUT_AUX,
     ATTENTION_DROPOUT, NORM_MOMENTUM, SCORE_THRESH, NMS_THRESH, IOU_THRESH,
