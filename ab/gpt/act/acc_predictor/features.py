@@ -170,18 +170,120 @@ def _compute_targets(record: dict) -> dict:
     best_epoch = max(1, min(_safe_int(record.get("epochs_to_best"), 1), max_epochs))
     return {"best_accuracy": best_accuracy, "best_epoch": best_epoch}
 
-def _format_layer_stats_lines(record: dict) -> list[str]:
-    table = record.get("layer_stats")
+def _active_layer_features() -> tuple[str, ...] | None:
+    """Return selected layer features, or None for all features."""
+    configured = config.ACTIVE_LAYER_FEATURES
 
+    if configured is None:
+        return None
+
+    if isinstance(configured, str):
+        features = tuple(
+            part.strip()
+            for part in configured.split(",")
+            if part.strip()
+        )
+    else:
+        features = tuple(
+            str(part).strip()
+            for part in configured
+            if str(part).strip()
+        )
+
+    if not features:
+        raise ValueError(
+            "ACTIVE_LAYER_FEATURES must be None or contain at least one feature"
+        )
+
+    invalid = [
+        feature
+        for feature in features
+        if feature not in config.LAYER_STAT_FEATURE_LABELS
+    ]
+    if invalid:
+        valid = ", ".join(sorted(config.LAYER_STAT_FEATURE_LABELS))
+        raise ValueError(
+            f"Unknown layer-stat features: {invalid}. "
+            f"Expected values: {valid}"
+        )
+
+    if len(set(features)) != len(features):
+        raise ValueError(
+            f"Duplicate layer-stat features are not allowed: {features}"
+        )
+
+    return features
+
+def _select_layer_stats_features(
+    table: str,
+    features: tuple[str, ...],
+) -> str:
+    """Keep epoch plus the selected layer-stat columns."""
+    lines = [line for line in table.splitlines() if line.strip()]
+    if not lines:
+        return ""
+
+    header = lines[0].split("\t")
+    if not header or header[0] != "epoch":
+        raise ValueError(
+            "Unexpected layer_stats header; expected the first column to be epoch"
+        )
+
+    try:
+        indices = [header.index(feature) for feature in features]
+    except ValueError as exc:
+        raise ValueError(
+            f"Requested layer-stat feature is missing from the table header: "
+            f"{header}"
+        ) from exc
+
+    selected = [
+        "epoch\t" + "\t".join(features)
+    ]
+
+    for line in lines[1:]:
+        values = line.split("\t")
+        if len(values) <= max(indices):
+            raise ValueError(
+                f"Malformed layer_stats row: {line!r}"
+            )
+
+        selected.append(
+            values[0]
+            + "\t"
+            + "\t".join(values[index] for index in indices)
+        )
+
+    return "\n".join(selected)
+
+def _format_layer_stats_lines(record: dict) -> list[str]:
+    if not config.USE_LAYER_STATS:
+        return []
+
+    table = record.get("layer_stats")
     if not table:
         return []
 
+    features = _active_layer_features()
+
+    if features is None:
+        return [
+            "LAYER_STATS_MEAN_BY_EPOCH",
+            table,
+            "",
+        ]
+
+    selected_table = _select_layer_stats_features(table, features)
+    labels = ", ".join(
+        config.LAYER_STAT_FEATURE_LABELS[feature]
+        for feature in features
+    )
+
     return [
-        "LAYER_STATS_MEAN_BY_EPOCH",
-        table,
+        f"LAYER_STATS_MEAN_BY_EPOCH ({labels})",
+        selected_table,
         "",
     ]
-
 
 def _format_proxy_lines(record: dict) -> list[str]:
     """
