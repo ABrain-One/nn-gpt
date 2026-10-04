@@ -3,9 +3,9 @@
 import argparse
 import json
 import tempfile
-from pathlib import Path
 
 from ab.gpt.util.prompt.NNGenPrompt import NNGenPrompt
+from ab.nn.util.Const import ab_root_path
 
 
 class TestTokenizer:
@@ -26,8 +26,14 @@ def main() -> None:
     parser.add_argument("duration", type=int)
     args = parser.parse_args()
 
-    source_config = Path(
-        "/home/nayana/Desktop/nn-gpt/ab/gpt/conf/prompt/train/NN_gen_runtime.json"
+    source_config = (
+        ab_root_path
+        / "ab"
+        / "gpt"
+        / "conf"
+        / "prompt"
+        / "train"
+        / "NN_gen_runtime.json"
     )
     config = json.loads(source_config.read_text())
     config_key = next(iter(config))
@@ -48,7 +54,3 @@ def main() -> None:
         )
 
     print(frame.iloc[0]["instruction"])
-
-
-if __name__ == "__main__":
-    main()
