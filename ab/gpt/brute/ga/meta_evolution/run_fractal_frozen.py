@@ -1,0 +1,742 @@
+import os
+import warnings
+from ab.gpt.brute.ga.meta_evolution.llm_loader import get_dataset_name
+warnings.filterwarnings("ignore")
+import argparse
+import hashlib
+import json
+import glob
+import copy
+import numpy as np
+
+class NumpyEncoder(json.JSONEncoder):
+    """Handle numpy scalar types that are not JSON serializable."""
+    def default(self, obj):
+        if hasattr(obj, 'item'):
+            return obj.item()
+        return super(NumpyEncoder, self).default(obj)
+import time
+import shutil
+from datetime import datetime
+from contextlib import contextmanager
+import sys
+
+# FIX MODULE PATH: Add repo root to sys.path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.abspath(os.path.join(current_dir, "../../../../../"))
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
+
+@contextmanager
+def suppress_output():
+    with open(os.devnull, 'w') as devnull:
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.stdout = devnull
+        sys.stderr = devnull
+        try:
+            yield
+        finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+
+import torch
+
+from ab.gpt.brute.ga.meta_evolution.FractalNet_evolvable_backbone import SEARCH_SPACE, generate_model_code_string
+from ab.gpt.util.Eval import Eval
+from ab.gpt.util.acc_client import predict_best_accuracy
+import ab.nn.api as nn_dataset
+import pandas as pd
+# MONKEYPATCH: Bypass the massive remote database download inside Eval.py
+nn_dataset.data = lambda *args, **kwargs: pd.DataFrame(columns=['nn_id'])
+nn_dataset.data.cache_clear = lambda: None
+import logging
+
+# Configure logging to be simpler (remove timestamps for cleaner output)
+logging.basicConfig(level=logging.INFO, format='%(message)s', force=True)
+
+# --- PATH SETUP ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PIPELINE_DIR = os.environ.get("PIPELINE_DIR", BASE_DIR)
+DATASET = os.environ.get("DATASET", "cifar10")
+DATASET_DASH = "cifar-100" if DATASET == "cifar100" else "cifar-10"
+
+import ab.nn.util.Train as train_runtime
+import uuid
+# MONKEYPATCH: Prevent PID-based directory collision across concurrent pods
+train_runtime.out = f"out_{DATASET}_{uuid.uuid4().hex[:8]}"
+
+import httpx
+_orig_post = httpx.Client.post
+def _patched_post(self, url, *args, **kwargs):
+    if "json" in kwargs and isinstance(kwargs["json"], dict):
+        if "temperature" in kwargs["json"]:
+            kwargs["json"]["temperature"] = 0.8
+    return _orig_post(self, url, *args, **kwargs)
+httpx.Client.post = _patched_post
+
+import importlib
+if PIPELINE_DIR not in sys.path:
+    sys.path.insert(0, PIPELINE_DIR)
+ga_mod = importlib.import_module("modified_GA_frozen.genetic_algorithm_evolved")
+GeneticAlgorithm = ga_mod.GeneticAlgorithm
+
+# This is the folder where unique fractal models will be saved
+# STATS_SUBDIR env var separates baseline vs meta-evo stats to prevent cache cross-contamination
+STATS_SUBDIR = os.environ.get("STATS_SUBDIR", "baseline")
+ARCH_DIR = os.path.join(PIPELINE_DIR, 'architectures')
+STATS_DIR = os.path.join(PIPELINE_DIR, 'stats', STATS_SUBDIR)
+CHECKPOINT = None
+_model_name_for_stats = "frozen"
+BEST_STATS_DIR = os.path.join(PIPELINE_DIR, f'best_fractal_stats_{DATASET}_{_model_name_for_stats}')
+
+os.makedirs(ARCH_DIR, exist_ok=True)
+os.makedirs(STATS_DIR, exist_ok=True)
+
+# [LOG DOCUMENTATION] Stats directory separation to prevent cache cross-contamination
+# Baseline runs use STATS_SUBDIR=baseline; meta-evo runs use STATS_SUBDIR=meta
+print(f"[Config] STATS_SUBDIR={STATS_SUBDIR} → STATS_DIR={STATS_DIR}")
+
+# seen_checksums = set()
+fitness_cache = {}
+# Population-level dedup tracking (Approach A+C for Rec #7)
+_generation_seen = set()
+
+# --- Evaluation Step Counter ---
+_evaluation_step = 0
+
+def get_evaluation_step():
+    """Return and increment the global evaluation step counter."""
+    global _evaluation_step
+    _evaluation_step += 1
+    return _evaluation_step
+
+# --- MAP-Elites Archive (managed at runner level, not inside GA) ---
+archive = {}
+
+def coerce_gene_value(gene_name, value, search_space):
+    """Snap out-of-bounds gene values to nearest valid option."""
+    valid_values = search_space[gene_name]
+    if not valid_values:
+        return value
+    if value in valid_values:
+        return value
+    exemplar = valid_values[0]
+    if isinstance(exemplar, (int, float, np.integer, np.floating)) and isinstance(
+        value, (int, float, np.integer, np.floating)
+    ):
+        return min(valid_values, key=lambda candidate: abs(float(candidate) - float(value)))
+    return random.choice(valid_values)
+
+def sanitize_chromosome(chromosome, search_space):
+    """Ensure all gene values are within the search space."""
+    sanitized = chromosome.copy()
+    for gene_name in search_space:
+        if gene_name in sanitized:
+            sanitized[gene_name] = coerce_gene_value(gene_name, sanitized[gene_name], search_space)
+    return sanitized
+
+def update_archive(individual, search_space):
+    """Update the MAP-Elites archive with the individual if it's the best for its cell."""
+    cell = (individual['chromosome'].get('n_blocks', 1), individual['chromosome'].get('base_channels', 16))
+    if cell not in archive or individual['fitness'] > archive[cell]['fitness']:
+        archive[cell] = copy.deepcopy(individual)
+        print(f"  [Archive] Cell {cell} updated with fitness: {individual['fitness']:.4f}")
+
+def _log_eval(checksum, accuracy, is_cached, log_type="predicted", chromosome=None):
+    if float(accuracy) <= 0.0:
+        return
+    
+    log_file = os.environ.get("GA_EVAL_LOG")
+    if log_type == "true":
+        # Create a sibling log file for true accuracies
+        if log_file:
+            log_file = log_file.replace(".jsonl", "_true.jsonl")
+    elif log_type == "1_epoch":
+        if log_file:
+            log_file = log_file.replace(".jsonl", "_1_epoch.jsonl")
+            
+    if log_file:
+        try:
+            with open(log_file, "a") as f:
+                entry = {
+                    "uid": checksum,
+                    "accuracy": float(accuracy),
+                    "is_cached": is_cached,
+                    "timestamp": datetime.now().isoformat(),
+                    "meta_iteration": int(os.environ.get("META_ITERATION", 0)),
+                    "seed": int(os.environ.get("FROZEN_SEED", 0))
+                }
+                if chromosome is not None:
+                    entry["chromosome"] = chromosome
+                f.write(json.dumps(entry) + "\n")
+        except Exception as e:
+            print(f"[ERROR] Failed to write GA eval log: {e}")
+
+# --- RECOMMENDATION #2: Reset fitness_cache between runs ---
+# _load_existing_checksums() is DISABLED — each run starts with a
+# fresh fitness_cache = {}. The cache still builds incrementally
+# during the run (line ~583), but stale checksums from previous
+# runs are NOT pre-loaded.
+def _load_existing_checksums():
+    """DISABLED by Rec #2. Each run starts fresh to prevent cross-run cache contamination."""
+    print("[Cache] Pre-loading DISABLED (Rec #2: fresh cache per run)")
+    return
+
+def _lookup_stored_fitness(checksum: str) -> float:
+    """
+    For a previously-evaluated model (duplicate), read its stored accuracy
+    from the stats/ folder instead of returning 0.0.
+    Returns fitness as a percentage (e.g. 54.69), or 0.0 if the file is missing/unreadable.
+    """
+    stats_dir_name = f"img-classification_{DATASET_DASH}_acc_GenFractalNet-{checksum}"
+    stats_dir_path = os.path.join(STATS_DIR, stats_dir_name)
+    if not os.path.isdir(stats_dir_path):
+        print(f"  - Duplicate: no stored stats found for {checksum[:8]}, returning 0.0")
+        return 0.0
+
+    # Pick the highest-numbered epoch JSON (most complete result)
+    json_files = sorted(
+        [f for f in os.listdir(stats_dir_path) if f.endswith('.json')],
+        key=lambda x: int(x.replace('.json', '')) if x.replace('.json', '').isdigit() else 0
+    )
+    if not json_files:
+        print(f"  - Duplicate: stats folder empty for {checksum[:8]}, returning 0.0")
+        return 0.0
+
+    json_path = os.path.join(stats_dir_path, json_files[-1])
+    try:
+        with open(json_path) as f:
+            data = json.load(f)
+        if isinstance(data, list) and len(data) > 0:
+            data = data[-1]
+    except Exception as e:
+        print(f"  - Duplicate: could not read stats for {checksum[:8]}: {e}")
+        return 0.0
+
+    # Layered extraction — same priority order as for fresh evaluations
+    hp = data.get('hyperparameters', {})
+    ts = data.get('training_summary', {})
+    for src, key in [
+        (data, 'accuracy'), (data, 'best_accuracy'),
+        (hp,   'accuracy'), (hp,   'best_accuracy'),
+        (ts,   'final_accuracy'), (ts, 'best_accuracy'),
+    ]:
+        val = src.get(key)
+        if val is not None:
+            try:
+                fitness = float(val) * 100
+                if fitness > 0:
+                    print(f"  - Duplicate {checksum[:8]}: reusing stored fitness {fitness:.2f}% (from {key})")
+                    return fitness
+            except (TypeError, ValueError):
+                pass
+
+    print(f"  - Duplicate {checksum[:8]}: stored stats had no valid accuracy, returning 0.0")
+    return 0.0
+
+def md5_hash(s: str) -> str:
+    return hashlib.md5(s.encode()).hexdigest()
+
+def fitness_function(chromosome: dict) -> float:
+    # --- Sentinel variables for cleanup and logging on failure ---
+    tmp_filepath = None
+    model_stats_dir_path = None
+    model_checksum = "failed_gen"
+    try:
+
+        # 1. Generate Source Code
+        code_str = generate_model_code_string(chromosome)
+        
+        # New md5_hash checksum matching LLM_guided
+        model_checksum = md5_hash(code_str)
+        
+        # Deduplication — look up stored fitness instead of discarding signal
+        # if model_checksum in seen_checksums:
+        #     return _lookup_stored_fitness(model_checksum)
+        if model_checksum in fitness_cache:
+            ultimate_fitness, true_fitness, epoch_1_fitness = fitness_cache[model_checksum]
+            print(f"  - Duplicate {model_checksum[:8]}: reusing cached fitness {ultimate_fitness:.2f}% (True: {true_fitness:.2f}%, 1-Ep: {epoch_1_fitness:.2f}%)")
+            _log_eval(model_checksum, ultimate_fitness, True, log_type="predicted", chromosome=chromosome)
+            _log_eval(model_checksum, true_fitness, True, log_type="true", chromosome=chromosome)
+            _log_eval(model_checksum, epoch_1_fitness, True, log_type="1_epoch", chromosome=chromosome)
+            chromosome['accuracy'] = ultimate_fitness
+            return ultimate_fitness
+            
+        print(f"  - Evaluating unique arch (checksum: {model_checksum[:8]}...)")
+        
+        # 2. Write model code to a TEMPORARY file; only persist after
+        #    evaluation succeeds and stats are verified on disk.
+        model_name = f"GenFractalNet-{model_checksum}"
+        # filepath = os.path.join(ARCH_DIR, f"{model_name}.py")
+        final_filepath = os.path.join(ARCH_DIR, f"{model_name}.py")
+        MODEL_NAME_FOR_TMP = os.environ.get("MODEL_NAME", "unknown")
+        tmp_filepath = os.path.join(ARCH_DIR, f"_tmp_{model_name}_{MODEL_NAME_FOR_TMP}.py")
+        filepath = tmp_filepath  # evaluator works on the temp file
+        
+        # with open(filepath, 'w') as f: 
+        #     f.write(code_str)
+        with open(tmp_filepath, 'w') as f:
+            f.write(code_str)
+            
+        # 3. Evaluate
+        eval_prm = {
+            'lr': chromosome['lr'],
+            'momentum': chromosome['momentum'],
+            'batch': 64,  # Increased from 32: more signal per step, avoids AccuracyException floor
+            # 'epoch': 1,   # Short epochs for Meta-Evaluation
+            'epoch': 3,   # 3-epoch proxy for LLM predictor
+            'transform': "norm_32_flip",  # Native CIFAR-10 resolution (was 256 → massive slowdown)
+            'max_batches': None,  # None = full dataset (782 batches), or set int for proxy eval (e.g. 200)
+        }
+
+        # --- PREVIOUS CODE (Commented out per protocol) ---
+        # # --- FIX: Delete stale training_summary.json before eval so it
+        # # cannot be picked up and mistaken for the current model's stats.
+        # summary_path = os.path.join(os.getcwd(), 'out', 'training_summary.json')
+        # if os.path.exists(summary_path):
+        #     try:
+        #         os.remove(summary_path)
+        #         print(f"  - Cleared stale training_summary.json before eval")
+        #     except Exception as e:
+        #         print(f"  - Warning: could not remove stale summary: {e}")
+        
+        # We don't need `Eval` to make its own subfolder if we want a flat JSON
+        # However, to get per-epoch stats (1.json, 2.json), Train.py requires save_to_db=True.
+        # We monkeypatch the actual SQLite writes to prevent DB locking.
+        import ab.nn.util.db.Write as DB_Write
+        _original_db_save = DB_Write.save_results
+        _original_db_layer_save = getattr(DB_Write, 'save_layer_stat', None)
+        
+        DB_Write.save_results = lambda *args, **kwargs: 1  # Return dummy stat_id
+        if _original_db_layer_save:
+            DB_Write.save_layer_stat = lambda *args, **kwargs: None
+            
+        _original_db_save_nn = getattr(DB_Write, 'save_nn', None)
+        if _original_db_save_nn:
+            DB_Write.save_nn = lambda *args, **kwargs: kwargs.get('force_name', 'dummy_model_name')
+
+        model_stats_dir_name = f"img-classification_{DATASET_DASH}_acc_GenFractalNet-{model_checksum}"
+        model_stats_dir_path = os.path.join(STATS_DIR, model_stats_dir_name)
+        os.makedirs(model_stats_dir_path, exist_ok=True)
+
+        evaluator = Eval(
+            model_source_package=ARCH_DIR,
+            task='img-classification',
+            dataset=DATASET_DASH,
+            metric='acc',
+            prm=eval_prm,
+            save_to_db=True,
+            prefix=model_name,
+            save_path=model_stats_dir_path 
+        )
+        
+        try:
+            result = evaluator.evaluate(filepath)
+        finally:
+            DB_Write.save_results = _original_db_save
+            if _original_db_layer_save:
+                DB_Write.save_layer_stat = _original_db_layer_save
+            if _original_db_save_nn:
+                DB_Write.save_nn = _original_db_save_nn
+        
+        # --- PREVIOUS CODE (Commented out per protocol) ---
+        # # Fetch stats from the freshly-written training_summary.json.
+        # # Only trust it if it was actually written by THIS evaluation
+        # # (guard: the file must exist AND belong to the current model checksum).
+        # full_res = {}
+        # if os.path.exists(summary_path):
+        #     try:
+        #         with open(summary_path, 'r') as f:
+        #             candidate = json.load(f)
+        #         file_uid = candidate.get('uid', model_checksum)
+        #         if file_uid == model_checksum:
+        #             full_res = candidate
+        # Ensure the final fallback is structured correctly if native save failed
+        full_res = {}
+        # We assume Train.py correctly wrote 1.json, 2.json to model_stats_dir_path.
+        # Let's verify by loading the highest epoch JSON to return as full_res.
+        import glob
+        saved_jsons = glob.glob(os.path.join(model_stats_dir_path, '*.json'))
+        if saved_jsons:
+            try:
+                # Find highest numbered json
+                highest_json = max(saved_jsons, key=lambda p: int(os.path.basename(p).split('.')[0]) if os.path.basename(p).split('.')[0].isdigit() else 0)
+                with open(highest_json, 'r') as f:
+                    candidate = json.load(f)
+                if isinstance(candidate, list) and len(candidate) > 0:
+                    full_res = candidate[0]
+                elif isinstance(candidate, dict):
+                    full_res = candidate
+                print(f"  - Verified native per-epoch stats saved to {model_stats_dir_path}")
+            except Exception as e:
+                print(f"  - Warning: Failed to parse native saved JSON: {e}")
+
+        # Fall back to the direct result object if native saving failed
+        if not full_res:
+            if isinstance(result, dict):
+                full_res = result
+            else:
+                # Construct a minimal stats dict from the scalar result
+                acc_val = 0.0
+                if isinstance(result, tuple) and len(result) >= 2:
+                    acc_val = float(result[1])
+                elif isinstance(result, (int, float)) and result is not None:
+                    acc_val = float(result)
+                full_res = {
+                    'config': {
+                        'task': 'img-classification',
+                        'dataset': DATASET_DASH,
+                        'metric': 'acc',
+                        'model': model_name
+                    },
+                    'hyperparameters': eval_prm,
+                    'training_summary': {
+                        'total_epochs': eval_prm.get('epoch', 1),
+                        'best_accuracy': acc_val,
+                        'final_accuracy': acc_val,
+                    }
+                }
+
+        # Ensure uid is exactly the checksum
+        full_res['uid'] = model_checksum
+
+        # --- Verify at least one stats JSON was written before persisting model ---
+        _stats_json_files = [f for f in os.listdir(model_stats_dir_path) if f.endswith('.json')]
+        if not _stats_json_files:
+            print(f"  - ERROR: No stats JSON written to {model_stats_dir_path}, discarding model")
+            # Clean up partial state
+            if os.path.exists(tmp_filepath):
+                os.remove(tmp_filepath)
+            
+            # Log the failure entry to ga_evaluations
+            _log_eval(model_checksum, 0.0, False)
+            return 0.0
+
+        # Stats verified — promote temp model file to its final location
+        os.rename(tmp_filepath, final_filepath)
+        print(f"  - Model persisted to {os.path.basename(ARCH_DIR)}/ (stats verified: {len(_stats_json_files)} JSON file(s))")
+
+        # --- NEW CODE: Query LLM Predictor ---
+        predicted_final_accuracy = 0.0
+        predicted_final_epoch = 0
+        prediction_successful = False
+        
+        # Read the 1, 2, 3 epoch accuracies from the saved JSONs
+        epoch_accs = {1: 0.0, 2: 0.0, 3: 0.0}
+        for ep in [1, 2, 3]:
+            ep_file = os.path.join(model_stats_dir_path, f"{ep}.json")
+            if os.path.exists(ep_file):
+                try:
+                    with open(ep_file, 'r') as ef:
+                        ep_data = json.load(ef)[0]
+                    # Try to extract accuracy
+                    ep_acc = 0.0
+                    if 'accuracy' in ep_data: ep_acc = float(ep_data['accuracy']) * 100
+                    elif 'hyperparameters' in ep_data and 'accuracy' in ep_data['hyperparameters']:
+                        ep_acc = float(ep_data['hyperparameters']['accuracy']) * 100
+                    epoch_accs[ep] = ep_acc
+                except: pass
+
+        # Log current evaluation step with true 3-epoch accuracy
+        eval_step = get_evaluation_step()
+        print(f"  [Step {eval_step}] True 3-Epoch Accuracy: {epoch_accs[3]:.2f}% | E1={epoch_accs[1]:.2f}%, E2={epoch_accs[2]:.2f}%")
+
+        # Only predict if we have valid epoch accuracies
+        if epoch_accs[1] > 0 and epoch_accs[2] > 0 and epoch_accs[3] > 0:
+            try:
+                print(f"  - Querying LLM Predictor with accs: E1={epoch_accs[1]:.2f}, E2={epoch_accs[2]:.2f}, E3={epoch_accs[3]:.2f}")
+                pred_acc, pred_ep = predict_best_accuracy(
+                    task='img-classification',
+                    dataset=DATASET_DASH,
+                    metric='acc',
+                    nn_code=code_str,
+                    epoch_1_accuracy=epoch_accs[1],
+                    epoch_2_accuracy=epoch_accs[2],
+                    epoch_3_accuracy=epoch_accs[3],
+                )
+                predicted_final_accuracy = float(pred_acc)
+                # Normalize decimal probabilities (e.g., 0.85) to percentages (85.0)
+                if 0.0 < predicted_final_accuracy <= 1.0:
+                    predicted_final_accuracy *= 100.0
+                predicted_final_epoch = int(pred_ep)
+                prediction_successful = True
+                print(f"  - Predictor success! Expected Max Acc: {predicted_final_accuracy:.2f}% at Epoch {predicted_final_epoch}")
+            except Exception as e:
+                print(f"  - Predictor failed (timeout/error): {e}")
+        else:
+            print(f"  - Warning: Missing 3-epoch trajectory, skipping predictor.")
+
+        # Save predictor summary
+        pred_summary = {
+            "uid": model_checksum,
+            "inputs_used": {
+                "epoch_1_accuracy": epoch_accs[1],
+                "epoch_2_accuracy": epoch_accs[2],
+                "epoch_3_accuracy": epoch_accs[3]
+            },
+            "prediction": {
+                "predicted_max_accuracy": predicted_final_accuracy,
+                "predicted_max_epoch": predicted_final_epoch,
+                "success": prediction_successful
+            }
+        }
+        with open(os.path.join(model_stats_dir_path, "predictor_summary.json"), 'w') as f:
+            json.dump(pred_summary, f, indent=4)
+        # --- END NEW CODE ---
+
+        # --- Layered accuracy extraction ---
+        # Priority: top-level > hyperparameters (library writes here) >
+        #           training_summary > scalar result fallback
+        final_accuracy = 0.0
+        _acc_source = "none"
+
+        if 'accuracy' in full_res:
+            final_accuracy = float(full_res['accuracy']) * 100
+            _acc_source = "full_res.accuracy"
+        elif 'best_accuracy' in full_res:
+            final_accuracy = float(full_res['best_accuracy']) * 100
+            _acc_source = "full_res.best_accuracy"
+        elif isinstance(full_res.get('hyperparameters'), dict):
+            hp = full_res['hyperparameters']
+            if 'accuracy' in hp and hp['accuracy']:
+                final_accuracy = float(hp['accuracy']) * 100
+                _acc_source = "hyperparameters.accuracy"
+            elif 'best_accuracy' in hp and hp['best_accuracy']:
+                final_accuracy = float(hp['best_accuracy']) * 100
+                _acc_source = "hyperparameters.best_accuracy"
+        if final_accuracy == 0.0 and isinstance(full_res.get('training_summary'), dict):
+            ts = full_res['training_summary']
+            for key in ('best_accuracy', 'final_accuracy'):
+                if key in ts and ts[key]:
+                    final_accuracy = float(ts[key]) * 100
+                    _acc_source = f"training_summary.{key}"
+                    break
+        if final_accuracy == 0.0:
+            # Scalar / tuple fallback from the raw evaluator return value
+            if isinstance(result, tuple) and len(result) >= 2:
+                final_accuracy = float(result[1]) * 100
+                _acc_source = "result tuple[1]"
+            elif isinstance(result, (int, float)) and result is not None:
+                final_accuracy = float(result) * 100
+                _acc_source = "result scalar"
+
+        # --- PREVIOUS CODE (Commented out per protocol) ---
+        # print(f"\n  {'='*40}")
+        # print(f"  >>> FITNESS SCORE: {final_accuracy:.2f}%  (source: {_acc_source}, checksum: {model_checksum})")
+        # print(f"  {'='*40}\n")
+        # # seen_checksums.add(model_checksum)
+        # Use predicted accuracy for GA fitness/elitism; use actual 3-epoch for true fitness.
+        ultimate_fitness = predicted_final_accuracy if prediction_successful and predicted_final_accuracy > 0 else final_accuracy
+        true_fitness = final_accuracy
+        fitness_source = f"LLM Predictor" if prediction_successful else f"3-Epoch Accuracy ({_acc_source})"
+        
+        print(f"\n  {'='*40}")
+        print(f"  >>> PREDICTED FITNESS SCORE: {ultimate_fitness:.2f}%  (source: {fitness_source}, checksum: {model_checksum})")
+        print(f"  {'='*40}\n")
+        
+        epoch_1_fitness = epoch_accs[1]
+        fitness_cache[model_checksum] = (ultimate_fitness, true_fitness, epoch_1_fitness)
+        chromosome['accuracy'] = float(ultimate_fitness)
+        
+        # Dual Logging: Log both predicted and true accuracies
+        _log_eval(model_checksum, ultimate_fitness, False, log_type="predicted", chromosome=chromosome)
+        _log_eval(model_checksum, true_fitness, False, log_type="true", chromosome=chromosome)
+        _log_eval(model_checksum, epoch_1_fitness, False, log_type="1_epoch", chromosome=chromosome)
+        return ultimate_fitness
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"  - Error during evaluation (attempting to keep partial stats): {e}")
+        # --- Cleanup: remove temp model file and any partial stats ---
+        try:
+            if tmp_filepath and os.path.exists(tmp_filepath):
+                os.remove(tmp_filepath)
+                print(f"  - Cleaned up temp file: {tmp_filepath}")
+        except Exception as cleanup_err:
+            print(f"  - Warning: cleanup failed: {cleanup_err}")
+            
+        # Log the failure entry to ga_evaluations
+        _chk = model_checksum if 'model_checksum' in locals() else 'unknown'
+        _log_eval(_chk, 0.0, False, log_type="predicted", chromosome=chromosome)
+        _log_eval(_chk, 0.0, False, log_type="true", chromosome=chromosome)
+        return 0.0
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    # parser.add_argument("--gens", type=int, default=3)
+    # parser.add_argument("--pop", type=int, default=10)
+    parser.add_argument("--gens", type=int, default=int(os.environ.get("GENERATIONS", 3)))
+    parser.add_argument("--pop", type=int, default=int(os.environ.get("POPULATION_SIZE", 10)))
+    parser.add_argument("--clean", action="store_true")
+    args = parser.parse_args()
+
+    # Auto-setup timestamped GA eval log if not already set by meta_evolver
+    _standalone_mode = False
+    if not os.environ.get("GA_EVAL_LOG"):
+        _standalone_mode = True
+        run_ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        _dataset_name = get_dataset_name(__file__)
+        _model_name = "frozen"
+        # Use pod's RUN_TS env var so JSONL lands in the same timestamped subfolder as Pod_logs.log
+        pod_run_ts = os.environ.get("RUN_TS", "")
+        logs_dir = os.path.join(PIPELINE_DIR, f"logs_{DATASET}", _model_name, pod_run_ts) if pod_run_ts else os.path.join(BASE_DIR, "logs")
+        os.makedirs(logs_dir, exist_ok=True)
+        os.environ["GA_EVAL_LOG"] = os.path.join(logs_dir, f"frozen_evaluations_{_dataset_name}_{run_ts}.jsonl")
+        print(f"[LOG] GA eval log: {os.environ['GA_EVAL_LOG']}")
+
+    try:
+        ga = GeneticAlgorithm(
+            population_size=args.pop,
+            search_space=SEARCH_SPACE,
+            # elitism_count=5,
+            elitism_count=max(1, int(args.pop * 0.25)),  # Dynamic: 25% of population
+            mutation_rate=0.2,
+            checkpoint_path=CHECKPOINT
+        )
+        
+        # No checkpoint — start from generation 0
+        start_gen = 0
+        target_gens = start_gen + args.gens
+        print(f"[Run] Continuing evolution from gen {start_gen} to {target_gens}")
+
+        # Wrap fitness_function to sanitize chromosomes and update MAP-Elites archive
+        # Rec #7: Population-level dedup (Approach A+C)
+        # Approach A: Track checksums within this generation; Approach C: Penalize duplicates
+        generation_seen = set()
+
+        def fitness_with_archive(chromosome):
+            sanitized = sanitize_chromosome(chromosome, SEARCH_SPACE)
+            chromosome.update(sanitized)  # Fix in-place so GA sees clean values
+
+            # Approach A+C: Check for population-level duplicates
+            code_str = generate_model_code_string(chromosome)
+            model_checksum = md5_hash(code_str)
+
+            if model_checksum in generation_seen:
+                # Approach C: Fitness penalty for duplicates within same generation
+                print(f"  - Duplicate {model_checksum[:8]}: applying 50% fitness penalty (Rec #7)")
+                chromosome['accuracy'] = -1.0
+                update_archive({'chromosome': chromosome, 'fitness': -1.0}, SEARCH_SPACE)
+                return -1.0
+
+            generation_seen.add(model_checksum)
+
+            fitness = fitness_function(chromosome)
+            # Update archive after evaluation
+            update_archive({'chromosome': chromosome, 'fitness': fitness}, SEARCH_SPACE)
+            return fitness
+
+        best, history = ga.run(target_gens, fitness_with_archive)
+        
+        # Save Best Architecture
+        if best:
+             MODEL_NAME = os.environ.get("MODEL_NAME", "unknown")
+             best_code = generate_model_code_string(best['chromosome'])
+             best_path = os.path.join(PIPELINE_DIR, f"best_fractal_meta_{DATASET}_{MODEL_NAME}.py")
+             with open(best_path, "w") as f:
+                 f.write(best_code)
+             print(f"[Best] Saved best model to {best_path}")
+
+             # Copy Winning Stats
+             best_checksum = md5_hash(best_code)
+             best_folder_name = f"img-classification_{DATASET_DASH}_acc_GenFractalNet-{best_checksum}"
+             src_stats_path = os.path.join(STATS_DIR, best_folder_name)
+             dst_stats_path = os.path.join(BEST_STATS_DIR, best_folder_name)
+
+             os.makedirs(BEST_STATS_DIR, exist_ok=True)
+             
+             # Refresh the best_fractal_stats folder for this run
+             if os.path.exists(BEST_STATS_DIR):
+                 for item in os.listdir(BEST_STATS_DIR):
+                     item_path = os.path.join(BEST_STATS_DIR, item)
+                     if os.path.isdir(item_path):
+                         shutil.rmtree(item_path)
+                     else:
+                         os.remove(item_path)
+
+             if os.path.isdir(src_stats_path):
+                 print(f"[Best] Copying stats from {src_stats_path}...")
+                 shutil.copytree(src_stats_path, dst_stats_path)
+                 print(f"[Best] Saved best stats to {dst_stats_path}")
+             else:
+                 print(f"[Best] Warning: stats folder not found for checksum {best_checksum[:8]}")
+
+             # Save Best Info Metadata
+             info_path = os.path.join(PIPELINE_DIR, f"best_fractal_info_{MODEL_NAME}.json")
+             best_info = {
+                 "timestamp": datetime.now().isoformat(),
+                 "checksum": best_checksum,
+                 "fitness": best.get('fitness'),
+                 "chromosome": best.get('chromosome'),
+                 "source_stats_dir": src_stats_path,
+                 "copied_stats_dir": dst_stats_path
+             }
+             with open(info_path, "w") as f:
+                 json.dump(best_info, f, indent=4, cls=NumpyEncoder)
+             print(f"[Best] Saved best info metadata to {info_path}")
+
+        # ROBUST META-SCORE CALCULATION FOR MAP-ELITES
+        if history:
+            peak = max(history)
+            
+            # Compute top-3 mean of the final population
+            if len(ga.population) >= 3:
+                top3_mean = sum(ind['fitness'] for ind in ga.population[:3] if ind['fitness'] is not None) / 3.0
+            else:
+                top3_mean = peak
+                
+            archive_size = len(archive)
+        else:
+            top3_mean = 0.0
+            peak = 0.0
+            archive_size = 0
+            
+        print(f"PEAK_ACCURACY: {peak:.4f}")
+        
+        # Calculate true peak accuracy from the fitness cache (which stores (ultimate, true))
+        true_peak = 0.0
+        if fitness_cache:
+            try:
+                # Get the highest true_fitness among all evaluated models
+                true_peak = max(v[1] for v in fitness_cache.values() if isinstance(v, tuple) and len(v) > 1)
+            except:
+                pass
+                
+        print(f"TRUE_PEAK_ACCURACY: {true_peak:.4f}")
+        print(f"TOP3_MEAN: {top3_mean:.4f}")
+        print(f"ARCHIVE_SIZE: {archive_size}")
+
+        # Save evolved trajectory
+        trajectory = {
+            "peak_accuracy": peak,
+            "true_peak_accuracy": true_peak,
+            "true_fitness": true_peak,
+            "top3_mean": top3_mean,
+            "archive_size": archive_size,
+            "fitness_history": history,
+            "total_generations": target_gens,
+            "evaluation_step": _evaluation_step
+        }
+        MODEL_NAME = os.environ.get("MODEL_NAME", "unknown")
+        with open(os.path.join(PIPELINE_DIR, f"evolved_results_{DATASET}_{MODEL_NAME}.json"), "w") as f:
+            json.dump(trajectory, f, indent=4)
+
+    except Exception as e:
+        import traceback
+        print(f"CRITICAL GA FAIL: {e}")
+        traceback.print_exc()
+        print("PEAK_ACCURACY: 0.0")
+        print("TRUE_PEAK_ACCURACY: 0.0")
+        print("META_SCORE: 0.0")
+
+    # --- Generate visualizations only in standalone mode ---
+    # (meta_evolver.py handles its own visualization at the end)
+    if _standalone_mode:
+        try:
+            from ab.gpt.brute.ga.meta_evolution.baseline_visualization import main as generate_plots
+            print("\n=== Generating Visualizations ===")
+            generate_plots()
+        except Exception as e:
+            print(f"[WARN] Visualization failed (non-fatal): {e}")

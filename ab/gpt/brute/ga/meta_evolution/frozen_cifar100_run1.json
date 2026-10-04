@@ -1,0 +1,142 @@
+{
+  "apiVersion": "batch/v1",
+  "kind": "Job",
+  "metadata": {
+    "name": "nngpt-fractal-frozen-cifar100-run1"
+  },
+  "spec": {
+    "parallelism": 1,
+    "ttlSecondsAfterFinished": 86400,
+    "template": {
+      "spec": {
+        "tolerations": [
+          {
+            "key": "dgx",
+            "operator": "Exists"
+          }
+        ],
+        "containers": [
+          {
+            "name": "ml",
+            "image": "abrainone/ai-linux:cu12.6.3-latest",
+            "imagePullPolicy": "Always",
+            "command": [
+              "/bin/bash",
+              "-c"
+            ],
+            "args": [
+              "cd /a/mm && (pip uninstall -y flash-attn || true) && pip install \"torchao==0.15.0\" --upgrade --extra-index-url https://download.pytorch.org/whl/cu126 && export PYTHONPATH=/a/mm && export RUN_TS=$(date +%d-%m-%y_%H-%M) && export DATASET=cifar100 && export PIPELINE_DIR=/a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline && mkdir -p ${PIPELINE_DIR}/logs_${DATASET}/frozen/${RUN_TS} && python3 -u -m ab.gpt.brute.ga.meta_evolution.frozen_pipeline 2>&1 | tee ${PIPELINE_DIR}/logs_${DATASET}/frozen/${RUN_TS}/${RUN_TS}_${DATASET}_frozen_Pod_logs.log"
+            ],
+            "env": [
+              {
+                "name": "POPULATION_SIZE",
+                "value": "20"
+              },
+              {
+                "name": "GENERATIONS",
+                "value": "5"
+              },
+              {
+                "name": "META_ATTEMPTS",
+                "value": "5"
+              },
+              {
+                "name": "FROZEN_SEED",
+                "value": "1001"
+              },
+              {
+                "name": "PYTORCH_CUDA_ALLOC_CONF",
+                "value": "expandable_segments:True"
+              }
+            ],
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "runAsUser": 1017,
+              "runAsGroup": 1376
+            },
+            "resources": {
+              "requests": {
+                "nvidia.com/gpu": 1,
+                "cpu": 10,
+                "memory": "16Gi"
+              },
+              "limits": {
+                "nvidia.com/gpu": 1,
+                "cpu": 10,
+                "memory": "16Gi"
+              }
+            },
+            "volumeMounts": [
+              {
+                "mountPath": "/dev/shm",
+                "name": "shm"
+              },
+              {
+                "mountPath": "/a/mm",
+                "name": "v0"
+              },
+              {
+                "mountPath": "/a/mm/data",
+                "name": "v1"
+              },
+              {
+                "mountPath": "/a/mm/nn-dataset",
+                "name": "v2"
+              }
+            ]
+          }
+        ],
+        "restartPolicy": "Never",
+        "volumes": [
+          {
+            "name": "shm",
+            "emptyDir": {
+              "medium": "Memory",
+              "sizeLimit": "16Gi"
+            }
+          },
+          {
+            "name": "v0",
+            "hostPath": {
+              "path": "/shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt",
+              "type": "Directory"
+            }
+          },
+          {
+            "name": "v1",
+            "hostPath": {
+              "path": "/shared/local/data/a-group-automl/data",
+              "type": "Directory"
+            }
+          },
+          {
+            "name": "v2",
+            "hostPath": {
+              "path": "/shared/ssd/home/b-a-singh/Thesis/NN-DATASET/C1/nn-dataset",
+              "type": "Directory"
+            }
+          }
+        ],
+        "affinity": {
+          "nodeAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+              "nodeSelectorTerms": [
+                {
+                  "matchExpressions": [
+                    {
+                      "key": "kubernetes.io/hostname",
+                      "operator": "In",
+                      "values": [
+                        "dgx-h100"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

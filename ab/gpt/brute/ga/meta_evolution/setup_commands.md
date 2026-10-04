@@ -132,6 +132,66 @@ rm -f /shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt/ab/gpt/brute/ga/meta
 
 ---
 
+## 4.5 Frozen Control Experiment (No LLM)
+
+These jobs run the meta-evolution schedule using only the handcrafted mutation operators (the LLM is bypassed using an identity step). These are used to isolate the impact of the meta-evolution schedule vs the LLM rewrites.
+
+**To run the 1-iteration smoke test on CIFAR-100:**
+```bash
+kubectl apply -f /shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt/ab/gpt/brute/ga/meta_evolution/frozen_cifar100_test.json
+```
+
+**To launch the FINAL 5-iteration experiments on CIFAR-100:**
+```bash
+kubectl delete job --all
+kubectl apply -f frozen_cifar100_run1.json -f frozen_cifar100_run2.json -f frozen_cifar100_run3.json -f frozen_cifar100_run4.json -f frozen_cifar100_run5.json
+```
+
+**To launch the FINAL 5-iteration experiments on CIFAR-10:**
+```bash
+kubectl delete job --all
+kubectl apply -f frozen_cifar10_run1.json -f frozen_cifar10_run2.json -f frozen_cifar10_run3.json -f frozen_cifar10_run4.json -f frozen_cifar10_run5.json
+```
+
+**To view the live logs of the running Frozen jobs:**
+```bash
+# CIFAR-100 Logs
+kubectl logs -f job/nngpt-fractal-frozen-cifar100-test
+kubectl logs -f job/nngpt-fractal-frozen-cifar100-run1
+kubectl logs -f job/nngpt-fractal-frozen-cifar100-run2
+kubectl logs -f job/nngpt-fractal-frozen-cifar100-run3
+
+# CIFAR-10 Logs
+kubectl logs -f job/nngpt-fractal-frozen-cifar10-run1
+kubectl logs -f job/nngpt-fractal-frozen-cifar10-run2
+kubectl logs -f job/nngpt-fractal-frozen-cifar10-run3
+```
+
+**To preview the live logs of the running Frozen CIFAR-100 jobs without leaving the terminal:**
+```bash
+python3 -c "
+import os
+base_dir = '/shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt/ab/gpt/brute/ga/meta_evolution'
+cifar100_logs = os.path.join(base_dir, 'cifar100_pipeline', 'logs_cifar100', 'frozen')
+if not os.path.exists(cifar100_logs): print('No frozen logs found yet.')
+else:
+    runs = os.listdir(cifar100_logs)
+    print(f'Runs found: {len(runs)}')
+    for run in runs:
+        run_path = os.path.join(cifar100_logs, run)
+        files = os.listdir(run_path)
+        e1 = [f for f in files if f.endswith('_1_epoch.jsonl')]
+        e3 = [f for f in files if f.endswith('_true.jsonl')]
+        pr = [f for f in files if f.endswith('.jsonl') and not f.endswith('true.jsonl') and not f.endswith('epoch.jsonl') and not f.startswith('frozen_meta_log')]
+        print(f'\nRun [{run}]:\n  _1_epoch files: {len(e1)}\n  _true files: {len(e3)}\n  predictor files: {len(pr)}')
+        if pr:
+            with open(os.path.join(run_path, pr[0])) as f:
+                print(f'  -> Predictor evaluations logged: {len(f.readlines())}')
+"
+```
+
+---
+
 ## 5. General Kubernetes Commands
 
 **To see all currently running pods (to check their status):**
