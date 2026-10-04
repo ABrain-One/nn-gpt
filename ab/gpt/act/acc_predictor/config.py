@@ -49,6 +49,25 @@ PROXY_NORM_STATS_PATH = ACC_DIR / "proxy_norm_stats.json"
 # train-only z-scored log1p(FLOPs) per architecture.
 USE_NN_STATS = False
 USE_LAYER_STATS = False
+
+# Layer-statistic prompt selection.
+#
+# None preserves the historical all-seven-feature prompt.
+# A comma-separated string selects one or more features, for example:
+#   "dead_frac"
+#   "dead_frac,grad_norm"
+#   "ww_alpha,grad_norm,dead_frac"
+LAYER_STAT_FEATURE_LABELS = {
+    "ww_alpha": "WeightWatcher",
+    "grad_norm": "Gradient flow",
+    "dead_frac": "Activation statistics",
+    "taylor_imp": "Taylor importance",
+    "cka_redund": "CKA similarity",
+    "rank_ratio": "Effective rank",
+    "sensitivity": "Sensitivity",
+}
+ACTIVE_LAYER_FEATURES: str | tuple[str, ...] | None = None
+
 NN_STATS_CACHE_PATH = ACC_DIR / "nn_stat_flops_cache.json"
 
 # Which proxies actually appear in the prompt -- a SUBSET of everything in
