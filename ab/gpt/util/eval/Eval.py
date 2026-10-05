@@ -14,7 +14,7 @@ import ab.nn.api as nn_dataset
 
 
 class Eval:
-    def __init__(self, model_source_package: str, task='img-classification', dataset='cifar-10', metric='acc', prm=None, save_to_db=False, prefix=None, save_path=None, use_ast_validation=None):
+    def __init__(self, model_source_package: str, task='img-classification', dataset='cifar-10', metric='acc', prm=None, save_to_db=False, prefix=None, save_path=None, use_ast_validation=None, allow_existing=False):
         """
         Evaluates a given model on a specified dataset for classification
         :param model_source_package: The package name of the model to evaluate
@@ -24,6 +24,8 @@ class Eval:
         :param prm: The parameters to evaluate the model on
         :param save_to_db: Whether to save the results to the database
         :param use_ast_validation: None = auto-detect from prefix; True = AST; False = legacy string counting
+        :param allow_existing: Train even if the architecture is already in the database (e.g. to evaluate
+            one network on several datasets); also skips the full-database load done for that check
         """
         if prm is None:
             prm = {'lr': 0.01, 'batch': 10, 'dropout': 0.2, 'momentum': 0.9,
@@ -36,6 +38,7 @@ class Eval:
         self.save_to_db = save_to_db
         self.prefix = prefix
         self.save_path = save_path
+        self.allow_existing = allow_existing
         
         if use_ast_validation is None:
             self.use_ast_validation = prefix is not None and 'delta' in str(prefix).lower()
@@ -89,12 +92,13 @@ class Eval:
                 if code.count('"' + prm_key + '"') + code.count("'" + prm_key + "'") < 2:
                     raise Exception(f'The param \'{prm_key}\' is not used in the code.')
 
-        nn_dataset.data.cache_clear()
-        df = nn_dataset.data()
-        ids_list = df["nn_id"].unique().tolist() if "nn_id" in df.columns else []
         new_checksum = uuid4(code)
-        allow_retrain = bool(checkpoint_path) or not self.save_to_db
-        if new_checksum not in ids_list or allow_retrain:
+        allow_retrain = bool(checkpoint_path) or not self.save_to_db or self.allow_existing
+        if not allow_retrain:
+            nn_dataset.data.cache_clear()
+            df = nn_dataset.data()
+            ids_list = df["nn_id"].unique().tolist() if "nn_id" in df.columns else []
+        if allow_retrain or new_checksum not in ids_list:
             with _isolated_eval_tmp_modules():
                 if checkpoint_path:
                     from ab.gpt.util.eval.eval_checkpoint import train_and_eval_with_checkpoint

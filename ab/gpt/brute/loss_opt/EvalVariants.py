@@ -5,11 +5,17 @@ synth_nn dir and calls ``Eval`` directly on each (no ``NNEval.main()``). The LEM
 row prefix is derived per-model from ``variant_meta.json``:
     {base_nn}-loss_{loss}-opt_{optimizer}
 
+Each (variant, dataset) pair is independent: its statistics go to
+``B*/stat_<dataset>/`` and its result to ``B*/eval_info_<dataset>.json``. Pairs
+that already have a result are skipped (``--redo`` retrains them), so several
+jobs can split the work by dataset and an interrupted job can simply be rerun.
+
 Usage:
     python -m ab.gpt.brute.loss_opt.EvalVariants
     python -m ab.gpt.brute.loss_opt.EvalVariants --datasets cifar-10 mnist --nn_train_epochs 3
+    python -m ab.gpt.brute.loss_opt.EvalVariants --shard 0/4   # one of 4 parallel jobs
 """
-import argparse, json, os, random, sqlite3, sys, time, traceback
+import argparse, json, os, random, shutil, sqlite3, sys, time, traceback
 from pathlib import Path
 
 from ab.gpt.util.Const import new_nn_file, NN_TRAIN_EPOCHS
@@ -59,7 +65,7 @@ DEFAULT_PRM = {
 }
 
 
-def copy_to_lemur_with_retry(model_dir, nn_name, task, dataset, metric,
+def copy_to_lemur_with_retry(model_dir, nn_name, task, dataset, metric, stat_dir=None,
                               max_retries: int = 8, base_delay: float = 1.0):
     """Call copy_to_lemur, retrying on SQLite lock with exponential backoff + jitter.
 
@@ -72,7 +78,7 @@ def copy_to_lemur_with_retry(model_dir, nn_name, task, dataset, metric,
     """
     for attempt in range(max_retries):
         try:
-            copy_to_lemur(model_dir, nn_name, task, dataset, metric)
+            copy_to_lemur(model_dir, nn_name, task, dataset, metric, stat_dir)
             return
         except sqlite3.OperationalError as e:
             if "locked" not in str(e) or attempt == max_retries - 1:
@@ -109,11 +115,27 @@ def extract_accuracy(eval_results) -> float | None:
         return None
 
 
+def parse_shard(spec: str) -> tuple[int, int]:
+    """'i/N' -> (i, N): this job takes every N-th variant starting at B{i}."""
+    i, n = (int(x) for x in spec.split('/'))
+    if not 0 <= i < n:
+        raise argparse.ArgumentTypeError(f"shard must be i/N with 0 <= i < N, got {spec}")
+    return i, n
+
+
 def run(synth_path: Path, datasets: list, nn_train_epochs: int,
-        save_to_db: bool, nn_name_prefix: str | None):
+        save_to_db: bool, nn_name_prefix: str | None, redo: bool = False,
+        shard: tuple[int, int] = (0, 1)):
 
     model_ids = sorted(d for d in os.listdir(synth_path) if (synth_path / d).is_dir())
     print(f"Found {len(model_ids)} variant(s) in {synth_path.resolve()}")
+    # Split by variant index rather than by dataset, so every job gets the same
+    # mix of datasets. The 12 variants of a base net have consecutive indices, so
+    # taking every N-th one also spreads heavy architectures across the jobs.
+    i, n = shard
+    if n > 1:
+        model_ids = [m for m in model_ids if m[1:].isdigit() and int(m[1:]) % n == i]
+        print(f"Shard {i}/{n}: {len(model_ids)} variant(s)")
 
     for model_id in model_ids:
         model_dir = synth_path / model_id
@@ -136,7 +158,16 @@ def run(synth_path: Path, datasets: list, nn_train_epochs: int,
 
         for dataset in datasets:
             ds_safe = dataset.replace('/', '_').replace('-', '_')
+            if not redo and (model_dir / f'eval_info_{ds_safe}.json').exists():
+                print(f"\n  [{model_id}] → {dataset}: already evaluated — skipping.")
+                continue
             print(f"\n  [{model_id}] → {dataset}")
+            # Per-dataset statistics folder: jobs evaluating other datasets of the
+            # same variant run concurrently, and a previous attempt may have left
+            # epochs behind that this run would not overwrite.
+            stat_dir = model_dir / f'stat_{ds_safe}'
+            shutil.rmtree(stat_dir, ignore_errors=True)
+            stat_dir.mkdir()
             try:
                 evaluator = Eval(
                     model_source_package=str(model_dir),
@@ -146,7 +177,10 @@ def run(synth_path: Path, datasets: list, nn_train_epochs: int,
                     prm=prm,
                     save_to_db=save_to_db,
                     prefix=prefix,
-                    save_path=model_dir,
+                    save_path=stat_dir,
+                    # The same variant is trained on every dataset, so its
+                    # architecture being in the DB already is expected.
+                    allow_existing=True,
                 )
                 eval_results = evaluator.evaluate(code_file)
                 print(f"     Result: {eval_results}")
@@ -158,14 +192,12 @@ def run(synth_path: Path, datasets: list, nn_train_epochs: int,
                 }
                 with open(model_dir / f'eval_info_{ds_safe}.json', 'w') as f:
                     json.dump(eval_info, f, indent=4, default=str)
-                with open(model_dir / 'eval_info.json', 'w') as f:
-                    json.dump(eval_info, f, indent=4, default=str)
 
                 # Register in LEMUR only when the variant is accurate enough,
                 # under the clean name {task}_{dataset}_{metric}_{base}_{loss}_{opt}.
                 accuracy = extract_accuracy(eval_results)
                 if prefix and accuracy is not None and accuracy >= MIN_ACCURACY:
-                    copy_to_lemur_with_retry(model_dir, prefix, TASK, dataset, METRIC)
+                    copy_to_lemur_with_retry(model_dir, prefix, TASK, dataset, METRIC, stat_dir)
                     print(f"     Saved to LEMUR: {TASK}_{dataset}_{METRIC}_{prefix} (acc={accuracy:.4f})")
                 else:
                     acc_str = f"{accuracy:.4f}" if accuracy is not None else "n/a"
@@ -194,6 +226,11 @@ def main():
     parser.add_argument('--save_to_db', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--nn_name_prefix', type=str, default=None,
                         help="Override prefix for ALL models (default: read from variant_meta.json)")
+    parser.add_argument('--redo', action='store_true',
+                        help="Retrain (variant, dataset) pairs that already have eval_info_<dataset>.json")
+    parser.add_argument('--shard', type=parse_shard, default=(0, 1), metavar='i/N',
+                        help="Evaluate only variants B<k> with k %% N == i, to split the work "
+                             "across N parallel jobs (default: 0/1, all variants)")
 
     args = parser.parse_args()
     synth_path = Path(args.synth_dir)
@@ -208,7 +245,8 @@ def main():
     print(f"save_to_db : {args.save_to_db}")
     print(f"prefix     : {args.nn_name_prefix or '(from variant_meta.json)'}")
 
-    run(synth_path, args.datasets, args.nn_train_epochs, args.save_to_db, args.nn_name_prefix)
+    run(synth_path, args.datasets, args.nn_train_epochs, args.save_to_db, args.nn_name_prefix, args.redo,
+        args.shard)
 
 
 if __name__ == '__main__':

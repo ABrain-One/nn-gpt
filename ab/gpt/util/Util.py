@@ -327,13 +327,19 @@ def extract_delta(txt):
     return None
 
 
-def copy_to_lemur(gen_nn_dir, name, task, dataset, metric):
+def copy_to_lemur(gen_nn_dir, name, task, dataset, metric, stat_dir=None):
+    """Stage a network and its per-epoch statistics (``<epoch>.json``) for LEMUR.
+
+    ``stat_dir`` holds the statistics when they were not written next to the code,
+    e.g. one folder per dataset when the same network is trained on several.
+    """
+    stat_dir = Path(stat_dir) if stat_dir else gen_nn_dir
     Path(new_lemur_nn_dir).mkdir(parents=True, exist_ok=True)
     shutil.copyfile(gen_nn_dir / new_nn_file, new_lemur_nn_dir / f'{name}.py')
     dr_nm = new_lemur_stat_dir / f"{task}_{dataset}_{metric}_{name}"
     Path(dr_nm).mkdir(parents=True, exist_ok=True)
-    for f_nm in [f for f in os.listdir(gen_nn_dir) if re.match(r'[0-9]+\.json', f)]:
-        shutil.copyfile(gen_nn_dir / f_nm, dr_nm / f_nm)
+    for f_nm in [f for f in os.listdir(stat_dir) if re.match(r'[0-9]+\.json', f)]:
+        shutil.copyfile(stat_dir / f_nm, dr_nm / f_nm)
 
 
 # ========== FORMULA EVALUATION FUNCTION ==========

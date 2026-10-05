@@ -106,7 +106,7 @@ def run_e2e(n=N_NETS, out_epoch=OUT_EPOCH, dataset=DATASET,
                     "variant": meta,
                     "error": ef.read_text(encoding="utf-8")[:2000],
                 })
-        elif (b / "eval_info.json").exists():
+        elif any(b.glob("eval_info_*.json")):
             report["evaluated_ok"] += 1
 
     report_path = variants_synth_dir(out_epoch).parent / "variants_e2e_report.json"
