@@ -26,7 +26,6 @@ import sys
 from pathlib import Path
 
 import ab.nn.api as nn_dataset
-from ab.nn.util.ArchDedup import ArchIndex, INDEX as ARCH_INDEX
 from ab.nn.util.Const import nn_dir, ab_root_path, db_file
 
 from ab.gpt.util.Const import new_nn_file
@@ -104,7 +103,7 @@ def collect_sources(nn_names: list[str] | None, src_dir: str | None,
     return models
 
 
-def load_arch_index() -> ArchIndex:
+def load_arch_index():
     """Architecture-ID index of the LEMUR dataset (nn-dataset's ArchDedup).
 
     The DB identifies a network by its architecture certificate, and stores the
@@ -112,6 +111,10 @@ def load_arch_index() -> ArchIndex:
     The index is rebuilt whenever the DB is newer than it, so nets registered
     since the last build count as known.
     """
+    # Imported here, not at module level: ArchDedup needs nn-dataset >= 2.2.13, and
+    # EvalVariants imports this module for variants_synth_dir() also in environments
+    # (e.g. cluster images) that ship an older nn-dataset.
+    from ab.nn.util.ArchDedup import ArchIndex, INDEX as ARCH_INDEX
     if ARCH_INDEX.exists() and ARCH_INDEX.stat().st_mtime >= db_file.stat().st_mtime:
         return ArchIndex.load()
     print("  Building the LEMUR architecture index (a few minutes, then cached) ...")
