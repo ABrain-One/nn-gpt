@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from ab.gpt.util.Const import conf_test_dir, epoch_dir, new_nn_file, synth_dir, new_out_file
 from ab.gpt.util.llm.LLM import LLM
+from ab.gpt.util.llm.VLLMClient import VLLMClient
 from ab.gpt.util.Util import extract_code, extract_delta
 
 
@@ -44,6 +45,33 @@ def format_prompt_with_supporting_models(prompt_template, para_dict, supporting_
 
     return formatted_prompt
 
+def _save_generation(out, origdf, out_path, B_index):
+    """Extract the NN code from one LLM answer and save it like the local generation path does.
+    Returns the next free B index."""
+    print("Response Available!")
+    nn_code = extract_code(out) if out else None
+    if not nn_code:
+        print("[INFO]Response Invalid!")
+        return B_index
+    model_dir = synth_dir(out_path) / f"B{B_index}"
+    code_file = model_dir / new_nn_file
+    df_file = model_dir / 'dataframe.df'
+    print(f"[INFO]Saving code to: {code_file}")
+    code_file.parent.mkdir(exist_ok=True, parents=True)
+    with open(code_file, 'w') as file:
+        file.write(nn_code)
+    create_file(model_dir, new_out_file, out)
+    if origdf is None:
+        if os.path.isfile(df_file):
+            os.remove(df_file)
+    else:
+        orig_code_file = model_dir / f"original_{origdf['nn']}.py"
+        with open(orig_code_file, 'w') as file:
+            file.write(origdf['nn_code'])
+        origdf.to_pickle(df_file)
+    return B_index + 1
+
+
 def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top_k=50, *args, **kwargs):
     inference_gpt_oss = kwargs.get('inference_gpt_oss', False)
     inference_gpt_oss_max_input_length = kwargs.get('inference_gpt_oss_max_input_length', None)
@@ -58,10 +86,21 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
         prompt_dict = json.load(f)
     assert isinstance(prompt_dict, dict)
 
-    model_loader = LLM(llm_name, gguf_file=gguf_file, load_in_4bit=kwargs.get('load_in_4bit', False))
-    model = model_loader.get_model()
-    tokenizer = model_loader.get_tokenizer()
-    print(f"Load Model Complete, Start Loop... (Will fetch {n} supporting models per prompt)")
+    # Remote LLM: if vllm_url is given, generate with an OpenAI-compatible vLLM server
+    # instead of loading llm_name locally (e.g. to use 70B models).
+    vllm_url = kwargs.get('vllm_url')
+    remote = None
+    if vllm_url:
+        remote = VLLMClient(vllm_url, model=kwargs.get('vllm_model'), temperature=temperature, top_k=top_k,
+                            top_p=0.95, max_tokens=kwargs.get('vllm_max_tokens'), workers=kwargs.get('vllm_workers', 4))
+        model = tokenizer = None
+        print(f"Using remote LLM {remote.model} at {remote.base_url} (local model not loaded), Start Loop... "
+              f"(Will fetch {n} supporting models per prompt)")
+    else:
+        model_loader = LLM(llm_name, gguf_file=gguf_file, load_in_4bit=kwargs.get('load_in_4bit', False))
+        model = model_loader.get_model()
+        tokenizer = model_loader.get_tokenizer()
+        print(f"Load Model Complete, Start Loop... (Will fetch {n} supporting models per prompt)")
 
     shutil.rmtree(epoch_dir(), ignore_errors=True)
     for epoch in range(epochs):
@@ -119,6 +158,10 @@ def alter(epochs, test_conf, llm_name, gguf_file=None, n=1, temperature=0.6, top
 
         # produce new CV models
         B_index = 0
+        if remote is not None:
+            for i, out in remote.chat_iter([(p_system, p_text) for p_system, p_text, _ in prompts]):
+                B_index = _save_generation(out, prompts[i][2], out_path, B_index)
+            continue
         if batch_size > 1:
             if tokenizer.pad_token_id is None:
                 tokenizer.pad_token = tokenizer.eos_token
