@@ -196,25 +196,31 @@ def _extract_log_timestamp(target_ts=None):
 # Data loading
 # ---------------------------------------------------------------------------
 
-def load_stats_records(target_ts=None):
+def load_stats_records(target_ts=None, target_dataset=None, target_model=None):
     """
     Read the ga_evaluations*.jsonl to get exact chronological evaluation order for the current run.
     """
     records = []
+    target_str = ""
+    if target_dataset and target_model:
+        target_str = f"_{target_dataset}_{target_model}_"
+
     if target_ts:
-        log_files = glob.glob(os.path.join(BASE_DIR, "*_pipeline", "logs_*", "*", "*", f"ga_evaluations*{target_ts}.jsonl")) + \
-                    glob.glob(os.path.join(BASE_DIR, "logs_*", "*", "*", f"ga_evaluations*{target_ts}.jsonl")) + \
-                    glob.glob(os.path.join(LOGS_DIR, f"ga_evaluations*{target_ts}.jsonl"))
-        log_files = [f for f in log_files if os.path.exists(f)]
+        log_files = glob.glob(os.path.join(BASE_DIR, "*_pipeline", "logs_*", "*", "*", f"ga_evaluations{target_str}*{target_ts}.jsonl")) + \
+                    glob.glob(os.path.join(BASE_DIR, "logs_*", "*", "*", f"ga_evaluations{target_str}*{target_ts}.jsonl")) + \
+                    glob.glob(os.path.join(LOGS_DIR, f"ga_evaluations{target_str}*{target_ts}.jsonl"))
     else:
-        log_files = glob.glob(os.path.join(BASE_DIR, "*_pipeline", "logs_*", "*", "*", "ga_evaluations*.jsonl")) + \
-                    glob.glob(os.path.join(BASE_DIR, "logs_*", "*", "*", "ga_evaluations*.jsonl")) + \
-                    glob.glob(os.path.join(LOGS_DIR, "ga_evaluations*.jsonl"))
+        log_files = glob.glob(os.path.join(BASE_DIR, "*_pipeline", "logs_*", "*", "*", f"ga_evaluations{target_str}*.jsonl")) + \
+                    glob.glob(os.path.join(BASE_DIR, "logs_*", "*", "*", f"ga_evaluations{target_str}*.jsonl")) + \
+                    glob.glob(os.path.join(LOGS_DIR, f"ga_evaluations{target_str}*.jsonl"))
         if not log_files:
-            log_files = glob.glob(os.path.join(BASE_DIR, "ga_evaluations*.jsonl"))
+            log_files = glob.glob(os.path.join(BASE_DIR, f"ga_evaluations{target_str}*.jsonl"))
+
+    # Explicitly ignore the sibling log files (_true.jsonl, _1_epoch.jsonl) so plots use the primary predicted accuracy
+    log_files = [f for f in log_files if "_true" not in f and "_1_epoch" not in f]
             
     if not log_files:
-        _warn(f"No ga_evaluations{'* ' if not target_ts else '_'+target_ts}.jsonl files found")
+        _warn(f"No ga_evaluations{target_str}{'* ' if not target_ts else '_'+target_ts}.jsonl files found")
         return records
         
     latest_log = log_files[0] if target_ts else max(log_files, key=os.path.getmtime)
@@ -256,25 +262,28 @@ def group_by_meta_iteration(records, llm_entries):
     return [a for a in attempts if a["evals"]]
 
 
-def load_llm_logs(target_ts=None):
+def load_llm_logs(target_ts=None, target_dataset=None, target_model=None):
     """
     Read the LLM-evolution-logs*.jsonl. Returns list of dicts.
     Expected fields: method, score, reward, valid_syntax, timestamp.
     """
+    target_str = ""
+    if target_dataset and target_model:
+        target_str = f"_{target_dataset}_{target_model}_"
+
     if target_ts:
-        log_files = glob.glob(os.path.join(BASE_DIR, "*_pipeline", "logs_*", "*", "*", f"LLM-evolution-logs*{target_ts}.jsonl")) + \
-                    glob.glob(os.path.join(BASE_DIR, "logs_*", "*", "*", f"LLM-evolution-logs*{target_ts}.jsonl")) + \
-                    glob.glob(os.path.join(LOGS_DIR, f"LLM-evolution-logs*{target_ts}.jsonl"))
-        log_files = [f for f in log_files if os.path.exists(f)]
+        log_files = glob.glob(os.path.join(BASE_DIR, "*_pipeline", "logs_*", "*", "*", f"LLM-evolution-logs{target_str}*{target_ts}.jsonl")) + \
+                    glob.glob(os.path.join(BASE_DIR, "logs_*", "*", "*", f"LLM-evolution-logs{target_str}*{target_ts}.jsonl")) + \
+                    glob.glob(os.path.join(LOGS_DIR, f"LLM-evolution-logs{target_str}*{target_ts}.jsonl"))
     else:
-        log_files = glob.glob(os.path.join(BASE_DIR, "*_pipeline", "logs_*", "*", "*", "LLM-evolution-logs*.jsonl")) + \
-                    glob.glob(os.path.join(BASE_DIR, "logs_*", "*", "*", "LLM-evolution-logs*.jsonl")) + \
-                    glob.glob(os.path.join(LOGS_DIR, "LLM-evolution-logs*.jsonl"))
+        log_files = glob.glob(os.path.join(BASE_DIR, "*_pipeline", "logs_*", "*", "*", f"LLM-evolution-logs{target_str}*.jsonl")) + \
+                    glob.glob(os.path.join(BASE_DIR, "logs_*", "*", "*", f"LLM-evolution-logs{target_str}*.jsonl")) + \
+                    glob.glob(os.path.join(LOGS_DIR, f"LLM-evolution-logs{target_str}*.jsonl"))
         if not log_files:
-            log_files = glob.glob(os.path.join(BASE_DIR, "LLM-evolution-logs*.jsonl"))
+            log_files = glob.glob(os.path.join(BASE_DIR, f"LLM-evolution-logs{target_str}*.jsonl"))
             
     if not log_files:
-        _warn(f"No LLM-evolution-logs{'* ' if not target_ts else '_'+target_ts}.jsonl files found")
+        _warn(f"No LLM-evolution-logs{target_str}{'* ' if not target_ts else '_'+target_ts}.jsonl files found")
         return []
         
     latest_log = log_files[0] if target_ts else max(log_files, key=os.path.getmtime)
@@ -351,13 +360,10 @@ def plot_generation_accuracy(records, llm_entries, out_dir, saved_files, suffix=
         
         ax.grid(True, color='gray', linestyle='--', linewidth=0.5, alpha=0.7)
         ax.tick_params(colors="black")
-        
+        import matplotlib.ticker as ticker
         max_x = max(gen_numbers) if gen_numbers else 5
-        xticks = list(range(0, max_x + 5, 5))
-        if 1 not in xticks: xticks.insert(1, 1)
-        ax.set_xticks(xticks)
-        ax.set_xticklabels([str(x) for x in xticks], rotation=45, ha='right')
-            
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(5 if max_x >= 10 else 1))
+
         if running_peaks:
             upper_limit = min(100, max(running_peaks) + 5)
             lower_limit = max(0, min(min(avg_accuracies), min(peak_accuracies)) - 5)
@@ -387,12 +393,16 @@ def plot_population_diversity(records, llm_entries, out_dir, saved_files, suffix
         _warn("No records found — skipping population_diversity.png")
         return
 
-    batches, positions = [], []
+    batches, positions, unique_counts = [], [], []
     for g in generations:
         accs = [e["accuracy"] for e in g["evals"] if e.get("accuracy") is not None]
         if accs:
             batches.append(accs)
             positions.append(g["generation"])
+            
+            uids = [e.get("uid", e.get("checksum", "")) for e in g["evals"]]
+            unique_uids = set(uids) - {""}
+            unique_counts.append(len(unique_uids) if unique_uids else len(g["evals"]))
 
     with plt.rc_context(PLOT_STYLE):
         fig, ax = plt.subplots(figsize=(max(8, len(batches) * 0.5), 5))
@@ -400,21 +410,26 @@ def plot_population_diversity(records, llm_entries, out_dir, saved_files, suffix
             batches,
             positions=positions,
             patch_artist=True,
-            boxprops=dict(facecolor="#2a3a6e", color=ACCENT1),
-            medianprops=dict(color=ACCENT2, linewidth=2),
+            boxprops=dict(facecolor="#2a3a6e", color="#3b82f6", alpha=0.7),
+            medianprops=dict(color="#f97316", linewidth=2),
             whiskerprops=dict(color="#6a7aad"),
             capprops=dict(color="#6a7aad"),
-            flierprops=dict(marker="o", color=ACCENT3, alpha=0.5, markersize=4),
+            flierprops=dict(marker="o", color="#ef4444", alpha=0.5, markersize=4),
         )
         
+        import matplotlib.ticker as ticker
         max_x = max(positions) if positions else 5
-        xticks = list(range(0, max_x + 5, 5))
-        if 1 not in xticks: xticks.insert(1, 1)
-        ax.set_xticks(xticks)
-        ax.set_xticklabels([str(x) for x in xticks], rotation=45, ha='right')
-            
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(5 if max_x >= 10 else 1))
+
         _apply_style(ax, "Population Diversity per Generation",
                      "Number of Generation", "Accuracy (%)")
+                     
+        ax_twin = ax.twinx()
+        ax_twin.plot(positions, unique_counts, label="Unique Architectures Evaluated",
+                     color="#10b981", linewidth=2.0, linestyle="--", marker="o", markersize=4)
+        ax_twin.set_ylabel("Unique Architectures Count", fontsize=13, color="#10b981")
+        ax_twin.tick_params(axis='y', labelcolor="#10b981")
+        
         _save(fig, os.path.join(out_dir, "population_diversity.png"), saved_files, suffix)
 
 
@@ -459,12 +474,10 @@ def plot_best_vs_avg_accuracy(records, llm_entries, out_dir, saved_files, suffix
         ax.plot(xs, median_per_batch, color="#2ca02c", alpha=0.9, linestyle="--", label="Median Accuracy", zorder=2, linewidth=2)
         ax.plot(xs, best_per_batch, color=ACCENT1, linewidth=2.5, marker="D", markersize=4, label="Best Accuracy", zorder=3)
                 
+        import matplotlib.ticker as ticker
         max_x = max(xs) if xs else 5
-        xticks = list(range(0, max_x + 5, 5))
-        if 1 not in xticks: xticks.insert(1, 1)
-        ax.set_xticks(xticks)
-        ax.set_xticklabels([str(x) for x in xticks], rotation=45, ha='right')
-            
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(5 if max_x >= 10 else 1))
+
         _apply_style(ax, "Best vs Average Accuracy per Generation",
                      "Number of Generation", "Accuracy (%)")
         ax.legend()
@@ -506,12 +519,10 @@ def plot_time_per_generation(records, llm_entries, out_dir, saved_files, suffix=
         ax.grid(True, color='gray', linestyle='--', linewidth=0.5, alpha=0.7)
         ax.tick_params(colors="black")
         
+        import matplotlib.ticker as ticker
         max_x = max(gen_numbers) if gen_numbers else 5
-        xticks = list(range(0, max_x + 5, 5))
-        if 1 not in xticks: xticks.insert(1, 1)
-        ax.set_xticks(xticks)
-        ax.set_xticklabels([str(x) for x in xticks], rotation=45, ha='right')
-            
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(5 if max_x >= 10 else 1))
+
         plt.tight_layout()
         path = os.path.join(out_dir, "time_per_generation.png")
         _save(fig, path, saved_files, suffix)
@@ -647,19 +658,23 @@ def plot_modification_success_rate(entries, out_dir, saved_files, suffix=""):
 # Main
 # ---------------------------------------------------------------------------
 
-def main(target_ts=None, target_dataset=None):
+def main(target_ts=None, target_dataset=None, target_model=None):
     if len(sys.argv) > 1:
         target_ts = sys.argv[1]
     if len(sys.argv) > 2:
         target_dataset = sys.argv[2]
+    if len(sys.argv) > 3:
+        target_model = sys.argv[3]
         
     # Use source log timestamp so visualizations correlate with their experiment
     timestamp, dataset_name, model_name = _extract_log_timestamp(target_ts)
     if target_dataset:
         dataset_name = target_dataset
+    if target_model:
+        model_name = target_model
         
     if model_name:
-        suffix = f"{dataset_name}_{model_name}_{timestamp}"
+        suffix = f"{model_name}_{dataset_name}_{timestamp}"
         run_dir = os.path.join(VIZ_ROOT, f"meta_visualization_{suffix}")
     else:
         suffix = f"{dataset_name}_{timestamp}"
@@ -679,12 +694,12 @@ def main(target_ts=None, target_dataset=None):
 
     # ── Fine-tuning (Load First) ────────────────────────────────────────────
     print("\n[1/2] Loading LLM evolution logs …")
-    entries = load_llm_logs(timestamp)
+    entries = load_llm_logs(timestamp, dataset_name, model_name)
     print(f"      Found {len(entries)} log entry(ies).\n")
 
     # ── GA evolution ────────────────────────────────────────────────────────
     print("[2/2] Loading stats records …")
-    records = load_stats_records(timestamp)
+    records = load_stats_records(timestamp, dataset_name, model_name)
     print(f"      Found {len(records)} evaluated model(s).\n")
 
     print("  Generating GA evolution plots …")

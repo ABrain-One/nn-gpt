@@ -12,8 +12,15 @@ def _load_model_config():
         raise FileNotFoundError(f"[Config] model_config.json not found at {config_path}. Please create it.")
     with open(config_path, "r") as f:
         config = json.load(f)
+    
+    # Allow dynamic override from Kubernetes Job env variables
+    env_model = os.environ.get("LLM_BASE_MODEL")
+    if env_model:
+        config["base_model_name"] = env_model
+        print(f"[Config] Overriding base_model_name with ENV: {env_model}")
+        
     config["context_length"] = config.get("context_length", 4096)
-    print(f"[Config] Loaded model_config.json  (context_length={config['context_length']})")
+    print(f"[Config] Loaded model_config.json (base_model_name={config.get('base_model_name')}, context_length={config['context_length']})")
     return config
 
 def get_model_short_name():
@@ -173,22 +180,35 @@ class LocalLLMLoader:
     def train_on_buffer(self, training_data, epochs=1):
         """
         Fine-tune on the collected buffer (Prompt + Completion).
-        data format: [{'prompt': '...', 'completion': '...'}, ...]
+        data format: [{'prompt': '...', 'completion': '...', 'fitness': float}, ...]
+        If 'fitness' key is absent, defaults to uniform weighting (backward compatible).
         """
         if not training_data:
             return
-            
+
+        # Extract fitness scores and normalize for loss weighting
+        fitness_scores = [item.get('fitness', 1.0) for item in training_data]
+        min_fit = min(fitness_scores) if fitness_scores else 0.0
+        max_fit = max(fitness_scores) if fitness_scores else 1.0
+        fit_range = max_fit - min_fit if max_fit > min_fit else 1.0
+
+        # Normalize fitness to [0.5, 1.5] range for loss weighting
+        # Higher fitness = higher weight (model learns more from successful mutations)
+        normalized_weights = [0.5 + 1.0 * (f - min_fit) / fit_range for f in fitness_scores]
+        total_weight = sum(normalized_weights)
+
         print(f"[LoRA] Training on {len(training_data)} examples...")
+        print(f"[LoRA] Fitness range: {min_fit:.2f}% - {max_fit:.2f}%, weights: {[f'{w:.2f}' for w in normalized_weights]}")
         self.model.train()
-        
+
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=2e-5) # Lowered: 2e-4 was causing mode collapse
-        
+
         accumulation_steps = min(4, len(training_data)) # Accumulate over up to 4 examples
-        
+
         for epoch in range(epochs):
             total_loss = 0
             optimizer.zero_grad()
-            
+
             for i, item in enumerate(training_data):
                 messages = [
                     {"role": "system", "content": "You are an elite AI Research Engineer and Evolutionary Computation Expert."},
@@ -196,11 +216,11 @@ class LocalLLMLoader:
                     {"role": "assistant", "content": item['completion']}
                 ]
                 full_text = self.tokenizer.apply_chat_template(messages, tokenize=False)
-                
+
                 inputs = self.tokenizer(full_text, return_tensors="pt", truncation=True, max_length=self.config.get("context_length", 4096))
                 if torch.cuda.is_available():
                     inputs = inputs.to("cuda")
-                
+
                 # --- Loss Masking: only compute loss on completion tokens ---
                 prompt_msgs = [
                     {"role": "system", "content": "You are an elite AI Research Engineer and Evolutionary Computation Expert."},
@@ -209,38 +229,42 @@ class LocalLLMLoader:
                 prompt_text = self.tokenizer.apply_chat_template(prompt_msgs, tokenize=False, add_generation_prompt=True)
                 prompt_tokens = self.tokenizer(prompt_text, return_tensors="pt", truncation=True, max_length=self.config.get("context_length", 4096))
                 prompt_length = prompt_tokens["input_ids"].shape[1]
-                
+
                 labels = inputs["input_ids"].clone()
                 # Safeguard: Don't mask out the entire sequence if the prompt got truncated
                 mask_length = min(prompt_length, labels.shape[1] - 1)
                 labels[0, :mask_length] = -100  # Mask prompt tokens from loss
-                
+
                 # # Causal LM: Labels = Inputs (old: trained on full prompt+completion)
                 # outputs = self.model(**inputs, labels=inputs["input_ids"])
                 outputs = self.model(**inputs, labels=labels)
-                
+
                 # Scale the loss since we are accumulating
                 loss = outputs.loss / accumulation_steps
-                
+
+                # Apply fitness-weighted loss scaling
+                weight = normalized_weights[i] / (total_weight / len(training_data))
+                loss = loss * weight
+
                 # Safeguard: Skip if loss is NaN or Inf to prevent adapter corruption
                 if torch.isnan(loss) or torch.isinf(loss):
                     print(f"[WARN] Loss is {loss.item()}. Skipping gradient update for this example to prevent mode collapse.")
                     continue
-                    
+
                 loss.backward()
-                
+
                 if (i + 1) % accumulation_steps == 0 or (i + 1) == len(training_data):
                     # Gradient clipping to prevent exploding gradients
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                     optimizer.step()
                     optimizer.zero_grad()
-                
+
                 # Re-scale loss for reporting total_loss
                 total_loss += loss.item() * accumulation_steps
-                
+
             avg_loss = total_loss / len(training_data)
             print(f"[LoRA] Epoch {epoch+1}/{epochs} - Loss: {avg_loss:.4f}")
-            
+
     def save_adapters(self, save_path):
         # Save only adapters
         self.model.save_pretrained(save_path)

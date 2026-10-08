@@ -2,7 +2,7 @@
   "apiVersion": "batch/v1",
   "kind": "Job",
   "metadata": {
-    "name": "nngpt-baseline-ga-benchmark-cifar100"
+    "name": "nngpt-fractal-frozen-cifar100-test"
   },
   "spec": {
     "parallelism": 1,
@@ -25,28 +25,28 @@
               "-c"
             ],
             "args": [
-              "cd /a/mm && (pip uninstall -y flash-attn || true) && pip install \"torchao==0.15.0\" git+https://github.com/ABrain-One/nn-dataset --upgrade --extra-index-url https://download.pytorch.org/whl/cu126 && export PYTHONPATH=/a/mm && site_pkg=$(python3 -c 'import site; print(site.getusersitepackages())') && mkdir -p /a/mm/ab/nn && ([ -f /a/mm/ab/nn/train.py ] || cp -r --update=none $site_pkg/ab/nn/* /a/mm/ab/nn/ || true) && export RUN_TS=$(date +%d-%m-%y_%H-%M) && export DATASET=cifar100 && export PIPELINE_DIR=/a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline && mkdir -p ${PIPELINE_DIR}/logs_${DATASET}/Baseline/${RUN_TS} && python3 -u -m ab.gpt.brute.ga.meta_evolution.baseline_run_ga 2>&1 | tee ${PIPELINE_DIR}/logs_${DATASET}/Baseline/${RUN_TS}/${RUN_TS}_${DATASET}_Pod_logs.log"
+              "cd /a/mm && (pip uninstall -y flash-attn || true) && pip install \"torchao==0.15.0\" --upgrade --extra-index-url https://download.pytorch.org/whl/cu126 && export PYTHONPATH=/a/mm && export RUN_TS=$(date +%d-%m-%y_%H-%M) && export DATASET=cifar100 && export PIPELINE_DIR=/a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline && mkdir -p ${PIPELINE_DIR}/logs_${DATASET}/frozen/${RUN_TS} && python3 -u -m ab.gpt.brute.ga.meta_evolution.frozen_pipeline 2>&1 | tee ${PIPELINE_DIR}/logs_${DATASET}/frozen/${RUN_TS}/${RUN_TS}_${DATASET}_frozen_Pod_logs.log"
             ],
             "env": [
-              {
-                "name": "HF_HOME",
-                "value": "/a/mm/.cache/huggingface"
-              },
-              {
-                "name": "PIP_CACHE_DIR",
-                "value": "/a/mm/.cache/pip"
-              },
               {
                 "name": "POPULATION_SIZE",
                 "value": "20"
               },
               {
                 "name": "GENERATIONS",
-                "value": "26"
+                "value": "5"
               },
               {
-                "name": "MUTATION_RATE",
-                "value": "0.6"
+                "name": "META_ATTEMPTS",
+                "value": "1"
+              },
+              {
+                "name": "FROZEN_SEED",
+                "value": "9999"
+              },
+              {
+                "name": "PYTORCH_CUDA_ALLOC_CONF",
+                "value": "expandable_segments:True"
               }
             ],
             "securityContext": {
@@ -58,12 +58,12 @@
               "requests": {
                 "nvidia.com/gpu": 1,
                 "cpu": 10,
-                "memory": "24Gi"
+                "memory": "16Gi"
               },
               "limits": {
                 "nvidia.com/gpu": 1,
                 "cpu": 10,
-                "memory": "24Gi"
+                "memory": "16Gi"
               }
             },
             "volumeMounts": [
@@ -78,6 +78,10 @@
               {
                 "mountPath": "/a/mm/data",
                 "name": "v1"
+              },
+              {
+                "mountPath": "/a/mm/nn-dataset",
+                "name": "v2"
               }
             ]
           }
@@ -102,6 +106,13 @@
             "name": "v1",
             "hostPath": {
               "path": "/shared/local/data/a-group-automl/data",
+              "type": "Directory"
+            }
+          },
+          {
+            "name": "v2",
+            "hostPath": {
+              "path": "/shared/ssd/home/b-a-singh/Thesis/NN-DATASET/C1/nn-dataset",
               "type": "Directory"
             }
           }

@@ -1,6 +1,6 @@
 import os
 import warnings
-from ab.gpt.brute.ga.meta_evolution.llm_loader import get_dataset_name, get_model_short_name
+from ab.gpt.brute.ga.meta_evolution.llm_loader import get_dataset_name
 warnings.filterwarnings("ignore")
 import argparse
 import hashlib
@@ -43,8 +43,8 @@ def suppress_output():
 import torch
 
 from ab.gpt.brute.ga.meta_evolution.FractalNet_evolvable_backbone import SEARCH_SPACE, generate_model_code_string
-from ab.gpt.util.eval.Eval import Eval
-from ab.gpt.util.eval.acc_client import predict_best_accuracy
+from ab.gpt.util.Eval import Eval
+from ab.gpt.util.acc_client import predict_best_accuracy
 import ab.nn.api as nn_dataset
 import pandas as pd
 # MONKEYPATCH: Bypass the massive remote database download inside Eval.py
@@ -78,7 +78,7 @@ httpx.Client.post = _patched_post
 import importlib
 if PIPELINE_DIR not in sys.path:
     sys.path.insert(0, PIPELINE_DIR)
-ga_mod = importlib.import_module("modified_GA.genetic_algorithm_evolved")
+ga_mod = importlib.import_module("modified_GA_frozen.genetic_algorithm_evolved")
 GeneticAlgorithm = ga_mod.GeneticAlgorithm
 
 # This is the folder where unique fractal models will be saved
@@ -87,7 +87,7 @@ STATS_SUBDIR = os.environ.get("STATS_SUBDIR", "baseline")
 ARCH_DIR = os.path.join(PIPELINE_DIR, 'architectures')
 STATS_DIR = os.path.join(PIPELINE_DIR, 'stats', STATS_SUBDIR)
 CHECKPOINT = None
-_model_name_for_stats = get_model_short_name()
+_model_name_for_stats = "frozen"
 BEST_STATS_DIR = os.path.join(PIPELINE_DIR, f'best_fractal_stats_{DATASET}_{_model_name_for_stats}')
 
 os.makedirs(ARCH_DIR, exist_ok=True)
@@ -143,7 +143,7 @@ def update_archive(individual, search_space):
         archive[cell] = copy.deepcopy(individual)
         print(f"  [Archive] Cell {cell} updated with fitness: {individual['fitness']:.4f}")
 
-def _log_eval(checksum, accuracy, is_cached, log_type="predicted"):
+def _log_eval(checksum, accuracy, is_cached, log_type="predicted", chromosome=None):
     if float(accuracy) <= 0.0:
         return
     
@@ -163,8 +163,12 @@ def _log_eval(checksum, accuracy, is_cached, log_type="predicted"):
                     "uid": checksum,
                     "accuracy": float(accuracy),
                     "is_cached": is_cached,
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
+                    "meta_iteration": int(os.environ.get("META_ITERATION", 0)),
+                    "seed": int(os.environ.get("FROZEN_SEED", 0))
                 }
+                if chromosome is not None:
+                    entry["chromosome"] = chromosome
                 f.write(json.dumps(entry) + "\n")
         except Exception as e:
             print(f"[ERROR] Failed to write GA eval log: {e}")
@@ -253,9 +257,9 @@ def fitness_function(chromosome: dict) -> float:
         if model_checksum in fitness_cache:
             ultimate_fitness, true_fitness, epoch_1_fitness = fitness_cache[model_checksum]
             print(f"  - Duplicate {model_checksum[:8]}: reusing cached fitness {ultimate_fitness:.2f}% (True: {true_fitness:.2f}%, 1-Ep: {epoch_1_fitness:.2f}%)")
-            _log_eval(model_checksum, ultimate_fitness, True, log_type="predicted")
-            _log_eval(model_checksum, true_fitness, True, log_type="true")
-            _log_eval(model_checksum, epoch_1_fitness, True, log_type="1_epoch")
+            _log_eval(model_checksum, ultimate_fitness, True, log_type="predicted", chromosome=chromosome)
+            _log_eval(model_checksum, true_fitness, True, log_type="true", chromosome=chromosome)
+            _log_eval(model_checksum, epoch_1_fitness, True, log_type="1_epoch", chromosome=chromosome)
             chromosome['accuracy'] = ultimate_fitness
             return ultimate_fitness
             
@@ -528,7 +532,7 @@ def fitness_function(chromosome: dict) -> float:
         fitness_source = f"LLM Predictor" if prediction_successful else f"3-Epoch Accuracy ({_acc_source})"
         
         print(f"\n  {'='*40}")
-        print(f"  >>> FITNESS SCORE: {ultimate_fitness:.2f}%  (source: {fitness_source}, checksum: {model_checksum})")
+        print(f"  >>> PREDICTED FITNESS SCORE: {ultimate_fitness:.2f}%  (source: {fitness_source}, checksum: {model_checksum})")
         print(f"  {'='*40}\n")
         
         epoch_1_fitness = epoch_accs[1]
@@ -536,9 +540,9 @@ def fitness_function(chromosome: dict) -> float:
         chromosome['accuracy'] = float(ultimate_fitness)
         
         # Dual Logging: Log both predicted and true accuracies
-        _log_eval(model_checksum, ultimate_fitness, False, log_type="predicted")
-        _log_eval(model_checksum, true_fitness, False, log_type="true")
-        _log_eval(model_checksum, epoch_1_fitness, False, log_type="1_epoch")
+        _log_eval(model_checksum, ultimate_fitness, False, log_type="predicted", chromosome=chromosome)
+        _log_eval(model_checksum, true_fitness, False, log_type="true", chromosome=chromosome)
+        _log_eval(model_checksum, epoch_1_fitness, False, log_type="1_epoch", chromosome=chromosome)
         return ultimate_fitness
         
     except Exception as e:
@@ -555,8 +559,8 @@ def fitness_function(chromosome: dict) -> float:
             
         # Log the failure entry to ga_evaluations
         _chk = model_checksum if 'model_checksum' in locals() else 'unknown'
-        _log_eval(_chk, 0.0, False, log_type="predicted")
-        _log_eval(_chk, 0.0, False, log_type="true")
+        _log_eval(_chk, 0.0, False, log_type="predicted", chromosome=chromosome)
+        _log_eval(_chk, 0.0, False, log_type="true", chromosome=chromosome)
         return 0.0
 
 if __name__ == "__main__":
@@ -574,12 +578,12 @@ if __name__ == "__main__":
         _standalone_mode = True
         run_ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         _dataset_name = get_dataset_name(__file__)
-        _model_name = get_model_short_name()
+        _model_name = "frozen"
         # Use pod's RUN_TS env var so JSONL lands in the same timestamped subfolder as Pod_logs.log
         pod_run_ts = os.environ.get("RUN_TS", "")
         logs_dir = os.path.join(PIPELINE_DIR, f"logs_{DATASET}", _model_name, pod_run_ts) if pod_run_ts else os.path.join(BASE_DIR, "logs")
         os.makedirs(logs_dir, exist_ok=True)
-        os.environ["GA_EVAL_LOG"] = os.path.join(logs_dir, f"ga_evaluations_{_dataset_name}_{_model_name}_{run_ts}.jsonl")
+        os.environ["GA_EVAL_LOG"] = os.path.join(logs_dir, f"frozen_evaluations_{_dataset_name}_{run_ts}.jsonl")
         print(f"[LOG] GA eval log: {os.environ['GA_EVAL_LOG']}")
 
     try:
