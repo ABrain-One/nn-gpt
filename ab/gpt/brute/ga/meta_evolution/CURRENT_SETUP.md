@@ -75,6 +75,13 @@ If the LLM Predictor returns an accuracy > 3x the **true 3-epoch accuracy**, the
 
 **Bug Fix (2026-09-18, recommomandation #8):** The guardrail was comparing against `epoch_accs[1]` (1-epoch accuracy) instead of `epoch_accs[3]` (3-epoch accuracy). After a plan change on 2026-09-15 set `true_fitness = epoch_accs[1]`, the guardrail threshold was trivially exceeded (since 1-epoch accuracy is only 2-10%), causing a **97-99% hallucination rate**. Fixed by using `epoch_accs[3]` for the guardrail comparison while keeping `epoch_accs[1]` for `_true.jsonl` logging.
 
+**Update (2026-10-04, Professor's Review):** Dr. Ignatov identified a critical transparency issue: the GA selection in the frozen control was still being driven by the hallucinated LLM predictor output, but the terminal banner misleadingly claimed `LLM: NONE`. The predictor had very low correlation (Pearson r=0.24) with true accuracy on CIFAR-10, meaning selection was nearly random. 
+*Fixes Applied:* 
+- The pipeline banner was updated to explicitly read: `"operator LLM: none (frozen); fitness predictor: identical to main arm"`.
+- The evaluation print statement was updated from `>>> FITNESS SCORE` to `>>> PREDICTED FITNESS SCORE`.
+- The final 5 CIFAR-100 frozen runs were launched in parallel with 5 distinct seeds (1001-1005) because both the main and control arms share the same predictor mechanism, keeping the control scientifically fair.
+- A new CSV benchmarking script is planned to explicitly include `acc_epoch1`, `acc_epoch3_true`, and `predicted_fitness` columns to prevent data misrepresentation.
+
 ---
 
 ## Logging System
