@@ -17,7 +17,7 @@ import torch
 # Read-only reuse of existing repo helpers (not modified).
 from ab.gpt.act.markov.code_extractor import CodeExtractor, validate_code, check_net_class
 from ab.gpt.util.Const import conf_test_dir, new_nn_file
-from ab.gpt.util.LLMUtil import quantization_config_4bit
+from ab.gpt.util.llm.LLMUtil import quantization_config_4bit
 
 
 def _salvage_fenceless_code(raw: str) -> Optional[str]:
@@ -285,7 +285,7 @@ def _seed_everything(seed: int) -> None:
 
 def load_model_and_tokenizer(base_model: str, adapter: Optional[str], context_length: int):
     """Load the base NNGPT model in 4-bit, optionally with a prior LoRA adapter."""
-    from ab.gpt.util.LLM import LLM
+    from ab.gpt.util.llm.LLM import LLM
 
     access_token = (
         os.environ.get("HF_TOKEN")

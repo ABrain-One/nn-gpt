@@ -12,8 +12,8 @@ new_out_file = 'full_output.txt'
 # pipeline. Used both for curation (building the SFT training corpus) and for
 # generation-seed selection (the in-context example models shown to the LLM),
 # so the two paths cannot silently drift apart.
-DEFAULT_DATASET = 'cifar-10'
-DEFAULT_NN_PREFIXES = ('ga-', 'GenFractalNet')
+DEFAULT_DATASET = None
+DEFAULT_NN_PREFIXES = []
 
 gpt = 'gpt'
 gpt_dir = ab_root_path / base_module / gpt

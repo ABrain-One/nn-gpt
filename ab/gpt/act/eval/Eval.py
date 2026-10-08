@@ -14,8 +14,8 @@ from ab.nn.util.Util import release_memory, uuid4
 from ab.gpt.util.Util import read_py_file_as_string
 from ab.gpt.util.Const import epoch_dir, new_nn_file, nngpt_dir, synth_dir, hp_file, NN_TRAIN_EPOCHS
 from ab.gpt.util.Util import verify_nn_code, copy_to_lemur
-from ab.gpt.util.CycleResults import generate_cycle_results, collect_cycle_metrics, save_cycle_results
-from ab.gpt.util import nneval_worker_pool as NNEvalWorkerPool
+from ab.gpt.util.data.CycleResults import generate_cycle_results, collect_cycle_metrics, save_cycle_results
+from ab.gpt.util.eval import nneval_worker_pool as NNEvalWorkerPool
 
 # Default evaluation parameters used by the CLI entrypoint when no per-model
 # metadata is available.

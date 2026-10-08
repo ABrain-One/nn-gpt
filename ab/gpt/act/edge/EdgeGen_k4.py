@@ -2,7 +2,7 @@
 Configuration builder for the edge k4 generation pipeline.
 
 Constructs SFTConfig/LoraConfig with edge-pipeline settings and delegates to the
-shared curriculum tuner (ab.gpt.util.Tune_Curriculum.tune), which is used as-is.
+shared curriculum tuner (ab.gpt.util.tune.Tune_Curriculum.tune), which is used as-is.
 
 Differences from the CurriculumGen_L3_k4 configuration this replaces:
 - SFTConfig.max_length is configurable (sft_max_length) so k=4 training prompts
@@ -214,7 +214,7 @@ def _install_trl_compat() -> None:
           name is transformers' collator with a different signature;
       (b) `SFTTrainer(processing_class=...)` — old trl uses `tokenizer=`.
     Inject adapted classes before LoRA.py binds these names. No-ops on
-    modern trl. Must run before ab.gpt.util.Tune_Curriculum is imported.
+    modern trl. Must run before ab.gpt.util.tune.Tune_Curriculum is imported.
     """
     import inspect
     import trl
@@ -497,7 +497,7 @@ def main(llm_conf: str = 'ds_coder_7b_olympic.json',
 
     # Must run before anything imports transformers (see _force_flash_attention).
     _force_flash_attention()
-    # Must run before ab.gpt.util.Tune_Curriculum (and thus LoRA.py) is imported.
+    # Must run before ab.gpt.util.tune.Tune_Curriculum (and thus LoRA.py) is imported.
     _install_trl_compat()
 
     persist_run_config(llm_conf, enable_merge)
@@ -521,7 +521,7 @@ def main(llm_conf: str = 'ds_coder_7b_olympic.json',
 
     from peft import LoraConfig
     from trl import SFTConfig
-    from ab.gpt.util.Tune_Curriculum import tune
+    from ab.gpt.util.tune.Tune_Curriculum import tune
 
     import dataclasses
     sft_fields = {f.name for f in dataclasses.fields(SFTConfig)}

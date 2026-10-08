@@ -9,7 +9,7 @@ import gc
 
 
 from ab.gpt.util.Const import conf_test_dir, epoch_dir, new_nn_file, synth_dir, fract_dir
-from ab.gpt.util.LLM import LLM
+from ab.gpt.util.llm.LLM import LLM
 
 def filter_backbones_by_size(max_params_millions=2):
     print(f"Filtering backbones with < {max_params_millions}M parameters...")

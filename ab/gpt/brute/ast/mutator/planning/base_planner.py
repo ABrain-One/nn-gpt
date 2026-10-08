@@ -22,6 +22,7 @@ from mutator.utils import (
     find_call_node_at_line,
 )
 from .dimension_planner import DimensionPlanner
+from .channel_config_planner import ChannelConfigPlanner
 from .activation_planner import ActivationPlanner
 from .layer_planner import LayerTypePlanner
 from .spatial_planner import SpatialPlanner
@@ -42,7 +43,8 @@ class ModelPlanner:
     MUTABLE_MODULES = (nn.Conv2d, nn.Linear, nn.BatchNorm2d, nn.LayerNorm)
     ACTIVATION_MODULES = (nn.ReLU, nn.GELU, nn.ELU, nn.LeakyReLU, nn.Tanh, nn.Sigmoid, nn.SiLU)
     
-    def __init__(self, model: nn.Module, source_map: dict = None, search_depth: int = 3):
+    def __init__(self, model: nn.Module, source_map: dict = None, search_depth: int = 3,
+                 source_code: Optional[str] = None):
         """
         Initialize the model planner.
         
@@ -50,10 +52,13 @@ class ModelPlanner:
             model: The PyTorch model to plan mutations for
             source_map: Optional mapping of module names to source locations
             search_depth: Depth for graph traversal operations
+            source_code: Optional full source of the model, required for
+                channel-configuration (bracket) mutations
         """
         self.original_model = model
         self.source_map = source_map or {}
         self.search_depth = search_depth
+        self.source_code = source_code
         self.plan = {}
         
         # Correctly load VALID_CHANNEL_SIZES from config.py
@@ -61,6 +66,7 @@ class ModelPlanner:
         
         # Initialize specialized planners
         self.dimension_planner = DimensionPlanner(self)
+        self.channel_config_planner = ChannelConfigPlanner(self, source_code=source_code)
         self.activation_planner = ActivationPlanner(self)
         self.layer_planner = LayerTypePlanner(self)
         self.spatial_planner = SpatialPlanner(self)
@@ -226,6 +232,8 @@ class ModelPlanner:
         # Delegate to appropriate specialized planner
         if selected_type == 'dimension':
             return self.dimension_planner.plan_dimension_mutation()
+        elif selected_type == 'channel_config':
+            return self.channel_config_planner.plan_channel_config_mutation()
         elif selected_type == 'activation':
             return self.activation_planner.plan_activation_mutation()
         elif selected_type == 'layer_type':
@@ -254,7 +262,11 @@ class ModelPlanner:
             # Check for mutable modules
             return any(isinstance(module, self.MUTABLE_MODULES) 
                       for module in self.original_model.modules())
-        
+
+        elif mutation_type == 'channel_config':
+            # Applicable when the source exposes a channel-config container
+            return self.channel_config_planner.has_candidates()
+
         elif mutation_type == 'activation':
             # Check for activation modules
             return any(isinstance(module, self.ACTIVATION_MODULES)

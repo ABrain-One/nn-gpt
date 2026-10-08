@@ -1,6 +1,6 @@
 import argparse
 
-from ab.gpt.util.NNLayer import alter
+from ab.gpt.util.nn.NNLayer import alter
 
 
 def main():

@@ -78,9 +78,9 @@ from datasets import Dataset
 import ab.gpt.act.rl.trainer_runtime as TrainerRuntime
 import ab.gpt.act.rl.stage_state as StageState
 import ab.gpt.act.rl.reward_payload as RewardPayload
-import ab.gpt.util.SFTUtil as SFTUtil
-from ab.gpt.util.GenerationDType import DTypeSafeLinearWrapper, align_generation_head_dtype
-from ab.gpt.util.ArchDiscovery import (
+import ab.gpt.util.llm.SFTUtil as SFTUtil
+from ab.gpt.util.llm.GenerationDType import DTypeSafeLinearWrapper, align_generation_head_dtype
+from ab.gpt.util.nn.ArchDiscovery import (
     ensure_pattern_name,
     extract_graph_info,
     normalize_pattern_name,

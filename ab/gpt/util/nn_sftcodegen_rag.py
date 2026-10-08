@@ -25,7 +25,7 @@ except Exception:
     _HAS_DATASKETCH = False
 
 try:
-    from ab.gpt.util.DeltaUtil import apply_delta, validate_delta
+    from ab.gpt.util.nn.DeltaUtil import apply_delta, validate_delta
     from ab.gpt.util.Util import extract_delta
     _HAS_DELTA = True
 except Exception:

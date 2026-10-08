@@ -1,6 +1,6 @@
 import argparse
 
-from ab.gpt.util.AlterNN import alter
+from ab.gpt.util.nn.AlterNN import alter
 from ab.gpt.util.Const import nngpt_upload
 
 

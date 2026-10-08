@@ -110,7 +110,7 @@ from ab.gpt.act.rl.completion import (
 )
 import ab.gpt.act.rl.trainer_runtime as TrainerRuntime
 import ab.gpt.util.Reward as RewardUtil
-import ab.gpt.util.SFTUtil as SFTUtil
+import ab.gpt.util.llm.SFTUtil as SFTUtil
 import ab.gpt.util.training_runtime as TrainingRuntime
 
 SFT_EVAL_TRANSFORM = TuneRL.FORMAL_REWARD_TRANSFORM

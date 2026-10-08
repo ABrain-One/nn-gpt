@@ -65,14 +65,43 @@ LAYER_TYPE_MUTATIONS = {
 }
 
 # Mutation type weights (probability distribution)
+#
+# There are two channel mutation modes:
+#   'dimension'       - DIRECT mode: edits the channel literal at the layer
+#                       instantiation site (nn.Conv2d / nn.Linear argument).
+#                       Works for flattened models (e.g. AlexNet) and for
+#                       loops whose constructor call already carries a literal.
+#   'channel_config'  - BRACKET mode: edits one entry inside a channel
+#                       configuration container (e.g. channels = [64,128,256,512]
+#                       or init_block_channels = 64) that is then consumed by a
+#                       loop / builder function (e.g. AirNet.build_features).
+#                       This is the only mode that produces independent,
+#                       per-stage channel changes for models whose Conv2d calls
+#                       live inside reusable block classes.
 MUTATION_TYPE_WEIGHTS = {
-    'dimension': 1.00,       # 100% - only dimension mutations (in/out sizes)
+    'dimension': 1.00,       # 100% - direct channel/feature size edits
+    'channel_config': 0.0,   # 0%  - bracket channel-configuration edits
     'activation': 0.0,      # 0% - no activation function mutations
     'layer_type': 0.0,      # 0% - no layer type mutations
     'kernel_size': 0.0,     # 0% - no kernel size mutations
     'stride': 0.0,          # 0% - no stride mutations
     'architectural': 0.0    # 0% - no architectural mutations
 }
+
+# --- CHANNEL CONFIGURATION (BRACKET) MUTATION ---
+# Names that identify a channel configuration container in the Net class.
+# A candidate is:
+#   * an assignment to one of these names whose value is a list/tuple of ints
+#     (e.g. channels = [64, 128, 256, 512]); each list entry is mutable, or
+#   * an assignment to one of these names whose value is a single int
+#     (e.g. init_block_channels = 64).
+# Matching is case-insensitive substring matching against the assignment target.
+CHANNEL_CONFIG_NAME_PATTERNS = [
+    'channel', 'channels', 'plane', 'planes', 'width', 'widths',
+    'filter', 'filters', 'feature', 'features', 'dim', 'dims',
+    'depth', 'stage', 'block_setting', 'block_spec', 'cfg',
+    'hidden', 'out_channels', 'in_channels', 'init_block',
+]
 
 # --- DIMENSION MUTATION STRATEGY ---
 # Probability distribution for choosing forward (producer-led) vs.

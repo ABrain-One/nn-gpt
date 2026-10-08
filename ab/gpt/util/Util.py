@@ -9,7 +9,7 @@ from pathlib import Path
 
 from ab.gpt.util.Const import new_lemur_nn_dir, new_nn_file, new_lemur_stat_dir
 
-from ..util.Code import *
+from ab.gpt.util.nn.Code import *
 
 
 def nn_accepted(nn_dir):

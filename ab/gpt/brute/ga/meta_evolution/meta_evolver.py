@@ -11,7 +11,7 @@ import sys
 import glob
 import gc
 import torch
-from ab.gpt.util.Eval import Eval
+from ab.gpt.util.eval.Eval import Eval
 import ab.nn.api as nn_dataset
 import pandas as pd
 # MONKEYPATCH: Bypass the massive remote database download inside Eval.py

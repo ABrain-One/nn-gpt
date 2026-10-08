@@ -40,7 +40,7 @@ from peft import PeftModel
 from transformers import TrainingArguments
 
 from ab.gpt.util.Const import conf_llm_dir, nngpt_dir
-from ab.gpt.util.LLMUtil import quantization_config_4bit
+from ab.gpt.util.llm.LLMUtil import quantization_config_4bit
 from ab.nn.util.Const import out_dir
 
 
@@ -111,6 +111,7 @@ def _build_kto_dataset(records: List[Dict[str, Any]], tokenizer) -> Dataset:
     completions: List[str] = []
     labels: List[bool] = []
     sim_penalties: List[float] = []
+    grade_weights: List[float] = []
 
     skipped = 0
     for rec in records:
@@ -139,6 +140,7 @@ def _build_kto_dataset(records: List[Dict[str, Any]], tokenizer) -> Dataset:
         completions.append(completion)
         labels.append(bool(label))
         sim_penalties.append(float(rec.get("sim_penalty", 0.0) or 0.0))
+        grade_weights.append(float(rec.get("grade_weight", 1.0) or 1.0))
 
     if skipped > 0:
         print(f"[KTO][WARN] Skipped {skipped} malformed records (missing prompt/completion/label)")
@@ -155,6 +157,7 @@ def _build_kto_dataset(records: List[Dict[str, Any]], tokenizer) -> Dataset:
         "completion": completions,
         "label": labels,
         "sim_penalty": sim_penalties,
+        "grade_weight": grade_weights,
     })
 
 
@@ -183,7 +186,7 @@ def _load_base_model_and_tokenizer(
     LoRA adapter to provide a warm start.  Mirrors the pattern in
     ab/gpt/util/Tune.py:tune().
     """
-    from ab.gpt.util.LLM import LLM
+    from ab.gpt.util.llm.LLM import LLM
 
     base_model_name = llm_conf_data["base_model_name"]
     context_length = llm_conf_data.get("context_length")
@@ -246,6 +249,7 @@ def run_kto(
     kto_desirable_weight: float = KTO_DESIRABLE_WEIGHT,
     kto_undesirable_weight: float = KTO_UNDESIRABLE_WEIGHT,
     sim_alpha: float = 0.0,
+    graded_reward: bool = False,
     max_prompt_length: int = MAX_PROMPT_LENGTH,
     max_completion_length: int = MAX_COMPLETION_LENGTH,
     # Standard training hyperparameters
@@ -337,7 +341,7 @@ def run_kto(
     # ── 2. LoRA config ──────────────────────────────────────────────────────
     if tune_layers is None:
         tune_layers = range(START_LAYER, END_LAYER)
-    from ab.gpt.util.KTO import kto_lora_config
+    from ab.gpt.util.llm.KTO import kto_lora_config
     peft_config = kto_lora_config(
         target_modules=target_modules,
         r=r,
@@ -361,7 +365,7 @@ def run_kto(
     # ── 5. KTO training ─────────────────────────────────────────────────────
     # Late import so the module can also be used in pipeline-dispatch mode
     # without paying the KTO trainer import cost up front.
-    from ab.gpt.util.KTO import KTO
+    from ab.gpt.util.llm.KTO import KTO
 
     kto = KTO(
         model=model,
@@ -378,6 +382,7 @@ def run_kto(
         desirable_weight=kto_desirable_weight,
         undesirable_weight=kto_undesirable_weight,
         sim_alpha=sim_alpha,
+        graded=graded_reward,
         max_prompt_length=max_prompt_length,
         max_completion_length=max_completion_length,
     )
@@ -431,6 +436,9 @@ def main():
     parser.add_argument("--kto_undesirable_weight", type=float, default=KTO_UNDESIRABLE_WEIGHT)
     parser.add_argument("--sim_alpha", type=float, default=0.0,
                         help="If >0, subtract alpha*sim_penalty from the KTO chosen reward")
+    parser.add_argument("--graded_reward", action="store_true", default=False,
+                        help="Scale each desirable example's KTO loss by its grade_weight column "
+                             "(accuracy-derived) so higher-accuracy models get stronger reward")
     parser.add_argument("--max_prompt_length", type=int, default=MAX_PROMPT_LENGTH)
     parser.add_argument("--max_completion_length", type=int, default=MAX_COMPLETION_LENGTH)
 
@@ -541,6 +549,7 @@ def main():
         kto_desirable_weight=args.kto_desirable_weight,
         kto_undesirable_weight=args.kto_undesirable_weight,
         sim_alpha=args.sim_alpha,
+        graded_reward=args.graded_reward,
         max_prompt_length=args.max_prompt_length,
         max_completion_length=args.max_completion_length,
         num_train_epochs=args.num_train_epochs,

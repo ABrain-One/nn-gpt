@@ -1,7 +1,7 @@
 from langgraph.graph import StateGraph, END
 from ab.gpt.act.agents.state import AgentState
 from ab.gpt.act.agents.manager import manager_node
-from ab.gpt.util.Tune import generate_step, evaluate_step, finetune_step
+from ab.gpt.util.tune.Tune import generate_step, evaluate_step, finetune_step
 
 
 def run_agent_controller(initial_state: dict):

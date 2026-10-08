@@ -150,6 +150,7 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
          max_prompts=MAX_PROMPTS, save_llm_output=SAVE_LLM_OUTPUT, max_new_tokens=MAX_NEW_TOKENS, use_deepspeed=USE_DEEPSPEED, nn_name_prefix=NN_NAME_PREFIX,
          nn_train_epochs=NN_TRAIN_EPOCHS, temperature=TEMPERATURE, top_k=TOP_K, top_p=TOP_P, data_dir=None,base_data_dir=None,output_dir=None,
          num_cycles=None, epoch_root=None,
+         suppress_thinking=False, budget_tokens=None, skip_lm_finetune=False,
          # Pipeline-specific overrides (for backward compatibility with iterative_finetune.py)
          evaluation_strategy=None, eval_steps=None, save_strategy=None, save_steps=None,
          save_total_limit=None, load_best_model_at_end=False, metric_for_best_model=None, warmup_steps=None, weight_decay=None,
@@ -166,7 +167,9 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
          mobile_min_quantized_accuracy=None, mobile_max_duration_ms=None,
          mobile_score_tolerance=0.99, mobile_min_valid_models=5, mobile_delegate_priority="npu,gpu,cpu",
          # --- Corpus filters for the iterative pipeline's LEMUR curation ---
-         dataset=DEFAULT_DATASET, nn_prefixes=DEFAULT_NN_PREFIXES):
+         dataset=DEFAULT_DATASET, nn_prefixes=DEFAULT_NN_PREFIXES,
+         # --- LLMatic MAP-Elites seed selection ---
+         llmatic=False, llmatic_crossover_every=3):
 
     persist_llm_conf(llm_conf, enable_merge)
 
@@ -174,11 +177,11 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
         print("--- Initiating Iterative Fine-Tuning Pipeline ---")
         try:
             if mobile_deployment:
-                from ab.gpt.act.mobile.iterative_finetune import MobileDeploymentFinetuner as IterativeFinetuner
+                from ab.gpt.act.edge.iterative_finetune import MobileDeploymentFinetuner as IterativeFinetuner
             else:
-                from ab.gpt.act.iterative.finetune import IterativeFinetuner
+                from ab.gpt.act.tune.iterative.finetune import IterativeFinetuner
         except ImportError as e:
-            print(f"[ERROR] Pipeline mode requires ab.gpt.act.iterative.finetune: {e}")
+            print(f"[ERROR] Pipeline mode requires ab.gpt.act.tune.iterative.finetune: {e}")
             sys.exit(1)
         pipeline_kwargs = dict(
             llm_conf=llm_conf,
@@ -196,6 +199,8 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
             num_train_epochs=num_train_epochs,
             dataset=dataset,
             nn_prefixes=nn_prefixes,
+            llmatic=llmatic,
+            llmatic_crossover_every=llmatic_crossover_every,
         )
         if mobile_deployment:
             pipeline_kwargs["mobile_min_quantized_accuracy"] = mobile_min_quantized_accuracy
@@ -260,15 +265,15 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
 
     if onnx_run:
         try:
-            from ab.gpt.util.Tune_Onnx import tune, ds_conf
+            from ab.gpt.util.tune.Tune_Onnx import tune, ds_conf
         except ImportError as e:
-            print(f"[ERROR] ONNX mode requires ab.gpt.util.Tune_Onnx: {e}")
+            print(f"[ERROR] ONNX mode requires ab.gpt.util.tune.Tune_Onnx: {e}")
             sys.exit(1)
     else:
         try:
-            from ab.gpt.util.Tune import tune, ds_conf
+            from ab.gpt.util.tune.Tune import tune, ds_conf
         except ImportError as e:
-            print(f"[ERROR] Failed to import ab.gpt.util.Tune: {e}")
+            print(f"[ERROR] Failed to import ab.gpt.util.tune.Tune: {e}")
             sys.exit(1)
 
     print(f'''All hyperparameters:
@@ -424,19 +429,23 @@ use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={c
             enable_merge=enable_merge,
             classification_mode=classification_mode,
             use_backbone=use_backbone,
+            suppress_thinking=suppress_thinking,
+            budget_tokens=budget_tokens,
+            skip_lm_finetune=skip_lm_finetune,
             context_length=context_length,
             max_input_length=max_input_length,
             only_best_accuracy=only_best_accuracy,
             load_in_4bit=load_in_4bit,
             data_dir=data_dir,
             epoch_root=epoch_root,
+            llmatic=({"crossover_every": llmatic_crossover_every} if llmatic else None),
         )
 
         # Normal completion - auto merge best
         if enable_merge:
             print("\n[MERGE] Training complete - running auto merge...\n")
             try:
-                from ab.gpt.util.MergeLLM import rebuild_from_lineage
+                from ab.gpt.util.llm.MergeLLM import rebuild_from_lineage
                 rebuild_from_lineage()
                 print("[MERGE] Completed successfully.\n")
             except ImportError as e:
@@ -454,7 +463,7 @@ use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={c
         if enable_merge:
             print("\n[MERGE] Running emergency merge (interrupted)...\n")
             try:
-                from ab.gpt.util.MergeLLM import rebuild_from_lineage
+                from ab.gpt.util.llm.MergeLLM import rebuild_from_lineage
                 rebuild_from_lineage()
                 print("[MERGE] Emergency merge completed.\n")
             except ImportError as e:
@@ -575,6 +584,12 @@ if __name__ == '__main__':
     # Training configuration
     parser.add_argument('--num_cycles', type=int, default=None,
                         help='Number of outer generate/eval/SFT cycles (default: 100).')
+    parser.add_argument('--suppress_thinking', action='store_true', default=False,
+                        help='Close OlympicCoder-7B think block before generation (reduces thinking:code ratio).')
+    parser.add_argument('--max_output_tokens', type=int, default=None, dest='budget_tokens',
+                        help='Override max_new_tokens; enables token-budget sweep (paper Table 2).')
+    parser.add_argument('--skip_lm_finetune', action='store_true', default=False,
+                        help='Skip LoRA fine-tuning step each cycle (generation-only run).')
     parser.add_argument('-n', '--test_nn', type=int, default=TEST_NN,
                         help=f'Count of NNs to generate (default: {TEST_NN}).')
     parser.add_argument('--nn_train_epochs', type=int, default=NN_TRAIN_EPOCHS,
@@ -683,6 +698,13 @@ if __name__ == '__main__':
     parser.add_argument('--nn_prefixes', type=lambda s: tuple(p for p in s.split(',') if p),
                         default=DEFAULT_NN_PREFIXES,
                         help=f"[Pipeline] Comma-separated NN name prefixes to curate (default: {','.join(DEFAULT_NN_PREFIXES)}).")
+    parser.add_argument('--llmatic', action='store_true', default=False,
+                        help="[Pipeline] Enable LLMatic MAP-Elites archive-driven seed "
+                             "selection (mutation + periodic crossover) in nn_gen, instead "
+                             "of random corpus sampling.")
+    parser.add_argument('--llmatic_crossover_every', type=int, default=3,
+                        help="[Pipeline] With --llmatic, run a crossover generation every N "
+                             "cycles (default: 3; 0 disables crossover).")
 
     args = parser.parse_args()
 

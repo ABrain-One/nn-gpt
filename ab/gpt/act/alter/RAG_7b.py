@@ -3,7 +3,7 @@ CLI entry‑point for RAG‑based NN synthesis.
 """
 
 import argparse
-from ab.gpt.util.RAG_AlterNN import alter
+from ab.gpt.util.nn.RAG_AlterNN import alter
 
 def main() -> None:
     parser = argparse.ArgumentParser(
