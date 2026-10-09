@@ -25,9 +25,13 @@
               "-c"
             ],
             "args": [
-              "cd /a/mm && (pip uninstall -y flash-attn || true) && pip install \"torchao==0.15.0\" --no-deps --upgrade --extra-index-url https://download.pytorch.org/whl/cu126 && export PYTHONPATH=/a/mm && export RUN_TS=$(date +%d-%m-%y_%H-%M) && export DATASET=cifar10 && export PIPELINE_DIR=/a/mm/ab/gpt/brute/ga/meta_evolution/cifar10_pipeline && export MODEL_NAME=$(python3 -c \"import json, os; full=json.load(open(os.path.join(os.environ.get('PIPELINE_DIR', ''), 'model_config.json'))).get('base_model_name', 'unknown').lower(); print('qwen' if 'qwen' in full else 'deepseek' if 'deepseek' in full else 'mistral' if 'mistral' in full else full.split('/')[0])\" || echo \"unknown\") && mkdir -p ${PIPELINE_DIR}/logs_${DATASET}/${MODEL_NAME}/${RUN_TS} && python3 -u -m ab.gpt.brute.ga.meta_evolution.meta_evolver 2>&1 | tee ${PIPELINE_DIR}/logs_${DATASET}/${MODEL_NAME}/${RUN_TS}/${RUN_TS}_${DATASET}_${MODEL_NAME}_Pod_logs.log"
+              "cd /a/mm && (pip uninstall -y flash-attn || true) && pip install \"torchao==0.15.0\" --no-deps --upgrade --extra-index-url https://download.pytorch.org/whl/cu126 && export PYTHONPATH=/a/mm && export RUN_TS=$(date +%d-%m-%y_%H-%M) && export DATASET=cifar10 && export PIPELINE_DIR=/a/mm/ab/gpt/brute/ga/meta_evolution/cifar10_pipeline && export MODEL_NAME=$(python3 -c \"import json, os; full=os.environ.get('LLM_BASE_MODEL') or json.load(open(os.path.join(os.environ.get('PIPELINE_DIR', ''), 'model_config.json'))).get('base_model_name', 'unknown'); full=full.lower(); print('qwen' if 'qwen' in full else 'deepseek' if 'deepseek' in full else 'mistral' if 'mistral' in full else full.split('/')[0])\" || echo \"unknown\") && mkdir -p ${PIPELINE_DIR}/logs_${DATASET}/${MODEL_NAME}/${RUN_TS} && python3 -u -m ab.gpt.brute.ga.meta_evolution.meta_evolver 2>&1 | tee ${PIPELINE_DIR}/logs_${DATASET}/${MODEL_NAME}/${RUN_TS}/${RUN_TS}_${DATASET}_${MODEL_NAME}_Pod_logs.log"
             ],
             "env": [
+              {
+                "name": "LLM_BASE_MODEL",
+                "value": "Qwen/Qwen2.5-Coder-7B-Instruct"
+              },
               {
                 "name": "LOAD_PREVIOUS_ADAPTER",
                 "value": "false"
@@ -78,12 +82,12 @@
               "requests": {
                 "nvidia.com/gpu": 1,
                 "cpu": 10,
-                "memory": "48Gi"
+                "memory": "24Gi"
               },
               "limits": {
                 "nvidia.com/gpu": 1,
                 "cpu": 10,
-                "memory": "48Gi"
+                "memory": "24Gi"
               }
             },
             "volumeMounts": [
@@ -125,7 +129,26 @@
               "type": "Directory"
             }
           }
-        ]
+        ],
+        "affinity": {
+          "nodeAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+              "nodeSelectorTerms": [
+                {
+                  "matchExpressions": [
+                    {
+                      "key": "kubernetes.io/hostname",
+                      "operator": "In",
+                      "values": [
+                        "dgx-h100"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
       }
     }
   }

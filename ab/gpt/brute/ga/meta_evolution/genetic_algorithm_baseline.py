@@ -19,10 +19,14 @@ class GeneticAlgorithm:
         self.population = [{'chromosome': self._create_random_chromosome(), 'fitness': None} for _ in range(self.population_size)]
 
     def _save_checkpoint(self, generation_num):
+        if self.checkpoint_path is None:
+            return
         state = {'generation': generation_num, 'population': self.population}
         with open(self.checkpoint_path, 'wb') as f: pickle.dump(state, f)
 
     def _load_checkpoint(self):
+        if self.checkpoint_path is None:
+            return 0, None
         if os.path.exists(self.checkpoint_path):
             try:
                 with open(self.checkpoint_path, 'rb') as f:

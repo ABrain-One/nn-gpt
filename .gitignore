@@ -11,6 +11,9 @@ db/ab.nn.db
 db/ab.nn.db-journal
 out/
 out_nneval_tmp_pid_*/
+out_cifar10_*/
+out_cifar100_*/
+out_imagenet100_*/
 .vscode/settings.json
 curation_output/
 iterative_pipeline.log

@@ -8,6 +8,7 @@ import shutil
 import time
 import json
 import sys
+import glob
 import gc
 import torch
 from ab.gpt.util.eval.Eval import Eval
@@ -30,16 +31,16 @@ DATASET_DASH = "cifar-100" if DATASET == "cifar100" else "cifar-10"
 _dataset_name = get_dataset_name(__file__)
 _model_name = get_model_short_name()
 
-MODIFIED_GA_DIR = os.path.join(PIPELINE_DIR, f"modified_GA")
+MODIFIED_GA_DIR = os.path.join(PIPELINE_DIR, f"modified_GA_{_model_name}")
 os.makedirs(MODIFIED_GA_DIR, exist_ok=True)
 TARGET_FILE = os.path.join(MODIFIED_GA_DIR, "genetic_algorithm_evolved.py")
 
-# Fair Benchmarking: Reset baseline if starting fresh
-CHECKPOINT_FILE = os.path.join(PIPELINE_DIR, f"GenFractal_ckpt_{DATASET}.pkl")
-BACKUP_DIR = os.path.join(PIPELINE_DIR, f"ga_history_backup")
+# Checkpoint saving disabled — no .pkl files saved
+CHECKPOINT_FILE = None
+BACKUP_DIR = os.path.join(PIPELINE_DIR, f"ga_history_backup_{_model_name}")
 ADAPTER_SAVE_PATH = os.path.join(PIPELINE_DIR, f"{_model_name}_adapter")
 
-if not os.path.exists(CHECKPOINT_FILE):
+if CHECKPOINT_FILE is None or not os.path.exists(CHECKPOINT_FILE):
     baseline_file = os.path.join(BASE_DIR, "genetic_algorithm_baseline.py")
     if os.path.exists(baseline_file):
         shutil.copy(baseline_file, TARGET_FILE)
@@ -74,9 +75,9 @@ os.makedirs(LOGS_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOGS_DIR, f"LLM-evolution-logs_{DATASET}_{_model_name}_{RUN_TIMESTAMP}.jsonl")
 GA_EVAL_LOG_FILE = os.path.join(LOGS_DIR, f"ga_evaluations_{DATASET}_{_model_name}_{RUN_TIMESTAMP}.jsonl")
 
-# KEEP BENCHMARKS SMALL FOR FAST FEEDBACK, BUT CONFIGURABLE VIA ENV
-BENCH_GENS = int(os.environ.get("GENERATIONS", 3))
-BENCH_POP = int(os.environ.get("POPULATION_SIZE", 10)) 
+# KEEP BENCHMARKS SMALL FOR FAST FEEDBACK. Do not use K8s env vars here or it will take forever.
+BENCH_GENS = int(os.environ.get("GENERATIONS", 5))
+BENCH_POP = int(os.environ.get("POPULATION_SIZE", 20))
 
 # --- FULL CONTEXT PROMPT TEMPLATE ---
 # Format the search space so the LLM understands the exact gene constraints
@@ -124,8 +125,8 @@ Current implementation:
 """
 
 INSTRUCTIONS = {
-    "combine_genes": "Task: Implement `combine_genes`. Return a new chromosome dict by crossing over parent1_chromo and parent2_chromo. CRITICAL: You MUST implement strategies to maintain genetic diversity and avoid premature convergence! You MUST return self._sanitize_chromosome(child_chromo).",
-    "mutate_gene": "Task: Implement `mutate_gene`. Return a new chromosome dict with mutated genes based on self.mutation_rate. CRITICAL: You MUST ensure mutations are bold enough to explore new architectures and prevent the population from getting stuck in local minima! You MUST return self._sanitize_chromosome(mutated_chromo).",
+    "combine_genes": "Task: Implement `combine_genes`. Return a new chromosome dict by crossing over parent1_chromo and parent2_chromo. CRITICAL: You MUST implement strategies to maintain genetic diversity and avoid premature convergence! Return the child chromosome dict directly.",
+    "mutate_gene": "Task: Implement `mutate_gene`. Return a new chromosome dict with mutated genes based on self.mutation_rate. CRITICAL: You MUST ensure mutations are bold enough to explore new architectures and prevent the population from getting stuck in local minima! Return the mutated chromosome dict directly.",
     "select_competitor": "Task: Implement `select_competitor`. Select a pool of competitors from self.population and return a single chosen competitor. CRITICAL: Balance elitism with exploration (e.g. tournament selection with a reasonable size) so the population doesn't instantly converge.",
     "_create_random_chromosome": "Task: Implement `_create_random_chromosome`. Return a new chromosome dictionary with randomized values chosen from self.search_space."
 }
@@ -175,10 +176,6 @@ class MetaEvolver:
             self.baseline_score = self.run_benchmark(gens=1)["peak_accuracy"]
             print(f"[Meta] Calculated Baseline: {self.baseline_score:.4f}%")
             
-            # WIPE CHECKPOINT to force LLM to start from scratch
-            if os.path.exists(CHECKPOINT_FILE):
-                os.remove(CHECKPOINT_FILE)
-                print("[Meta] Wiped Baseline population checkpoint to force clean start for LLM.")
         self.global_best_score = 0.0
         self.global_archive_size = 0
         
@@ -202,11 +199,15 @@ class MetaEvolver:
         cmd = [sys.executable, RUNNER_SCRIPT, "--gens", str(gens), "--pop", str(BENCH_POP)]
         env = os.environ.copy()
         env["GA_EVAL_LOG"] = GA_EVAL_LOG_FILE
-        
+        # Separate stats directory from baseline and other models to prevent cache cross-contamination
+        env["STATS_SUBDIR"] = f"meta_{_model_name}"
+        print(f"[Meta] Setting STATS_SUBDIR=meta_{_model_name} for subprocess → stats/meta_{_model_name}/")
+
         runs = 1
         scores = []
         peak_accs = []
-        
+        true_peak_accs = []
+
         for i in range(runs):
             print(f"\n[Meta] Running Benchmark {i+1}/{runs}...")
             try:
@@ -228,38 +229,58 @@ class MetaEvolver:
                 
                 score_match = re.search(r"META_SCORE:\s*([\d\.]+)", full_output)
                 score = float(score_match.group(1)) if score_match else 0.0
-                
+
                 peak_match = re.search(r"PEAK_ACCURACY:\s*([\d\.]+)", full_output)
                 peak_acc = float(peak_match.group(1)) if peak_match else 0.0
 
+                true_peak_match = re.search(r"TRUE_PEAK_ACCURACY:\s*([\d\.]+)", full_output)
+                true_peak_acc = float(true_peak_match.group(1)) if true_peak_match else peak_acc
+
                 top3_match = re.search(r"TOP3_MEAN:\s*([\d\.]+)", full_output)
                 top3_acc = float(top3_match.group(1)) if top3_match else peak_acc
-                
+
                 archive_match = re.search(r"ARCHIVE_SIZE:\s*(\d+)", full_output)
                 archive_size = int(archive_match.group(1)) if archive_match else 0
-                
+
                 if not top3_match and process.returncode == 0:
                     print(f"[Meta] Benchmark Output (Snippet):\n{full_output[-1000:]}")
-                
+
                 scores.append(top3_acc) # Track Top3 for secondary density reward
                 peak_accs.append(peak_acc)
-            except Exception as e: 
+                true_peak_accs.append(true_peak_acc)
+            except Exception as e:
                  print(f"[Meta] Benchmark Exception: {e}")
                  scores.append(0.0)
                  peak_accs.append(0.0)
+                 true_peak_accs.append(0.0)
                  archive_size = 0
                  error_trace = str(e)
-        
+
         median_top3 = statistics.median(scores) if scores else 0.0
         median_peak = statistics.median(peak_accs) if peak_accs else 0.0
+        median_true_peak = statistics.median(true_peak_accs) if true_peak_accs else 0.0
         print(f"[Meta] Median Top-3 Quality over {runs} runs: {median_top3:.4f}")
-        
+        print(f"[Meta] Median True Peak Accuracy over {runs} runs: {median_true_peak:.4f}")
+
         # Cleanup large objects explicitly
         scores.clear()
         peak_accs.clear()
+        true_peak_accs.clear()
         self._cuda_cleanup()
-        
-        return {"top3_mean": median_top3, "peak_accuracy": median_peak, "archive_size": archive_size, "error_trace": error_trace}
+
+        # Read fitness_history from the trajectory file for per-attempt tracking
+        fitness_history = []
+        trajectory_pattern = os.path.join(PIPELINE_DIR, f"evolved_results_{DATASET}_*.json")
+        for traj_file in glob.glob(trajectory_pattern):
+            try:
+                with open(traj_file) as f:
+                    traj_data = json.load(f)
+                if "fitness_history" in traj_data and traj_data["fitness_history"]:
+                    fitness_history = traj_data["fitness_history"]
+            except Exception:
+                pass
+
+        return {"top3_mean": median_top3, "peak_accuracy": median_peak, "true_peak_accuracy": median_true_peak, "archive_size": archive_size, "error_trace": error_trace, "fitness_history": fitness_history}
 
     def _extract_method(self, source_code, method_name):
         import ast
@@ -433,9 +454,8 @@ class MetaEvolver:
             code=orig_code
         )
         
-        # [MODIFIED_FOR_INNOVATION] Increased temperature from 0.8 to 0.9 to boost creativity. Revert to 0.8 if syntax errors occur too often.
-        temperature = 0.9
-        print(f"[Meta] Generation Temperature (BOOSTED): {temperature:.2f}")
+        temperature = 0.8
+        print(f"[Meta] Generation Temperature: {temperature:.2f}")
         
         raw_res = self.llm.generate(prompt, max_new_tokens=2048, temperature=temperature)
         
@@ -470,7 +490,7 @@ class MetaEvolver:
                 replacements.append((span, indent, ""))
 
         valid_syntax = False
-        bench_stats = {"top3_mean": 0.0, "peak_accuracy": 0.0, "archive_size": self.global_archive_size, "error_trace": ""}
+        bench_stats = {"top3_mean": 0.0, "peak_accuracy": 0.0, "true_peak_accuracy": 0.0, "archive_size": self.global_archive_size, "error_trace": ""}
         try:
             test_full = full_code
             for span, indent_col, new_code in replacements:
@@ -527,7 +547,7 @@ class MetaEvolver:
                 test_ga = ga_mod.GeneticAlgorithm(
                     population_size=4, search_space=SEARCH_SPACE,
                     elitism_count=1, mutation_rate=1.0,
-                    checkpoint_path="/dev/null"
+                    checkpoint_path=None
                 )
                 # Create test chromosomes
                 test_chromo = test_ga._create_random_chromosome()
@@ -575,27 +595,27 @@ class MetaEvolver:
             if valid_syntax:
                 print("[Meta] Benchmarking...")
                 bench_stats = self.run_benchmark()
-                if bench_stats.get("error_trace", "") or bench_stats["peak_accuracy"] == 0.0:
-                    print("[Meta] Benchmarking crashed or returned 0.0 accuracy. Treating as invalid.")
+                if bench_stats.get("error_trace", "") or bench_stats["true_peak_accuracy"] == 0.0:
+                    print("[Meta] Benchmarking crashed or returned 0.0 true accuracy. Treating as invalid.")
                     valid_syntax = False
 
-        new_score = bench_stats["peak_accuracy"]
+        new_score = bench_stats["true_peak_accuracy"]
         top3_mean = bench_stats["top3_mean"]
         new_archive_size = bench_stats["archive_size"]
-        
+
         # Calculate novelty (how many new cells were filled)
         archive_novelty = max(0, new_archive_size - self.global_archive_size)
 
         # RL Loop: Pass all frontier metrics to the reward calculator
         reward = calculate_meta_reward(
-            current_score=new_score, 
-            best_ever_score=self.global_best_score, 
+            current_score=new_score,
+            best_ever_score=self.global_best_score,
             baseline_score=self.baseline_score,
-            top3_mean=top3_mean, 
-            archive_novelty=archive_novelty, 
+            top3_mean=top3_mean,
+            archive_novelty=archive_novelty,
             valid_syntax=valid_syntax
         )
-        
+
         # Update Global Frontier Tracking
         if valid_syntax:
             if new_score > self.global_best_score:
@@ -604,7 +624,7 @@ class MetaEvolver:
             if new_archive_size > self.global_archive_size:
                 print(f"[Meta] --> ARCHIVE EXPANDED! {new_archive_size} cells (was {self.global_archive_size})")
                 self.global_archive_size = new_archive_size
-        
+
         fine_tune_expected = bool(valid_syntax)
         fine_tune_started = False
         fine_tune_completed = False
@@ -621,26 +641,32 @@ class MetaEvolver:
         fine_tune_end_time = None
         adapter_save_start_time = None
         adapter_save_end_time = None
-        
+
         fine_tune_requested_batch = 0
         fine_tune_actual_batch = 0
         fine_tune_retries = 0
         fine_tune_oom_message = None
-        
-        if valid_syntax and reward > 0:
-            print("--> SUCCESS. Updating Baseline (EMA) & Fine-tuning on Success.")
-            # EMA Update: 20% of the new score, 80% of the old baseline
-            if self.baseline_score == 0.0:
-                self.baseline_score = new_score  # Initialize on first success
-            else:
-                self.baseline_score = (0.2 * new_score) + (0.8 * self.baseline_score)
+
+        sota_beaten = new_score > self.baseline_score
+        archive_expanded = archive_novelty > 0
+
+        if valid_syntax and (sota_beaten or archive_expanded):
+            reason = "SOTA BEATEN" if sota_beaten else "NOVELTY DISCOVERED"
+            print(f"--> {reason}. Fine-Tuning triggered on this code.")
             
+            # EMA Update: Only drag baseline up if it actually beat it
+            if sota_beaten:
+                if self.baseline_score == 0.0:
+                    self.baseline_score = new_score  # Initialize on first success
+                else:
+                    self.baseline_score = (0.2 * new_score) + (0.8 * self.baseline_score)
+
             # --- Experience Replay: append success ---
-            self.success_buffer.append({'prompt': prompt, 'completion': new_code})
+            self.success_buffer.append({'prompt': prompt, 'completion': new_code, 'fitness': new_score})
             if len(self.success_buffer) > 20:
                 self.success_buffer.pop(0)  # Cap buffer at 20, drop oldest
         else:
-            print("--> REGRESSION (Failed to beat SOTA). Fine-tuning on past successes to maintain syntax.")
+            print("--> REGRESSION (No SOTA improvement, No Novelty). Fine-tuning on past successes to maintain syntax.")
 
         # Setup fallback batch sizes
         try:
@@ -735,7 +761,8 @@ class MetaEvolver:
             "score": new_score, 
             "reward": reward,
             "code": combined_code, 
-            "error_trace": bench_stats.get("error_trace", "") if not valid_syntax or reward <= 0 else ""
+            "error_trace": bench_stats.get("error_trace", "") if not valid_syntax or reward <= 0 else "",
+            "fitness_history": bench_stats.get("fitness_history", [])
         })
         # Log successful LLM generation
         log_entry = {
@@ -747,6 +774,7 @@ class MetaEvolver:
             "valid_syntax": valid_syntax,
             "score": new_score,
             "peak_accuracy": bench_stats["peak_accuracy"],
+            "true_peak_accuracy": bench_stats["true_peak_accuracy"],
             "reward": reward,
             "fine_tune_expected": fine_tune_expected,
             "fine_tune_started": fine_tune_started,
@@ -777,22 +805,22 @@ class MetaEvolver:
 
     def run_fallback_iteration(self, component, attempt, total_attempts):
         print(f"\n[Meta] Running fallback GA benchmark using previous working code for {component}...")
-        
+
         bench_stats = self.run_benchmark()
-        new_score = bench_stats["peak_accuracy"]
+        new_score = bench_stats["true_peak_accuracy"]
         top3_mean = bench_stats["top3_mean"]
         new_archive_size = bench_stats["archive_size"]
-        
+
         archive_novelty = max(0, new_archive_size - self.global_archive_size)
         reward = calculate_meta_reward(
-            current_score=new_score, 
-            best_ever_score=self.global_best_score, 
+            current_score=new_score,
+            best_ever_score=self.global_best_score,
             baseline_score=self.baseline_score,
-            top3_mean=top3_mean, 
-            archive_novelty=archive_novelty, 
+            top3_mean=top3_mean,
+            archive_novelty=archive_novelty,
             valid_syntax=True
         )
-        
+
         if new_score > self.global_best_score:
             print(f"[Meta] --> NEW GLOBAL SOTA (Fallback)! {new_score:.2f}% (was {self.global_best_score:.2f}%)")
             self.global_best_score = new_score
@@ -809,6 +837,7 @@ class MetaEvolver:
             "valid_syntax": True,
             "score": new_score,
             "peak_accuracy": bench_stats["peak_accuracy"],
+            "true_peak_accuracy": bench_stats["true_peak_accuracy"],
             "reward": reward,
             "fine_tune_expected": False,
             "fine_tune_started": False,
@@ -887,6 +916,19 @@ if __name__ == "__main__":
     try:
         from ab.gpt.brute.ga.meta_evolution.meta_visualization import main as generate_plots
         print("\n=== Generating Visualizations ===")
-        generate_plots(RUN_TIMESTAMP, DATASET)
+        # Write merged meta_attempt_histories from all attempts
+        all_histories = []
+        for attempt in getattr(evolver, 'attempt_history', []):
+            h = attempt.get("fitness_history", [])
+            if h:
+                all_histories.append(h)
+        
+        if all_histories:
+            meta_hist_path = os.path.join(PIPELINE_DIR, f"meta_attempt_histories_{DATASET}_{_model_name}.json")
+            with open(meta_hist_path, "w") as f:
+                json.dump({"meta_attempt_histories": all_histories, "total_attempts": len(all_histories)}, f, indent=4)
+            print(f"[Meta] Saved {len(all_histories)} attempt histories to {meta_hist_path}")
+        
+        generate_plots(RUN_TIMESTAMP, DATASET, _model_name)
     except Exception as e:
         print(f"[WARN] Visualization failed (non-fatal): {e}")
