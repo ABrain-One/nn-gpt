@@ -1,0 +1,21 @@
+CUDA out of memory. Tried to allocate 128.00 MiB. GPU 0 has a total capacity of 23.53 GiB of which 4.31 MiB is free. Including non-PyTorch memory, this process has 13.14 GiB memory in use. Process 978429 has 10.33 GiB memory in use. Of the allocated memory 12.64 GiB is allocated by PyTorch, and 36.60 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+
+Traceback (most recent call last):
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/ab/gpt/brute/loss_opt/EvalVariants.py", line 185, in run
+    eval_results = evaluator.evaluate(code_file)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/ab/gpt/util/eval/Eval.py", line 117, in evaluate
+    return api.check_nn(
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/ab/nn/api.py", line 277, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/ab/nn/util/Train.py", line 713, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes, False, export_onnx, train_set, save_path=save_path)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/ab/nn/util/Train.py", line 337, in train_n_eval
+    learn_res = self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/out_nneval_tmp_pid_976958_1b72f1d7/nn/tmp/DarkNet_CrossEntropyLoss_RMSprop-c0cb404ed3f5b6e9506438a08e8a8906.py", line 96, in learn
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/_tensor.py", line 647, in backward
+    torch.autograd.backward(
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/autograd/__init__.py", line 354, in backward
+    _engine_run_backward(
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/autograd/graph.py", line 829, in _engine_run_backward
+    return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 128.00 MiB. GPU 0 has a total capacity of 23.53 GiB of which 4.31 MiB is free. Including non-PyTorch memory, this process has 13.14 GiB memory in use. Process 978429 has 10.33 GiB memory in use. Of the allocated memory 12.64 GiB is allocated by PyTorch, and 36.60 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)

@@ -1,0 +1,27 @@
+Found no valid file for the classes n01440764, n02102040, n02979186, n03000684, n03028079, n03394916, n03417042, n03425413, n03445777, n03888257. Supported extensions are: .jpeg
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/loss_opt/EvalVariants.py", line 185, in run
+    eval_results = evaluator.evaluate(code_file)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/eval/Eval.py", line 117, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/api.py", line 39, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx, epoch_limit_minutes=epoch_limit_minutes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 241, in train_new
+    out_shape, minimum_accuracy, train_set, test_set = load_dataset(task, dataset, prm['transform'])
+                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Loader.py", line 18, in load_dataset
+    return loader(get_obj(transform_name, 'transform'), task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/loader/imagenette.py", line 14, in loader
+    train_set = torchvision.datasets.Imagenette(root=data_dir, split='train', transform=transform, download=download)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torchvision-0.22.1-py3.12-linux-x86_64.egg/torchvision/datasets/imagenette.py", line 79, in __init__
+    self._samples = make_dataset(self._image_root, self.wnid_to_idx, extensions=".jpeg")
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torchvision-0.22.1-py3.12-linux-x86_64.egg/torchvision/datasets/folder.py", line 104, in make_dataset
+    raise FileNotFoundError(msg)
+FileNotFoundError: Found no valid file for the classes n01440764, n02102040, n02979186, n03000684, n03028079, n03394916, n03417042, n03425413, n03445777, n03888257. Supported extensions are: .jpeg

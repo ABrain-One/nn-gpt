@@ -1,0 +1,21 @@
+(36.784053262074785, 30, 5.2052905559539795)
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/loss_opt/EvalVariants.py", line 185, in run
+    eval_results = evaluator.evaluate(code_file)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/eval/Eval.py", line 117, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/api.py", line 39, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx, epoch_limit_minutes=epoch_limit_minutes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 260, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 157, in train_n_eval
+    self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
+  File "/a/mm/out_nneval_tmp_pid_1_1fde0650/nn/tmp/UNet2D_NGL_Adam-7a72ed335511958150896474e92a1289.py", line 144, in learn
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Classes.py", line 24, in __next__
+    raise LearnTimeException(estimated_time, self.epoch_limit_minutes, duration)
+ab.nn.util.Exception.LearnTimeException: (36.784053262074785, 30, 5.2052905559539795)

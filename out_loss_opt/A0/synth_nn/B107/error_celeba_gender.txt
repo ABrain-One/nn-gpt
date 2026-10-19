@@ -1,0 +1,59 @@
+Caught FileNotFoundError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/utils/data/_utils/worker.py", line 349, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/utils/data/_utils/fetch.py", line 52, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+            ~~~~~~~~~~~~^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torchvision-0.22.1-py3.12-linux-x86_64.egg/torchvision/datasets/celeba.py", line 165, in __getitem__
+    X = PIL.Image.open(os.path.join(self.root, self.base_folder, "img_align_celeba", self.filename[index]))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/PIL/Image.py", line 3513, in open
+    fp = builtins.open(filename, "rb")
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/data/celeba/img_align_celeba/161278.jpg'
+
+
+Traceback (most recent call last):
+  File "/a/mm/ab/gpt/brute/loss_opt/EvalVariants.py", line 185, in run
+    eval_results = evaluator.evaluate(code_file)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/util/eval/Eval.py", line 117, in evaluate
+    return api.check_nn(
+           ^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/api.py", line 39, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx, epoch_limit_minutes=epoch_limit_minutes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 244, in train_new
+    trainer = Train(
+              ^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/ab/nn/util/Train.py", line 122, in __init__
+    for input_tensor, _ in self.train_loader:
+                           ^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/utils/data/dataloader.py", line 733, in __next__
+    data = self._next_data()
+           ^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/utils/data/dataloader.py", line 1515, in _next_data
+    return self._process_data(data, worker_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/utils/data/dataloader.py", line 1550, in _process_data
+    data.reraise()
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/_utils.py", line 750, in reraise
+    raise exception
+FileNotFoundError: Caught FileNotFoundError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/utils/data/_utils/worker.py", line 349, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torch/utils/data/_utils/fetch.py", line 52, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+            ~~~~~~~~~~~~^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/torchvision-0.22.1-py3.12-linux-x86_64.egg/torchvision/datasets/celeba.py", line 165, in __getitem__
+    X = PIL.Image.open(os.path.join(self.root, self.base_folder, "img_align_celeba", self.filename[index]))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/prg/.pyenv/versions/ve/lib/python3.12/site-packages/PIL/Image.py", line 3513, in open
+    fp = builtins.open(filename, "rb")
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/a/mm/data/celeba/img_align_celeba/161278.jpg'
+

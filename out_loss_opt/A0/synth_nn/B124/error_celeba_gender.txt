@@ -1,0 +1,51 @@
+CUDA out of memory. Tried to allocate 128.00 MiB. GPU 0 has a total capacity of 23.53 GiB of which 118.31 MiB is free. Including non-PyTorch memory, this process has 13.03 GiB memory in use. Process 978429 has 10.33 GiB memory in use. Of the allocated memory 12.53 GiB is allocated by PyTorch, and 37.14 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+
+Traceback (most recent call last):
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/ab/gpt/brute/loss_opt/EvalVariants.py", line 185, in run
+    eval_results = evaluator.evaluate(code_file)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/ab/gpt/util/eval/Eval.py", line 117, in evaluate
+    return api.check_nn(
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/ab/nn/api.py", line 277, in check_nn
+    return Train.train_new(nn_code, task, dataset, metric, prm, save_to_db=save_to_db, prefix=prefix, save_path=save_path, export_onnx=export_onnx,
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/ab/nn/util/Train.py", line 713, in train_new
+    accuracy, accuracy_to_time, duration = trainer.train_n_eval(epoch, epoch_limit_minutes, False, export_onnx, train_set, save_path=save_path)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/ab/nn/util/Train.py", line 337, in train_n_eval
+    learn_res = self.model.learn(DataRoll(self.train_loader, epoch_limit_minutes))
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/out_nneval_tmp_pid_976958_6eeb9415/nn/tmp/DarkNet_CrossEntropyLoss_Adagrad-74453ff4bcd39b14dfd16df1cab5a031.py", line 92, in learn
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/out_nneval_tmp_pid_976958_6eeb9415/nn/tmp/DarkNet_CrossEntropyLoss_Adagrad-74453ff4bcd39b14dfd16df1cab5a031.py", line 74, in forward
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/container.py", line 244, in forward
+    input = module(input)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/container.py", line 244, in forward
+    input = module(input)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/out_nneval_tmp_pid_976958_6eeb9415/nn/tmp/DarkNet_CrossEntropyLoss_Adagrad-74453ff4bcd39b14dfd16df1cab5a031.py", line 28, in forward
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/container.py", line 244, in forward
+    input = module(input)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
+    return F.batch_norm(
+  File "/home/anton/Desktop/nn-gpt-attempt-1/nn-gpt/.venv/lib/python3.10/site-packages/torch/nn/functional.py", line 2817, in batch_norm
+    return torch.batch_norm(
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 128.00 MiB. GPU 0 has a total capacity of 23.53 GiB of which 118.31 MiB is free. Including non-PyTorch memory, this process has 13.03 GiB memory in use. Process 978429 has 10.33 GiB memory in use. Of the allocated memory 12.53 GiB is allocated by PyTorch, and 37.14 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)

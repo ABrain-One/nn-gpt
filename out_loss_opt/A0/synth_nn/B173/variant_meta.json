@@ -1,0 +1,6 @@
+{
+  "base_nn": "FCN16s",
+  "loss": "CrossEntropyLoss",
+  "optimizer": "Adadelta",
+  "arch_uid": "826b9e8ae75c657316e1402f13f06eb6"
+}
