@@ -1,0 +1,23 @@
+{
+    "timestamp": "2026-10-14T10:24:20.906381",
+    "checksum": "5ccdda06f2ae456baa6ebb762d2ee669",
+    "fitness": 96.0,
+    "chromosome": {
+        "n_columns": 3,
+        "base_channels": 64,
+        "n_blocks": 3,
+        "dropout_prob": 0.15,
+        "fc_dropout": 0.15,
+        "lr": 0.002,
+        "momentum": 0.75,
+        "activation": "GELU",
+        "kernel_size": 1,
+        "pooling_type": "Avg",
+        "conv_type": "Depthwise",
+        "norm_type": "BatchNorm",
+        "optimizer_type": "SGD",
+        "accuracy": 96.0
+    },
+    "source_stats_dir": "/a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/baselineRun/runs/seed1003_c4b27f29-3b6a-457a-a212-4ec10d5459ec/stats/img-classification_cifar-100_acc_GenFractalNet-5ccdda06f2ae456baa6ebb762d2ee669",
+    "copied_stats_dir": "/a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/baselineRun/runs/seed1003_c4b27f29-3b6a-457a-a212-4ec10d5459ec/best_baseline_stats_cifar100/img-classification_cifar-100_acc_GenFractalNet-5ccdda06f2ae456baa6ebb762d2ee669"
+}

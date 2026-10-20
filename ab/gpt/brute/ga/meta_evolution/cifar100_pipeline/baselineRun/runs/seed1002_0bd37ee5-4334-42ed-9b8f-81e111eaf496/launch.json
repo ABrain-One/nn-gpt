@@ -1,0 +1,204 @@
+{
+  "apiVersion": "batch/v1",
+  "kind": "Job",
+  "metadata": {
+    "name": "nngpt-baseline-cifar100-s1002",
+    "labels": {
+      "experiment": "seeded-baseline",
+      "dataset": "cifar100",
+      "model": "baseline",
+      "seed": "1002"
+    }
+  },
+  "spec": {
+    "parallelism": 1,
+    "ttlSecondsAfterFinished": 86400,
+    "template": {
+      "spec": {
+        "tolerations": [
+          {
+            "key": "dgx",
+            "operator": "Exists"
+          }
+        ],
+        "containers": [
+          {
+            "name": "ml",
+            "image": "abrainone/ai-linux:cu12.6.3-latest",
+            "imagePullPolicy": "Always",
+            "command": [
+              "/bin/bash",
+              "-c"
+            ],
+            "args": [
+              "set -euo pipefail\ncd /a/mm\n(pip uninstall -y flash-attn || true)\npip install \"torchao==0.15.0\" --no-deps --upgrade --extra-index-url https://download.pytorch.org/whl/cu126\nexport PYTHONPATH=/a/mm\nexport PYTHONDONTWRITEBYTECODE=1\nexport RUN_TS=$(date +%d-%m-%y_%H-%M)\nexport RUN_ID=\"seed$EXPERIMENT_SEED\"_\"$POD_UID\"\nexport PIPELINE_DIR=\"$RUN_OUTPUT_ROOT/$RUN_ID\"\nmkdir -p \"$RUN_OUTPUT_ROOT\"\nmkdir \"$PIPELINE_DIR\"\ncp \"$LAUNCH_JSON\" \"$PIPELINE_DIR/launch.json\"\nmkdir -p \"$PIPELINE_DIR/logs_$DATASET/Baseline/$RUN_TS\"\npython3 -u - <<'BASELINE_RUN_PY' 2>&1 | tee \"$PIPELINE_DIR/logs_$DATASET/Baseline/$RUN_TS/$RUN_TS\"_\"$DATASET\"_baseline_Pod_logs.log\nimport hashlib\nimport json\nimport math\nimport os\nfrom pathlib import Path\nimport random\nimport runpy\nimport shutil\nimport sys\nimport numpy as np\nimport torch\n\nseed = int(os.environ[\"EXPERIMENT_SEED\"])\ndataset = os.environ[\"DATASET\"]\noutput = Path(os.environ[\"PIPELINE_DIR\"])\nrandom.seed(seed)\nnp.random.seed(seed)\ntorch.manual_seed(seed)\nif torch.cuda.is_available():\n    torch.cuda.manual_seed_all(seed)\n\n# Capture the shared implementation used by this launch, without replacing it.\nsource_root = Path(\"/a/mm\")\nsnapshot = output / \"source_snapshot\"\nsnapshot.mkdir()\nsources = [\n    \"ab/gpt/brute/ga/meta_evolution/baseline_run_ga.py\",\n    \"ab/gpt/brute/ga/meta_evolution/genetic_algorithm_baseline.py\",\n    \"ab/gpt/brute/ga/meta_evolution/FractalNet_evolvable_backbone.py\",\n    \"ab/gpt/util/eval/acc_client.py\",\n    \"ab/gpt/util/eval/Eval.py\",\n    \"ab/nn/util/Train.py\",\n]\nhashes = {}\nfor relative in sources:\n    source = source_root / relative\n    hashes[relative] = hashlib.sha256(source.read_bytes()).hexdigest()\n    shutil.copy2(source, snapshot / source.name)\nmanifest = {\n    \"dataset\": dataset,\n    \"seed\": seed,\n    \"pod_uid\": os.environ[\"POD_UID\"],\n    \"population_size\": int(os.environ[\"POPULATION_SIZE\"]),\n    \"generations\": int(os.environ[\"GENERATIONS\"]),\n    \"evaluation_epochs\": 3,\n    \"evaluation_batch_size\": 64,\n    \"fitness_policy\": \"positive LLM prediction, otherwise measured evaluator accuracy\",\n    \"duplicate_policy\": \"-1 for repeat proposals across this continuous GA invocation; elites retain fitness\",\n    \"source_sha256\": hashes,\n    \"python\": sys.version,\n    \"torch\": torch.__version__,\n    \"numpy\": np.__version__,\n    \"cuda_runtime\": torch.version.cuda,\n    \"gpu\": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,\n    \"gpu_total_memory_bytes\": torch.cuda.get_device_properties(0).total_memory if torch.cuda.is_available() else None,\n}\n(output / \"run_manifest.json\").write_text(json.dumps(manifest, indent=2) + \"\\n\")\nprint(f\"[Run] {dataset} baseline | seed={seed} | output={output}\", flush=True)\nprint(f\"[Run] GPU: {manifest['gpu']} | population=20 | generations=26 | evaluation_epochs=3\", flush=True)\n\n# Let the existing runner initialize GA_EVAL_LOG so its standalone plots stay enabled.\nrunpy.run_module(\"ab.gpt.brute.ga.meta_evolution.baseline_run_ga\", run_name=\"__main__\")\n\n# The runner catches some critical exceptions. Require complete artifacts before\n# allowing Kubernetes to report this pilot as a successful full run.\ndef require(condition, message):\n    if not condition:\n        raise RuntimeError(\"Baseline completion validation failed: \" + message)\n\nresult_path = output / f\"baseline_results_{dataset}.json\"\nrequire(result_path.is_file(), \"missing trajectory\")\nresults = json.loads(result_path.read_text())\nexpected_generations = int(os.environ[\"GENERATIONS\"])\nrequire(results.get(\"total_generations\") == expected_generations, \"generation count mismatch\")\nhistory = results.get(\"fitness_history\", [])\nrequire(len(history) == expected_generations, \"incomplete fitness history\")\nrequire(all(isinstance(x, (int, float)) and math.isfinite(x) for x in history), \"invalid fitness history\")\nrequire(any(x > 0 for x in history), \"no successful evaluation\")\nbest_info_path = output / f\"best_baseline_info_{dataset}.json\"\nrequire(best_info_path.is_file(), \"missing best-model metadata\")\nbest_info = json.loads(best_info_path.read_text())\nrequire((output / f\"best_fractal_baseline_{dataset}.py\").is_file(), \"missing best-model source\")\nchecksum = best_info[\"checksum\"]\ndataset_dash = \"cifar-100\" if dataset == \"cifar100\" else \"cifar-10\"\nbest_stats = output / \"stats\" / f\"img-classification_{dataset_dash}_acc_GenFractalNet-{checksum}\"\nfor epoch in (1, 2, 3):\n    require((best_stats / f\"{epoch}.json\").is_file(), f\"missing best-model epoch {epoch} statistics\")\nrequire((best_stats / \"predictor_summary.json\").is_file(), \"missing best-model predictor summary\")\nlog_path = Path(os.environ[\"GA_EVAL_LOG\"])\nstreams = {}\nfor name, path in (\n    (\"fitness\", log_path),\n    (\"true\", log_path.with_name(log_path.stem + \"_true.jsonl\")),\n    (\"epoch1\", log_path.with_name(log_path.stem + \"_1_epoch.jsonl\")),\n):\n    require(path.is_file(), f\"missing {name} log\")\n    rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]\n    require(bool(rows), f\"empty {name} log\")\n    require(all(isinstance(row.get(\"accuracy\"), (int, float)) and math.isfinite(row[\"accuracy\"]) for row in rows), f\"invalid {name} accuracy\")\n    streams[name] = {row[\"uid\"] for row in rows}\nrequire(streams[\"fitness\"] == streams[\"true\"] == streams[\"epoch1\"], \"log architecture IDs disagree\")\nrequire(checksum in streams[\"fitness\"], \"best model missing from evaluation logs\")\nfor relative, expected in hashes.items():\n    require(hashlib.sha256((source_root / relative).read_bytes()).hexdigest() == expected, f\"shared source changed during pilot: {relative}\")\nvalidation = {\n    \"status\": \"passed\",\n    \"dataset\": dataset,\n    \"seed\": seed,\n    \"completed_generations\": expected_generations,\n    \"unique_logged_architectures\": len(streams[\"fitness\"]),\n    \"best_checksum\": checksum,\n    \"source_unchanged\": True,\n    \"visualizations_present\": any((output / \"visualizations\").rglob(\"*.png\")),\n}\n(output / \"completion_validation.json\").write_text(json.dumps(validation, indent=2) + \"\\n\")\nprint(\"[Validation] Full baseline trajectory and required artifacts passed: \" + json.dumps(validation), flush=True)\nBASELINE_RUN_PY\n"
+            ],
+            "env": [
+              {
+                "name": "HF_HOME",
+                "value": "/a/mm/.cache/huggingface"
+              },
+              {
+                "name": "PIP_CACHE_DIR",
+                "value": "/a/mm/.cache/pip"
+              },
+              {
+                "name": "POPULATION_SIZE",
+                "value": "20"
+              },
+              {
+                "name": "GENERATIONS",
+                "value": "26"
+              },
+              {
+                "name": "PYTORCH_CUDA_ALLOC_CONF",
+                "value": "expandable_segments:True"
+              },
+              {
+                "name": "DATASET",
+                "value": "cifar100"
+              },
+              {
+                "name": "EXPERIMENT_SEED",
+                "value": "1002"
+              },
+              {
+                "name": "PYTHONHASHSEED",
+                "value": "1002"
+              },
+              {
+                "name": "RUN_OUTPUT_ROOT",
+                "value": "/a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/baselineRun/runs"
+              },
+              {
+                "name": "LAUNCH_JSON",
+                "value": "/a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/baselineRun/run2_seed1002.json"
+              },
+              {
+                "name": "POD_UID",
+                "valueFrom": {
+                  "fieldRef": {
+                    "fieldPath": "metadata.uid"
+                  }
+                }
+              }
+            ],
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "runAsUser": 1017,
+              "runAsGroup": 1376
+            },
+            "resources": {
+              "requests": {
+                "nvidia.com/gpu": 1,
+                "cpu": 8,
+                "memory": "24Gi"
+              },
+              "limits": {
+                "nvidia.com/gpu": 1,
+                "cpu": 8,
+                "memory": "24Gi"
+              }
+            },
+            "volumeMounts": [
+              {
+                "mountPath": "/dev/shm",
+                "name": "shm"
+              },
+              {
+                "mountPath": "/a/mm",
+                "name": "v0"
+              },
+              {
+                "mountPath": "/a/mm/data",
+                "name": "v1"
+              },
+              {
+                "mountPath": "/a/mm/nn-dataset",
+                "name": "v2"
+              }
+            ]
+          }
+        ],
+        "restartPolicy": "Never",
+        "volumes": [
+          {
+            "name": "shm",
+            "emptyDir": {
+              "medium": "Memory",
+              "sizeLimit": "16Gi"
+            }
+          },
+          {
+            "name": "v0",
+            "hostPath": {
+              "path": "/shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt",
+              "type": "Directory"
+            }
+          },
+          {
+            "name": "v1",
+            "hostPath": {
+              "path": "/shared/local/data/a-group-automl/data",
+              "type": "Directory"
+            }
+          },
+          {
+            "name": "v2",
+            "hostPath": {
+              "path": "/shared/ssd/home/b-a-singh/Thesis/NN-DATASET/C1/nn-dataset",
+              "type": "Directory"
+            }
+          }
+        ],
+        "affinity": {
+          "nodeAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+              "nodeSelectorTerms": [
+                {
+                  "matchExpressions": [
+                    {
+                      "key": "kubernetes.io/hostname",
+                      "operator": "In",
+                      "values": [
+                        "dgx-h100"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matchExpressions": [
+                    {
+                      "key": "nvidia.com/gpu.memory",
+                      "operator": "Gt",
+                      "values": [
+                        "22888"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "preferredDuringSchedulingIgnoredDuringExecution": [
+              {
+                "weight": 100,
+                "preference": {
+                  "matchExpressions": [
+                    {
+                      "key": "kubernetes.io/hostname",
+                      "operator": "In",
+                      "values": [
+                        "dgx-h100"
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "backoffLimit": 0
+  }
+}

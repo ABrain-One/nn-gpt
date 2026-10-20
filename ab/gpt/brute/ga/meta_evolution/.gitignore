@@ -78,3 +78,7 @@ modified_GA_*/
 *_pipeline/*_adapter/
 # But preserve the manual model configuration file inside each pipeline!
 !*_pipeline/model_config.json
+
+# Generated artifacts in individual experiment runs
+cifar*_pipeline/*/runs/*/stats/
+cifar*_pipeline/*/runs/*/architectures/
