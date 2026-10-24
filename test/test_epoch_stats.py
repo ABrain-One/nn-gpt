@@ -693,6 +693,438 @@ def test_param_block_wraps_rather_than_truncating():
     assert "opt=paged_adamw_8bit" in " ".join(lines)
 
 
+# --- the improvement panel: what the LLM changed -------------------------
+
+#: Per-model (original, generated) pairs, as collect_epoch_stats records them
+#: in baseline_seeds. Cycle 2 improves on cycle 1 on every model.
+_SEEDS = [
+    [(0.55, 0.50), (0.60, 0.58), (0.58, 0.61), (0.62, 0.59)],
+    [(0.55, 0.59), (0.60, 0.63), (0.58, 0.57), (0.62, 0.66)],
+]
+
+
+def _paired_rows(seeds=True, **overrides):
+    """_plot_rows with the pairing collect_epoch_stats records.
+
+    ``seeds=False`` is a tracker written before baseline_seeds existed: the
+    summary difference is there, the per-model pairs are not.
+    """
+    deltas = [(-0.04, -0.09, 0.01), (0.03, -0.01, 0.07)]
+    rows = []
+    for r, (mean, lo, hi), pairs in zip(_plot_rows(), deltas, _SEEDS):
+        row = dict(r, paired_n=len(pairs), mean_improvement=mean,
+                   improvement_ci_low=lo, improvement_ci_high=hi, **overrides)
+        if seeds:
+            row["baseline_seeds"] = [
+                {"nn": f"net{i}", "dataset": "cifar-10",
+                 "baseline_accuracy": before, "accuracy": after}
+                for i, (before, after) in enumerate(pairs)]
+        rows.append(row)
+    return rows
+
+
+def _panel_titles(tmp_path, monkeypatch, rows, name="p.png"):
+    plt = pytest.importorskip("matplotlib.pyplot")
+    captured, real_close = {}, plt.close
+
+    def _capture(fig=None):
+        if fig is not None and fig.axes:
+            captured["titles"] = [ax.get_title() for ax in fig.axes]
+            captured["n"] = len(fig.axes)
+            captured["labels"] = [
+                ax.get_legend_handles_labels()[1] for ax in fig.axes]
+            captured["ylim"] = fig.axes[-1].get_ylim()
+            captured["xlabel"] = [ax.get_xlabel() for ax in fig.axes]
+        return real_close(fig)
+
+    monkeypatch.setattr(plt, "close", _capture)
+    ES.plot_epoch_stats(rows, tmp_path / name)
+    return captured
+
+
+def test_no_improvement_panel_without_an_initial_network(tmp_path, monkeypatch):
+    """A run that generates from scratch has nothing to subtract, so it keeps
+    the two panels rather than gaining a third one full of blanks."""
+    out = _panel_titles(tmp_path, monkeypatch, _plot_rows())
+    assert out["n"] == 2
+    assert not any(t.startswith("\u0394") for t in out["titles"])
+
+
+def test_the_improvement_panel_appears_when_the_pairing_exists(
+        tmp_path, monkeypatch):
+    """collect_epoch_stats pairs each generated model with the seed it was
+    modified from; where that pairing exists, so does the question."""
+    out = _panel_titles(tmp_path, monkeypatch, _paired_rows())
+    assert out["n"] == 3
+    assert out["titles"][2].startswith("\u0394 accuracy per cycle")
+
+
+def test_the_improvement_panel_shows_the_mean_and_the_best(
+        tmp_path, monkeypatch):
+    """The paired mean with its interval, and the gap between the two best
+    networks -- the two differences the run is judged on."""
+    labels = _panel_titles(tmp_path, monkeypatch, _paired_rows())["labels"][2]
+    joined = " | ".join(labels)
+    assert "paired mean \u0394" in labels, joined
+    assert "paired mean \u0394 95% CI" in labels, joined
+    assert "best \u0394 (observed)" in labels, joined
+    assert any(l.startswith("best-of-") for l in labels), joined
+    assert not [l for l in labels if "before modification" in l], \
+        "zero is where the original networks sit; naming it spends a row"
+
+
+def test_an_older_tracker_keeps_what_it_can(tmp_path, monkeypatch):
+    """Without the per-model pairs there is no win rate and no best-of-k --
+    both are computed from them -- but the summary difference is still drawn
+    rather than the whole panel being withheld."""
+    out = _panel_titles(tmp_path, monkeypatch, _paired_rows(seeds=False),
+                        "old.png")
+    assert out["n"] == 3
+    delta_labels = out["labels"][2]
+    assert "paired mean \u0394" in delta_labels
+    assert not [l for l in delta_labels if l.startswith("best-of-")]
+
+
+
+
+def test_best_of_k_takes_the_sample_size_out():
+    """The maximum of twelve models beats the maximum of six for no reason but
+    the extra draws; the expected best of a fixed k does not."""
+    small = [0.50, 0.55, 0.60]
+    large = small + [0.52, 0.57, 0.59, 0.61, 0.48]
+    assert max(large) > max(small)
+    assert ES.expected_best_of_k(large, 3) == pytest.approx(
+        ES.expected_best_of_k(small, 3), abs=0.04), \
+        "best-of-k still tracks the sample size"
+
+
+def test_expected_best_of_k_matches_enumerating_every_subset():
+    """It is the mean of the subset maxima, computed from the order
+    statistics instead of by listing C(n, k) subsets."""
+    import itertools
+    import math as _math
+    values = [0.11, 0.37, 0.42, 0.58, 0.63, 0.64]
+    for k in range(1, len(values) + 1):
+        brute = sum(max(c) for c in itertools.combinations(values, k))
+        brute /= _math.comb(len(values), k)
+        assert ES.expected_best_of_k(values, k) == pytest.approx(brute)
+    assert ES.expected_best_of_k(values, 1) == pytest.approx(
+        sum(values) / len(values))                      # k=1 is the mean
+    assert ES.expected_best_of_k(values, len(values)) == max(values)
+    assert ES.expected_best_of_k([], 3) is None
+
+
+def test_k_is_the_smallest_cycle_so_the_cycles_compare():
+    """A best-of-5 cannot be formed where three models paired, and falling
+    back to the maximum there would reintroduce the dependence on n."""
+    rows = _paired_rows()
+    rows[0]["baseline_seeds"] = rows[0]["baseline_seeds"][:2]
+    assert ES._common_k(rows) == 2
+    assert ES._common_k(_paired_rows(seeds=False)) is None
+
+
+
+
+def _figure_note_text(tmp_path, monkeypatch, rows, name):
+    """The note as drawn, its lines joined -- it is now one text per line."""
+    plt = pytest.importorskip("matplotlib.pyplot")
+    captured, real_close = {}, plt.close
+
+    def _capture(fig=None):
+        if fig is not None:
+            captured["note"] = "\n".join(
+                t.get_text() for t in fig.texts
+                if t.get_color() == ES.NOTE_COLOR
+                and t.get_fontsize() == ES.NOTE_FONTSIZE)
+        return real_close(fig)
+
+    monkeypatch.setattr(plt, "close", _capture)
+    ES.plot_epoch_stats(rows, tmp_path / name)
+    return captured.get("note", "")
+
+
+def test_the_best_the_run_started_from_is_carried_forward(
+        tmp_path, monkeypatch):
+    """Each cycle draws different seeds, so the per-cycle original best moves
+    around: a generated network clearing the grey square beside it has not
+    necessarily cleared the best the run was ever given. The grey running
+    line is the mark to beat."""
+    labels = _panel_titles(tmp_path, monkeypatch, _plot_rows())["labels"][1]
+    assert "original best so far" in labels, labels
+    assert "generated best so far" in labels, labels
+
+
+def _peak_labels(tmp_path, monkeypatch, rows, name):
+    plt = pytest.importorskip("matplotlib.pyplot")
+    captured, real_close = {}, plt.close
+
+    def _capture(fig=None):
+        if fig is not None and len(fig.axes) > 1:
+            fig.canvas.draw()
+            captured["marks"] = [
+                (t.get_text(), t.get_color(), t.get_window_extent())
+                for t in fig.axes[1].texts if t.get_text().startswith("best ")]
+        return real_close(fig)
+
+    monkeypatch.setattr(plt, "close", _capture)
+    ES.plot_epoch_stats(rows, tmp_path / name)
+    return captured.get("marks", [])
+
+
+def test_both_headline_bests_are_labelled(tmp_path, monkeypatch):
+    """The red number alone says how good the run got without saying what it
+    had to beat, which is the comparison the panel exists for."""
+    marks = _peak_labels(tmp_path, monkeypatch, _plot_rows(), "peaks.png")
+    colours = {colour for _, colour, _ in marks}
+    assert ES.BEST in colours, marks
+    assert ES.ORIGINAL in colours, marks
+    best = {colour: text for text, colour, _ in marks}
+    assert best[ES.BEST] == "best 0.5895"           # max accuracy_max
+    assert best[ES.ORIGINAL] == "best 0.6100"       # max baseline_accuracy_max
+
+
+def test_the_two_peak_labels_never_land_on_each_other(tmp_path, monkeypatch):
+    """Whichever cohort is higher at that cycle takes the space above and the
+    other takes the space below, so both cohorts peaking together is safe."""
+    rows = [dict(r, accuracy_max=0.70, baseline_accuracy_max=0.66)
+            for r in _plot_rows()]
+    rows[0] = dict(rows[0], accuracy_max=0.40, baseline_accuracy_max=0.40)
+    marks = _peak_labels(tmp_path, monkeypatch, rows, "together.png")
+    assert len(marks) == 2, marks
+    (_, _, first), (_, _, second) = marks
+    assert not first.overlaps(second), f"{first} overlaps {second}"
+
+
+def test_a_running_best_is_drawn_over_the_per_cycle_one(tmp_path, monkeypatch):
+    """They coincide for most of a run -- for all of it on the originals when
+    the seed pool does not change -- and underneath, the dotted line is hidden
+    by the dashed one exactly when it agrees with it, which reads as missing.
+    """
+    plt = pytest.importorskip("matplotlib.pyplot")
+    captured, real_close = {}, plt.close
+
+    def _capture(fig=None):
+        if fig is not None and len(fig.axes) > 1:
+            captured["z"] = {l.get_label(): l.get_zorder()
+                             for l in fig.axes[1].lines}
+        return real_close(fig)
+
+    monkeypatch.setattr(plt, "close", _capture)
+    ES.plot_epoch_stats(_plot_rows(), tmp_path / "z.png")
+    z = captured["z"]
+    assert z["original best so far"] > z["original best"]
+    assert z["generated best so far"] > z["generated best"]
+
+
+def test_both_running_bests_only_ever_climb(tmp_path, monkeypatch):
+    """A running best is a record: it cannot fall when a later cycle is
+    worse, which is the whole point of drawing it beside the per-cycle one."""
+    plt = pytest.importorskip("matplotlib.pyplot")
+    captured, real_close = {}, plt.close
+
+    def _capture(fig=None):
+        if fig is not None and len(fig.axes) > 1:
+            captured["runs"] = [
+                list(line.get_ydata()) for line in fig.axes[1].lines
+                if line.get_linestyle() in (":", (0, (1, 1.65)))]
+        return real_close(fig)
+
+    monkeypatch.setattr(plt, "close", _capture)
+    # cycle 2 is worse than cycle 1 on both cohorts
+    rows = _plot_rows()[:2]
+    rows[1] = dict(rows[1], accuracy_max=0.30, baseline_accuracy_max=0.30)
+    ES.plot_epoch_stats(rows, tmp_path / "run.png")
+    runs = captured.get("runs") or []
+    assert len(runs) == 2, f"expected two running bests, got {len(runs)}"
+    for series in runs:
+        assert series == sorted(series), f"a running best fell: {series}"
+
+
+def test_the_note_glosses_only_what_cannot_be_inferred(
+        tmp_path, monkeypatch):
+    """A mean, a maximum and a Wilson interval are terms a reader already has.
+    Glossing them would bury the one line that is worth reading."""
+    note = _figure_note_text(tmp_path, monkeypatch, _paired_rows(), "n.png")
+    assert "est-of-" in note
+    for standard in ("Wilson", "paired mean \u0394:", "confidence interval:"):
+        assert standard not in note, f"{standard!r} needs no gloss: {note}"
+
+
+def test_the_note_carries_the_formula_and_where_it_is_defined(
+        tmp_path, monkeypatch):
+    """A name alone cannot be checked. The note gives the expression, the
+    formal name to search the reference for, and the reference."""
+    note = _figure_note_text(tmp_path, monkeypatch, _paired_rows(), "f.png")
+    assert r"\binom{i-1}{k-1}" in note, note       # the formula, as a formula
+    assert r"\binom{n}{k}" in note, note
+    assert "U-statistic with the maximum as its kernel" in note, note
+    assert "Hoeffding, 1948" in note, note
+    assert "293-325" in note, note
+
+
+def test_no_note_where_nothing_is_unfamiliar(tmp_path, monkeypatch):
+    assert _figure_note_text(
+        tmp_path, monkeypatch, _plot_rows(), "n2.png") == ""
+
+
+def test_the_prose_is_wrapped_and_the_formulas_are_not(tmp_path, monkeypatch):
+    """Half of a sum is not a formula, so only the prose is broken -- and the
+    prose is broken, since unwrapped it would run off both sides."""
+    plt = pytest.importorskip("matplotlib.pyplot")
+    fig = plt.figure(figsize=(10, 12.6))
+    formula = r"$E_k = \sum_{i=k}^{n} x_{(i)}$"
+    source = (formula, "a sentence that keeps going " * 12)
+    try:
+        lines = ES._wrap_note(fig, source)
+        assert formula in lines, "the formula was broken up"
+        assert len(lines) > 2, "the long prose line was not wrapped"
+        renderer = fig.canvas.get_renderer()
+        for line in lines:
+            probe = fig.text(0, 0, line, fontsize=ES.NOTE_FONTSIZE)
+            width = probe.get_window_extent(
+                renderer=renderer).width / fig.bbox.width
+            probe.remove()
+            assert width <= ES.NOTE_WIDTH, f"{width:.0%}: {line}"
+        # the note the figure actually carries also stays inside the width
+        for line in ES._wrap_note(fig, ES._figure_note(True, 5)):
+            probe = fig.text(0, 0, line, fontsize=ES.NOTE_FONTSIZE)
+            width = probe.get_window_extent(
+                renderer=renderer).width / fig.bbox.width
+            probe.remove()
+            assert width <= ES.NOTE_WIDTH, f"{width:.0%}: {line}"
+    finally:
+        plt.close(fig)
+
+
+def test_the_note_lines_do_not_collide(tmp_path, monkeypatch):
+    """A formula stands three times the height of a word, so the lines are
+    stacked by measurement; on one leading the sum sat across the prose."""
+    plt = pytest.importorskip("matplotlib.pyplot")
+    captured, real_close = {}, plt.close
+
+    def _capture(fig=None):
+        if fig is not None:
+            fig.canvas.draw()
+            boxes = [t.get_window_extent() for t in fig.texts
+                     if t.get_color() == ES.NOTE_COLOR
+                     and t.get_fontsize() == ES.NOTE_FONTSIZE]
+            captured["spans"] = sorted((b.y0, b.y1) for b in boxes)
+        return real_close(fig)
+
+    monkeypatch.setattr(plt, "close", _capture)
+    ES.plot_epoch_stats(_paired_rows(), tmp_path / "collide.png")
+    spans = captured["spans"]
+    assert len(spans) > 1
+    assert spans[0][0] >= 0, "the last line falls off the figure"
+    for (_, lower_top), (upper_bottom, _) in zip(spans, spans[1:]):
+        assert lower_top <= upper_bottom + 0.5, \
+            f"two note lines overlap: {spans}"
+
+
+def test_the_best_of_k_interval_is_a_bootstrap_over_the_pairs(tmp_path,
+                                                              monkeypatch):
+    """An interval is possible here and not for the observed maximum: this is
+    an average over the order statistics, which the bootstrap handles."""
+    labels = _panel_titles(tmp_path, monkeypatch, _paired_rows())["labels"][2]
+    assert any(l.startswith("best-of-") and "CI" in l for l in labels), labels
+    assert not any(l.startswith("best \u0394 (observed)") and "CI" in l
+                   for l in labels), "the observed maximum must carry none"
+
+
+def test_the_best_of_k_interval_is_the_same_on_every_redraw():
+    """A bootstrap seeded from the clock would redraw a different interval
+    each time the plot was refreshed, which reads as the run changing."""
+    pairs = [(0.60, 0.63), (0.58, 0.57), (0.62, 0.66), (0.55, 0.59),
+             (0.61, 0.60), (0.59, 0.64)]
+    first = ES._best_of_k_ci(pairs, 3)
+    assert first == ES._best_of_k_ci(pairs, 3)
+    lo, hi = first
+    assert lo < ES._best_of_k_from_pairs(pairs, 3) < hi
+
+
+def test_the_bootstrap_resamples_pairs_not_cohorts():
+    """A resample has to be a plausible redrawing of the same experiment, so
+    a model keeps the original it was made from."""
+    pairs = [(0.50, 0.90), (0.90, 0.50)]          # perfectly anti-correlated
+    lo, hi = ES._best_of_k_ci(pairs, 1)
+    # Resampling the two columns independently would allow (0.90, 0.90) and
+    # (0.50, 0.50) draws, widening this well past the paired range.
+    assert lo >= -0.4 and hi <= 0.4, (lo, hi)
+
+
+def test_pooling_grows_the_sample_the_tail_rests_on():
+    """One cycle's best-of-k rests on about ten models; the pooled figure
+    rests on everything the run has produced up to that cycle."""
+    rows = _paired_rows()
+    pooled = ES._cumulative_pairs(rows)
+    assert [len(p) for p in pooled] == [4, 8]
+    assert pooled[1][:4] == pooled[0]
+
+
+def test_the_improvement_panel_always_shows_zero(tmp_path, monkeypatch):
+    """Which side of zero the curve falls on is the whole question, and a
+    panel cropped above zero answers it without saying so."""
+    for shift in (0.5, -0.5):          # entirely above, entirely below
+        rows = [dict(r, mean_improvement=r["mean_improvement"] + shift,
+                     improvement_ci_low=r["improvement_ci_low"] + shift,
+                     improvement_ci_high=r["improvement_ci_high"] + shift)
+                for r in _paired_rows()]
+        lo, hi = _panel_titles(tmp_path, monkeypatch, rows,
+                               f"z{shift}.png")["ylim"]
+        assert lo <= 0.0 <= hi, f"zero is off the panel: {(lo, hi)}"
+
+
+def test_the_improvement_panel_borrows_panel_twos_colours(
+        tmp_path, monkeypatch):
+    """Same quantity, same reading: green is what the LLM produced, the dark
+    red is its best, grey is the networks it started from."""
+    plt = pytest.importorskip("matplotlib.pyplot")
+    captured, real_close = {}, plt.close
+
+    def _capture(fig=None):
+        if fig is not None and len(fig.axes) == 3:
+            captured["colours"] = [l.get_color() for l in fig.axes[2].lines]
+        return real_close(fig)
+
+    monkeypatch.setattr(plt, "close", _capture)
+    ES.plot_epoch_stats(_paired_rows(), tmp_path / "c.png")
+    colours = captured.get("colours", [])
+    for expected in ("#2ca02c", "#9d0208", "#7f7f7f"):
+        assert expected in colours, f"{expected} missing from {colours}"
+
+
+def test_the_header_band_is_the_same_size_on_both_figures(
+        tmp_path, monkeypatch):
+    """The header is positioned in figure fractions, which shrink as the
+    figure grows: a third panel would have squeezed the caption. Measured in
+    inches, the band is identical whether or not the panel is there."""
+    plt = pytest.importorskip("matplotlib.pyplot")
+
+    def _band(rows, name):
+        captured, real_close = {}, plt.close
+
+        def _capture(fig=None):
+            if fig is not None and fig.axes:
+                fig.canvas.draw()
+                top = fig.bbox.y1
+                captured["panel"] = round(
+                    (top - fig.axes[0].get_window_extent().y1) / fig.dpi, 3)
+            return real_close(fig)
+
+        monkeypatch.setattr(plt, "close", _capture)
+        ES.plot_epoch_stats(rows, tmp_path / name)
+        return captured["panel"]
+
+    assert _band(_plot_rows(), "two.png") == _band(_paired_rows(), "three.png")
+
+
+def test_the_cycle_axis_stays_on_the_bottom_panel(tmp_path, monkeypatch):
+    """The x axis belongs to whichever panel is last, not to panel 2."""
+    out = _panel_titles(tmp_path, monkeypatch, _paired_rows())
+    assert out["xlabel"][-1] == ES.AXIS_LABEL
+    assert out["xlabel"][1] == "", "panel 2 kept the axis label"
+
+
 # --- the prompts: which configs produced these curves --------------------
 
 _STUDY = {"task": "img-classification", "dataset": ["cifar-10"]}

@@ -23,6 +23,7 @@ from this epoch's own directory removes the lag entirely.
 import json
 import math
 import os
+import random
 from datetime import datetime
 from pathlib import Path
 
@@ -777,6 +778,371 @@ def _draw_brand(fig, text=BRAND_TEXT):
         edgecolor="none", alpha=0.55, zorder=0))
 
 
+#: Figure width, and the height of a figure carrying the two standard panels.
+#: The header offsets below are figure fractions, so a taller figure would
+#: otherwise shrink the caption band in absolute terms: they are scaled by
+#: BASE_HEIGHT / height to keep the band the same size on every variant.
+FIG_WIDTH = 10.0
+BASE_HEIGHT = 9.0
+
+#: Height added for the improvement panel, matching the two above it.
+PANEL_HEIGHT = 3.6
+
+# Grey means "the original networks, before the LLM changed them" on every
+# panel; green means the networks the LLM produced. Both are measurements of
+# the same kind, so both are drawn solid and filled -- only the colour
+# separates them. Module level because the rate panel names them too.
+GENERATED, ORIGINAL = "#2ca02c", "#7f7f7f"
+# The best generated network is the headline number, so it gets its own colour
+# rather than sharing green with the mean. A mid red sits ~ΔE 4 from this green
+# under deuteranopia -- the classic red/green confusion -- so the red is taken
+# dark enough to clear the threshold: #9d0208 separates at ΔE 10.5, leaving
+# grey-vs-green as the worst pair on the panel.
+BEST = "#9d0208"
+
+#: Colour of the valid-generation rate, which is a property of the run rather
+#: than of either cohort, so it takes neither cohort's colour.
+RATE = "#1f77b4"
+
+
+#: Reading order of a legend: the headline first, then the typical case, then
+#: the uncertainty around it. A reader looking for one number finds it in the
+#: first entry rather than scanning for it, and an entry's rank is the same on
+#: every panel, so the legends are read the same way.
+LEGEND_RANK = ("best", "mean", "CI")
+
+
+def _legend_rank(label):
+    """0 for a best, 1 for a typical value, 2 for an interval.
+
+    The interval is tested first: "best-of-5 Δ 95% CI" names a best and is an
+    interval, and it belongs with the other intervals -- ranked on the word
+    "best" it would have led the legend, putting a band where the reader is
+    looking for the headline number.
+    """
+    lowered = label.lower()
+    if "ci" in lowered.split() or "95%" in lowered:
+        return 2
+    if "best" in lowered:
+        return 0
+    return 1
+
+
+def _draw_legend(ax, **kwargs):
+    """The panel's legend, ordered best, then mean, then interval.
+
+    Sorted stably, so within a rank the artists keep the order they were drawn
+    in -- which is original before generated, the convention the rest of the
+    figure follows.
+    """
+    handles, labels = ax.get_legend_handles_labels()
+    if not handles:
+        return None
+    order = sorted(range(len(labels)), key=lambda i: _legend_rank(labels[i]))
+    return ax.legend([handles[i] for i in order], [labels[i] for i in order],
+                     framealpha=0.75, fancybox=False, fontsize=8, **kwargs)
+
+
+#: Size and colour of the note under the figure. Small and grey: it is read
+#: once, when a reader meets an unfamiliar name, and never again.
+NOTE_FONTSIZE = 6.8
+NOTE_COLOR = "#53585e"
+
+#: Width the note is wrapped to, as a fraction of the figure, and the line
+#: height it is set at. The height of the strip reserved for it follows from
+#: the number of lines it wraps to, so a longer note is never cut off.
+NOTE_WIDTH = 0.90
+NOTE_LINESPACING = 1.5
+
+#: The one quantity on the figure a reader cannot infer: its name, the formula
+#: it is computed by, and where that formula is defined. Everything else is
+#: named in terms anyone reading the figure already has -- a mean, a maximum,
+#: a Wilson or a 95% confidence interval -- and glossing those would bury the
+#: one line worth reading.
+#:
+#: "best-of-k" is the plain name; the formal one is the U-statistic with
+#: kernel max, which is what to look for in the reference. Hoeffding defines
+#: U_n as the mean of a kernel over all C(n, m) subsamples of size m -- with
+#: the kernel taken to be the maximum, that definition IS the expression
+#: below, and the weights C(i-1, k-1) are only that mean collected per
+#: distinct value: the i-th smallest is the largest of exactly C(i-1, k-1) of
+#: the C(n, k) subsamples.
+#:
+#: Lines beginning with "$" are set as display formulas: indented, not
+#: wrapped, and given the room a fraction needs. The rest is prose and wraps.
+NOTE_LINES = (
+    "Best-of-{k} difference:",
+    r"$\Delta_{k} = E_{k}(\mathrm{{generated}}) - E_{k}(\mathrm{{original}})$",
+    "where $E_k$ is the expected maximum accuracy over all size-$k$ subsets "
+    "of the $n$ model accuracies:",
+    r"$E_k = \sum_{{i=k}}^{{n}} x_{{(i)}}\, "
+    r"\dfrac{{\binom{{i-1}}{{k-1}}}}{{\binom{{n}}{{k}}}}$",
+    "with $x_{{(1)}} \\leq \\cdots \\leq x_{{(n)}}$ the sorted accuracies. "
+    "This is a U-statistic with the maximum as its kernel "
+    "(Hoeffding, 1948, Ann. Math. Statist. 19(3), 293-325).",
+    "Fixing $k={k}$ enables fair comparison across cycles with different "
+    "numbers of valid models. \u201cPooled so far\u201d calculates the metric "
+    "over all generated model pairs accumulated up to each cycle.",
+)
+
+#: Indent of a display formula, as a fraction of the figure.
+NOTE_MATH_INDENT = 0.030
+
+#: Line height of a display formula, relative to a line of prose: a sum with a
+#: fraction under it is three times the height of a word.
+NOTE_MATH_LEADING = 2.6
+
+
+def _figure_note(improved, k):
+    """The note's lines, or () when there is nothing to explain."""
+    if not (improved and k):
+        return ()
+    return tuple(line.format(k=k) for line in NOTE_LINES)
+
+
+def _is_math(line):
+    return line.startswith("$")
+
+
+def _wrap_note(fig, lines, width=NOTE_WIDTH):
+    """The note's lines, prose broken to fit ``width``, formulas left whole.
+
+    A formula cannot be wrapped -- half of a sum is not a formula -- so it is
+    passed through and only the prose is measured. Measuring rather than
+    counting characters: the note is set in a proportional face, and a
+    character budget right for one sentence is wrong for the next.
+    """
+    renderer = fig.canvas.get_renderer()
+
+    def _fits(candidate):
+        probe = fig.text(0.0, 0.0, candidate, fontsize=NOTE_FONTSIZE)
+        spans = probe.get_window_extent(renderer=renderer).width / fig.bbox.width
+        probe.remove()
+        return spans <= width
+
+    out = []
+    for line in lines:
+        if _is_math(line):
+            out.append(line)
+            continue
+        current = ""
+        for word in line.split():
+            trial = f"{current} {word}".strip()
+            if current and not _fits(trial):
+                out.append(current)
+                current = word
+            else:
+                current = trial
+        if current:
+            out.append(current)
+    return out
+
+
+#: Space between two lines of the note, in points. Enough to separate them,
+#: and not the extra half-line a formula's own height already provides.
+NOTE_GAP_PT = 2.4
+
+
+def _note_layout(fig, lines):
+    """Each line's rendered height in inches, and the strip they need.
+
+    Measured, not assumed. A sum with a fraction under it stands roughly three
+    times the height of a word, and the two differ again between a formula
+    with limits and one without, so a single leading either collides the
+    formulas with the prose or leaves a hole under the figure.
+    """
+    if not lines:
+        return [], 0.0
+    renderer = fig.canvas.get_renderer()
+    heights = []
+    for line in lines:
+        probe = fig.text(0.0, 0.0, line, fontsize=NOTE_FONTSIZE)
+        heights.append(probe.get_window_extent(renderer=renderer).height
+                       / fig.dpi)
+        probe.remove()
+    gap = NOTE_GAP_PT / 72.0
+    return heights, sum(heights) + gap * (len(heights) + 1) + 0.06
+
+
+def _note_height_in(lines, fig=None):
+    """Inches of figure to keep free for ``lines``, margin included."""
+    if not lines:
+        return 0.0
+    if fig is None:                       # no renderer: a prose-leading guess
+        return (len(lines) * NOTE_FONTSIZE * NOTE_LINESPACING) / 72.0 + 0.12
+    return _note_layout(fig, lines)[1]
+
+
+def _draw_note(fig, lines):
+    """Set the note at the foot of the figure, formulas indented under it.
+
+    Drawn line by line rather than as one block: the lines do not share a
+    leading, and a formula is indented the way a displayed equation is in a
+    paper. Each is given exactly the height it renders at, stacked downward
+    from the top of the strip, so nothing overlaps and nothing falls off.
+    """
+    if not lines:
+        return
+    heights, total = _note_layout(fig, lines)
+    inches = fig.get_size_inches()[1]
+    gap = NOTE_GAP_PT / 72.0
+    y = total - gap
+    for line, line_height in zip(lines, heights):
+        y -= line_height
+        fig.text(0.012 + (NOTE_MATH_INDENT if _is_math(line) else 0.0),
+                 y / inches, line, ha="left", va="bottom",
+                 fontsize=NOTE_FONTSIZE, color=NOTE_COLOR)
+        y -= gap
+
+
+#: Largest k used for the best-of-k figures. Small on purpose: k has to be no
+#: larger than the smallest cycle's paired count, and a run evaluates about ten
+#: models a cycle of which only some pair, so anything larger would be cut down
+#: to the smallest cycle anyway and read as a promise the data cannot keep.
+BEST_OF_K_CAP = 5
+
+
+def _pairs(row):
+    """(original, generated) accuracies of every model this cycle paired.
+
+    ``baseline_seeds`` already carries the per-model pairing that the summary
+    statistics were computed from, so the tail metrics below need nothing new
+    collected -- only an older tracker, written before that field existed, has
+    nothing to offer here.
+    """
+    out = []
+    for pair in row.get("baseline_seeds") or []:
+        before, after = pair.get("baseline_accuracy"), pair.get("accuracy")
+        if before is not None and after is not None:
+            out.append((float(before), float(after)))
+    return out
+
+
+def expected_best_of_k(values, k):
+    """Expected maximum of ``k`` of ``values``, drawn without replacement.
+
+    The maximum of a cycle is not comparable with the maximum of another one
+    unless both were drawn from the same number of models: more attempts raise
+    the best result on their own, and the valid count moves from cycle to
+    cycle. Fixing k and averaging the best-of-k over every size-k subset takes
+    that out. Computed from the order statistics rather than by sampling --
+    the i-th smallest value is the maximum of exactly C(i-1, k-1) of the
+    C(n, k) subsets -- so it is exact and costs one pass.
+
+    This is the estimator pass@k is built on, applied to a continuous score
+    instead of a success flag.
+    """
+    values = sorted(float(v) for v in values if v is not None)
+    n = len(values)
+    if n == 0 or k < 1:
+        return None
+    if k >= n:
+        return values[-1]
+    total = math.comb(n, k)
+    return sum(v * math.comb(i, k - 1)
+               for i, v in enumerate(values)) / total
+
+
+def _common_k(rows, cap=BEST_OF_K_CAP):
+    """One k for the whole figure, so its cycles can be compared.
+
+    The smallest cycle sets it: a best-of-5 cannot be formed where only three
+    models paired, and quietly falling back to the maximum for that one cycle
+    would reintroduce exactly the dependence on sample size this removes.
+    """
+    counts = [len(_pairs(r)) for r in rows]
+    counts = [c for c in counts if c]
+    if not counts:
+        return None
+    return max(1, min(cap, min(counts)))
+
+
+def _best_of_k_from_pairs(pairs, k):
+    """Expected best-of-k generated, minus expected best-of-k original.
+
+    Both cohorts are reduced the same way, so the difference says what the
+    best of a fixed number of attempts gained -- not what the luckiest draw of
+    a larger sample did.
+    """
+    if not pairs or not k:
+        return None
+    after = expected_best_of_k([a for _, a in pairs], k)
+    before = expected_best_of_k([b for b, _ in pairs], k)
+    if after is None or before is None:
+        return None
+    return after - before
+
+
+def _best_of_k_delta(row, k):
+    return _best_of_k_from_pairs(_pairs(row), k)
+
+
+#: Resamples behind the best-of-k interval, and the seed they are drawn with.
+#: Fixed, so the same tracker always draws the same figure: an interval that
+#: moved every time the plot was refreshed would be read as the run changing.
+BOOTSTRAP_N = 2000
+BOOTSTRAP_SEED = 20260101
+
+
+def _best_of_k_ci(pairs, k, conf=0.95, draws=BOOTSTRAP_N):
+    """Percentile bootstrap interval for the best-of-k difference.
+
+    An interval is possible here and impossible for the observed maximum
+    beside it, and the reason is worth stating: best-of-k with k below n is a
+    weighted average of the order statistics, which the bootstrap estimates
+    consistently, whereas the maximum sits on the edge of the sample and the
+    bootstrap is known to fail for it (Bickel and Freedman, 1981).
+
+    The PAIRS are resampled, not the two cohorts separately, so a resample is
+    a plausible redrawing of the same experiment: each model keeps the
+    original it was made from.
+    """
+    n = len(pairs)
+    if n < 2 or not k:
+        return None, None
+    rng = random.Random(BOOTSTRAP_SEED)
+    deltas = []
+    for _ in range(draws):
+        sample = [pairs[rng.randrange(n)] for _ in range(n)]
+        value = _best_of_k_from_pairs(sample, k)
+        if value is not None:
+            deltas.append(value)
+    if len(deltas) < draws // 2:
+        return None, None
+    deltas.sort()
+    tail = (1.0 - conf) / 2.0
+    lo = deltas[max(0, int(math.floor(tail * len(deltas))))]
+    hi = deltas[min(len(deltas) - 1, int(math.ceil((1.0 - tail) * len(deltas))) - 1)]
+    return lo, hi
+
+
+def _cumulative_pairs(rows):
+    """Every pair up to and including each cycle, cycle by cycle.
+
+    The tail of a cycle rests on about ten models, which is few for a question
+    about the best of them. Pooling what the run has produced so far answers
+    the same question over a sample that grows with the run, and it is the
+    quantity panel 2's "best so far" tracks without an estimate attached.
+    """
+    pooled, out = [], []
+    for row in rows:
+        pooled = pooled + _pairs(row)
+        out.append(list(pooled))
+    return out
+
+
+def _paired_improvement(rows):
+    """Rows carrying a paired generated-minus-original difference.
+
+    The difference exists only where the prompt carried an initial network AND
+    its descendant ran: ``collect_epoch_stats`` pairs them per model and leaves
+    ``mean_improvement`` as None when there is nothing to pair. A run that
+    generates from scratch therefore has no third panel rather than a panel of
+    blanks, and an older tracker without the field behaves the same way.
+    """
+    return [r for r in rows if r.get("mean_improvement") is not None]
+
+
 def _value_limits(values, lo_bound=0.0, hi_bound=1.0, headroom=0.18):
     """View limits framed on the MEASURED VALUES, with room for point labels.
 
@@ -828,7 +1194,56 @@ CI_ALPHA = 0.22
 #: reads as a small grey marker centred on a larger coloured one.
 MEAN_MARKER = ((5.5, 6), (9.0, 5))
 BEST_MARKER = ((5.0, 7), (8.0, 6))
+
+#: Stacking of the two running bests, above every per-cycle series.
+#:
+#: A running best coincides with the per-cycle best of its own cohort for as
+#: long as no later cycle beats an earlier one -- which is most of a run, and
+#: is the whole of it for the original networks whenever the seed pool does
+#: not change. Drawn underneath, as these were, the dotted line is covered by
+#: the dashed one exactly when it has nothing to add, which reads as the line
+#: being missing rather than as the two agreeing. On top, the dots sit over
+#: the dashes and the agreement is visible.
+RUNNING_ZORDER = 8
 MARKER_EDGE = dict(markeredgecolor="white", markeredgewidth=0.7)
+
+
+def _annotate_peak(ax, xs, ys, colour, lo_limit, hi_limit, other=None):
+    """Label a series' highest point with its value.
+
+    Placed against the settled view limits so it stays on the panel wherever
+    the peak falls -- pushed inward at the first and last cycle, where a
+    centred label would cross a spine, and dropped under the marker when the
+    peak is near the top of the panel.
+
+    ``other`` is the companion series, used only to pick a side: whichever of
+    the two is higher at that cycle takes the space above and the other takes
+    the space below, so the two labels cannot land on each other when both
+    cohorts peak on the same cycle.
+    """
+    if not ys:
+        return
+    peak = max(range(len(ys)), key=lambda i: ys[i])
+    span = max(hi_limit - lo_limit, 1e-9)
+
+    above = (ys[peak] - lo_limit) / span <= 0.82
+    if other is not None:
+        other_x, other_y = other
+        at_peak = [v for x, v in zip(other_x, other_y) if x == xs[peak]]
+        if at_peak and at_peak[0] > ys[peak]:
+            above = False                  # the companion owns the space above
+
+    if peak == len(xs) - 1:
+        dx, ha = -9, "right"
+    elif peak == 0:
+        dx, ha = 9, "left"
+    else:
+        dx, ha = 0, "center"
+    dy, va = (9, "bottom") if above else (-10, "top")
+    ax.annotate(f"best {ys[peak]:.4f}", (xs[peak], ys[peak]),
+                textcoords="offset points", xytext=(dx, dy), ha=ha, va=va,
+                fontsize=8, color=colour, fontweight="bold", zorder=7,
+                annotation_clip=False)
 
 
 def _draw_band(ax, xs, lo, hi, line_colour, fill_colour, alpha, label):
@@ -885,12 +1300,21 @@ def plot_epoch_stats(rows, out_path, base_dir=None):
         return None
     ep = [r["epoch"] for r in rows]
 
-    fig, axes = plt.subplots(2, 1, figsize=(10, 9), sharex=True)
+    # The improvement panel is drawn only when the run has something to put in
+    # it: a difference needs an initial network to have been in the prompt.
+    improved = _paired_improvement(rows)
+    panels = 3 if improved else 2
+    height = BASE_HEIGHT + (PANEL_HEIGHT if improved else 0.0)
+    fig, axes = plt.subplots(panels, 1, figsize=(FIG_WIDTH, height),
+                             sharex=True)
+    # Figure fractions shrink as the figure grows; the caption band should not.
+    band = BASE_HEIGHT / height
+    bottom_ax = axes[-1]
 
     # Which model and which fine-tuning settings produced these numbers, and on
     # which dataset. Without them the curves cannot be compared between runs.
     head, tail, params = _run_caption(_run_config(base_dir) if base_dir else {}, rows)
-    y = 0.995
+    y = 1.0 - 0.005 * band          # scaled with the rest of the band
     if head:
         # Drawn as figure text rather than through suptitle: tight_layout
         # reserves a band of its own for a suptitle, which reappeared as a gap
@@ -898,29 +1322,29 @@ def plot_epoch_stats(rows, out_path, base_dir=None):
         # could close.
         fig.text(0.5, y, head, ha="center", va="top", fontsize=11,
                  fontweight="bold")
-        y -= 0.026
+        y -= 0.026 * band
     if tail:
         # The band below keeps its height whatever size this lands at, so a
         # long line costs point size and never a second row.
         fig.text(0.5, y, tail, ha="center", va="top", style="italic",
                  fontsize=_fit_fontsize(fig, tail, style="italic"),
                  color="#44474b")
-        y -= 0.0275
+        y -= 0.0275 * band
     if params:
         fig.text(0.5, y, "\n".join(params), ha="center", va="top",
                  fontsize=PARAM_FONTSIZE, family="monospace",
                  color=PARAM_COLOR, linespacing=1.5)
-        y -= 0.013 * len(params)
-    header_bottom = y - HEADER_GAP
+        y -= 0.013 * band * len(params)
+    header_bottom = y - HEADER_GAP * band
 
     # 1 -- percentage of correctly generated models, Wilson 95%
     pct = [100.0 * (r.get("valid_rate") or 0.0) for r in rows]
     lo = [100.0 * (r.get("valid_rate_ci_low") or 0.0) for r in rows]
     hi = [100.0 * (r.get("valid_rate_ci_high") or 0.0) for r in rows]
-    axes[0].plot(ep, pct, marker="o", color="#1f77b4", label="valid models", zorder=5)
+    axes[0].plot(ep, pct, marker="o", color=RATE, label="valid models", zorder=5)
     # Same fill weight as the accuracy bands below, so an interval reads the
     # same way on both panels.
-    _draw_band(axes[0], ep, lo, hi, "#1f77b4", "#1f77b4", CI_ALPHA, "Wilson 95% CI")
+    _draw_band(axes[0], ep, lo, hi, RATE, RATE, CI_ALPHA, "Wilson 95% CI")
     for x, r in zip(ep, rows):
         axes[0].annotate(f"{r.get('models_valid', 0)}/{r.get('models_generated', 0)}",
                          (x, 100.0 * (r.get("valid_rate") or 0.0)),
@@ -932,20 +1356,9 @@ def plot_epoch_stats(rows, out_path, base_dir=None):
     # movement in the rate itself. Headroom leaves room for the n/N labels.
     axes[0].set_ylim(*_value_limits(pct, 0.0, 100.0))
     axes[0].set_title("Valid generation rate per cycle")
-    axes[0].legend(loc="best", fontsize=8, framealpha=0.75, fancybox=False)
+    _draw_legend(axes[0], loc="best")
     axes[0].grid(alpha=0.3)
 
-    # Grey means "the original networks, before the LLM changed them" on every
-    # panel; green means the networks the LLM produced. Both are measurements
-    # of the same kind, so both are drawn solid and filled -- only the colour
-    # separates them.
-    GENERATED, ORIGINAL = "#2ca02c", "#7f7f7f"
-    # The best generated network is the headline number, so it gets its own
-    # colour rather than sharing green with the mean. A mid red sits ~ΔE 4 from
-    # this green under deuteranopia -- the classic red/green confusion -- so the
-    # red is taken dark enough to clear the threshold: #9d0208 separates at
-    # ΔE 10.5, leaving grey-vs-green as the worst pair on the panel.
-    BEST = "#9d0208"
 
     def _pick(*keys):
         """Rows where the first key is present, as parallel tuples."""
@@ -1015,6 +1428,13 @@ def plot_epoch_stats(rows, out_path, base_dir=None):
                   r.get("accuracy_max"), r.get("baseline_accuracy_max"))
     ])
 
+    def _running_max(values):
+        out, best = [], float("-inf")
+        for value in values:
+            best = max(best, value)
+            out.append(best)
+        return out
+
     picked = _pick("baseline_accuracy_max")
     if picked is not None:
         xs, ys = picked
@@ -1022,6 +1442,15 @@ def plot_epoch_stats(rows, out_path, base_dir=None):
                      linestyle="--", linewidth=1.1,
                      color=ORIGINAL, alpha=0.9, zorder=BEST_MARKER[0][1],
                      label="original best")
+        # The best network the run was ever given to work from, carried
+        # forward. Each cycle draws different seeds, so the per-cycle original
+        # best moves around and a generated network clearing the one grey
+        # square beside it has not necessarily cleared the best the run has
+        # seen. This line is the mark to beat, and the red line of the same
+        # style above or below it answers the question the run is asking.
+        axes[1].plot(xs, _running_max(ys), linestyle=":", linewidth=1.4,
+                     color=ORIGINAL, alpha=0.95, zorder=RUNNING_ZORDER,
+                     label="original best so far")
     picked = _pick("accuracy_max")
     if picked is not None:
         xs, ys = picked
@@ -1029,61 +1458,159 @@ def plot_epoch_stats(rows, out_path, base_dir=None):
                      linestyle="--", linewidth=1.3,
                      color=BEST, alpha=0.95, zorder=BEST_MARKER[1][1],
                      label="generated best")
-        running, best = [], float("-inf")
-        for y in ys:
-            best = max(best, y)
-            running.append(best)
-        axes[1].plot(xs, running, linestyle=":", linewidth=1.2, color=BEST,
-                     alpha=0.6, zorder=4, label="generated best so far")
+        axes[1].plot(xs, _running_max(ys), linestyle=":", linewidth=1.4,
+                     color=BEST, alpha=0.8, zorder=RUNNING_ZORDER,
+                     label="generated best so far")
 
-        # The best network of the whole run: the one number a reader looks for.
-        # Placed against the settled limits so it stays on the panel wherever
-        # the peak falls -- below the marker when the peak is near the top,
-        # pushed inward at the first and last epoch where a centred label would
-        # cross a spine.
-        peak = max(range(len(ys)), key=lambda i: ys[i])
-        span = max(accuracy_hi - accuracy_lo, 1e-9)
-        near_top = (ys[peak] - accuracy_lo) / span > 0.82
-        if peak == len(xs) - 1:
-            dx, ha = -9, "right"
-        elif peak == 0:
-            dx, ha = 9, "left"
-        else:
-            dx, ha = 0, "center"
-        dy, va = (-10, "top") if near_top else (9, "bottom")
-        axes[1].annotate(
-            f"best {ys[peak]:.4f}", (xs[peak], ys[peak]),
-            textcoords="offset points", xytext=(dx, dy), ha=ha, va=va,
-            fontsize=8, color=BEST, fontweight="bold", zorder=7,
-            annotation_clip=False)
+        # The two headline numbers: the best network the run produced, and the
+        # best it was given to start from. The red one alone said how good the
+        # run got without saying what it had to beat, which is the comparison
+        # the panel exists for.
+        _annotate_peak(axes[1], xs, ys, BEST, accuracy_lo, accuracy_hi,
+                       other=_pick("baseline_accuracy_max"))
+        base_peak = _pick("baseline_accuracy_max")
+        if base_peak is not None:
+            _annotate_peak(axes[1], base_peak[0], base_peak[1], ORIGINAL,
+                           accuracy_lo, accuracy_hi, other=picked)
 
     axes[1].set_ylabel("accuracy")
-    axes[1].set_xlabel(AXIS_LABEL)
+    bottom_ax.set_xlabel(AXIS_LABEL)
     axes[1].set_ylim(accuracy_lo, accuracy_hi)
     axes[1].set_title("Accuracy per cycle: mean with 95% CI, and best model "
                       "(generated vs. original networks)")
-    if axes[1].get_legend_handles_labels()[0]:   # nothing to label on an all-failed epoch
-        axes[1].legend(loc="best", fontsize=8, framealpha=0.75, ncol=2, fancybox=False)
+    _draw_legend(axes[1], loc="best", ncol=2)   # None on an all-failed cycle
     axes[1].grid(alpha=0.3)
 
     spans = _cycle_durations(_run_config(base_dir) if base_dir else {}, rows)
+    # 3 -- what the LLM actually changed, when the prompt carried an initial
+    # network to change. Panel 2 shows two curves and leaves the reader to
+    # subtract them by eye, which is exactly the comparison the run is for and
+    # the one a confidence interval is needed for: the curves overlap almost
+    # everywhere, and whether the gap is real cannot be read off two bands.
+    #
+    # Colour and style are panel 2's, so the two are read the same way: green
+    # and a round marker for the mean, the dark red of "generated best" and a
+    # dashed square for the maxima, grey for the original networks -- here the
+    # zero line, which is where the original cohort sits by construction.
+    if improved:
+        delta_ax = axes[2]
+        # Zero is where the original networks sit by construction, so the line
+        # is drawn as a reference and left out of the legend: naming it would
+        # spend a legend row restating what the axis already says.
+        delta_ax.axhline(0.0, color=ORIGINAL, linewidth=1.2, alpha=0.8,
+                         zorder=3)
+
+        picked = _pick("mean_improvement", "improvement_ci_low",
+                       "improvement_ci_high")
+        deltas = []
+        if picked is not None:
+            xs, ms, ls, hs = picked
+            # Same convention as panel 2: a cycle with one paired model has no
+            # estimable interval, and spans the feasible range rather than
+            # drawing a zero-width band that reads as certainty.
+            lo = [-1.0 if l is None else l for l in ls]
+            hi = [1.0 if h is None else h for h in hs]
+            _draw_band(delta_ax, xs, lo, hi, GENERATED, GENERATED, CI_ALPHA,
+                       "paired mean \u0394 95% CI")
+            size, z = MEAN_MARKER[1]
+            delta_ax.plot(xs, ms, marker="o", markersize=size, **MARKER_EDGE,
+                          linestyle="-", linewidth=1.6, color=GENERATED,
+                          label="paired mean \u0394", zorder=z)
+            deltas.extend(ms)
+
+        # The same comparison with the dependence on sample size taken out.
+        # A cycle that produced twelve valid models has a higher best than one
+        # that produced six for no reason but the extra draws, and the valid
+        # count climbs through a run, so the raw maxima below drift upward on
+        # their own. Reducing both cohorts to the expected best of a FIXED k
+        # removes that: what is left is what the best of k attempts gained.
+        k = _common_k(rows)
+        best_k = [(r["epoch"], _pairs(r)) for r in rows]
+        best_k = [(x, p, _best_of_k_from_pairs(p, k)) for x, p in best_k]
+        best_k = [(x, p, v) for x, p, v in best_k if v is not None]
+        if best_k and k:
+            xs = [x for x, _, _ in best_k]
+            ys = [v for _, _, v in best_k]
+            # Unlike the observed maximum beside it, this one can carry an
+            # interval: it is an average over the order statistics, which the
+            # bootstrap estimates consistently.
+            bounds = [_best_of_k_ci(p, k) for _, p, _ in best_k]
+            if all(lo is not None for lo, _ in bounds):
+                _draw_band(delta_ax, xs, [lo for lo, _ in bounds],
+                           [hi for _, hi in bounds], BEST, BEST, CI_ALPHA,
+                           f"best-of-{k} \u0394 95% CI")
+                deltas.extend(lo for lo, _ in bounds)
+                deltas.extend(hi for _, hi in bounds)
+            delta_ax.plot(xs, ys, marker="D", markersize=BEST_MARKER[0][0],
+                          **MARKER_EDGE, linestyle="-.", linewidth=1.3,
+                          color=BEST, alpha=0.95, zorder=BEST_MARKER[0][1],
+                          label=f"best-of-{k} \u0394")
+            deltas.extend(ys)
+
+            # The same figure over everything the run has produced so far.
+            # One cycle's tail rests on about ten models; this one rests on
+            # the run, and is the estimate panel 2's "best so far" implies.
+            pooled = [(r["epoch"], _best_of_k_from_pairs(p, k))
+                      for r, p in zip(rows, _cumulative_pairs(rows))]
+            pooled = [(x, v) for x, v in pooled if v is not None]
+            if len(pooled) > 1:
+                px, py = zip(*pooled)
+                delta_ax.plot(px, py, linestyle=":", linewidth=1.2,
+                              color=BEST, alpha=0.6, zorder=4,
+                              label=f"best-of-{k} \u0394 pooled so far")
+                deltas.extend(py)
+
+        # The difference of the two best networks as observed. It is NOT
+        # paired -- the best generated network and the best original one are
+        # generally not the same lineage -- so it carries no interval: there
+        # is no sample of differences here to take one over, only a single
+        # pair of maxima, and it is the quantity the best-of-k above corrects.
+        best_delta = [(r["epoch"], r["accuracy_max"] - r["baseline_accuracy_max"])
+                      for r in rows
+                      if r.get("accuracy_max") is not None
+                      and r.get("baseline_accuracy_max") is not None]
+        if best_delta:
+            xs, ys = zip(*best_delta)
+            size, z = BEST_MARKER[1]
+            delta_ax.plot(xs, ys, marker="s", markersize=size, **MARKER_EDGE,
+                          linestyle="--", linewidth=1.3, color=BEST,
+                          alpha=0.95, zorder=z, label="best \u0394 (observed)")
+            deltas.extend(ys)
+
+        # Framed on the differences themselves, like the panels above, and
+        # always including zero: the whole question is which side of it the
+        # curves fall on, and a panel cropped above zero answers it silently.
+        delta_lo, delta_hi = _value_limits(list(deltas) + [0.0], -1.0, 1.0)
+        delta_ax.set_ylim(delta_lo, delta_hi)
+        delta_ax.set_ylabel("\u0394 accuracy")
+        delta_ax.set_title("\u0394 accuracy per cycle (generated minus original): "
+                           "paired mean with 95% CI, and \u0394 of the best")
+        _draw_legend(delta_ax, loc="best", ncol=2)
+        delta_ax.grid(alpha=0.3)
+
     if ep:
-        axes[1].set_xticks(sorted(set(ep)))
+        bottom_ax.set_xticks(sorted(set(ep)))
         if any(_fmt_span(s) for s in spans):
-            _reserve_cycle_spans(axes[1])
+            _reserve_cycle_spans(bottom_ax)
         if len(set(ep)) == 1:
             # A single cycle leaves matplotlib to invent an x range; fix it so
             # the whiskers drawn by _draw_band sit at a sensible width.
             only = ep[0]
-            axes[1].set_xlim(only - 0.5, only + 0.5)
+            bottom_ax.set_xlim(only - 0.5, only + 0.5)
     _draw_brand(fig)
     _draw_runtime(fig, _fmt_duration(_run_duration(
         _run_config(base_dir) if base_dir else {}, rows)))
-    fig.tight_layout(rect=(0, 0.022, 1, max(0.70, header_bottom)), pad=0.6)
+    note = _wrap_note(fig, _figure_note(
+        bool(improved), _common_k(rows) if improved else None))
+    # The note is given a strip of its own at the foot of the figure, so it
+    # sits under the panels rather than taking room from the bottom one.
+    foot = 0.022 + _note_height_in(note, fig) / height
+    fig.tight_layout(rect=(0, foot, 1, max(0.70, header_bottom)), pad=0.6)
+    _draw_note(fig, note)
     if ep:
         # After the layout: these are placed against the rendered tick labels,
         # into the room reserved for them above.
-        _draw_cycle_spans(axes[1], ep, spans)
+        _draw_cycle_spans(bottom_ax, ep, spans)
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=150)
