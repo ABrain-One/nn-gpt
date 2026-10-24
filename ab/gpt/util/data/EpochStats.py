@@ -351,6 +351,11 @@ PARAM_FLAGS = ("load_in_4bit",)
 PARAM_MAX_CHARS = 194
 PARAM_FONTSIZE = 5.8
 
+#: The face that budget is measured in. "monospace" resolves to whatever the
+#: host has installed, and the wider ones push a full line past the panels.
+#: DejaVu ships with matplotlib, so the budget holds on every machine.
+PARAM_FONTFAMILY = "DejaVu Sans Mono"
+
 #: Near-black rather than a grey: the line is the only record of what produced
 #: the curves, and at this size a lightened grey stops being legible in print.
 PARAM_COLOR = "#111111"
@@ -463,15 +468,24 @@ def _fit_fontsize(fig, text, sizes=STUDY_FONTSIZES, max_width=STUDY_MAX_WIDTH,
     w's of equal length are nowhere near equal width.
     """
     renderer = fig.canvas.get_renderer()
-    chosen = sizes[-1]
-    for size in sizes:
+
+    def measure(size):
         probe = fig.text(0.5, 0.5, text, ha="center", fontsize=size, **kwargs)
         width = probe.get_window_extent(renderer=renderer).width / fig.bbox.width
         probe.remove()
-        if width <= max_width:
-            chosen = size
-            break
-    return chosen
+        return width
+
+    for size in sizes:
+        if measure(size) <= max_width:
+            return size
+
+    # Nothing in the ladder fits -- a wider face than the one the sizes were
+    # chosen against. Width is linear in point size, so the smallest is scaled
+    # to the budget rather than left to run past the axes.
+    width = measure(sizes[-1])
+    if not width:
+        return sizes[-1]
+    return max(0.1, math.floor(sizes[-1] * max_width / width * 10) / 10)
 
 
 #: Separator between the statement of the study and the prompts it was run
@@ -1332,7 +1346,7 @@ def plot_epoch_stats(rows, out_path, base_dir=None):
         y -= 0.0275 * band
     if params:
         fig.text(0.5, y, "\n".join(params), ha="center", va="top",
-                 fontsize=PARAM_FONTSIZE, family="monospace",
+                 fontsize=PARAM_FONTSIZE, family=PARAM_FONTFAMILY,
                  color=PARAM_COLOR, linespacing=1.5)
         y -= 0.013 * band * len(params)
     header_bottom = y - HEADER_GAP * band
