@@ -340,9 +340,12 @@ PARAM_SKIP = ("test_nn", "unsloth", "vllm_sleep")
 PARAM_FLAGS = ("load_in_4bit",)
 
 #: Width budget for the configuration line, in characters, paired with the
-#: point size it is drawn at: at 5.8pt monospace, 194 characters span ~94% of
-#: the 10in figure, which clears the panels on both sides. Changing one without
-#: the other either wraps the line or lets it run past the axes.
+#: point size it is drawn at: at 5.8pt in PARAM_FONTFAMILY, 194 characters span
+#: 94% of the 10in figure, or 97% once the glyphs are hinted, which is what
+#: most installs draw. Both clear the panels, which end well inside that.
+#: Changing one without the other either wraps the line or lets it run past the
+#: figure. Point size is no longer a dial here: hinting rounds the advance to
+#: whole pixels, so 5.8 and 5.4 come out at the same width.
 #:
 #: Every setting added to the line has been paid for in point size, and this is
 #: close to the floor: below ~5.5pt the figures stop resolving in print. The

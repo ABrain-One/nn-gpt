@@ -2,21 +2,32 @@
 import json
 from pathlib import Path
 
-import pytest
+from _unittest_bridge import load_tests_from, pytest  # stdlib stand-in without pytest
 
-from ab.gpt.util.data.LemurSubmission import archive_submission
+try:
+    from ab.gpt.util.data.LemurSubmission import archive_submission
 
-from ab.gpt.util.Const import new_lemur_nn_dir, new_lemur_stat_dir, submission_dir_name
+    from ab.gpt.util.Const import submission_dir_name
+except ImportError as exc:
+    from _unittest_bridge import skip_module
+
+    skip_module(f"test_lemur_submission needs ab.gpt (and so ab.nn): {exc}")
 
 
 def _run(base: Path, models):
-    """A run directory holding `models` as {name: {stat_dir: {file: text}}}."""
-    new_lemur_nn_dir.mkdir(parents=True, exist_ok=True)
-    new_lemur_stat_dir.mkdir(parents=True, exist_ok=True)
+    """A run directory holding `models` as {name: {stat_dir: {file: text}}}.
+
+    Built under `base`, which is what archive_submission reads; the dirs in
+    Const point at out/nngpt, the one run directory a test must not write to.
+    """
+    nn_dir = base / submission_dir_name / "nn"
+    stat_root = base / submission_dir_name / "train"
+    nn_dir.mkdir(parents=True, exist_ok=True)
+    stat_root.mkdir(parents=True, exist_ok=True)
     for name, (source, stats) in models.items():
-        (new_lemur_nn_dir / f"{name}.py").write_text(source)
+        (nn_dir / f"{name}.py").write_text(source)
         for stat_dir, files in stats.items():
-            d = new_lemur_stat_dir / stat_dir
+            d = stat_root / stat_dir
             d.mkdir(parents=True, exist_ok=True)
             for fname, text in files.items():
                 (d / fname).write_text(text)
@@ -135,3 +146,6 @@ def test_run_reset_archives_before_deleting(tmp_path, monkeypatch):
     assert list(base.iterdir()) == [], "the run directory was not cleared"
     assert (archive / "nn" / "chn_a.py").exists()
     assert (archive / "train" / "img-classification_cifar-10_acc_chn_a" / "1.json").exists()
+
+
+load_tests = load_tests_from(globals())

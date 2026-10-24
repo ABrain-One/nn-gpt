@@ -1,7 +1,12 @@
 """The vLLM path must sample like model.generate(), which inherits unset fields from generation_config.json."""
 import json
 
-from ab.gpt.util.llm.VLLMSleep import inherited_sampling_params, read_generation_config
+try:
+    from ab.gpt.util.llm.VLLMSleep import inherited_sampling_params, read_generation_config
+except ImportError as exc:
+    from _unittest_bridge import skip_module
+
+    skip_module(f"test_vllm_sampling_inherit needs ab.gpt (and so torch): {exc}")
 
 QWEN_CODER = {"do_sample": True, "eos_token_id": [151645, 151643], "repetition_penalty": 1.1,
               "temperature": 0.7, "top_k": 20, "top_p": 0.8}
@@ -30,3 +35,8 @@ def test_read_generation_config_from_folder(tmp_path):
     cfg, src = read_generation_config(None, str(tmp_path))
     assert cfg["repetition_penalty"] == 1.1 and src.endswith("generation_config.json")
     assert read_generation_config(str(tmp_path / "missing"))[0] == {}
+
+
+from _unittest_bridge import load_tests_from  # noqa: E402
+
+load_tests = load_tests_from(globals())

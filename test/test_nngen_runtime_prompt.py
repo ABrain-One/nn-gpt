@@ -3,9 +3,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import ab.nn.api as lemur
-from ab.gpt.util.prompt.NNGenPrompt import NNGenPrompt
-from ab.nn.util.Const import ab_root_path
+try:
+    import ab.nn.api as lemur
+    from ab.gpt.util.prompt.NNGenPrompt import NNGenPrompt
+    from ab.nn.util.Const import ab_root_path
+except ImportError as exc:
+    from _unittest_bridge import skip_module
+
+    skip_module(f"test_nngen_runtime_prompt needs ab.nn and ab.gpt: {exc}")
 
 
 class TestNNGenRuntimePrompt(unittest.TestCase):

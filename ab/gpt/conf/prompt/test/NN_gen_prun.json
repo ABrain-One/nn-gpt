@@ -30,8 +30,8 @@
             "Model: {model_name}",
             "Accuracy: {accuracy}",
             "Duration: {duration}",
-            "Performance Score (accuracy/duration): {score}",
-            "Compression Ratio: {compression_ratio}",
+            "Performance Score (accuracy/duration): <<accuracy / duration>>",
+            "Compression Ratio: <<params_after / params_before>>",
             "Improve this model to maximize score while reducing size"
         ],
         "output": [

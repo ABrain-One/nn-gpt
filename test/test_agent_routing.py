@@ -17,7 +17,7 @@ import io
 import sys
 from pathlib import Path
 
-import pytest
+from _unittest_bridge import load_tests_from, pytest  # stdlib stand-in without pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -114,3 +114,6 @@ def test_closing_pass_can_be_skipped(total, monkeypatch):
     assert len([x for x in trace if x.endswith(":ft")]) == total
     assert len([x for x in trace if x.endswith(":eval")]) == total
     assert trace[-1] == f"e{total - 1}:ft"
+
+
+load_tests = load_tests_from(globals())

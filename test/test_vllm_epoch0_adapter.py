@@ -2,7 +2,12 @@
 
 The engine loads the base weights by name and applies an adapter from disk; with None at epoch 0 every
 cycle of the iterative pipeline (one epoch per child process) generated with the base model."""
-from ab.gpt.util.tune import Tune as tune_mod
+try:
+    from ab.gpt.util.tune import Tune as tune_mod
+except ImportError as exc:
+    from _unittest_bridge import skip_module
+
+    skip_module(f"test_vllm_epoch0_adapter needs ab.gpt (and so torch): {exc}")
 
 
 class _Stop(Exception):
@@ -42,3 +47,8 @@ def test_later_epoch_uses_previous_epoch_adapter():
     adapter = _prepared_adapter(1, "/runs/r/cycle_1/checkpoint")
     assert str(adapter).endswith("Qwen/Qwen2.5-Coder-7B-Instruct")
     assert str(adapter) != "/runs/r/cycle_1/checkpoint"
+
+
+from _unittest_bridge import load_tests_from  # noqa: E402
+
+load_tests = load_tests_from(globals())

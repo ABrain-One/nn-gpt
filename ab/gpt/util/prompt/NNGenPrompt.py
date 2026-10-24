@@ -343,12 +343,9 @@ class NNGenPrompt(Prompt):
         output_template = '\n'.join(output_block) if output_block else None
         print(f'Preparing Data for key: {key}...', flush=True)
 
-        # ========== SMALL SWITCH TO DETECT PRUNING CONFIG ==========
-        # Check if this is a pruning task (key starts with 'pruning' or contains 'pruning')
-        is_pruning = (
-            key.lower().startswith('pruning') or
-            'pruning' in key.lower()
-        )
+        # A pruning prompt, by key name. 'prun' and not 'pruning': the shipped
+        # config (NN_gen_prun.json) is keyed 'prun_prompt'.
+        is_pruning = 'prun' in key.lower()
 
         # Check if this is a workstation runtime-data prompt.
         is_runtime = (

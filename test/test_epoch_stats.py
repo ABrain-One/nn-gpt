@@ -10,7 +10,7 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import pytest
+from _unittest_bridge import load_tests_from, pytest  # stdlib stand-in without pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -29,6 +29,10 @@ def _load():
 
 
 ES = _load()
+
+# Fonts matplotlib always ships, so a measured width means the same everywhere.
+DEJAVU = {"font.sans-serif": ["DejaVu Sans"],
+          "font.monospace": ["DejaVu Sans Mono"]}
 
 
 @pytest.mark.parametrize("k, n, lo, hi", [
@@ -618,15 +622,19 @@ def test_the_configuration_line_clears_the_panels():
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    fig = plt.figure(figsize=(10, 9))
-    try:
-        text = fig.text(0.5, 0.5, "x" * ES.PARAM_MAX_CHARS, ha="center",
-                        family="monospace", fontsize=ES.PARAM_FONTSIZE)
-        width = text.get_window_extent(
-            renderer=fig.canvas.get_renderer()).width / fig.bbox.width
-    finally:
-        plt.close(fig)
-    assert width <= 0.96, f"a full line spans {width:.0%} of the figure"
+    # Hinted: glyph advances are rounded up to whole pixels at this size, which
+    # is ~3% wider than the unhinted metrics and is what most installs draw.
+    with plt.rc_context({"text.hinting": "force_autohint"}):
+        fig = plt.figure(figsize=(10, 9))
+        try:
+            text = fig.text(0.5, 0.5, "x" * ES.PARAM_MAX_CHARS, ha="center",
+                            family=ES.PARAM_FONTFAMILY,
+                            fontsize=ES.PARAM_FONTSIZE)
+            width = text.get_window_extent(
+                renderer=fig.canvas.get_renderer()).width / fig.bbox.width
+        finally:
+            plt.close(fig)
+    assert width <= 0.98, f"a full line spans {width:.0%} of the figure"
 
 
 def test_param_block_omits_what_the_figure_already_shows():
@@ -1167,6 +1175,11 @@ def test_a_long_study_line_loses_point_size_not_a_second_row(tmp_path):
     """The header band is a fixed height and the configuration line below is
     already at the floor of its own size, so width is bought with points."""
     plt = pytest.importorskip("matplotlib.pyplot")
+    with plt.rc_context(DEJAVU):
+        _long_study_line_fits(plt)
+
+
+def _long_study_line_fits(plt):
     fig = plt.figure(figsize=(10, 9))
     try:
         short = ES._study_sentence(_STUDY, [])
@@ -1567,3 +1580,6 @@ def test_the_legend_still_reads_original_before_generated():
     """Stacking is settled by zorder, so the listed order is free to stay."""
     assert ES.MEAN_MARKER[0][0] < ES.MEAN_MARKER[1][0]
     assert ES.BEST_MARKER[0][0] < ES.BEST_MARKER[1][0]
+
+
+load_tests = load_tests_from(globals())

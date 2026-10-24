@@ -30,11 +30,16 @@ from pathlib import Path
 from collections import deque
 from typing import Dict, List, Tuple, Optional
 
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
+try:
+    import numpy as np
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    import torch.optim as optim
+except ImportError as exc:
+    from _unittest_bridge import skip_module
+
+    skip_module(f"the PPO demo needs torch and numpy: {exc}")
 
 # Try to import LEMUR dataset
 try:

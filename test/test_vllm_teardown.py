@@ -14,7 +14,7 @@ import sys
 import types
 from pathlib import Path
 
-import pytest
+from _unittest_bridge import load_tests_from, pytest  # stdlib stand-in without pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -232,3 +232,6 @@ def test_shutdown_survives_an_engine_that_refuses_to_close(V, monkeypatch):
     eng.llm.llm_engine.engine_core = _Stubborn()
     V.VLLMSleepEngine.shutdown(eng)
     assert eng.llm is None
+
+
+load_tests = load_tests_from(globals())
