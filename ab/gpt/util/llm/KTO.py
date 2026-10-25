@@ -213,6 +213,7 @@ class KTO:
         access_token=None,
         peft_config=None,
         use_unsloth=False,
+        init_adapter_path: Optional[str] = None,
     ):
         self.model = model
         self.tokenizer = tokenizer
@@ -257,7 +258,15 @@ class KTO:
             self.model = prepare_model_for_kbit_training(self.model)
             self.model.gradient_checkpointing_enable()
             print("[KTO] Gradient checkpointing enabled")
-            self.peft_model = get_peft_model(self.model, self.peft_config)
+            if init_adapter_path:
+                # Continue one adapter across generations; with no ref_model the
+                # trainer's reference is the adapter-disabled (frozen) base.
+                from peft import PeftModel
+                self.peft_model = PeftModel.from_pretrained(
+                    self.model, init_adapter_path, is_trainable=True)
+                print(f"[KTO] Continuing adapter {init_adapter_path} (reference = frozen base)")
+            else:
+                self.peft_model = get_peft_model(self.model, self.peft_config)
 
         self.peft_model._hf_peft_config_loaded = True
         print(f"[KTO] Adapters attached. Effective target_modules: {self.peft_config.target_modules}")

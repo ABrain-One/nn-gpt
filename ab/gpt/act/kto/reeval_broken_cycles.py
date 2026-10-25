@@ -174,7 +174,6 @@ def run_eval_for_cycle(st: Dict[str, Any], *, dataset: str, transform: str, lr: 
         transform=transform,
         custom_synth_dir=str(st["nneval"]),
         cycle=st["cycle"],
-        use_sequential=not multi_gpu,
         use_all_visible_gpus=multi_gpu,
     )
 
