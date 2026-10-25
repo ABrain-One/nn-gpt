@@ -34,7 +34,7 @@ def _nneval(NNEval, synth_dir: Path, epochs: int, p: Dict, multi_gpu: bool) -> N
         nn_alter_epochs=1, task="img-classification", dataset=p["dataset"], metric="acc",
         lr=p["lr"], batch=p["batch"], dropout=p["dropout"], momentum=p["momentum"],
         transform=p["transform"], custom_synth_dir=str(synth_dir), cycle=0,
-        use_sequential=not multi_gpu, use_all_visible_gpus=multi_gpu,
+        use_all_visible_gpus=multi_gpu,
     )
 
 
