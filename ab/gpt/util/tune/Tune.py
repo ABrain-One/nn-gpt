@@ -43,20 +43,23 @@ from ab.gpt.util.Util import (
     extract_code,
     extract_hyperparam,
     extract_transform,
+    extract_schedule,
     is_nn_model_code,
 )
 from ab.gpt.util.prompt.NNGenPrompt import NNGenPrompt
 from ab.gpt.util.nn.DeltaUtil import apply_delta, validate_delta, repair_code
 from ab.gpt.util.Const import nngpt_upload, DEFAULT_DATASET, DEFAULT_NN_PREFIXES
 import ab.gpt.util.llm.SFTUtil as SFTUtil
-from ab.gpt.brute.trans.TransformEval import run_eval
+from ab.gpt.brute.trans.transform.TransformEval import run_eval
 from ab.gpt.util.prompt.TransformGenPrompt import TransformGenPrompt, load_data_from_folders
 from ab.gpt.act.agents.state import AgentState
 import ab.gpt.util.training_runtime as TrainingRuntime
 
 ds_conf = conf_dir / 'DeepSpeed.json'
-TRANSFORM_OUT_DIR = trans_dir / 'dataset_epoch1'
-TRANSFORM_RES_DIR = trans_dir / 'result_epoch1'
+TRANSFORM_OUT_DIR = trans_dir / 'test'
+TRANSFORM_RES_DIR = trans_dir / 'test'
+
+AUG_CONFIG_DIR = trans_dir / 'augment/config'
 
 
 def _env_on(name) -> bool:
@@ -809,6 +812,111 @@ def trans_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict
     release_memory()
 
 
+def sched_gen(epoch, out_path, chat_bot, conf_keys, prompt_dict_global, test_nn, max_new_tokens, save_llm_output):
+    """
+    Augmentation-Schedule Generation (aug_mode)
+    """
+    import hashlib
+    from ab.gpt.util.prompt.AugmentGenPrompt import load_schedule_pool
+    from ab.gpt.brute.trans.augment.ScheduleValidate import validate_schedule, ScheduleError
+
+    print('Running Schedule Generation...')
+
+    all_data = load_schedule_pool(only_best_accuracy=True)
+    if len(all_data) == 0:
+        print('Warning: No schedule data loaded for generation. Skipping.', flush=True)
+        return
+    known_ids = set(all_data.id_name)
+
+    prompts = []
+    for key in conf_keys:
+        prompt_config = prompt_dict_global[key]
+        prompt = '\n'.join(prompt_config['prompt'])
+        data_sample = all_data.sample(n=min(test_nn, len(all_data)))
+        for _, row in data_sample.iterrows():
+            addon = all_data[all_data.id_name != row['id_name']]
+            if addon.empty:
+                print(f"Warning: Could not find addon data for {row['id_name']}. Skipping prompt.", flush=True)
+                continue
+            addon_row = addon.sample(n=1).iloc[0]
+            para_dict = {}
+            for it in prompt_config['input_list']:
+                para_dict[it['para']] = row[it['value']]
+            for it in prompt_config.get('addon_list', []):
+                para_dict[it['para']] = addon_row[it['value']]
+            prompts.append((prompt.format(**para_dict), row))
+
+    models_dir = synth_dir(out_path)
+    makedirs(models_dir, exist_ok=True)
+    gen_configs = {}
+    stats = {'prompts': len(prompts), 'extracted': 0, 'valid': 0, 'invalid': 0, 'duplicate': 0}
+
+    for idx, (prompt_text, origdf) in tqdm(enumerate(prompts)):
+        model_dir = models_dir / f'B{idx}'
+        canonical, full_out = None, ''
+        current_prompt = prompt_text
+        for attempt in range(2):  # one feedback retry
+            _, _, sched_str, full_out = chat_bot.chat(
+                current_prompt, engineer_prompt=False, max_new_tokens=max_new_tokens)
+            if not sched_str:
+                error_msg = 'No <sched>...</sched> block found in output.'
+            else:
+                stats['extracted'] += 1
+                try:
+                    canonical, _ = validate_schedule(json.loads(sched_str), policy='reject')
+                    break
+                except (json.JSONDecodeError, ScheduleError) as e:
+                    error_msg = str(e)
+            if attempt == 0:
+                print(f'[WARNING] Schedule attempt 1 failed for B{idx}: {error_msg} Retrying with feedback...')
+                current_prompt = (
+                    prompt_text
+                    + f'\n\n[SYSTEM FEEDBACK - previous attempt failed]: {error_msg}'
+                    + '\nPlease correct the schedule and output it again.'
+                )
+
+        makedirs(model_dir, exist_ok=True)
+        if save_llm_output:
+            create_file(model_dir, new_out_file, full_out)
+
+        if canonical is None:
+            stats['invalid'] += 1
+            print(f'[ERROR] No valid schedule generated for B{idx}')
+            continue
+
+        config_id = hashlib.md5(json.dumps(canonical).encode()).hexdigest()[:12]
+        if config_id in known_ids or any(v['config_id'] == config_id for v in gen_configs.values()):
+            stats['duplicate'] += 1
+            print(f'[INFO] Schedule B{idx} duplicates {config_id}, skipping evaluation')
+            continue
+
+        
+        stats['valid'] += 1
+        print(f'Generated schedule {config_id}:\n{canonical}\n----')
+        create_file(model_dir, 'schedule.json',
+                    json.dumps({'config_id': config_id, 'augment_configs': canonical,
+                                'source': 'llm_gen'}, indent=2))
+        origdf.to_pickle(model_dir / 'dataframe.df')
+        # Config keys must be globally unique
+        gen_configs[str(epoch * 1000 + idx)] = {
+            'config_id': config_id, 'augment_configs': canonical, 'source': 'llm_gen'
+        }
+        
+    if gen_configs:
+        AUG_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        cfg_file = AUG_CONFIG_DIR / f'gen_epoch_A{epoch}.json'
+        with open(cfg_file, 'w') as f:
+            json.dump(gen_configs, f, indent=2)
+        print(f'[INFO] Wrote {len(gen_configs)} generated schedules to {cfg_file}')
+
+    with open(models_dir / 'gen_stats.json', 'w') as f:
+        json.dump(stats, f, indent=2)
+    print(f'[GEN STATS] epoch {epoch}: {stats}')
+
+    print('[DEBUG] Release memory.')
+    release_memory()
+
+
 # ============================================================
 # SINGLE SOURCE OF TRUTH: STEP WRAPPERS
 # These are what the AGENTS call (NOT reimplementing anything)
@@ -821,6 +929,17 @@ def _has_generated_nn_code(out_path) -> bool:
         return False
     for bdir in glob.glob(str(models_dir / "B*")):
         if isfile(os.path.join(bdir, new_nn_file)):
+            return True
+    return False
+
+
+def _has_generated_schedule(out_path) -> bool:
+    """Returns True if at least one directory B*/ contains schedule.json."""
+    models_dir = synth_dir(out_path)
+    if not exists(models_dir):
+        return False
+    for bdir in glob.glob(str(models_dir / "B*")):
+        if isfile(os.path.join(bdir, 'schedule.json')):
             return True
     return False
 
@@ -883,6 +1002,17 @@ def generate_step(state: AgentState) -> dict:
                 state["save_llm_output"],
                 state.get("nn_name_prefix"),
             )
+        elif state.get("aug_mode", False):
+            sched_gen(
+            epoch,
+            out_path,
+            state["chat_bot"],
+            state["conf_keys"],
+            state["prompt_dict"],
+            state["test_nn"],
+            state["max_new_tokens"],
+            state["save_llm_output"],
+        )
         else:
             nn_gen(
                 epoch,
@@ -938,6 +1068,7 @@ def _evaluate_epoch(
     trans_mode,
     classification_mode=False,
     custom_synth_dir=None,
+    aug_mode=False,
 ):
     """
     Single source of truth for one evaluation epoch.
@@ -967,11 +1098,22 @@ def _evaluate_epoch(
             results[f"epoch_{epoch + 1}_accuracy"] = cls_result["accuracy"]
         elif trans_mode:
             try:
-                run_eval(epoch_num=epoch, FT_MODE=True)
+                run_eval(ft_mode=True, epoch_num=epoch )
                 print('[DEBUG] Release_memory.')
             except Exception as e:
                 print(f"Error running evaluation main(): {e}", flush=True)
             print('Folder data reload will occur next epoch.')
+        elif aug_mode:
+            cfg_name = f'gen_epoch_A{epoch}.json'
+            if (AUG_CONFIG_DIR / cfg_name).exists():
+                from ab.gpt.brute.trans.augment.AugEval import run_eval as aug_run_eval
+                try:
+                    aug_run_eval(config_file=cfg_name)
+                except Exception as e:
+                    print(f'Error running schedule evaluation: {e}', flush=True)
+                print('[DEBUG] Release_memory.')
+                release_memory()
+                print('Schedule pool reload will occur next epoch.')
         else:
             eval_cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES", "").strip()
             if eval_cuda_visible_devices:
@@ -1114,7 +1256,8 @@ def evaluate_step(state: AgentState) -> dict:
         state["nn_train_epochs"],
         state.get("trans_mode", False),
         state.get("classification_mode", False),
-    )
+        aug_mode=state.get("aug_mode", False),
+    ) 
 
     updates = {}
 
@@ -1164,7 +1307,7 @@ def _finetune_epoch(
     epoch, out_path, model, tokenizer, model_loader, lora_tuner,
     context_length, use_unsloth, unsloth_max_input_length,
     train_config_path, only_best_accuracy, max_prompts,
-    max_new_tokens, base_model_name, trans_mode,
+    max_new_tokens, base_model_name, trans_mode, 
     temperature=1.0, top_k=50, top_p=0.9,
     resume_trainer_checkpoint=None,
     use_backbone=False,
@@ -1174,6 +1317,7 @@ def _finetune_epoch(
     budget_tokens=None,
     suppress_thinking=False,
     reset_previous_results=True,
+    aug_mode=False,
 ):
     """
     Single source of truth for one finetune epoch.
@@ -1187,6 +1331,13 @@ def _finetune_epoch(
             train_config_path,
             TRANSFORM_OUT_DIR,
             TRANSFORM_RES_DIR,
+        )
+    elif aug_mode:
+        from ab.gpt.util.prompt.AugmentGenPrompt import ScheduleGenPrompt
+        data_processor = ScheduleGenPrompt(
+            context_length if context_length else model_loader.get_max_length(),
+            tokenizer,
+            train_config_path,
         )
     elif use_backbone:
         from ab.gpt.util.prompt.SFTGenPrompt import SFTGenPrompt
@@ -1261,6 +1412,7 @@ def finetune_step(state: AgentState) -> dict:
         state.get("sft_dataset"),
         budget_tokens=getattr(_prev_bot, "budget_tokens", None),
         suppress_thinking=getattr(_prev_bot, "suppress_thinking", False),
+        aug_mode=state.get("aug_mode", False)
     )
 
     if vllm_engine is not None:
@@ -1329,6 +1481,7 @@ def tune(
     test_metric=None,
     onnx_run=False,
     trans_mode=False,
+    aug_mode=False,
     prompt_batch=1,
     use_agents=False,
     use_predictor=False,
@@ -1541,6 +1694,7 @@ def tune(
         trainer_resume_checkpoint=trainer_resume_checkpoint,
         enable_merge=enable_merge,
         classification_mode=classification_mode,
+        aug_mode=aug_mode,
     )
 
     # Statistics files from a previous run are cleared by the caller
@@ -1569,6 +1723,8 @@ def tune(
             if trans_mode:
                 trans_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs,
                           prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix)
+            elif aug_mode:
+                sched_gen(epoch, out_path, chat_bot, conf_keys, prompt_dict, test_nn, max_new_tokens, save_llm_output)
             else:
                 nn_gen(epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix, unsloth_max_input_length, prompt_batch, use_backbone=use_backbone, sft_nn_prefixes=sft_nn_prefixes, sft_dataset=sft_dataset)
 
@@ -1582,6 +1738,7 @@ def tune(
                 nn_train_epochs,
                 trans_mode,
                 classification_mode,
+                aug_mode=aug_mode,
                 custom_synth_dir=synth_dir(out_path),
             )
 
@@ -1595,7 +1752,7 @@ def tune(
                 epoch, out_path, model, tokenizer, model_loader, lora_tuner,
                 context_length, use_unsloth, unsloth_max_input_length,
                 train_config_path, only_best_accuracy, max_prompts,
-                max_new_tokens, base_model_name, trans_mode,
+                max_new_tokens, base_model_name, trans_mode, 
                 temperature, top_k, top_p,
                 trainer_resume_checkpoint,
                 use_backbone=use_backbone,
@@ -1604,6 +1761,7 @@ def tune(
                 data_dir=data_dir,
                 budget_tokens=budget_tokens,
                 suppress_thinking=suppress_thinking,
+                aug_mode=aug_mode,
             )
             trainer_resume_checkpoint = None
             if vllm_engine is not None:
@@ -1640,6 +1798,8 @@ def tune(
         if trans_mode:
             trans_gen(final_epoch, out_path, chat_bot, conf_keys, nn_train_epochs,
                       prompt_dict, test_nn, max_new_tokens, save_llm_output, nn_name_prefix)
+        elif aug_mode:
+            sched_gen(final_epoch, out_path, chat_bot, conf_keys, prompt_dict, test_nn, max_new_tokens, save_llm_output)
         else:
             nn_gen(final_epoch, out_path, chat_bot, conf_keys, nn_train_epochs, prompt_dict,
                    test_nn, max_new_tokens, save_llm_output, nn_name_prefix,
@@ -1656,6 +1816,7 @@ def tune(
             trans_mode,
             classification_mode,
             custom_synth_dir=synth_dir(out_path),
+            aug_mode=aug_mode,
         )
 
     if vllm_engine is not None:

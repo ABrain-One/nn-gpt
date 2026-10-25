@@ -1,0 +1,602 @@
+{
+  "1": {
+    "config_id": "c07b0e5b01ad",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        0.1
+      ],
+      [
+        "cutout",
+        0.35,
+        0.9
+      ]
+    ]
+  },
+  "2": {
+    "config_id": "b9821113c137",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        0.666667
+      ],
+      [
+        "cutout",
+        0.35,
+        0.333333
+      ]
+    ]
+  },
+  "3": {
+    "config_id": "12005a62a086",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        0.25
+      ],
+      [
+        "cutout",
+        0.35,
+        0.75
+      ]
+    ]
+  },
+  "4": {
+    "config_id": "d5e2751790c5",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        0.75
+      ],
+      [
+        "cutout",
+        0.35,
+        0.25
+      ]
+    ]
+  },
+  "5": {
+    "config_id": "d9675b532399",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        0.9
+      ],
+      [
+        "cutout",
+        0.35,
+        0.1
+      ]
+    ]
+  },
+  "6": {
+    "config_id": "928abce6e93b",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        0.3
+      ],
+      [
+        "cutout",
+        0.35,
+        0.7
+      ]
+    ]
+  },
+  "7": {
+    "config_id": "633ec34fbb9b",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        0.333333
+      ],
+      [
+        "cutout",
+        0.35,
+        0.666667
+      ]
+    ]
+  },
+  "8": {
+    "config_id": "616a588a537a",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        0.6
+      ],
+      [
+        "cutout",
+        0.35,
+        0.4
+      ]
+    ]
+  },
+  "9": {
+    "config_id": "9a2e85b5abc6",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        0.8
+      ],
+      [
+        "cutout",
+        0.35,
+        0.2
+      ]
+    ]
+  },
+  "10": {
+    "config_id": "0d43c128bc4d",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        0.5
+      ],
+      [
+        "cutout",
+        0.35,
+        0.5
+      ]
+    ]
+  },
+  "11": {
+    "config_id": "9982a0010ba4",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        0.7
+      ],
+      [
+        "cutout",
+        0.35,
+        0.3
+      ]
+    ]
+  },
+  "12": {
+    "config_id": "5009faf238c2",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        0.2
+      ],
+      [
+        "cutout",
+        0.35,
+        0.8
+      ]
+    ]
+  },
+  "13": {
+    "config_id": "1194a9e51c49",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        0.4
+      ],
+      [
+        "cutout",
+        0.35,
+        0.6
+      ]
+    ]
+  },
+  "14": {
+    "config_id": "6db841a63382",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.7
+      ],
+      [
+        "cutout",
+        0.2,
+        0.3
+      ]
+    ]
+  },
+  "15": {
+    "config_id": "4e6956619ace",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.1
+      ],
+      [
+        "cutout",
+        0.2,
+        0.9
+      ]
+    ]
+  },
+  "16": {
+    "config_id": "643002a54a65",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.5
+      ],
+      [
+        "cutout",
+        0.2,
+        0.5
+      ]
+    ]
+  },
+  "17": {
+    "config_id": "3ebc93682bbe",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.9
+      ],
+      [
+        "cutout",
+        0.2,
+        0.1
+      ]
+    ]
+  },
+  "18": {
+    "config_id": "1a15b7e1ec80",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.6
+      ],
+      [
+        "cutout",
+        0.2,
+        0.4
+      ]
+    ]
+  },
+  "19": {
+    "config_id": "22974c10fbcb",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.8
+      ],
+      [
+        "cutout",
+        0.2,
+        0.2
+      ]
+    ]
+  },
+  "20": {
+    "config_id": "c484b2ff4d92",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.25
+      ],
+      [
+        "cutout",
+        0.2,
+        0.75
+      ]
+    ]
+  },
+  "21": {
+    "config_id": "b0c6c536af4f",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.4
+      ],
+      [
+        "cutout",
+        0.2,
+        0.6
+      ]
+    ]
+  },
+  "22": {
+    "config_id": "9d4df3056bcb",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.3
+      ],
+      [
+        "cutout",
+        0.2,
+        0.7
+      ]
+    ]
+  },
+  "23": {
+    "config_id": "607898c699fb",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.2
+      ],
+      [
+        "cutout",
+        0.2,
+        0.8
+      ]
+    ]
+  },
+  "24": {
+    "config_id": "17cba4a9e620",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.666667
+      ],
+      [
+        "cutout",
+        0.2,
+        0.333333
+      ]
+    ]
+  },
+  "25": {
+    "config_id": "9949b09de4f4",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.75
+      ],
+      [
+        "cutout",
+        0.2,
+        0.25
+      ]
+    ]
+  },
+  "26": {
+    "config_id": "b2101b5b1c52",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.333333
+      ],
+      [
+        "cutout",
+        0.2,
+        0.666667
+      ]
+    ]
+  },
+  "27": {
+    "config_id": "71589dd2a0d9",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.6,
+        0.5
+      ],
+      [
+        "cutout",
+        0.2,
+        0.5
+      ]
+    ]
+  },
+  "28": {
+    "config_id": "09075d079056",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.6,
+        0.7
+      ],
+      [
+        "cutout",
+        0.2,
+        0.3
+      ]
+    ]
+  },
+  "29": {
+    "config_id": "85c61c5ba40d",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.6,
+        0.8
+      ],
+      [
+        "cutout",
+        0.2,
+        0.2
+      ]
+    ]
+  },
+  "30": {
+    "config_id": "d5ae42776d3f",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.6,
+        0.2
+      ],
+      [
+        "cutout",
+        0.2,
+        0.8
+      ]
+    ]
+  },
+  "31": {
+    "config_id": "4bdbe04b3bfd",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.6,
+        0.9
+      ],
+      [
+        "cutout",
+        0.2,
+        0.1
+      ]
+    ]
+  },
+  "32": {
+    "config_id": "1fef8076c8de",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.6,
+        0.3
+      ],
+      [
+        "cutout",
+        0.2,
+        0.7
+      ]
+    ]
+  },
+  "33": {
+    "config_id": "ca1b929296f1",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.6,
+        0.25
+      ],
+      [
+        "cutout",
+        0.2,
+        0.75
+      ]
+    ]
+  },
+  "34": {
+    "config_id": "3d77488ea5bf",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.6,
+        0.333333
+      ],
+      [
+        "cutout",
+        0.2,
+        0.666667
+      ]
+    ]
+  },
+  "35": {
+    "config_id": "818140c9a064",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.6,
+        0.666667
+      ],
+      [
+        "cutout",
+        0.2,
+        0.333333
+      ]
+    ]
+  },
+  "36": {
+    "config_id": "d4efbacafa39",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.6,
+        0.4
+      ],
+      [
+        "cutout",
+        0.2,
+        0.6
+      ]
+    ]
+  },
+  "37": {
+    "config_id": "6a590ef9b903",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.6,
+        0.1
+      ],
+      [
+        "cutout",
+        0.2,
+        0.9
+      ]
+    ]
+  },
+  "38": {
+    "config_id": "b06c3d57f74b",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.6,
+        0.6
+      ],
+      [
+        "cutout",
+        0.2,
+        0.4
+      ]
+    ]
+  },
+  "39": {
+    "config_id": "ae6a3c7dc5d3",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.6,
+        0.75
+      ],
+      [
+        "cutout",
+        0.2,
+        0.25
+      ]
+    ]
+  },
+  "40": {
+    "config_id": "5660f330af7f",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        0.1
+      ],
+      [
+        "cutout",
+        0.2,
+        0.9
+      ]
+    ]
+  }
+}

@@ -1,6 +1,7 @@
 import json
 import os
 import glob
+import re
 import pandas as pd
 from pandas import DataFrame
 from transformers import PreTrainedTokenizerBase
@@ -9,6 +10,10 @@ from overrides import override
 from ab.gpt.util.prompt.Prompt import Prompt
 from tqdm import tqdm
 from ab.gpt.util.Const import trans_dir 
+
+
+# e{num_epochs}_{cand_name}_seed{seed}_{split_tag}
+RES_NAME_RE = re.compile(r'^e(?P<epochs>\d+)_(?P<name>.+)_seed(?P<seed>\d+)_(?P<split>.+)$')
 
 
 def shuffle_data(df: DataFrame):
@@ -24,28 +29,32 @@ def load_data_from_folders(out_gen_dir: str, result_gen_dir: str, only_best_accu
     json_files = glob.glob(os.path.join(result_gen_dir, "*.json"))
     
     for res_file in tqdm(json_files, desc="Reading data files"):
-        base_name = os.path.basename(res_file).replace('.json', '')
-        code_file = os.path.join(out_gen_dir, f"{base_name}.py") 
-        
+        stem = os.path.splitext(os.path.basename(res_file))[0]
+        m = RES_NAME_RE.match(stem)
+        if m is None:
+            print(f"Warning: '{stem}' does not match e<epochs>_<name>_seed<seed>_<split>. Skipping.", flush=True)
+            continue
+
+        base_name = m.group('name')                       # = cand['name'] = the .py file name
+        code_file = os.path.join(out_gen_dir, f"{base_name}.py")
+
         if os.path.exists(code_file):
             try:
                 with open(res_file, 'r') as f:
                     res_data = json.load(f)
-                
                 with open(code_file, 'r') as f:
                     code_content = f.read()
-                
-                # Combine data
+
                 res_data['transform_code'] = code_content
-                # For filtering duplicates
-                res_data['id_name'] = base_name  
-                
-                # Add default prm if missing
-                res_data.setdefault('prm', '{}') 
-                
+                res_data['id_name'] = base_name           # the transform, shared by all seeds
+                res_data['run_name'] = stem               # the full result name,
+                res_data.setdefault('num_epochs', int(m.group('epochs')))
+                res_data.setdefault('seed', int(m.group('seed')))
+                res_data.setdefault('split_tag', m.group('split'))
+                res_data.setdefault('prm', '{}')
                 all_data.append(res_data)
             except Exception as e:
-                print(f"Warning: Could not load data for {base_name}. Error: {e}", flush=True)
+                print(f"Warning: Could not load data for {stem}. Error: {e}", flush=True)
         else:
             print(f"Warning: Missing code file {code_file} for result {res_file}", flush=True)
 

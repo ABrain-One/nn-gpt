@@ -1,0 +1,354 @@
+{
+  "3000": {
+    "config_id": "14aadf89199a",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.6,
+        0.2
+      ],
+      [
+        "cutout",
+        0.2,
+        0.8
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "3001": {
+    "config_id": "05e68e9801dd",
+    "augment_configs": [
+      [
+        "cutmix",
+        0.4,
+        0.4
+      ],
+      [
+        "cutout",
+        0.5,
+        0.6
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "3002": {
+    "config_id": "81f2ec3bde70",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.6,
+        0.6
+      ],
+      [
+        "cutout",
+        0.4,
+        0.4
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "3003": {
+    "config_id": "8de3a907cdc2",
+    "augment_configs": [
+      [
+        "mixup",
+        0.5,
+        0.6
+      ],
+      [
+        "gridmask",
+        0.5,
+        0.4
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "3004": {
+    "config_id": "227b2ae13f9d",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.4
+      ],
+      [
+        "mixup",
+        0.5,
+        0.3
+      ],
+      [
+        "cutmix",
+        0.5,
+        0.2
+      ],
+      [
+        "cutout",
+        0.3,
+        0.1
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "3005": {
+    "config_id": "be2c476fd82c",
+    "augment_configs": [
+      [
+        "cutmix",
+        0.5,
+        0.2
+      ],
+      [
+        "gridmask",
+        0.5,
+        0.3
+      ],
+      [
+        "mixup",
+        0.5,
+        0.2
+      ],
+      [
+        "cutout",
+        0.5,
+        0.3
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "3006": {
+    "config_id": "dd08a00fb620",
+    "augment_configs": [
+      [
+        "mixup",
+        0.2,
+        0.1
+      ],
+      [
+        "cutmix",
+        0.5,
+        0.2
+      ],
+      [
+        "cutout",
+        0.35,
+        0.3
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.4
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "3008": {
+    "config_id": "b3794780a1cb",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.5
+      ],
+      [
+        "cutout",
+        0.5,
+        0.5
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "3010": {
+    "config_id": "2c51754720d3",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        0.5
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.3
+      ],
+      [
+        "cutout",
+        0.35,
+        0.2
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "3011": {
+    "config_id": "6682d0d33bac",
+    "augment_configs": [
+      [
+        "mixup",
+        0.5,
+        0.1
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.15
+      ],
+      [
+        "cutout",
+        0.1,
+        0.25
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.5
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "3012": {
+    "config_id": "024a2f7cd776",
+    "augment_configs": [
+      [
+        "mixup",
+        0.2,
+        0.1
+      ],
+      [
+        "cutmix",
+        1.0,
+        0.2
+      ],
+      [
+        "cutout",
+        0.1,
+        0.3
+      ],
+      [
+        "resizemix",
+        0.6,
+        0.4
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "3013": {
+    "config_id": "51dd4ecc8b63",
+    "augment_configs": [
+      [
+        "erasing",
+        0.4,
+        0.3
+      ],
+      [
+        "mixup",
+        0.8,
+        0.3
+      ],
+      [
+        "cutmix",
+        0.5,
+        0.4
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "3014": {
+    "config_id": "d109070d0307",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        0.666667
+      ],
+      [
+        "cutout",
+        0.35,
+        0.333333
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "3015": {
+    "config_id": "d1cfce60adde",
+    "augment_configs": [
+      [
+        "mixup",
+        0.2,
+        0.5
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.25
+      ],
+      [
+        "cutout",
+        0.35,
+        0.15
+      ],
+      [
+        "resizemix",
+        0.6,
+        0.1
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "3017": {
+    "config_id": "c52a7a96e7c3",
+    "augment_configs": [
+      [
+        "mixup",
+        0.5,
+        0.5
+      ],
+      [
+        "resizemix",
+        0.5,
+        0.5
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "3018": {
+    "config_id": "b1244cf38011",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.6,
+        0.1
+      ],
+      [
+        "cutout",
+        0.35,
+        0.9
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "3019": {
+    "config_id": "0183433767ce",
+    "augment_configs": [
+      [
+        "mixup",
+        1.0,
+        0.4
+      ],
+      [
+        "cutmix",
+        0.5,
+        0.3
+      ],
+      [
+        "cutout",
+        0.35,
+        0.2
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.1
+      ]
+    ],
+    "source": "llm_gen"
+  }
+}

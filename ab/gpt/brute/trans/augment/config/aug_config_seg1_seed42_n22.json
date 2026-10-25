@@ -1,0 +1,222 @@
+{
+  "1": {
+    "config_id": "c39cf533bd4a",
+    "augment_configs": [
+      [
+        "none",
+        null,
+        1.0
+      ]
+    ]
+  },
+  "2": {
+    "config_id": "a4acfc89c32c",
+    "augment_configs": [
+      [
+        "mixup",
+        0.5,
+        1.0
+      ]
+    ]
+  },
+  "3": {
+    "config_id": "102fbe9b0353",
+    "augment_configs": [
+      [
+        "mixup",
+        1.0,
+        1.0
+      ]
+    ]
+  },
+  "4": {
+    "config_id": "f57728ec6d2f",
+    "augment_configs": [
+      [
+        "mixup",
+        0.2,
+        1.0
+      ]
+    ]
+  },
+  "5": {
+    "config_id": "16b4adc1be15",
+    "augment_configs": [
+      [
+        "erasing",
+        0.2,
+        1.0
+      ]
+    ]
+  },
+  "6": {
+    "config_id": "32a10cae2f7d",
+    "augment_configs": [
+      [
+        "erasing",
+        0.1,
+        1.0
+      ]
+    ]
+  },
+  "7": {
+    "config_id": "721ca0c21b77",
+    "augment_configs": [
+      [
+        "erasing",
+        0.35,
+        1.0
+      ]
+    ]
+  },
+  "8": {
+    "config_id": "7cf22688dfa7",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.4,
+        1.0
+      ]
+    ]
+  },
+  "9": {
+    "config_id": "02bfd3f8c30d",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        1.0
+      ]
+    ]
+  },
+  "10": {
+    "config_id": "bad49fd901f1",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.6,
+        1.0
+      ]
+    ]
+  },
+  "11": {
+    "config_id": "72c04a066aa2",
+    "augment_configs": [
+      [
+        "cutout",
+        0.2,
+        1.0
+      ]
+    ]
+  },
+  "12": {
+    "config_id": "4bc678dc0308",
+    "augment_configs": [
+      [
+        "cutout",
+        0.35,
+        1.0
+      ]
+    ]
+  },
+  "13": {
+    "config_id": "04ccedc324e3",
+    "augment_configs": [
+      [
+        "cutout",
+        0.1,
+        1.0
+      ]
+    ]
+  },
+  "14": {
+    "config_id": "1206f4157ff9",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.4,
+        1.0
+      ]
+    ]
+  },
+  "15": {
+    "config_id": "1fb12cccb40f",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.6,
+        1.0
+      ]
+    ]
+  },
+  "16": {
+    "config_id": "19b0c4230257",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.2,
+        1.0
+      ]
+    ]
+  },
+  "17": {
+    "config_id": "95ab68e942de",
+    "augment_configs": [
+      [
+        "cutmix",
+        1.0,
+        1.0
+      ]
+    ]
+  },
+  "18": {
+    "config_id": "2c77238a7076",
+    "augment_configs": [
+      [
+        "cutmix",
+        2.0,
+        1.0
+      ]
+    ]
+  },
+  "19": {
+    "config_id": "c185c6a68fec",
+    "augment_configs": [
+      [
+        "cutmix",
+        0.5,
+        1.0
+      ]
+    ]
+  },
+  "20": {
+    "config_id": "dab5871e10a4",
+    "augment_configs": [
+      [
+        "hide_and_seek",
+        0.25,
+        1.0
+      ]
+    ]
+  },
+  "21": {
+    "config_id": "a35f464661b8",
+    "augment_configs": [
+      [
+        "hide_and_seek",
+        0.1,
+        1.0
+      ]
+    ]
+  },
+  "22": {
+    "config_id": "5dc5e4ba71d2",
+    "augment_configs": [
+      [
+        "hide_and_seek",
+        0.4,
+        1.0
+      ]
+    ]
+  }
+}

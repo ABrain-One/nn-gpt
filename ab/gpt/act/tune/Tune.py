@@ -12,14 +12,13 @@ from ab.gpt.util.Const import nngpt_dir, NN_TRAIN_EPOCHS, DEFAULT_DATASET, DEFAU
 from ab.nn.util.Const import out_dir
 
 import json
-from datetime import datetime
 from ab.gpt.util.Const import conf_llm_dir
 
 RUN_META = out_dir / 'nngpt' / 'run_config.json'
 
 
 def persist_llm_conf(llm_conf, enable_merge=False, params=None,
-                     nn_gen_conf=None, nn_gen_conf_id=None, llm_tune_conf=None):
+                     nn_gen_conf=None, nn_gen_conf_id=None):
     """Save run configuration including llm_conf, base_model_name, and enable_merge.
 
     ``params`` carries the fine-tuning settings so the plot can state which model
@@ -29,16 +28,6 @@ def persist_llm_conf(llm_conf, enable_merge=False, params=None,
     ``nn_gen_conf`` names the generation prompt config, which is where the task
     and the dataset are recorded. They are copied in under the keys the dataset
     itself uses, so the figure can be matched against the database.
-
-    The two prompt configs are recorded by name as well: ``llm_tune_conf`` is
-    what the model was fine-tuned on and ``nn_gen_conf`` is what it was asked
-    to generate from. Two runs of identical hyper-parameters on different
-    prompts produce different curves, and nothing else distinguishes them.
-
-    ``started_at`` is stamped here, at the one moment that is the start of the
-    run for certain. The epoch rows carry the time each epoch finished, so the
-    two together are what the figure states the run cost; without the stamp the
-    first epoch -- generation, training and evaluation -- is uncounted.
     """
 
     RUN_META.parent.mkdir(parents=True, exist_ok=True)
@@ -58,16 +47,10 @@ def persist_llm_conf(llm_conf, enable_merge=False, params=None,
     # Save llm_conf, base_model_name, and enable_merge
     run_config = {
         "llm_conf": llm_conf,
-        "enable_merge": enable_merge,
-        "started_at": datetime.now().isoformat(),
+        "enable_merge": enable_merge
     }
     if base_model_name:
         run_config["base_model_name"] = base_model_name
-    prompts = {"train": llm_tune_conf, "test": nn_gen_conf,
-               "test_id": nn_gen_conf_id}
-    prompts = {k: v for k, v in prompts.items() if v}
-    if prompts:
-        run_config["prompts"] = prompts
     if params:
         run_config["training"] = {k: v for k, v in params.items() if v is not None}
     if nn_gen_conf:
@@ -111,19 +94,12 @@ LR_SCHEDULER = 'cosine'  # Learning rate scheduler
 PER_DEVICE_TRAIN_BATCH_SIZE = 1
 GRADIENT_ACCUMULATION_STEPS = 8  # Increased for better stability
 WARMUP_STEPS = 5  # Warmup as ratio of total steps
-
-
-def _warmup_steps_arg(value):
-    """--warmup_steps: whole numbers stay int, because transformers 4.x TrainingArguments rejects a float
-    warmup_steps ("must be of type int"); other values stay float (a ratio for transformers 5.x)."""
-    number = float(value)
-    return int(number) if number.is_integer() else number
 TEST_NN = 10
 SFT_MAX_LENGTH = 4096  # Packing/truncation budget for supervised fine-tuning
 LOGGING_STEPS = 96  # Less frequent logging
 OPTIMIZER = 'paged_adamw_8bit'
-LLM_TUNE_CONF = 'NN_gen.json'  # 'Transform_gen.json' for transform fine-tune
-NN_GEN_CONF = 'NN_gen.json'  # 'Transform_gen.json'
+LLM_TUNE_CONF = 'NN_gen.json'  # 'Transform_gen.json' and 'Augment.json' for transform and augment fine-tune
+NN_GEN_CONF = 'NN_gen.json'  # 'Transform_gen.json' and 'Augment.json' for transform and augment fine-tune
 NN_GEN_CONF_ID = 'improve_classification_only'
 LLM_CONF = 'ds_coder_7b_olympic.json'
 MAX_PROMPTS = 4 * 1024
@@ -138,10 +114,11 @@ TEST_METRIC = None  # 'bleu' or other metric for evaluation
 ONNX_RUN = False
 USE_UNSLOTH = False
 TRANS_MODE = False  # only transform fine-tuning
+AUG_MODE = False  # only augment fine-tuning
 PROMPT_BATCH = 2
 
 # --- LangGraph Agent Defaults ---
-USE_AGENTS = True
+USE_AGENTS = False
 USE_PREDICTOR = False
 
 # --- Run-mode defaults ---
@@ -251,7 +228,7 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
          # Pipeline-specific overrides (for backward compatibility with iterative_finetune.py)
          evaluation_strategy=None, eval_steps=None, save_strategy=None, save_steps=None,
          save_total_limit=None, load_best_model_at_end=LOAD_BEST_MODEL_AT_END, metric_for_best_model=None, weight_decay=None,
-         per_device_eval_batch_size=None, onnx_run=ONNX_RUN, use_unsloth=USE_UNSLOTH, trans_mode=TRANS_MODE,
+         per_device_eval_batch_size=None, onnx_run=ONNX_RUN, use_unsloth=USE_UNSLOTH, trans_mode=TRANS_MODE, aug_mode=AUG_MODE,
          prompt_batch=PROMPT_BATCH, enable_merge=ENABLE_MERGE,
          # --- Pipeline Hyperparameters ---
          run_iterative_pipeline=RUN_ITERATIVE_PIPELINE, cycles=CYCLES, models_per_cycle=MODELS_PER_CYCLE,
@@ -298,9 +275,6 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
         'context_length': context_length,
         'sft_max_length': sft_max_length,
         'max_new_tokens': max_new_tokens,
-        'temperature': temperature,
-        'top_k': top_k,
-        'top_p': top_p,
         'test_nn': test_nn,
         'load_in_4bit': load_in_4bit,
         'unsloth': use_unsloth,
@@ -308,8 +282,7 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
     }
     persist_llm_conf(llm_conf, enable_merge, params=run_params,
                      nn_gen_conf=nn_gen_conf or NN_GEN_CONF,
-                     nn_gen_conf_id=nn_gen_conf_id,
-                     llm_tune_conf=llm_tune_conf)
+                     nn_gen_conf_id=nn_gen_conf_id)
 
     if run_iterative_pipeline:
         print("--- Initiating Iterative Fine-Tuning Pipeline ---")
@@ -433,7 +406,7 @@ llm_conf={llm_conf}, test_nn={test_nn}, nn_train_epochs={nn_train_epochs}, peft=
 per_device_train_batch_size={per_device_train_batch_size}, gradient_accumulation_steps={gradient_accumulation_steps}, warmup_steps={warmup_steps},
 logging_steps={logging_steps}, optimizer={optimizer}, max_prompts={max_prompts}, save_llm_output={save_llm_output}, max_new_tokens={max_new_tokens},
 use_deepspeed={use_deepspeed}, nn_name_prefix={nn_name_prefix}, temperature={temperature}, top_k={top_k}, top_p={top_p}, onnx_run={onnx_run},
-use_unsloth={use_unsloth}, trans_mode={trans_mode}, prompt_batch={prompt_batch}, use_agents={use_agents}, use_predictor={use_predictor},
+use_unsloth={use_unsloth}, trans_mode={trans_mode}, aug_mode={aug_mode}, prompt_batch={prompt_batch}, use_agents={use_agents}, use_predictor={use_predictor},
 use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={classification_mode}, pin_seeds={pin_seeds}''')
 
     test_prm = {
@@ -595,8 +568,7 @@ use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={c
             # run_config.json was written into this directory before the reset
             persist_llm_conf(llm_conf, enable_merge, params=run_params,
                              nn_gen_conf=nn_gen_conf or NN_GEN_CONF,
-                             nn_gen_conf_id=nn_gen_conf_id,
-                             llm_tune_conf=llm_tune_conf)
+                             nn_gen_conf_id=nn_gen_conf_id)
         except Exception as exc:
             print(f"[RUN RESET] Skipped: {exc}")
     elif resuming:
@@ -621,6 +593,7 @@ use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={c
             test_metric=test_metric,
             onnx_run=onnx_run,
             trans_mode=trans_mode,
+            aug_mode=aug_mode,
             prompt_batch=prompt_batch,
             use_agents=use_agents,
             use_predictor=use_predictor,
@@ -803,7 +776,7 @@ if __name__ == '__main__':
                         help=f'Per device train batch size (default: {PER_DEVICE_TRAIN_BATCH_SIZE}).')
     parser.add_argument('--gradient_accumulation_steps', type=int, default=GRADIENT_ACCUMULATION_STEPS,
                         help=f'Gradient accumulation steps (default: {GRADIENT_ACCUMULATION_STEPS}).')
-    parser.add_argument('--warmup_steps', type=_warmup_steps_arg, default=WARMUP_STEPS,
+    parser.add_argument('--warmup_steps', type=float, default=WARMUP_STEPS,
                         help=f'Warmup ratio (default: {WARMUP_STEPS}).')
     parser.add_argument('--logging_steps', type=int, default=LOGGING_STEPS,
                         help=f'Logging steps (default: {LOGGING_STEPS}).')
@@ -849,10 +822,13 @@ if __name__ == '__main__':
                         help="[Pipeline] Load best model at end (default: False).")
     parser.add_argument('--metric_for_best_model', type=str, default=None,
                         help="[Pipeline] Metric for best model (default: None).")
+
     parser.add_argument('--weight_decay', type=float, default=None,
                         help="[Pipeline] Weight decay (default: None).")
     parser.add_argument('--trans_mode', action='store_true',
                         help=f"Transform mode only (default: {TRANS_MODE}).")
+    parser.add_argument('--aug_mode', action='store_true',
+                        help=f"Augment mode only (default: {AUG_MODE}).")
     parser.add_argument('--onnx_run', action='store_true',
                         help=f"ONNX format (default: {ONNX_RUN}).")
     parser.add_argument('--use_unsloth', action='store_true',
@@ -945,3 +921,4 @@ if __name__ == '__main__':
             k.strip() for k in kwargs['nn_gen_conf_id'].split(',') if k.strip())
 
     main(**kwargs)
+

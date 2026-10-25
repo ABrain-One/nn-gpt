@@ -1,0 +1,279 @@
+{
+  "6002": {
+    "config_id": "64e49da4158b",
+    "augment_configs": [
+      [
+        "none",
+        null,
+        0.1
+      ],
+      [
+        "gridmask",
+        0.5,
+        0.2
+      ],
+      [
+        "cutmix",
+        0.5,
+        0.2
+      ],
+      [
+        "resizemix",
+        0.3,
+        0.5
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "6003": {
+    "config_id": "cf88c5ef6664",
+    "augment_configs": [
+      [
+        "mixup",
+        0.5,
+        0.1
+      ],
+      [
+        "cutmix",
+        0.5,
+        0.15
+      ],
+      [
+        "cutout",
+        0.35,
+        0.25
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.5
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "6004": {
+    "config_id": "ebc6301a84c8",
+    "augment_configs": [
+      [
+        "mixup",
+        0.2,
+        0.333333
+      ],
+      [
+        "cutmix",
+        0.3,
+        0.333333
+      ],
+      [
+        "gridmask",
+        0.5,
+        0.333334
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "6005": {
+    "config_id": "a60de84a6f65",
+    "augment_configs": [
+      [
+        "mixup",
+        0.2,
+        0.25
+      ],
+      [
+        "cutmix",
+        1.0,
+        0.25
+      ],
+      [
+        "erasing",
+        0.5,
+        0.25
+      ],
+      [
+        "gridmask",
+        0.5,
+        0.25
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "6006": {
+    "config_id": "ec59a70d3ea6",
+    "augment_configs": [
+      [
+        "mixup",
+        1.0,
+        0.4
+      ],
+      [
+        "hide_and_seek",
+        0.5,
+        0.3
+      ],
+      [
+        "resizemix",
+        0.8,
+        0.3
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "6007": {
+    "config_id": "3bfa837548b4",
+    "augment_configs": [
+      [
+        "mixup",
+        0.2,
+        0.1
+      ],
+      [
+        "cutmix",
+        0.8,
+        0.15
+      ],
+      [
+        "cutout",
+        0.35,
+        0.25
+      ],
+      [
+        "resizemix",
+        0.6,
+        0.5
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "6011": {
+    "config_id": "d7c0948de9ce",
+    "augment_configs": [
+      [
+        "none",
+        null,
+        0.8
+      ],
+      [
+        "gridmask",
+        0.5,
+        0.1
+      ],
+      [
+        "mixup",
+        0.5,
+        0.1
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "6012": {
+    "config_id": "ace4082dc120",
+    "augment_configs": [
+      [
+        "hide_and_seek",
+        0.1,
+        0.25
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.375
+      ],
+      [
+        "gridmask",
+        0.3,
+        0.375
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "6014": {
+    "config_id": "daf083e61766",
+    "augment_configs": [
+      [
+        "none",
+        null,
+        0.4
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.2
+      ],
+      [
+        "cutout",
+        0.5,
+        0.3
+      ],
+      [
+        "gridmask",
+        0.7,
+        0.1
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "6015": {
+    "config_id": "8ea1fb95eb11",
+    "augment_configs": [
+      [
+        "erasing",
+        0.2687,
+        0.459346
+      ],
+      [
+        "cutmix",
+        0.2315,
+        0.495372
+      ],
+      [
+        "erasing",
+        0.3923,
+        0.045282
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "6017": {
+    "config_id": "878370c9d5aa",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.6,
+        0.6
+      ],
+      [
+        "cutmix",
+        0.4,
+        0.4
+      ]
+    ],
+    "source": "llm_gen"
+  },
+  "6018": {
+    "config_id": "c99055639310",
+    "augment_configs": [
+      [
+        "mixup",
+        1.0,
+        0.25
+      ],
+      [
+        "cutmix",
+        1.0,
+        0.25
+      ],
+      [
+        "cutout",
+        0.3,
+        0.25
+      ],
+      [
+        "gridmask",
+        0.7,
+        0.25
+      ]
+    ],
+    "source": "llm_gen"
+  }
+}

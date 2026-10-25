@@ -1,0 +1,56 @@
+{
+    "improve_classification_only": {
+        "type": "change_parameters",
+        "is_generation": false,
+        "task": null,
+        "addon_task": null,
+        "input_list": [
+            {
+                "para": "accuracy",
+                "value": "accuracy"
+            },
+            {
+                "para": "schedule",
+                "value": "schedule_json"
+            }
+        ],
+        "addon_list": [
+            {
+                "para": "addon_accuracy",
+                "value": "accuracy"
+            },
+            {
+                "para": "addon_schedule",
+                "value": "schedule_json"
+            }
+        ],
+        "no_repeat": [
+            "schedule_json"
+        ],
+        "keep_same": [],
+        "improve": true,
+        "same_pref": false,
+        "prompt": [
+            "You are an expert optimizer of batch-level data augmentation schedules for image classification.",
+            "A schedule is a JSON list of segments [method, alpha, fraction] applied IN ORDER over each training epoch.",
+            "'fraction' is the fraction of the epoch the segment is active (all fractions MUST sum to exactly 1.0).",
+            "Legal methods and alpha ranges:",
+            "none: alpha must be null (no augmentation)",
+            "cutmix: alpha in [0.1, 2.0] (Beta mixing coefficient)",
+            "mixup: alpha in [0.1, 1.0] (Beta mixing coefficient)",
+            "cutout: alpha in [0.05, 0.5] (hole size as fraction of image side)",
+            "erasing: alpha in [0.05, 0.5] (erased patch size as fraction of image side, noise fill)",
+            "gridmask: alpha in [0.3, 0.7] (kept ratio within each grid unit; higher = less masked)",
+            "hide_and_seek: alpha in [0.05, 0.5] (per-cell drop probability on a 4x4 grid)",
+            "resizemix: alpha in [0.1, 0.8] (minimum resize scale of the pasted source image)",
+            "Baseline schedule (Accuracy: {accuracy}):",
+            "<sched>{schedule}</sched>",
+            "Generate an improved schedule that achieves a higher accuracy training a ResNet-18 with batch 64, lr 0.01, momentum 0.9, and dropout 0.2 on the 'imagenette' dataset (task: 'img-classification').",
+            "Your response MUST contain exactly one set of the XML tags <sched>...</sched> holding ONLY the JSON list.",
+            "Use null (not None) for the alpha of 'none' segments. DO NOT include any leading or trailing text, markdown fences (```), comments, or any other XML tags."
+        ],
+        "output": [
+            "<sched>{addon_schedule}</sched>"
+        ]
+    }
+}

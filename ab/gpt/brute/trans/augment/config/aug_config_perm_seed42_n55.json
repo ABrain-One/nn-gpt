@@ -1,0 +1,1937 @@
+{
+  "1": {
+    "config_id": "5837b01fe2b1",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.790472,
+        0.351662
+      ],
+      [
+        "cutout",
+        0.274117,
+        0.151677
+      ],
+      [
+        "mixup",
+        0.762626,
+        0.496661
+      ]
+    ],
+    "source_config_id": "b871cc0e3108",
+    "source_tier": "top",
+    "source_order": [
+      "resizemix",
+      "mixup",
+      "cutout"
+    ],
+    "permutation": [
+      0,
+      2,
+      1
+    ]
+  },
+  "2": {
+    "config_id": "3abf94247bce",
+    "augment_configs": [
+      [
+        "mixup",
+        0.762626,
+        0.496661
+      ],
+      [
+        "resizemix",
+        0.790472,
+        0.351662
+      ],
+      [
+        "cutout",
+        0.274117,
+        0.151677
+      ]
+    ],
+    "source_config_id": "b871cc0e3108",
+    "source_tier": "top",
+    "source_order": [
+      "resizemix",
+      "mixup",
+      "cutout"
+    ],
+    "permutation": [
+      1,
+      0,
+      2
+    ]
+  },
+  "3": {
+    "config_id": "33c106ec3028",
+    "augment_configs": [
+      [
+        "mixup",
+        0.762626,
+        0.496661
+      ],
+      [
+        "cutout",
+        0.274117,
+        0.151677
+      ],
+      [
+        "resizemix",
+        0.790472,
+        0.351662
+      ]
+    ],
+    "source_config_id": "b871cc0e3108",
+    "source_tier": "top",
+    "source_order": [
+      "resizemix",
+      "mixup",
+      "cutout"
+    ],
+    "permutation": [
+      1,
+      2,
+      0
+    ]
+  },
+  "4": {
+    "config_id": "f9618655977a",
+    "augment_configs": [
+      [
+        "cutout",
+        0.274117,
+        0.151677
+      ],
+      [
+        "resizemix",
+        0.790472,
+        0.351662
+      ],
+      [
+        "mixup",
+        0.762626,
+        0.496661
+      ]
+    ],
+    "source_config_id": "b871cc0e3108",
+    "source_tier": "top",
+    "source_order": [
+      "resizemix",
+      "mixup",
+      "cutout"
+    ],
+    "permutation": [
+      2,
+      0,
+      1
+    ]
+  },
+  "5": {
+    "config_id": "a5e37be78267",
+    "augment_configs": [
+      [
+        "cutout",
+        0.274117,
+        0.151677
+      ],
+      [
+        "mixup",
+        0.762626,
+        0.496661
+      ],
+      [
+        "resizemix",
+        0.790472,
+        0.351662
+      ]
+    ],
+    "source_config_id": "b871cc0e3108",
+    "source_tier": "top",
+    "source_order": [
+      "resizemix",
+      "mixup",
+      "cutout"
+    ],
+    "permutation": [
+      2,
+      1,
+      0
+    ]
+  },
+  "6": {
+    "config_id": "17f81cd29a99",
+    "augment_configs": [
+      [
+        "hide_and_seek",
+        0.143626,
+        0.556633
+      ],
+      [
+        "resizemix",
+        0.714667,
+        0.443367
+      ]
+    ],
+    "source_config_id": "488286076ca9",
+    "source_tier": "top",
+    "source_order": [
+      "resizemix",
+      "hide_and_seek"
+    ],
+    "permutation": [
+      1,
+      0
+    ]
+  },
+  "7": {
+    "config_id": "0339c9496203",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.676683,
+        0.346812
+      ],
+      [
+        "cutout",
+        0.291103,
+        0.167942
+      ],
+      [
+        "mixup",
+        0.730448,
+        0.485246
+      ]
+    ],
+    "source_config_id": "9aab4568f038",
+    "source_tier": "top",
+    "source_order": [
+      "resizemix",
+      "mixup",
+      "cutout"
+    ],
+    "permutation": [
+      0,
+      2,
+      1
+    ]
+  },
+  "8": {
+    "config_id": "9493de557ebc",
+    "augment_configs": [
+      [
+        "mixup",
+        0.730448,
+        0.485246
+      ],
+      [
+        "resizemix",
+        0.676683,
+        0.346812
+      ],
+      [
+        "cutout",
+        0.291103,
+        0.167942
+      ]
+    ],
+    "source_config_id": "9aab4568f038",
+    "source_tier": "top",
+    "source_order": [
+      "resizemix",
+      "mixup",
+      "cutout"
+    ],
+    "permutation": [
+      1,
+      0,
+      2
+    ]
+  },
+  "9": {
+    "config_id": "dcc2a6854c32",
+    "augment_configs": [
+      [
+        "mixup",
+        0.730448,
+        0.485246
+      ],
+      [
+        "cutout",
+        0.291103,
+        0.167942
+      ],
+      [
+        "resizemix",
+        0.676683,
+        0.346812
+      ]
+    ],
+    "source_config_id": "9aab4568f038",
+    "source_tier": "top",
+    "source_order": [
+      "resizemix",
+      "mixup",
+      "cutout"
+    ],
+    "permutation": [
+      1,
+      2,
+      0
+    ]
+  },
+  "10": {
+    "config_id": "cd8f8b10557f",
+    "augment_configs": [
+      [
+        "cutout",
+        0.291103,
+        0.167942
+      ],
+      [
+        "resizemix",
+        0.676683,
+        0.346812
+      ],
+      [
+        "mixup",
+        0.730448,
+        0.485246
+      ]
+    ],
+    "source_config_id": "9aab4568f038",
+    "source_tier": "top",
+    "source_order": [
+      "resizemix",
+      "mixup",
+      "cutout"
+    ],
+    "permutation": [
+      2,
+      0,
+      1
+    ]
+  },
+  "11": {
+    "config_id": "858eb3e20164",
+    "augment_configs": [
+      [
+        "cutout",
+        0.291103,
+        0.167942
+      ],
+      [
+        "mixup",
+        0.730448,
+        0.485246
+      ],
+      [
+        "resizemix",
+        0.676683,
+        0.346812
+      ]
+    ],
+    "source_config_id": "9aab4568f038",
+    "source_tier": "top",
+    "source_order": [
+      "resizemix",
+      "mixup",
+      "cutout"
+    ],
+    "permutation": [
+      2,
+      1,
+      0
+    ]
+  },
+  "12": {
+    "config_id": "49e9cf3faff9",
+    "augment_configs": [
+      [
+        "hide_and_seek",
+        0.07437,
+        0.509674
+      ],
+      [
+        "resizemix",
+        0.683008,
+        0.490326
+      ]
+    ],
+    "source_config_id": "d081f8893e46",
+    "source_tier": "top",
+    "source_order": [
+      "resizemix",
+      "hide_and_seek"
+    ],
+    "permutation": [
+      1,
+      0
+    ]
+  },
+  "13": {
+    "config_id": "d4832e475669",
+    "augment_configs": [
+      [
+        "hide_and_seek",
+        0.164705,
+        0.566609
+      ],
+      [
+        "resizemix",
+        0.673164,
+        0.433391
+      ]
+    ],
+    "source_config_id": "f17a9198c6bd",
+    "source_tier": "top",
+    "source_order": [
+      "resizemix",
+      "hide_and_seek"
+    ],
+    "permutation": [
+      1,
+      0
+    ]
+  },
+  "14": {
+    "config_id": "23d94dbe9673",
+    "augment_configs": [
+      [
+        "hide_and_seek",
+        0.1,
+        0.2
+      ],
+      [
+        "gridmask",
+        0.5,
+        0.5
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.3
+      ]
+    ],
+    "source_config_id": "23a828638efa",
+    "source_tier": "medium",
+    "source_order": [
+      "hide_and_seek",
+      "cutmix",
+      "gridmask"
+    ],
+    "permutation": [
+      0,
+      2,
+      1
+    ]
+  },
+  "15": {
+    "config_id": "76c3b6e55a0a",
+    "augment_configs": [
+      [
+        "cutmix",
+        2.0,
+        0.3
+      ],
+      [
+        "hide_and_seek",
+        0.1,
+        0.2
+      ],
+      [
+        "gridmask",
+        0.5,
+        0.5
+      ]
+    ],
+    "source_config_id": "23a828638efa",
+    "source_tier": "medium",
+    "source_order": [
+      "hide_and_seek",
+      "cutmix",
+      "gridmask"
+    ],
+    "permutation": [
+      1,
+      0,
+      2
+    ]
+  },
+  "16": {
+    "config_id": "1aa94f0948bc",
+    "augment_configs": [
+      [
+        "cutmix",
+        2.0,
+        0.3
+      ],
+      [
+        "gridmask",
+        0.5,
+        0.5
+      ],
+      [
+        "hide_and_seek",
+        0.1,
+        0.2
+      ]
+    ],
+    "source_config_id": "23a828638efa",
+    "source_tier": "medium",
+    "source_order": [
+      "hide_and_seek",
+      "cutmix",
+      "gridmask"
+    ],
+    "permutation": [
+      1,
+      2,
+      0
+    ]
+  },
+  "17": {
+    "config_id": "348a70d35906",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.5
+      ],
+      [
+        "hide_and_seek",
+        0.1,
+        0.2
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.3
+      ]
+    ],
+    "source_config_id": "23a828638efa",
+    "source_tier": "medium",
+    "source_order": [
+      "hide_and_seek",
+      "cutmix",
+      "gridmask"
+    ],
+    "permutation": [
+      2,
+      0,
+      1
+    ]
+  },
+  "18": {
+    "config_id": "9a88a775e2ed",
+    "augment_configs": [
+      [
+        "gridmask",
+        0.5,
+        0.5
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.3
+      ],
+      [
+        "hide_and_seek",
+        0.1,
+        0.2
+      ]
+    ],
+    "source_config_id": "23a828638efa",
+    "source_tier": "medium",
+    "source_order": [
+      "hide_and_seek",
+      "cutmix",
+      "gridmask"
+    ],
+    "permutation": [
+      2,
+      1,
+      0
+    ]
+  },
+  "19": {
+    "config_id": "3a65c0b13189",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.2,
+        0.5
+      ],
+      [
+        "cutmix",
+        0.5,
+        0.15
+      ],
+      [
+        "cutout",
+        0.1,
+        0.25
+      ],
+      [
+        "mixup",
+        0.2,
+        0.1
+      ]
+    ],
+    "source_config_id": "d52c4bb55804",
+    "source_tier": "medium",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      3,
+      1,
+      2,
+      0
+    ]
+  },
+  "20": {
+    "config_id": "fe97a9dcc3cf",
+    "augment_configs": [
+      [
+        "mixup",
+        0.2,
+        0.1
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.5
+      ],
+      [
+        "cutmix",
+        0.5,
+        0.15
+      ],
+      [
+        "cutout",
+        0.1,
+        0.25
+      ]
+    ],
+    "source_config_id": "d52c4bb55804",
+    "source_tier": "medium",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      0,
+      3,
+      1,
+      2
+    ]
+  },
+  "21": {
+    "config_id": "333dd1f78700",
+    "augment_configs": [
+      [
+        "mixup",
+        0.2,
+        0.1
+      ],
+      [
+        "cutmix",
+        0.5,
+        0.15
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.5
+      ],
+      [
+        "cutout",
+        0.1,
+        0.25
+      ]
+    ],
+    "source_config_id": "d52c4bb55804",
+    "source_tier": "medium",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      0,
+      1,
+      3,
+      2
+    ]
+  },
+  "22": {
+    "config_id": "9a4ab983171a",
+    "augment_configs": [
+      [
+        "cutmix",
+        0.5,
+        0.15
+      ],
+      [
+        "cutout",
+        0.1,
+        0.25
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.5
+      ],
+      [
+        "mixup",
+        0.2,
+        0.1
+      ]
+    ],
+    "source_config_id": "d52c4bb55804",
+    "source_tier": "medium",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      1,
+      2,
+      3,
+      0
+    ]
+  },
+  "23": {
+    "config_id": "8d008f89751c",
+    "augment_configs": [
+      [
+        "cutmix",
+        0.5,
+        0.15
+      ],
+      [
+        "cutout",
+        0.1,
+        0.25
+      ],
+      [
+        "mixup",
+        0.2,
+        0.1
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.5
+      ]
+    ],
+    "source_config_id": "d52c4bb55804",
+    "source_tier": "medium",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      1,
+      2,
+      0,
+      3
+    ]
+  },
+  "24": {
+    "config_id": "070725767b34",
+    "augment_configs": [
+      [
+        "cutout",
+        0.4,
+        0.4
+      ],
+      [
+        "gridmask",
+        0.6,
+        0.6
+      ]
+    ],
+    "source_config_id": "81f2ec3bde70",
+    "source_tier": "medium",
+    "source_order": [
+      "gridmask",
+      "cutout"
+    ],
+    "permutation": [
+      1,
+      0
+    ]
+  },
+  "25": {
+    "config_id": "7273eefa059e",
+    "augment_configs": [
+      [
+        "cutmix",
+        2.0,
+        0.2
+      ],
+      [
+        "cutout",
+        0.5,
+        0.3
+      ],
+      [
+        "mixup",
+        0.5,
+        0.1
+      ],
+      [
+        "resizemix",
+        0.5,
+        0.4
+      ]
+    ],
+    "source_config_id": "6c61320683b1",
+    "source_tier": "medium",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      1,
+      2,
+      0,
+      3
+    ]
+  },
+  "26": {
+    "config_id": "165b5eb824f9",
+    "augment_configs": [
+      [
+        "mixup",
+        0.5,
+        0.1
+      ],
+      [
+        "resizemix",
+        0.5,
+        0.4
+      ],
+      [
+        "cutout",
+        0.5,
+        0.3
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.2
+      ]
+    ],
+    "source_config_id": "6c61320683b1",
+    "source_tier": "medium",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      0,
+      3,
+      2,
+      1
+    ]
+  },
+  "27": {
+    "config_id": "d7d20aeb5476",
+    "augment_configs": [
+      [
+        "mixup",
+        0.5,
+        0.1
+      ],
+      [
+        "resizemix",
+        0.5,
+        0.4
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.2
+      ],
+      [
+        "cutout",
+        0.5,
+        0.3
+      ]
+    ],
+    "source_config_id": "6c61320683b1",
+    "source_tier": "medium",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      0,
+      3,
+      1,
+      2
+    ]
+  },
+  "28": {
+    "config_id": "9cd8c5588f3e",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.5,
+        0.4
+      ],
+      [
+        "cutout",
+        0.5,
+        0.3
+      ],
+      [
+        "mixup",
+        0.5,
+        0.1
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.2
+      ]
+    ],
+    "source_config_id": "6c61320683b1",
+    "source_tier": "medium",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      3,
+      2,
+      0,
+      1
+    ]
+  },
+  "29": {
+    "config_id": "3b3bd6084e28",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.5,
+        0.4
+      ],
+      [
+        "mixup",
+        0.5,
+        0.1
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.2
+      ],
+      [
+        "cutout",
+        0.5,
+        0.3
+      ]
+    ],
+    "source_config_id": "6c61320683b1",
+    "source_tier": "medium",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      3,
+      0,
+      1,
+      2
+    ]
+  },
+  "30": {
+    "config_id": "d8fb2e412128",
+    "augment_configs": [
+      [
+        "mixup",
+        1.0,
+        0.1
+      ],
+      [
+        "cutout",
+        0.35,
+        0.25
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.5
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.15
+      ]
+    ],
+    "source_config_id": "8b20f033e4b0",
+    "source_tier": "medium",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      0,
+      2,
+      3,
+      1
+    ]
+  },
+  "31": {
+    "config_id": "b4ae5a0901a9",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.2,
+        0.5
+      ],
+      [
+        "mixup",
+        1.0,
+        0.1
+      ],
+      [
+        "cutout",
+        0.35,
+        0.25
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.15
+      ]
+    ],
+    "source_config_id": "8b20f033e4b0",
+    "source_tier": "medium",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      3,
+      0,
+      2,
+      1
+    ]
+  },
+  "32": {
+    "config_id": "fbaa3abe144f",
+    "augment_configs": [
+      [
+        "cutout",
+        0.35,
+        0.25
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.15
+      ],
+      [
+        "mixup",
+        1.0,
+        0.1
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.5
+      ]
+    ],
+    "source_config_id": "8b20f033e4b0",
+    "source_tier": "medium",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      2,
+      1,
+      0,
+      3
+    ]
+  },
+  "33": {
+    "config_id": "c1551fe3e676",
+    "augment_configs": [
+      [
+        "mixup",
+        1.0,
+        0.1
+      ],
+      [
+        "cutout",
+        0.35,
+        0.25
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.15
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.5
+      ]
+    ],
+    "source_config_id": "8b20f033e4b0",
+    "source_tier": "medium",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      0,
+      2,
+      1,
+      3
+    ]
+  },
+  "34": {
+    "config_id": "300e12daf5f2",
+    "augment_configs": [
+      [
+        "mixup",
+        1.0,
+        0.1
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.15
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.5
+      ],
+      [
+        "cutout",
+        0.35,
+        0.25
+      ]
+    ],
+    "source_config_id": "8b20f033e4b0",
+    "source_tier": "medium",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      0,
+      1,
+      3,
+      2
+    ]
+  },
+  "35": {
+    "config_id": "2f5bcbe8c9c6",
+    "augment_configs": [
+      [
+        "mixup",
+        0.5,
+        0.4
+      ],
+      [
+        "cutout",
+        0.1,
+        0.2
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.1
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.3
+      ]
+    ],
+    "source_config_id": "4d6ea916ff72",
+    "source_tier": "weak",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      0,
+      2,
+      3,
+      1
+    ]
+  },
+  "36": {
+    "config_id": "041b2dbc945b",
+    "augment_configs": [
+      [
+        "cutmix",
+        2.0,
+        0.3
+      ],
+      [
+        "mixup",
+        0.5,
+        0.4
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.1
+      ],
+      [
+        "cutout",
+        0.1,
+        0.2
+      ]
+    ],
+    "source_config_id": "4d6ea916ff72",
+    "source_tier": "weak",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      1,
+      0,
+      3,
+      2
+    ]
+  },
+  "37": {
+    "config_id": "a94eb57568de",
+    "augment_configs": [
+      [
+        "cutmix",
+        2.0,
+        0.3
+      ],
+      [
+        "cutout",
+        0.1,
+        0.2
+      ],
+      [
+        "mixup",
+        0.5,
+        0.4
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.1
+      ]
+    ],
+    "source_config_id": "4d6ea916ff72",
+    "source_tier": "weak",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      1,
+      2,
+      0,
+      3
+    ]
+  },
+  "38": {
+    "config_id": "78058989c85b",
+    "augment_configs": [
+      [
+        "cutout",
+        0.1,
+        0.2
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.1
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.3
+      ],
+      [
+        "mixup",
+        0.5,
+        0.4
+      ]
+    ],
+    "source_config_id": "4d6ea916ff72",
+    "source_tier": "weak",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      2,
+      3,
+      1,
+      0
+    ]
+  },
+  "39": {
+    "config_id": "cbaeb6c917e2",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.2,
+        0.1
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.3
+      ],
+      [
+        "mixup",
+        0.5,
+        0.4
+      ],
+      [
+        "cutout",
+        0.1,
+        0.2
+      ]
+    ],
+    "source_config_id": "4d6ea916ff72",
+    "source_tier": "weak",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      3,
+      1,
+      0,
+      2
+    ]
+  },
+  "40": {
+    "config_id": "11a090d8cbe8",
+    "augment_configs": [
+      [
+        "mixup",
+        0.2,
+        0.25
+      ],
+      [
+        "cutmix",
+        0.5,
+        0.25
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.25
+      ],
+      [
+        "cutout",
+        0.35,
+        0.25
+      ]
+    ],
+    "source_config_id": "f1dc9cb063e7",
+    "source_tier": "weak",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      0,
+      1,
+      3,
+      2
+    ]
+  },
+  "41": {
+    "config_id": "4e36e8ba6f54",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.2,
+        0.25
+      ],
+      [
+        "mixup",
+        0.2,
+        0.25
+      ],
+      [
+        "cutmix",
+        0.5,
+        0.25
+      ],
+      [
+        "cutout",
+        0.35,
+        0.25
+      ]
+    ],
+    "source_config_id": "f1dc9cb063e7",
+    "source_tier": "weak",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      3,
+      0,
+      1,
+      2
+    ]
+  },
+  "42": {
+    "config_id": "15bc479f583e",
+    "augment_configs": [
+      [
+        "cutmix",
+        0.5,
+        0.25
+      ],
+      [
+        "mixup",
+        0.2,
+        0.25
+      ],
+      [
+        "resizemix",
+        0.2,
+        0.25
+      ],
+      [
+        "cutout",
+        0.35,
+        0.25
+      ]
+    ],
+    "source_config_id": "f1dc9cb063e7",
+    "source_tier": "weak",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      1,
+      0,
+      3,
+      2
+    ]
+  },
+  "43": {
+    "config_id": "64cfcca4587a",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.2,
+        0.25
+      ],
+      [
+        "cutout",
+        0.35,
+        0.25
+      ],
+      [
+        "cutmix",
+        0.5,
+        0.25
+      ],
+      [
+        "mixup",
+        0.2,
+        0.25
+      ]
+    ],
+    "source_config_id": "f1dc9cb063e7",
+    "source_tier": "weak",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      3,
+      2,
+      1,
+      0
+    ]
+  },
+  "44": {
+    "config_id": "09995b99ab48",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.2,
+        0.25
+      ],
+      [
+        "cutmix",
+        0.5,
+        0.25
+      ],
+      [
+        "cutout",
+        0.35,
+        0.25
+      ],
+      [
+        "mixup",
+        0.2,
+        0.25
+      ]
+    ],
+    "source_config_id": "f1dc9cb063e7",
+    "source_tier": "weak",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      3,
+      1,
+      2,
+      0
+    ]
+  },
+  "45": {
+    "config_id": "6688fc8c9240",
+    "augment_configs": [
+      [
+        "hide_and_seek",
+        0.11386,
+        0.539664
+      ],
+      [
+        "cutmix",
+        1.065621,
+        0.460336
+      ]
+    ],
+    "source_config_id": "5293f7c24422",
+    "source_tier": "weak",
+    "source_order": [
+      "cutmix",
+      "hide_and_seek"
+    ],
+    "permutation": [
+      1,
+      0
+    ]
+  },
+  "46": {
+    "config_id": "a4b39b469e49",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.3,
+        0.3
+      ],
+      [
+        "none",
+        null,
+        0.4
+      ],
+      [
+        "cutmix",
+        0.5,
+        0.3
+      ]
+    ],
+    "source_config_id": "3c3c547a2aac",
+    "source_tier": "weak",
+    "source_order": [
+      "resizemix",
+      "cutmix",
+      "none"
+    ],
+    "permutation": [
+      0,
+      2,
+      1
+    ]
+  },
+  "47": {
+    "config_id": "e4f4aa0f7a05",
+    "augment_configs": [
+      [
+        "cutmix",
+        0.5,
+        0.3
+      ],
+      [
+        "resizemix",
+        0.3,
+        0.3
+      ],
+      [
+        "none",
+        null,
+        0.4
+      ]
+    ],
+    "source_config_id": "3c3c547a2aac",
+    "source_tier": "weak",
+    "source_order": [
+      "resizemix",
+      "cutmix",
+      "none"
+    ],
+    "permutation": [
+      1,
+      0,
+      2
+    ]
+  },
+  "48": {
+    "config_id": "343e37484ebf",
+    "augment_configs": [
+      [
+        "cutmix",
+        0.5,
+        0.3
+      ],
+      [
+        "none",
+        null,
+        0.4
+      ],
+      [
+        "resizemix",
+        0.3,
+        0.3
+      ]
+    ],
+    "source_config_id": "3c3c547a2aac",
+    "source_tier": "weak",
+    "source_order": [
+      "resizemix",
+      "cutmix",
+      "none"
+    ],
+    "permutation": [
+      1,
+      2,
+      0
+    ]
+  },
+  "49": {
+    "config_id": "ca00c55cd960",
+    "augment_configs": [
+      [
+        "none",
+        null,
+        0.4
+      ],
+      [
+        "resizemix",
+        0.3,
+        0.3
+      ],
+      [
+        "cutmix",
+        0.5,
+        0.3
+      ]
+    ],
+    "source_config_id": "3c3c547a2aac",
+    "source_tier": "weak",
+    "source_order": [
+      "resizemix",
+      "cutmix",
+      "none"
+    ],
+    "permutation": [
+      2,
+      0,
+      1
+    ]
+  },
+  "50": {
+    "config_id": "e54848a231f3",
+    "augment_configs": [
+      [
+        "none",
+        null,
+        0.4
+      ],
+      [
+        "cutmix",
+        0.5,
+        0.3
+      ],
+      [
+        "resizemix",
+        0.3,
+        0.3
+      ]
+    ],
+    "source_config_id": "3c3c547a2aac",
+    "source_tier": "weak",
+    "source_order": [
+      "resizemix",
+      "cutmix",
+      "none"
+    ],
+    "permutation": [
+      2,
+      1,
+      0
+    ]
+  },
+  "51": {
+    "config_id": "50e3488d9292",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.6,
+        0.25
+      ],
+      [
+        "cutout",
+        0.35,
+        0.25
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.25
+      ],
+      [
+        "mixup",
+        0.2,
+        0.25
+      ]
+    ],
+    "source_config_id": "32156a494d11",
+    "source_tier": "weak",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      3,
+      2,
+      1,
+      0
+    ]
+  },
+  "52": {
+    "config_id": "63935fb0fe34",
+    "augment_configs": [
+      [
+        "resizemix",
+        0.6,
+        0.25
+      ],
+      [
+        "mixup",
+        0.2,
+        0.25
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.25
+      ],
+      [
+        "cutout",
+        0.35,
+        0.25
+      ]
+    ],
+    "source_config_id": "32156a494d11",
+    "source_tier": "weak",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      3,
+      0,
+      1,
+      2
+    ]
+  },
+  "53": {
+    "config_id": "82fc1a08a677",
+    "augment_configs": [
+      [
+        "cutout",
+        0.35,
+        0.25
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.25
+      ],
+      [
+        "mixup",
+        0.2,
+        0.25
+      ],
+      [
+        "resizemix",
+        0.6,
+        0.25
+      ]
+    ],
+    "source_config_id": "32156a494d11",
+    "source_tier": "weak",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      2,
+      1,
+      0,
+      3
+    ]
+  },
+  "54": {
+    "config_id": "1b509a295bb5",
+    "augment_configs": [
+      [
+        "cutmix",
+        2.0,
+        0.25
+      ],
+      [
+        "cutout",
+        0.35,
+        0.25
+      ],
+      [
+        "mixup",
+        0.2,
+        0.25
+      ],
+      [
+        "resizemix",
+        0.6,
+        0.25
+      ]
+    ],
+    "source_config_id": "32156a494d11",
+    "source_tier": "weak",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      1,
+      2,
+      0,
+      3
+    ]
+  },
+  "55": {
+    "config_id": "d5964a39f8f4",
+    "augment_configs": [
+      [
+        "cutout",
+        0.35,
+        0.25
+      ],
+      [
+        "cutmix",
+        2.0,
+        0.25
+      ],
+      [
+        "resizemix",
+        0.6,
+        0.25
+      ],
+      [
+        "mixup",
+        0.2,
+        0.25
+      ]
+    ],
+    "source_config_id": "32156a494d11",
+    "source_tier": "weak",
+    "source_order": [
+      "mixup",
+      "cutmix",
+      "cutout",
+      "resizemix"
+    ],
+    "permutation": [
+      2,
+      1,
+      3,
+      0
+    ]
+  }
+}

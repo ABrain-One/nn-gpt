@@ -1,0 +1,11 @@
+{
+  "accuracy": 0.7605255070682237,
+  "batch": 64,
+  "duration": 78919396336,
+  "lr": 0.01,
+  "momentum": 0.9,
+  "transform": "RandomInvert_RandomAdjustSharpnes_3",
+  "uid": "457480eea46c03e6cfaae439aece38c9",
+  "dataset": "svhn",
+  "model": "MobileNetV2"
+}
