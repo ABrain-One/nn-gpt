@@ -13,6 +13,7 @@ from ab.nn.util.Const import out_dir
 
 import json
 from datetime import datetime
+from pathlib import Path
 from ab.gpt.util.Const import conf_llm_dir
 
 RUN_META = out_dir / 'nngpt' / 'run_config.json'
@@ -34,6 +35,11 @@ def persist_llm_conf(llm_conf, enable_merge=False, params=None,
     what the model was fine-tuned on and ``nn_gen_conf`` is what it was asked
     to generate from. Two runs of identical hyper-parameters on different
     prompts produce different curves, and nothing else distinguishes them.
+
+    ``script`` is the entry point this run was started from. The repository
+    carries a script per model and per experiment, and two of them can produce
+    the same run_config.json while differing in everything the config does not
+    record, so the figure names the one that ran.
 
     ``started_at`` is stamped here, at the one moment that is the start of the
     run for certain. The epoch rows carry the time each epoch finished, so the
@@ -63,6 +69,9 @@ def persist_llm_conf(llm_conf, enable_merge=False, params=None,
     }
     if base_model_name:
         run_config["base_model_name"] = base_model_name
+    script = Path(sys.argv[0]).stem if sys.argv and sys.argv[0] else ""
+    if script and not script.startswith("-"):      # -c, -m: no script to name
+        run_config["script"] = script
     prompts = {"train": llm_tune_conf, "test": nn_gen_conf,
                "test_id": nn_gen_conf_id}
     prompts = {k: v for k, v in prompts.items() if v}
