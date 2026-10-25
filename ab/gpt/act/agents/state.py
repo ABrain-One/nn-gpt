@@ -12,7 +12,7 @@ from pydantic import BaseModel, field_validator
 class AgentState(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
-    @field_validator('train_config_path', mode='before')
+    @field_validator('train_config_path', 'data_dir', mode='before')
     @classmethod
     def coerce_path_to_str(cls, v):
         return str(v) if isinstance(v, Path) else v
@@ -54,6 +54,11 @@ class AgentState(BaseModel):
 
     # ---- Finetune Config ----
     train_config_path: Optional[str] = None
+    # On-disk SFT corpus. Must be declared here or it is silently dropped:
+    # AgentState is a pydantic model, so a field passed to the constructor but
+    # not declared is ignored, state.get("data_dir") returns None, and
+    # NNGenPrompt falls back to querying LEMUR instead of reading the corpus.
+    data_dir: Optional[str] = None
     base_model_name: Optional[str] = None
     only_best_accuracy: Optional[bool] = None
     max_prompts: Optional[int] = None

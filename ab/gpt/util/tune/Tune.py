@@ -960,6 +960,22 @@ def _evaluate_epoch(
             except Exception as exc:
                 print(f'[WARN] postprocess_nn skipped: {exc}', flush=True)
 
+        # Static validity gate, after the repair pass so near-misses already
+        # fixed are not discarded. Eval.evaluate() rejects broken code before
+        # training anyway, so this is not about saving GPU time -- it is about
+        # sample size: an invalid generation produces no paired observation,
+        # and without a cap on the valid ones an oversampled cycle would train
+        # two to three times the intended number of models.
+        # check_static_validity already existed; nothing called it here.
+        if not trans_mode and os.environ.get(
+                "NNGPT_VALIDITY_GATE", "").strip().lower() not in ("", "0", "false", "no"):
+            try:
+                from ab.gpt.util.eval.validity_gate import gate_directory
+                _keep = os.environ.get("NNGPT_VALIDITY_KEEP", "").strip()
+                gate_directory(models_dir, keep=int(_keep) if _keep else None)
+            except Exception as exc:
+                print(f'[WARN] validity gate skipped: {exc}', flush=True)
+
         if classification_mode:
             from ab.gpt.act.tune.classification.Eval import evaluate_epoch as cls_eval
 
@@ -1160,6 +1176,22 @@ def evaluate_step(state: AgentState) -> dict:
     return updates
 
 
+def _completions_only_default(use_backbone):
+    """Whether SFT masks the prompt, from NNGPT_TRAIN_ON_COMPLETIONS_ONLY.
+
+    Unset keeps the historical behaviour (``use_backbone``). Routed through the
+    environment rather than a tune() keyword because ab/gpt/act/tune/Tune.py
+    dispatches to tune() implementations in Tune, Tune_Onnx and Tune_prun that
+    do not share a signature, so a new keyword would raise TypeError for
+    whichever backend was not updated. That module already routes seed pinning
+    this way and documents the reason.
+    """
+    raw = os.environ.get("NNGPT_TRAIN_ON_COMPLETIONS_ONLY", "").strip().lower()
+    if raw in ("", "auto"):
+        return use_backbone
+    return raw not in ("0", "false", "no", "off")
+
+
 def _finetune_epoch(
     epoch, out_path, model, tokenizer, model_loader, lora_tuner,
     context_length, use_unsloth, unsloth_max_input_length,
@@ -1221,7 +1253,13 @@ def _finetune_epoch(
         dataset,
         tokenizer,
         out_path / base_model_name,
-        train_on_completions_only=use_backbone,
+        # Loss over the prompt as well as the completion is the historical
+        # default, and for an improvement task it is actively harmful: the
+        # baseline file appears verbatim in the prompt and again, nearly
+        # unchanged, in the target, so most of the gradient goes into
+        # reproducing text the model was handed rather than into the few
+        # decisions that differ.
+        train_on_completions_only=_completions_only_default(use_backbone),
         resume_from_checkpoint=resume_trainer_checkpoint,
         checkpoint_label="trainer",
     )
@@ -1259,6 +1297,7 @@ def finetune_step(state: AgentState) -> dict:
         state.get("use_backbone", False),
         state.get("sft_nn_prefixes"),
         state.get("sft_dataset"),
+        state.get("data_dir"),
         budget_tokens=getattr(_prev_bot, "budget_tokens", None),
         suppress_thinking=getattr(_prev_bot, "suppress_thinking", False),
     )
@@ -1538,6 +1577,13 @@ def tune(
         use_backbone=use_backbone,
         sft_nn_prefixes=sft_nn_prefixes,
         sft_dataset=sft_dataset,
+        # Without this the agent path silently ignores an on-disk SFT corpus.
+        # finetune_step() rebuilds the _finetune_epoch() call from the state,
+        # and anything missing there falls back to the parameter default. The
+        # classic loop passes data_dir explicitly, so the two paths disagreed
+        # and only the agent one -- which is the default -- dropped it, falling
+        # back to a LEMUR query against the train prompt config.
+        data_dir=data_dir,
         trainer_resume_checkpoint=trainer_resume_checkpoint,
         enable_merge=enable_merge,
         classification_mode=classification_mode,
