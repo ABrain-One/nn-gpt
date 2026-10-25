@@ -288,7 +288,6 @@ def main():
     parser.add_argument("-l", "--learning_rate", type=float, default=LEARNING_RATE)
     parser.add_argument("--weight_decay", type=float, default=WEIGHT_DECAY)
     parser.add_argument("--warmup_steps", type=int, default=WARMUP_STEPS)
-    parser.add_argument("--warmup_steps", type=float, default=WARMUP_STEPS)
     parser.add_argument("-g", "--max_grad_norm", type=float, default=MAX_GRAD_NORM)
     parser.add_argument("-ls", "--lr_scheduler", dest="lr_scheduler_type", type=str, default=LR_SCHEDULER)
     parser.add_argument("--per_device_train_batch_size", type=int, default=PER_DEVICE_TRAIN_BATCH_SIZE)
