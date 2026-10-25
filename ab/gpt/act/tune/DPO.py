@@ -144,6 +144,7 @@ def run_dpo(
     llm_conf: str = LLM_CONF,
     dpo_data_file: Optional[str] = None,
     peft_path: Optional[str] = None,
+    continual_adapter: bool = False,
     dpo_beta: float = DPO_BETA,
     max_prompt_length: int = MAX_PROMPT_LENGTH,
     max_completion_length: int = MAX_COMPLETION_LENGTH,
@@ -236,7 +237,8 @@ def run_dpo(
 
     # ── 3. Load model + tokenizer (reused from KTO — identical behaviour) ───
     llm_conf_data = _read_llm_conf(llm_conf)
-    model, tokenizer = _load_base_model_and_tokenizer(llm_conf_data, peft_path, training_args)
+    model, tokenizer = _load_base_model_and_tokenizer(
+        llm_conf_data, None if continual_adapter else peft_path, training_args)
 
     # ── 4. Build DPO dataset ────────────────────────────────────────────────
     records = _load_dpo_jsonl(dpo_path)
@@ -250,6 +252,7 @@ def run_dpo(
         tokenizer=tokenizer,
         training_args=training_args,
         peft_config=peft_config,
+        init_adapter_path=peft_path if continual_adapter else None,
     )
     dpo.train(
         dataset=dataset,
@@ -273,6 +276,8 @@ def main():
                         help="Where to save the final DPO adapter")
     parser.add_argument("--peft", dest="peft_path", type=str, default=None,
                         help="Previous LoRA adapter to warm-start from (merged, fresh LoRA on top)")
+    parser.add_argument("--continual_adapter", action="store_true", default=False,
+                        help="Keep training the --peft adapter itself (no merge, no fresh LoRA)")
 
     parser.add_argument("--dpo_beta", type=float, default=DPO_BETA,
                         help="DPO KL strength; higher keeps the policy nearer the diverse base")
@@ -326,6 +331,7 @@ def main():
         llm_conf=args.llm_conf,
         dpo_data_file=args.dpo_data_file,
         peft_path=args.peft_path,
+        continual_adapter=args.continual_adapter,
         dpo_beta=args.dpo_beta,
         max_prompt_length=args.max_prompt_length,
         max_completion_length=args.max_completion_length,
