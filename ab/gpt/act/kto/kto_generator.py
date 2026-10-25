@@ -53,9 +53,13 @@ SYSTEM_PERSONA = (
     "UNIQUE, high-performing neural networks optimized for first-epoch accuracy."
 )
 
-# Fallback execution rules (used only if the conf file cannot be read).  Kept
-# deliberately short; the real rules live in
-# conf/prompt/test/unique_rag_test_rules.json and are loaded when present.
+# Execution rules and teacher-forcing prefix: the copy of
+# conf/prompt/test/unique_rag_test_rules.json the KTO/DPO experiments ran with,
+# kept as its own file so their prompt stays reproducible.
+RULES_FILE = conf_test_dir / "kto_unique_rag_test_rules.json"
+
+# Fallback execution rules (used only if RULES_FILE cannot be read).  Kept
+# deliberately short.
 _FALLBACK_RULES = (
     "\nThe code MUST be directly executable by the evaluation tool.\n"
     "1. Start with `import torch` and `import torch.nn as nn`.\n"
@@ -110,7 +114,7 @@ DIVERSITY_HINTS = [
 
 def load_execution_rules() -> str:
     """Load the system_prompt_template execution rules the model was SFT'd on."""
-    rules_path = conf_test_dir / "unique_rag_test_rules.json"
+    rules_path = RULES_FILE
     try:
         with open(rules_path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -137,7 +141,7 @@ _FALLBACK_PREFIX = (
 
 def load_prefix_code() -> str:
     """Load the prefix_code the model is teacher-forced to start its answer with."""
-    rules_path = conf_test_dir / "unique_rag_test_rules.json"
+    rules_path = RULES_FILE
     try:
         with open(rules_path, "r", encoding="utf-8") as f:
             data = json.load(f)
