@@ -10,7 +10,8 @@
       "Always follow LEMUR NN Dataset conventions and output only the requested XML tags (<hp>, <tr>, <nn>)."
     ],
     "task": "img-classification",
-    "addon_task": null,
+    "dataset": "cifar-10",
+    "epoch": 1,
     "input_list": [
       {
         "para": "nn_code",

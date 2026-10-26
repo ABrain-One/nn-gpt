@@ -47,7 +47,26 @@ def get_cycle_files(): #get cycle_results.json for the
     if not backups:
         raise RuntimeError("No backup cycle_results_*.json found")
 
-    previous = max(backups, key=lambda p: p.stat().st_mtime) #sort by time to see two latest cycle_results.json
+    # Pick the previous epoch by the cycle id recorded INSIDE each file, not by
+    # mtime. Every epoch now writes its own cycle_results_<epoch>.json at the
+    # same moment as cycle_results.json, so the newest file by mtime is the
+    # CURRENT epoch and an mtime sort would compare a cycle against itself.
+    def _cycle_of(path):
+        try:
+            with open(path) as fh:
+                return json.load(fh).get("cycle")
+        except Exception:
+            return None
+
+    with open(current) as fh:
+        current_cycle = json.load(fh).get("cycle")
+
+    earlier = [(c, p) for p, c in ((p, _cycle_of(p)) for p in backups)
+               if c is not None and (current_cycle is None or c < current_cycle)]
+    if not earlier:
+        raise RuntimeError("No cycle_results_*.json from an earlier cycle found")
+
+    previous = max(earlier, key=lambda cp: cp[0])[1]
     return previous, current
 
 

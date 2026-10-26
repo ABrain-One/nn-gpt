@@ -79,14 +79,14 @@ import ab.gpt.act.rl.trainer_runtime as TrainerRuntime
 import ab.gpt.act.rl.stage_state as StageState
 import ab.gpt.act.rl.reward_payload as RewardPayload
 import ab.gpt.util.llm.SFTUtil as SFTUtil
-from ab.gpt.util.llm.GenerationDType import DTypeSafeLinearWrapper, align_generation_head_dtype
+from ab.gpt.util.llm.GenerationDType import align_generation_head_dtype
 from ab.gpt.util.nn.ArchDiscovery import (
     ensure_pattern_name,
     extract_graph_info,
     normalize_pattern_name,
 )
 from ab.gpt.util.Util import extract_str
-from ab.gpt.util.Const import conf_train_dir, conf_test_dir, epoch_dir, new_nn_file, synth_dir, new_out_file
+from ab.gpt.util.Const import epoch_dir, new_nn_file, synth_dir, new_out_file
 from ab.nn.util.Util import create_file
 from ab.gpt.util.Reward import (
     EvalConfig,
@@ -109,7 +109,7 @@ from dataclasses import dataclass, asdict
 
 from ab.gpt.util.simple_logger import SimpleCodeLogger
 import ab.gpt.util.training_runtime as TrainingRuntime
-from collections import Counter, deque
+from collections import Counter
 
 # Open-architecture archives are keyed by canonical graph structure, not prompt labels.
 graph_archive_counts = Counter()
@@ -1026,11 +1026,11 @@ def best_mixed_precision() -> Dict[str, Any]:
     bf16_requested = os.getenv("NNGPT_RL_USE_BF16", "").strip().lower() in {"1", "true", "yes", "on"}
     bf16_ok = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
     use_bf16 = bool(bf16_requested and bf16_ok)
-    torch_dtype = torch.bfloat16 if use_bf16 else torch.float16
+    dtype = torch.bfloat16 if use_bf16 else torch.float16
     return {
         "bf16": use_bf16,
         "fp16": not use_bf16,
-        "torch_dtype": torch_dtype,
+        "dtype": dtype,
         "label": "bf16" if use_bf16 else "fp16",
     }
 
@@ -6108,7 +6108,7 @@ def main():
     if deepspeed_config_path is not None:
         print(f"[RL] DeepSpeed Config: {deepspeed_config_path}")
     print(f"[RL] Fixed training device: {train_device}")
-    print(f"[RL] Mixed precision: {precision['label']} (torch_dtype={precision['torch_dtype']})")
+    print(f"[RL] Mixed precision: {precision['label']} (dtype={precision['dtype']})")
     print(f"[RL] Current stage: {current_stage_name}")
     print(
         "[RL] Runtime limits: "
@@ -6154,7 +6154,7 @@ def main():
         )
 
     model = prepare_model_for_kbit_training(model)
-    align_generation_head_dtype(model, precision["torch_dtype"])
+    align_generation_head_dtype(model, precision["dtype"])
 
     # Apply LoRA specifically for RL phase
     peft_config = TrainerRuntime.build_lora_config(
@@ -6171,7 +6171,7 @@ def main():
         missing_adapter_message=f"Missing adapter directory under resume checkpoint: {resume_adapter_dir}",
         load_message=f"[RL] Loading RL adapter from {resume_adapter_dir}..." if resume_adapter_dir is not None else None,
     )
-    align_generation_head_dtype(model, precision["torch_dtype"])
+    align_generation_head_dtype(model, precision["dtype"])
 
     # Enable gradient checkpointing to save memory
     TrainerRuntime.enable_non_reentrant_gradient_checkpointing(
@@ -6252,10 +6252,6 @@ def main():
     return model
 
 if __name__ == "__main__":
-    from ab.gpt.util.simple_logger import SimpleCodeLogger
-    from ab.gpt.util.Reward import evaluate_code_and_reward
-    from typing import Dict
-
     # Ensure directories exist
     log_dir = run_log_dir()
     os.makedirs(log_dir, exist_ok=True)

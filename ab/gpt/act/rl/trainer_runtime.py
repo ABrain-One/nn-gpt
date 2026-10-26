@@ -37,11 +37,11 @@ def load_quantized_causal_lm(
         "trust_remote_code": True,
         "quantization_config": BitsAndBytesConfig(
             load_in_4bit=True,
-            bnb_4bit_compute_dtype=precision["torch_dtype"],
+            bnb_4bit_compute_dtype=precision["dtype"],
             bnb_4bit_use_double_quant=True,
             bnb_4bit_quant_type="nf4",
         ),
-        "torch_dtype": precision["torch_dtype"],
+        "dtype": precision["dtype"],
     }
     if not use_deepspeed:
         model_load_kwargs["device_map"] = {"": train_device}

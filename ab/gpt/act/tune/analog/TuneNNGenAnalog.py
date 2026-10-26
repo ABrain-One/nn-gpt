@@ -2,7 +2,7 @@ import argparse
 from typing import Literal
 
 import torch
-from ab.gpt.util.Const import nngpt_dir, new_out_file, NN_TRAIN_EPOCHS
+from ab.gpt.util.Const import nngpt_dir, NN_TRAIN_EPOCHS
 
 # --- Default Evaluation Parameters ---
 # These will be used as defaults for argparse arguments
@@ -28,7 +28,7 @@ NUM_TRAIN_EPOCHS = 3  # Standalone default
 LR_SCHEDULER = 'cosine'  # Learning rate scheduler
 PER_DEVICE_TRAIN_BATCH_SIZE = 1
 GRADIENT_ACCUMULATION_STEPS = 8  # Increased for better stability
-WARMUP_RATIO = 0.05  # Warmup as ratio of total steps
+WARMUP_STEPS = 5  # Warmup as ratio of total steps
 TEST_NN = 10
 LOGGING_STEPS = 96  # Less frequent logging
 OPTIMIZER = 'paged_adamw_8bit'
@@ -46,7 +46,7 @@ TOP_K = 70
 TOP_P = 0.9
 TEST_METRIC = None  # 'bleu' or other metric for evaluation
 ONNX_RUN = False
-UNSLOTH_OPT = False
+USE_UNSLOTH = False
 TRANS_MODE = False  # only transform fine-tuning
 PROMPT_BATCH = 2
 CONTEXT_LENGTH = 4096
@@ -113,14 +113,14 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
          tune_layers=TUNE_LAYERS, r=R, lora_alpha=LORA_ALPHA, lora_dropout=LORA_DROPOUT, target_modules=TARGET_MODULES,
          task_type=TASK_TYPE, bias=BIAS, learning_rate=LEARNING_RATE, llm_tune_conf=LLM_TUNE_CONF, nn_gen_conf=NN_GEN_CONF, nn_gen_conf_id=NN_GEN_CONF_ID,
          llm_conf=LLM_CONF, test_nn=TEST_NN, peft=PEFT, skip_epoches=SKIP_EPOCHES, per_device_train_batch_size=PER_DEVICE_TRAIN_BATCH_SIZE,
-         gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS, warmup_ratio=WARMUP_RATIO, logging_steps=LOGGING_STEPS, optimizer=OPTIMIZER,
+         gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS, warmup_steps=WARMUP_STEPS, logging_steps=LOGGING_STEPS, optimizer=OPTIMIZER,
          max_prompts=MAX_PROMPTS, save_llm_output=SAVE_LLM_OUTPUT, max_new_tokens=MAX_NEW_TOKENS, use_deepspeed=USE_DEEPSPEED, nn_name_prefix=NN_NAME_PREFIX,
          nn_train_epochs=NN_TRAIN_EPOCHS, temperature=TEMPERATURE, top_k=TOP_K, top_p=TOP_P, data_dir=None,
          eval_save_to_db=True,
          # Pipeline-specific overrides (for backward compatibility with iterative_finetune.py)
          evaluation_strategy=None, eval_steps=None, save_strategy=None, save_steps=None,
-         save_total_limit=None, load_best_model_at_end=False, metric_for_best_model=None, warmup_steps=None, weight_decay=None,
-         per_device_eval_batch_size=None, onnx_run=ONNX_RUN, unsloth_opt=UNSLOTH_OPT, trans_mode=TRANS_MODE,
+         save_total_limit=None, load_best_model_at_end=False, metric_for_best_model=None, weight_decay=None,
+         per_device_eval_batch_size=None, onnx_run=ONNX_RUN, use_unsloth=USE_UNSLOTH, trans_mode=TRANS_MODE,
          prompt_batch=PROMPT_BATCH, enable_merge=False,
          context_length=CONTEXT_LENGTH,
          # --- Pipeline Hyperparameters ---
@@ -152,7 +152,7 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
     # Unsloth conditional import
     # Unsloth should be imported before transformers and peft
     UNSLOTH_AVAILABLE = False
-    if unsloth_opt:
+    if use_unsloth:
         try:
             import unsloth
             UNSLOTH_AVAILABLE = True
@@ -172,10 +172,10 @@ num_train_epochs={num_train_epochs}, lr_scheduler={lr_scheduler}, max_grad_norm=
 r={r}, lora_alpha={lora_alpha}, lora_dropout={lora_dropout}, target_modules={target_modules}, task_type={task_type}, bias={bias},
 learning_rate={learning_rate}, llm_tune_conf={llm_tune_conf}, nn_gen_conf={nn_gen_conf}, nn_gen_conf_id={nn_gen_conf_id},
 llm_conf={llm_conf}, test_nn={test_nn}, nn_train_epochs={nn_train_epochs}, peft={peft}, skip_epoches={skip_epoches},
-per_device_train_batch_size={per_device_train_batch_size}, gradient_accumulation_steps={gradient_accumulation_steps}, warmup_ratio={warmup_ratio},
+per_device_train_batch_size={per_device_train_batch_size}, gradient_accumulation_steps={gradient_accumulation_steps}, warmup_steps={warmup_steps},
 logging_steps={logging_steps}, optimizer={optimizer}, max_prompts={max_prompts}, save_llm_output={save_llm_output}, max_new_tokens={max_new_tokens},
 use_deepspeed={use_deepspeed}, nn_name_prefix={nn_name_prefix}, temperature={temperature}, top_k={top_k}, top_p={top_p}, onnx_run={onnx_run},
-unsloth_opt={unsloth_opt},  trans_mode={trans_mode},  prompt_batch={prompt_batch}, context_length={context_length}''')
+use_unsloth={use_unsloth},  trans_mode={trans_mode},  prompt_batch={prompt_batch}, context_length={context_length}''')
 
     # Build test_prm for standalone mode (epoch-based evaluation)
     # Pipeline mode will override with step-based evaluation via evaluation_strategy
@@ -214,11 +214,11 @@ unsloth_opt={unsloth_opt},  trans_mode={trans_mode},  prompt_batch={prompt_batch
             **dtype_flags,  # Use bf16 if supported, otherwise fp16
         }
 
-        # Add warmup - pipeline may pass warmup_steps (override) or use warmup_ratio
+        # Add warmup - pipeline may pass warmup_steps (override) or use warmup_steps
         if warmup_steps is not None:
             training_kwargs['warmup_steps'] = warmup_steps
         else:
-            training_kwargs['warmup_ratio'] = warmup_ratio
+            training_kwargs['warmup_steps'] = warmup_steps
 
         # Add weight_decay if provided by pipeline
         if weight_decay is not None:
@@ -249,7 +249,7 @@ unsloth_opt={unsloth_opt},  trans_mode={trans_mode},  prompt_batch={prompt_batch
             'report_to': [],
             'per_device_train_batch_size': per_device_train_batch_size,
             'gradient_accumulation_steps': gradient_accumulation_steps,
-            'warmup_ratio': warmup_ratio,
+            'warmup_steps': warmup_steps,
             'learning_rate': learning_rate,
             'bf16': True,  # Use bf16 to match Unsloth's bfloat16 compute dtype
             'logging_steps': logging_steps,
@@ -280,7 +280,6 @@ unsloth_opt={unsloth_opt},  trans_mode={trans_mode},  prompt_batch={prompt_batch
 
     # (Optional) sanity check to surface wrong target_modules/layer indices early
     try:
-        from peft import get_peft_model
         import copy
         # Validate peft_config structure - check that target_modules is not empty
         if not target_modules or len(target_modules) == 0:
@@ -322,7 +321,7 @@ unsloth_opt={unsloth_opt},  trans_mode={trans_mode},  prompt_batch={prompt_batch
     # Show warmup based on what was actually used
     if evaluation_strategy is not None:
         # Pipeline mode
-        warmup_display = f"warmup_steps={warmup_steps}" if warmup_steps is not None else f"warmup_ratio={warmup_ratio}"
+        warmup_display = f"warmup_steps={warmup_steps}" if warmup_steps is not None else f"warmup_steps={warmup_steps}"
         wd_display = f", wd={weight_decay}" if weight_decay is not None else ""
         print(
             f"✓ Training (PIPELINE): {warmup_display}, lr={learning_rate}{wd_display}, batch={per_device_train_batch_size}×{gradient_accumulation_steps}={per_device_train_batch_size * gradient_accumulation_steps}")
@@ -333,7 +332,7 @@ unsloth_opt={unsloth_opt},  trans_mode={trans_mode},  prompt_batch={prompt_batch
     else:
         # Standalone mode
         print(
-            f"✓ Training (STANDALONE): epochs={num_train_epochs}, scheduler={lr_scheduler}, warmup_ratio={warmup_ratio}, lr={learning_rate}, batch={per_device_train_batch_size}×{gradient_accumulation_steps}={per_device_train_batch_size * gradient_accumulation_steps}")
+            f"✓ Training (STANDALONE): epochs={num_train_epochs}, scheduler={lr_scheduler}, warmup_steps={warmup_steps}, lr={learning_rate}, batch={per_device_train_batch_size}×{gradient_accumulation_steps}={per_device_train_batch_size * gradient_accumulation_steps}")
         if test_metric:
             print(f"✓ Test metric: {test_metric} (epoch-based evaluation)")
 
@@ -435,8 +434,8 @@ if __name__ == '__main__':
                         help=f'Per device train batch size (default: {PER_DEVICE_TRAIN_BATCH_SIZE}).')
     parser.add_argument('--gradient_accumulation_steps', type=int, default=GRADIENT_ACCUMULATION_STEPS,
                         help=f'Gradient accumulation steps (default: {GRADIENT_ACCUMULATION_STEPS}).')
-    parser.add_argument('--warmup_ratio', type=float, default=WARMUP_RATIO,
-                        help=f'Warmup step ratio for one fine-tuning epoch (default: {WARMUP_RATIO}).')
+    parser.add_argument('--warmup_steps', type=float, default=WARMUP_STEPS,
+                        help=f'Warmup step ratio for one fine-tuning epoch (default: {WARMUP_STEPS}).')
     parser.add_argument('--logging_steps', type=int, default=LOGGING_STEPS,
                         help=f'Logging steps (default: {LOGGING_STEPS}).')
     parser.add_argument('--optimizer', type=str, default=OPTIMIZER,
@@ -473,15 +472,15 @@ if __name__ == '__main__':
     parser.add_argument('--metric_for_best_model', type=str, default=None,
                         help=f"[Pipeline] Metric to use for selecting best model (default: None).")
     parser.add_argument('--warmup_steps', type=int, default=None,
-                        help=f"[Pipeline] Warmup steps override (default: None, uses warmup_ratio for standalone).")
+                        help=f"[Pipeline] Warmup steps override (default: None, uses warmup_steps for standalone).")
     parser.add_argument('--weight_decay', type=float, default=None,
                         help=f"[Pipeline] Weight decay for regularization (default: None).")
     parser.add_argument('--trans_mode', action='store_true',
                         help=f"Run model generation for transforms only (default: {TRANS_MODE}).")
     parser.add_argument('--onnx_run', action='store_true',
                         help=f"Run model generation step with LLM in ONNX format (default: {ONNX_RUN}).")
-    parser.add_argument('--unsloth_opt', action='store_true',
-                        help=f"Use Unsloth optimizations (default: {UNSLOTH_OPT}).")
+    parser.add_argument('--use_unsloth', action='store_true',
+                        help=f"Use Unsloth optimizations (default: {USE_UNSLOTH}).")
     parser.add_argument("--enable_merge", action="store_true", default=False, help="Enable automatic merge decision after fine-tuning.")
     parser.add_argument('--prompt_batch', type=int, default=PROMPT_BATCH,
                         help=f"Batch size for prompts – Number of prompts processed simultaneously (default: {PROMPT_BATCH}).")

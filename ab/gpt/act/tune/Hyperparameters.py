@@ -63,7 +63,7 @@ def main(tuned_model_version, hf_directory, dataset_path):
                                                  trust_remote_code=True,
                                                  device_map="auto",
                                                  quantization_config=quantization_config_4bit,
-                                                 torch_dtype=torch.float16
+                                                 dtype=torch.float16
                                                 )
 
     # trying to load mapped datasets

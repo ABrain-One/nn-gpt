@@ -344,12 +344,12 @@ def load_model_and_tokenizer(
         print(f"[DEBUG] Using quantization_config: {bnb_cfg is not None}", flush=True)
         if bnb_cfg is not None:
             print(f"[DEBUG] Quantization config details: load_in_4bit={bnb_cfg.load_in_4bit}, compute_dtype={bnb_cfg.bnb_4bit_compute_dtype}", flush=True)
-        print(f"[DEBUG] Using torch_dtype: {dtype}", flush=True)
+        print(f"[DEBUG] Using dtype: {dtype}", flush=True)
         
         # Try loading with device_map="auto" if quantization is enabled (helps with path resolution)
         load_kwargs = {
             "trust_remote_code": True,
-            "torch_dtype": dtype,
+            "dtype": dtype,
         }
         
         if bnb_cfg is not None:
@@ -371,7 +371,7 @@ def load_model_and_tokenizer(
                     # Fallback: try loading without quantization
                     fallback_kwargs = {
                         "trust_remote_code": True,
-                        "torch_dtype": dtype,
+                        "dtype": dtype,
                         "device_map": "auto",
                     }
                     mdl = AutoModelForCausalLM.from_pretrained(base_model, **fallback_kwargs)

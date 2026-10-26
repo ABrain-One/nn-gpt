@@ -11,7 +11,6 @@ from __future__ import annotations
 import importlib.util
 import gc
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -26,6 +25,8 @@ from ab.gpt.act.tune.iterative.novelty_checker import NoveltyChecker
 from ab.gpt.act.tune.iterative.training_data_manager import TrainingDataManager
 from ab.chatprep.prompt_builder import ChatPrepConfig
 from ab.nn.util.Const import out_dir
+
+from ab.gpt.util.Const import new_lemur_stat_dir, new_dataset_dir, nngpt_dir
 
 
 class MobileDeploymentFinetuner(IterativeFinetuner):
@@ -1073,9 +1074,9 @@ class MobileDeploymentFinetuner(IterativeFinetuner):
         roots = [
             self.output_dir / f"cycle_{cycle}" / "nneval",
             self.output_dir / f"cycle_{cycle}" / "generation",
-            out_dir / "nngpt" / "new_lemur" / "train",
-            out_dir / "nngpt" / "new_lemur",
-            out_dir / "nngpt",
+            new_lemur_stat_dir,
+            new_dataset_dir,
+            nngpt_dir,
             out_dir,
         ]
         existing_roots = []

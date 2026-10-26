@@ -170,7 +170,7 @@ def merge_multiple_adapters(base_model, adapter_paths, output_path):
     print("[MERGE] Loading base model (CPU/offload)...")
     model = AutoModelForCausalLM.from_pretrained(
         base_model,
-        torch_dtype=torch.float16,
+        dtype=torch.float16,
         device_map="auto",
         low_cpu_mem_usage=True,
         offload_folder=str(offload_dir),

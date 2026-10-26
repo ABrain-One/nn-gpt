@@ -7,9 +7,15 @@ import statistics
 from typing import Sequence
 import unittest
 
-import ab.nn.api as lemur
-from ab.nn.api import JoinConf
-from ab.gpt.util.Util import extract_all_to_train
+try:
+    import ab.nn.api as lemur
+    from ab.nn.api import JoinConf
+    from ab.gpt.util.Util import extract_all_to_train
+except ImportError as exc:
+    from _unittest_bridge import skip_module
+
+    skip_module(f"test needs ab.nn and ab.gpt: {exc}")
+
 import functools
 
 
@@ -68,6 +74,9 @@ def band_range(name: str) -> tuple[float, float]:
 TASK = os.getenv("LEMUR_TASK", "img-classification")
 DATASET = os.getenv("LEMUR_DATASET", "cifar-10")
 METRIC = os.getenv("LEMUR_METRIC", "acc")
+
+# The two benchmarks below take minutes; set LEMUR_BENCH=1 to run them.
+BENCH = os.getenv("LEMUR_BENCH", "0") == "1"
 
 REPEATS = int(os.getenv("LEMUR_BENCH_REPEATS", "3"))
 WARMUP = int(os.getenv("LEMUR_BENCH_WARMUP", "1"))
@@ -204,6 +213,7 @@ class Test(unittest.TestCase):
             print(f"[PASS] anchor-band '{band}' correctness: min/max j = {jmin:.6f}/{jmax:.6f}")
             print(df[["nn", "accuracy", "anchor_jaccard"]].head(5))
 
+    @unittest.skipUnless(BENCH, "set LEMUR_BENCH=1 to benchmark")
     @measure_time
     def test_legacy_performance_smoke(self):
         conf = JoinConf(
@@ -228,6 +238,7 @@ class Test(unittest.TestCase):
         if median_s > THRESH_LEGACY:
             raise AssertionError(f"Legacy query unexpectedly slow: median {median_s:.2f}s > {THRESH_LEGACY:.2f}s")
 
+    @unittest.skipUnless(BENCH, "set LEMUR_BENCH=1 to benchmark")
     @measure_time
     def test_sql_variable_n_performance_smoke(self):
         conf = JoinConf(

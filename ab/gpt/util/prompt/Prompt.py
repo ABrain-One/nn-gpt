@@ -4,6 +4,8 @@ from datasets import Dataset
 from pandas import DataFrame
 from transformers import PreTrainedTokenizerBase
 
+from ab.gpt.util.llm.LLMUtil import prepare_text_tokenizer, unwrap_tokenizer
+
 # Fallback chat template for tokenizers that ship without one (e.g.
 # ABrain/NNGPT-UniqueArch-Rag). Without it, apply_chat_template raises
 # "tokenizer.chat_template is not set".
@@ -31,16 +33,25 @@ DEFAULT_CHAT_TEMPLATE = (
 def preprocess_batch(batch, tokenizer, max_length):
     """
     Tokenizing a batch
+
+    `text=` is not cosmetic. A multimodal processor's __call__ signature is
+    (images, text, videos, audio), so a positional first argument is read as
+    IMAGES and the run dies in decode_image with "Unsupported image file".
+    The unwrap below normally removes the processor long before this point;
+    the keyword keeps this function correct even when it does not, and is
+    accepted unchanged by every plain tokenizer (`text` is its first parameter
+    too).
     """
+    tokenizer = unwrap_tokenizer(tokenizer)
     result = tokenizer(
-        batch['text'],
+        text=batch['text'],
         truncation=True,
-        max_length=4096,
+        max_length=max_length,
     )
     # Also tokenize response to check its length
     if 'response' in batch:
         response_tokenized = tokenizer(
-            batch['response'],
+            text=batch['response'],
             truncation=False
         )
         # Add response_length field for filtering
@@ -49,9 +60,13 @@ def preprocess_batch(batch, tokenizer, max_length):
 
 
 class Prompt:
-    def __init__(self, max_len: int, tokenizer: PreTrainedTokenizerBase, system_prompt: str = None):
+    def __init__(self, max_len: int, tokenizer, system_prompt: str = None):
+        # `tokenizer` may be a processor (Qwen3VLProcessor) when the caller
+        # built it from a VL checkpoint without going through LLM.__init__.
+        # Unwrapping here keeps the training-data build and generation on the
+        # same tokenizer and the same chat template.
         self.max_len = max_len
-        self.tokenizer = tokenizer
+        self.tokenizer = prepare_text_tokenizer(tokenizer, log_prefix="[Prompt]")
         self.system_prompt = system_prompt
 
     def _build_messages(self, user_content: str, assistant_content: str = None, system_prompt: str = None) -> list:
@@ -88,9 +103,30 @@ class Prompt:
         """
         pass
 
-    def get_dataset(self, only_best_accuracy=False, seed=None, max_prompts=None, max_new_tokens=4096):
-        dataset = Dataset.from_pandas(
-            self.get_raw_dataset(only_best_accuracy, max_prompts))
+    @staticmethod
+    def _split_prompt_completion(text, response):
+        """Split a rendered conversation into (prompt, completion).
+
+        The completion is the assistant turn; the prompt is everything the
+        template put before it, system turn and assistant header included.
+        Splitting the rendered text rather than re-templating guarantees
+        prompt + completion == text exactly, so nothing shifts by a token.
+        """
+        if not text or not response:
+            return None, None
+        idx = text.rfind(response)
+        if idx <= 0:
+            return None, None
+        return text[:idx], text[idx:]
+
+    def get_dataset(self, only_best_accuracy=False, seed=None, max_prompts=None,
+                    max_new_tokens=4096, as_prompt_completion=True):
+        frame = self.get_raw_dataset(only_best_accuracy, max_prompts)
+        dataset = Dataset.from_pandas(frame)
+        # Keep the rendered text and the target around; the length filter below
+        # works on token ids, but the prompt/completion split needs the strings.
+        raw_text = list(frame['text']) if 'text' in frame else []
+        raw_response = list(frame['response']) if 'response' in frame else []
         print("Preprocessing dataset...")
 
         # Apply preprocessing to each batch of the dataset
@@ -106,13 +142,57 @@ class Prompt:
         )
         # Filter out samples that have input_ids exceeding max_length
         # and response tokenized length exceeding max_new_tokens
+        before_filter = len(dataset)
+        keep_mask = [
+            len(s['input_ids']) < self.max_len
+            and len(s.get('response', [])) < max_new_tokens
+            for s in dataset
+        ]
         dataset = dataset.filter(
             lambda sample: len(sample['input_ids']) < self.max_len
             and len(sample.get('response', [])) < max_new_tokens
         )
+        # Apply the same mask to the retained strings so the two stay aligned.
+        raw_text = [t for t, k in zip(raw_text, keep_mask) if k]
+        raw_response = [r for r, k in zip(raw_response, keep_mask) if k]
+        kept = len(dataset)
+        print(f"[SFT] {kept}/{before_filter} samples kept "
+              f"(dropped {before_filter - kept}: longer than max_len={self.max_len} "
+              f"or response longer than max_new_tokens={max_new_tokens})")
+        if kept == 0:
+            raise ValueError(
+                f"All samples were filtered out at max_len={self.max_len}. Raise "
+                f"context_length (and max_new_tokens) or shorten the prompts.")
+
         # Remove response_length field after filtering (it was only used for filtering)
         if 'response' in dataset.column_names:
             dataset = dataset.remove_columns(['response'])
+
+        if as_prompt_completion:
+            # Hand the trainer prompt/completion pairs instead of bare
+            # input_ids. With only input_ids, LoRA.train() cannot find a 'text'
+            # or 'prompt'/'completion' column, falls back to a plain Trainer
+            # ("Dataset does not have 'text' field") and computes the loss over
+            # the WHOLE sequence. The prompt holds the baseline network and is
+            # several times longer than the target, so most of every update was
+            # spent teaching the model to echo prompts. With these two columns
+            # SFTTrainer masks the prompt and trains on the answer alone.
+            keep = [i for i, (t, r) in enumerate(zip(raw_text, raw_response))
+                    if self._split_prompt_completion(t, r)[0] is not None]
+            dropped = len(raw_text) - len(keep)
+            pairs = [self._split_prompt_completion(raw_text[i], raw_response[i]) for i in keep]
+            if not pairs:
+                raise ValueError(
+                    "Could not split any sample into prompt/completion; pass "
+                    "as_prompt_completion=False to train on full sequences.")
+            if dropped:
+                print(f"[SFT] {dropped} sample(s) could not be split into "
+                      f"prompt/completion and were dropped")
+            dataset = Dataset.from_dict({
+                "prompt": [p for p, _ in pairs],
+                "completion": [c for _, c in pairs],
+            })
+            print(f"[SFT] Training on completions only: {len(dataset)} prompt/completion pairs")
 
         # Shuffle dataset
         dataset = dataset.shuffle(seed=seed) if seed else dataset.shuffle()

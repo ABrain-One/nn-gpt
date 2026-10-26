@@ -39,7 +39,7 @@ LEARNING_RATE = 1e-6
 MAX_GRAD_NORM = 1.0
 PER_DEVICE_TRAIN_BATCH_SIZE = 1
 GRADIENT_ACCUMULATION_STEPS = 4
-WARMUP_RATIO = 0.05
+WARMUP_STEPS = 5
 LOGGING_STEPS = 96
 OPTIMIZER = 'paged_adamw_8bit'
 
@@ -532,7 +532,7 @@ def main(llm_conf: str = 'ds_coder_7b_olympic.json',
         report_to=[],
         per_device_train_batch_size=per_device_train_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
-        warmup_ratio=WARMUP_RATIO,
+        warmup_steps=WARMUP_STEPS,
         learning_rate=learning_rate,
         logging_steps=LOGGING_STEPS,
         output_dir=str(nngpt_dir / 'outputs'),

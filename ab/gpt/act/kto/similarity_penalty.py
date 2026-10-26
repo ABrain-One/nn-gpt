@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import math
 import re
-from typing import List, Optional
+from typing import List
 
 from datasketch import MinHash, MinHashLSH
 

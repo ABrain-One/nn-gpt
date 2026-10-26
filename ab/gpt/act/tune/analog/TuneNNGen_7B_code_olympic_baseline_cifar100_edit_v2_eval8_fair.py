@@ -1,6 +1,4 @@
 import os
-import sys
-from pathlib import Path
 from ab.gpt.util.Const import ab_root_path
 
 REPO_ROOT = ab_root_path

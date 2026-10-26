@@ -2,8 +2,7 @@
 Configuration for the Prompt Improvement Pipeline.
 """
 
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 
 @dataclass

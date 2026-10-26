@@ -38,7 +38,8 @@ if _nngpt_override:
 acgpt_dir = out_dir / 'acgpt'
 nnrag_dir = out_dir / 'rag'
 
-new_dataset_dir = nngpt_dir / 'new_lemur'
+submission_dir_name = 'ab_LEMUR_submission'
+new_dataset_dir = nngpt_dir / submission_dir_name
 new_lemur_nn_dir = new_dataset_dir / 'nn'
 new_lemur_stat_dir = new_dataset_dir / 'train'
 

@@ -343,7 +343,7 @@ def alter(epochs: int, test_conf: str, llm_name: str) -> None:
     model = AutoModelForCausalLM.from_pretrained(
         llm_name,
         trust_remote_code=True,
-        torch_dtype=torch.bfloat16,
+        dtype=torch.bfloat16,
         device_map="auto",
     ).eval()
     print("Ready ✔")

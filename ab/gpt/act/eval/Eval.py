@@ -4,7 +4,6 @@ import os
 import shutil
 import sys
 import time
-import traceback
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -391,6 +390,13 @@ def _collect_epoch_requests(
         resolved_task = task
         resolved_dataset = dataset
         resolved_metric = metric
+        # NNGPT_EVAL_PRM_MODE: "seed" (default) lets the seed's DB prm override the
+        # generated hp.txt; "generated" keeps hp.txt and only fills missing keys from
+        # the seed; "fixed" does the same as "generated" (the model's own keys, e.g.
+        # hidden_units, stay available) and then forces the training protocol:
+        # lr, batch, momentum from the Eval defaults and NNGPT_FIXED_EVAL_TRANSFORM.
+        prm_mode = os.environ.get("NNGPT_EVAL_PRM_MODE", "seed").strip().lower()
+        fixed_transform = os.environ.get("NNGPT_FIXED_EVAL_TRANSFORM") or transform
         prm = None
         hp_path = model_dir_path / hp_file
         if hp_path.exists():
@@ -405,7 +411,7 @@ def _collect_epoch_requests(
                 batch=batch,
                 dropout=dropout,
                 momentum=momentum,
-                transform=transform,
+                transform=fixed_transform if prm_mode == "fixed" else transform,
                 stochastic_depth_prob=stochastic_depth_prob,
                 norm_eps=norm_eps,
                 norm_std=norm_std,
@@ -435,7 +441,11 @@ def _collect_epoch_requests(
                 orig_pref = origdf["nn"].split("-")[0]
                 original_prm_from_df = origdf.get("prm")
                 if isinstance(original_prm_from_df, dict):
-                    prm.update(original_prm_from_df)
+                    if prm_mode in ("generated", "fixed"):
+                        for _k, _v in original_prm_from_df.items():
+                            prm.setdefault(_k, _v)
+                    else:
+                        prm.update(original_prm_from_df)
                 prefix_for_db = nn_name_prefix or (
                     origdf.get("nn", "unknown").split("-")[0]
                     if "nn" in origdf
@@ -456,6 +466,10 @@ def _collect_epoch_requests(
         if prm_json:
             prm.update(prm_json)
             print(f"  Applied --prm_json overrides: {prm_json}")
+
+        if prm_mode == "fixed":
+            prm.update({"lr": lr, "batch": batch, "momentum": momentum, "transform": fixed_transform})
+            prm.setdefault("dropout", dropout)
 
         # Always evaluate with nn_train_epochs for this run, regardless of what
         # may have been stored in the original prm payload.
@@ -639,12 +653,23 @@ def main(
                     cycle_time_minutes=cycle_time_minutes,
                     current_alter_epoch_path=current_alter_epoch_path,
                 )
+                # The per-epoch file is the canonical record. Previously only a
+                # single cycle_results.json was kept, and the rolling backup was
+                # named from `i-1` -- so the number on the file did not match the
+                # data inside it and it was impossible to tell which epoch a
+                # result belonged to. Name it after the epoch it describes.
+                epoch_results_path = base_nngpt_path / f"cycle_results_{current_epoch}.json"
+                save_cycle_results(cycle_results, epoch_results_path)
                 cycle_results_path = base_nngpt_path / "cycle_results.json"
-                if cycle_results_path.exists():
-                    backup_path = base_nngpt_path / f"cycle_results_{i-1}.json"
-                    shutil.copy2(cycle_results_path, backup_path)
-                    print(f"Backup saved -> {backup_path}")
                 save_cycle_results(cycle_results, cycle_results_path)
+                print(f"Per-epoch results saved -> {epoch_results_path}")
+
+                try:
+                    from ab.gpt.util.data.EpochStats import update_epoch_report
+                    update_epoch_report(models_base_dir, current_epoch, base_nngpt_path)
+                except Exception as exc:
+                    print(f"[EPOCH STATS] Could not update the epoch report: {exc}")
+
                 print(
                     f"\n--- Cycle {current_cycle} (Epoch {current_epoch}) results saved to: "
                     f"{cycle_results_path} ---"
@@ -657,6 +682,7 @@ def main(
                         "cycle": current_cycle,
                         "models_base_dir": str(models_base_dir),
                         "cycle_results_path": str(cycle_results_path),
+                        "epoch_results_path": str(epoch_results_path),
                         "model_results": sorted(epoch_results, key=lambda item: str(item.get("model_id", ""))),
                         "successful_models": len(successful_models),
                         "failed_models": len(failed_models),

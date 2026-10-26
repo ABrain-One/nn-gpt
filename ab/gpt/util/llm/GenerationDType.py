@@ -71,7 +71,7 @@ def infer_generation_head_dtype(model, fallback: Optional[torch.dtype] = None) -
                 return dtype
 
     for owner in (config, model):
-        for attr_name in ("torch_dtype", "dtype"):
+        for attr_name in ("dtype", "dtype"):
             dtype = normalize_torch_dtype(_value_from(owner, attr_name))
             if dtype is not None:
                 return dtype
@@ -81,11 +81,11 @@ def infer_generation_head_dtype(model, fallback: Optional[torch.dtype] = None) -
 
 def align_generation_head_dtype(
     model,
-    torch_dtype: Optional[torch.dtype],
+    dtype: Optional[torch.dtype],
     *,
     log_prefix: str = "[RL]",
 ) -> None:
-    torch_dtype = normalize_torch_dtype(torch_dtype)
+    dtype = normalize_torch_dtype(dtype)
     aligned_modules = []
     wrapped_modules = []
     visited_models = set()
@@ -93,7 +93,7 @@ def align_generation_head_dtype(
     wrapper_cache: dict[int, DTypeSafeLinearWrapper] = {}
 
     def _cast_module(module, label: str) -> None:
-        if torch_dtype is None or module is None or not hasattr(module, "weight"):
+        if dtype is None or module is None or not hasattr(module, "weight"):
             return
         if isinstance(module, DTypeSafeLinearWrapper):
             module = module.module
@@ -105,10 +105,10 @@ def align_generation_head_dtype(
         if weight is None:
             return
         before_dtype = weight.dtype
-        if before_dtype == torch_dtype:
+        if before_dtype == dtype:
             return
-        module.to(dtype=torch_dtype)
-        aligned_modules.append(f"{label}:{before_dtype}->{torch_dtype}")
+        module.to(dtype=dtype)
+        aligned_modules.append(f"{label}:{before_dtype}->{dtype}")
 
     def _ensure_wrapper(module, label: str):
         if module is None or not hasattr(module, "weight"):
@@ -164,9 +164,9 @@ def align_generation_head_dtype(
     _walk_model_tree(model, "model")
 
     config = getattr(model, "config", None)
-    if config is not None and torch_dtype is not None:
+    if config is not None and dtype is not None:
         try:
-            config.torch_dtype = torch_dtype
+            config.dtype = dtype
         except Exception:
             pass
 

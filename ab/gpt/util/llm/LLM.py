@@ -1,9 +1,16 @@
 # ab/gpt/util/LLM.py
 from ab.nn.util.Const import out_dir
 from ab.gpt.util.Const import conf_chat_template_dir, llm_dir, llm_tokenizer_dir
-from ab.gpt.util.llm.LLMUtil import quantization_config_4bit
+from ab.gpt.util.llm.LLMUtil import (
+    quantization_config_4bit,
+    quantization_config_4bit_for,
+    prepare_text_tokenizer,
+    drop_vision_tower,
+    vram_report,
+)
 from ab.gpt.util.Util import exists
 
+import gc
 import os
 import json
 import tempfile
@@ -39,30 +46,83 @@ class LLM:
         self.context_length = context_length
         self._use_unsloth = use_unsloth
         self.chat_template_path = chat_template_path
-        
+
         # ===== Unsloth Fast Path =====
         if use_unsloth:
             from unsloth import FastLanguageModel
-            self.model, self.tokenizer = FastLanguageModel.from_pretrained(
+            unsloth_kwargs = dict(
                 model_name=model_path,
-                dtype = None,
+                dtype=None,
                 max_seq_length=context_length or 4096,
                 load_in_4bit=load_in_4bit,
                 token=access_token,
-                full_finetuning = False,
+                full_finetuning=False,
             )
-            
+            # This branch used to ignore bnb_config completely, so the canonical
+            # QLoRA recipe (nf4 + double quant, and optionally a quantized
+            # lm_head) never reached the model: only load_in_4bit was forwarded
+            # and unsloth picked its own defaults. Forward the config when the
+            # installed unsloth accepts it, and fall back silently when it does
+            # not, so older unsloth versions keep working unchanged.
+            if load_in_4bit:
+                quant_cfg = bnb_config or quantization_config_4bit_for()
+                # quantization_config carries load_in_4bit itself, and passing
+                # both raises ValueError ("you can't pass both"), so the explicit
+                # flag is dropped for this attempt. TypeError means the installed
+                # unsloth has no such kwarg; ValueError covers transformers
+                # rejecting the combination. Either way fall back to the plain
+                # load_in_4bit call that worked before.
+                cfg_kwargs = {k: v for k, v in unsloth_kwargs.items()
+                              if k != "load_in_4bit"}
+                try:
+                    self.model, self.tokenizer = FastLanguageModel.from_pretrained(
+                        quantization_config=quant_cfg, **cfg_kwargs)
+                    print("[Unsloth] loaded with explicit BitsAndBytesConfig "
+                          f"(double_quant={quant_cfg.bnb_4bit_use_double_quant}, "
+                          f"skip_modules={quant_cfg.llm_int8_skip_modules}).",
+                          flush=True)
+                except (TypeError, ValueError) as e:
+                    print(f"[Unsloth] explicit quantization_config rejected "
+                          f"({type(e).__name__}: {e}); falling back to unsloth's "
+                          f"built-in 4-bit defaults. lm_head stays unquantized.",
+                          flush=True)
+                    # A partially built model may already hold VRAM.
+                    self.model = None
+                    gc.collect()
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                    self.model, self.tokenizer = FastLanguageModel.from_pretrained(
+                        **unsloth_kwargs)
+            else:
+                self.model, self.tokenizer = FastLanguageModel.from_pretrained(
+                    **unsloth_kwargs)
+
+            # Free the ViT of VL checkpoints (Qwen3.8-27B) before the trainer
+            # allocates: this pipeline is text-only and never sends pixel_values.
+            drop_vision_tower(self.model, log_prefix="[Unsloth]")
+            vram_report(self.model, log_prefix="[Unsloth]")
+
+            # A VL checkpoint hands back a processor, whose __call__ reads its
+            # first positional argument as IMAGES. Every downstream consumer
+            # (Prompt/SFT, ChatBot, vLLM, the trainer, the collator) treats
+            # self.tokenizer as a tokenizer, so the processor is removed here,
+            # once, instead of being worked around in each of them.
+            self.processor = self.tokenizer
+            self.tokenizer = prepare_text_tokenizer(
+                self.tokenizer, context_length=self.context_length,
+                log_prefix="[Unsloth]")
+
             if self.tokenizer.pad_token_id is None:
                 self.tokenizer.pad_token = self.tokenizer.eos_token
             self.tokenizer.padding_side = "right"
             self._apply_chat_template_override()
             print(f"[Unsloth] Loaded {model_path}, 4bit={load_in_4bit}")
             return
-        
+
         # ===== Original HuggingFace Path =====
         # --- Tokenizer ---
         tok_fl_nm = llm_tokenizer_dir(base_path, model_path)
-        
+
         raw_fl_nm = llm_dir(base_path, model_path)
         tokenizer_exists = exists(tok_fl_nm)
 
@@ -139,22 +199,22 @@ class LLM:
         elif use_deepspeed:
             # Fallback: if use_deepspeed is True, assume ZeRO-3 might be used
             use_zero3 = True
-        
+
         # Build model kwargs (sanitize for ZeRO-3)
         deepspeed_specific_prm = {} if use_zero3 else {"device_map": "auto"}
         model_kwargs = dict(
             trust_remote_code=True,
             max_memory={i: max_memory for i in range(torch.cuda.device_count())},
             token=access_token,
-            torch_dtype=torch.bfloat16,  # QLoRA compute
+            dtype=torch.bfloat16,  # QLoRA compute
             gguf_file=gguf_file,
             config=config,
             **deepspeed_specific_prm
         )
-        
+
         if bnb_config is not None:
             model_kwargs["quantization_config"] = bnb_config
-        
+
         # --- ZeRO-3 guard: strip incompatible args ---
         # NOTE: Other files using device_map (RAG_AlterNN.py, TuneRL.py, MergeLLM.py, etc.)
         # are safe because they don't use DeepSpeed/ZeRO-3. Only this LLM class needs sanitization
@@ -166,15 +226,30 @@ class LLM:
             # (optional) these can also trip sharding heuristics—keep it simple on ZeRO-3:
             model_kwargs.pop("max_memory", None)
             model_kwargs.pop("offload_folder", None)
-        
+
         # Debug: verify nothing slipped through
         print("[DEBUG from_pretrained kwargs]", {k: ("***" if k == "token" else v) for k, v in model_kwargs.items()})
-        
+
         base_model = local_path if exists(local_path) else raw_fl_nm if exists(raw_fl_nm) else model_path
         self.model = AutoModelForCausalLM.from_pretrained(
             base_model,
             **model_kwargs
         )
+
+        # Same trim as the unsloth path: a VL checkpoint keeps its ViT resident
+        # even though this pipeline is text-only. No-op on text-only models.
+        drop_vision_tower(self.model, log_prefix="[LLM]")
+        vram_report(self.model, log_prefix="[LLM]")
+
+        # Same unwrap as the unsloth path. AutoTokenizer usually returns a real
+        # tokenizer here, so this is normally a no-op; it costs nothing and
+        # keeps the two load paths from differing in what self.tokenizer is.
+        _tok = getattr(self, "tokenizer", None)
+        if _tok is not None:
+            self.processor = _tok
+            self.tokenizer = prepare_text_tokenizer(
+                _tok, context_length=self.context_length, log_prefix="[LLM]")
+
         if exists(local_path):
             print("Loading Model from local files:", "'" + local_path + "'")
         elif exists(raw_fl_nm):

@@ -631,7 +631,7 @@ def resolve_sft_initial_adapter_dtype(label: str, precision: Dict[str, Any]) -> 
     import torch
 
     if label == "precision":
-        return precision["torch_dtype"]
+        return precision["dtype"]
     if label == "fp32":
         return torch.float32
     if label == "fp16":
@@ -2045,11 +2045,11 @@ def run_sft_training(*, gpu_role_plan: Optional[Dict[str, Any]] = None):
         print(f"[SFT RL] DeepSpeed Config: {deepspeed_config_path}")
     print(f"[SFT RL] Fixed training device: {train_device}")
     print(f"[SFT RL] Visible CUDA devices: {visible_cuda_devices}")
-    print(f"[SFT RL] Mixed precision: {precision['label']} (torch_dtype={precision['torch_dtype']})")
+    print(f"[SFT RL] Mixed precision: {precision['label']} (dtype={precision['dtype']})")
     if load_initial_adapter and initial_adapter_mode == "trainable":
         print(
             "[SFT RL] Initial adapter dtype: "
-            f"{initial_adapter_dtype_label} (torch_dtype={initial_adapter_dtype})"
+            f"{initial_adapter_dtype_label} (dtype={initial_adapter_dtype})"
         )
     print(f"[SFT RL] Current stage: {TuneRL.current_stage_name}")
     print(
@@ -2144,11 +2144,11 @@ def run_sft_training(*, gpu_role_plan: Optional[Dict[str, Any]] = None):
         )
 
     model = TuneRL.prepare_model_for_kbit_training(model)
-    TuneRL.align_generation_head_dtype(model, precision["torch_dtype"])
+    TuneRL.align_generation_head_dtype(model, precision["dtype"])
     if resolve_sft_compact_float_params():
         model = TrainerRuntime.cast_non_lora_float_parameter_dtype(
             model,
-            dtype=precision["torch_dtype"],
+            dtype=precision["dtype"],
             label="[SFT RL] Prepared model",
         )
     if resolve_sft_compact_after_model_load():
@@ -2201,11 +2201,11 @@ def run_sft_training(*, gpu_role_plan: Optional[Dict[str, Any]] = None):
             log_prefix="[SFT RL]",
             missing_adapter_message=f"Missing adapter directory under SFT stage checkpoint: {stage_adapter_dir}",
         )
-    TuneRL.align_generation_head_dtype(model, precision["torch_dtype"])
+    TuneRL.align_generation_head_dtype(model, precision["dtype"])
     if resolve_sft_compact_float_params():
         model = TrainerRuntime.cast_non_lora_float_parameter_dtype(
             model,
-            dtype=precision["torch_dtype"],
+            dtype=precision["dtype"],
             label="[SFT RL] PEFT model",
         )
     if resolve_sft_compact_after_model_load():

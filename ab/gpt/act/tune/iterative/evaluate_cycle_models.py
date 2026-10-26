@@ -12,7 +12,7 @@ from ab.nn.util.Const import out_dir
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from ab.gpt import NNEval
+import ab.gpt.act.eval.Eval as NNEval
 
 
 def evaluate_cycle_models(

@@ -46,6 +46,7 @@ def _parse_cycle(c: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         "sim_penalty_nonzero": int(b.get("sim_penalty_nonzero", 0)),
         "sim_penalty_mean": float(b.get("sim_penalty_mean", 0.0) or 0.0),
         "trained": bool(c.get("training", {}).get("success", False)),
+        "v2": "screening" in b,  # pipeline-v2 metrics (pref_v2_pipeline)
     }
 
 
@@ -389,6 +390,14 @@ def main() -> None:
     cycles.sort(key=lambda r: r["cycle"])
     if not cycles:
         raise SystemExit("No cycles with metrics found in the results file.")
+    # v2 metrics store no accumulated pools; the pool after each plotted cycle is the
+    # running total of its desirable (accepted) and undesirable architectures.
+    if any(r["v2"] for r in cycles):
+        des = und = 0
+        for r in cycles:
+            des += r["new_desirable"]
+            und += r["new_undesirable"]
+            r["desirable_total"], r["undesirable_total"] = des, und
 
     # Average accuracy is reported over models that cleared the threshold (card-style).
     try:
@@ -443,6 +452,17 @@ def main() -> None:
             print("  " + card.encode("ascii", "replace").decode())
         try:
             (out_dir / "kto_card_summary.txt").write_text(card + "\n", encoding="utf-8")
+            # Same numbers, machine-readable (for the cross-experiment tables).
+            (out_dir / "kto_card_summary.json").write_text(json.dumps({
+                "valid": n_valid, "denominator": denom, "valid_pct": 100.0 * n_valid / denom,
+                "mean_all": m * 100, "mean_all_ci": [lo * 100, hi * 100],
+                "mean_ge": am * 100 if above else None,
+                "mean_ge_ci": [alo * 100, ahi * 100] if above else None, "n_ge": len(above),
+                "median": _median(all_valid) * 100, "best": max(all_valid) * 100, "ge_rate": ge,
+                "unique": uniq, "checked": checked,
+                "unique_pct": 100.0 * uniq / checked if checked else None,
+                "threshold": run_threshold,
+            }, indent=2), encoding="utf-8")
         except Exception:  # noqa: BLE001
             pass
     else:

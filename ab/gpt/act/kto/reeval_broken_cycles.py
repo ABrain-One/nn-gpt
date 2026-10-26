@@ -157,7 +157,7 @@ def run_eval_for_cycle(st: Dict[str, Any], *, dataset: str, transform: str, lr: 
                        momentum: float, batch: int, dropout: float, train_epochs: int,
                        multi_gpu: bool) -> None:
     """Drive NNEval on this cycle's nneval/ exactly as the pipeline does."""
-    from ab.gpt import NNEval
+    import ab.gpt.act.eval.Eval as NNEval
     NNEval.main(
         nn_name_prefix=None,
         nn_train_epochs=train_epochs,
@@ -174,7 +174,6 @@ def run_eval_for_cycle(st: Dict[str, Any], *, dataset: str, transform: str, lr: 
         transform=transform,
         custom_synth_dir=str(st["nneval"]),
         cycle=st["cycle"],
-        use_sequential=not multi_gpu,
         use_all_visible_gpus=multi_gpu,
     )
 

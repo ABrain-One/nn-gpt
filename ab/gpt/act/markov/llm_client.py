@@ -4,13 +4,12 @@ Provides a unified interface for text generation.
 """
 
 import os
-import json
 import torch
 import random
 import numpy as np
 import requests
 from ab.gpt.util.llm.LLM import LLM
-from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
+from transformers import set_seed
 
 # Default seed for reproducibility
 DEFAULT_SEED = 43

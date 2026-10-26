@@ -21,7 +21,7 @@ def alter(epochs, test_conf, llm_name):
     print("Loading Tokenizer and Model...")
     tokenizer = AutoTokenizer.from_pretrained(llm_name, trust_remote_code=True)
     print("Load Tokenizer Complete")
-    model = AutoModelForCausalLM.from_pretrained(llm_name, trust_remote_code=True, torch_dtype=torch.bfloat16).cuda()
+    model = AutoModelForCausalLM.from_pretrained(llm_name, trust_remote_code=True, dtype=torch.bfloat16).cuda()
     print("Load Model Complete, Start Loop...")
 
     shutil.rmtree(epoch_dir(), ignore_errors=True)

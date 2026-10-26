@@ -11,9 +11,12 @@ Usage:
 """
 
 from __future__ import annotations
-import argparse, gc, json, os, random, re, sys, textwrap, time
-from pathlib import Path
-from typing import Any, Dict, List, Tuple, Optional
+import argparse
+import json
+import os
+import random
+import re
+import textwrap
 
 import numpy as np
 import torch
@@ -641,7 +644,7 @@ def main():
 
     # Load model
     print(f"[PPO] Loading model: {args.base_model}...")
-    precision = {"torch_dtype": dtype, "bf16": bf16, "fp16": not bf16,
+    precision = {"dtype": dtype, "bf16": bf16, "fp16": not bf16,
                  "label": "bf16" if bf16 else "fp16"}
     model = load_quantized_causal_lm(
         model_source=args.base_model, precision=precision,

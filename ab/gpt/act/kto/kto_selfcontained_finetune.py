@@ -488,7 +488,7 @@ class SelfContainedKTOPipeline:
         # Import here so generation/training subprocess dispatch doesn't pay the
         # heavy ab.nn import cost, and so a missing optional dep fails loudly only
         # at eval time.
-        from ab.gpt import NNEval
+        import ab.gpt.act.eval.Eval as NNEval
 
         eval_by_id: Dict[str, Dict[str, Any]] = {}
         try:
@@ -510,7 +510,6 @@ class SelfContainedKTOPipeline:
                 cycle=cycle,
                 # Multi-GPU: distribute eval across all visible GPUs via NNEval's
                 # worker pool (dynamic, one worker per GPU). Off → old single-GPU path.
-                use_sequential=not self.eval_multi_gpu,
                 use_all_visible_gpus=self.eval_multi_gpu,
             )
         except Exception as e:  # noqa: BLE001

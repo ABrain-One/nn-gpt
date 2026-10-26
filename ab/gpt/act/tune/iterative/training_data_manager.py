@@ -7,10 +7,11 @@ Converts model code to chat examples and maintains cumulative training datasets.
 """
 
 import json
+import os
 import shutil
 import uuid
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from collections import defaultdict
 
 from ab.nn.util.Const import out_dir
@@ -129,14 +130,19 @@ class TrainingDataManager:
         accuracy = metadata.get("accuracy", 0.0)
         params = metadata.get("params", 0)
         params_limit = int(params * 1.5)
+        corpus_fix = os.environ.get("NNGPT_CORPUS_FIX", "").strip().lower() in {"1", "true", "yes", "on"}
         
         import re
-        # Replace params limit in the template
-        user_content = re.sub(
-            r'params\s*[≤<=]+\s*[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?\d+)?',
-            f'params ≤ {params_limit}',
-            self.user_template
-        )
+        # Replace params limit in the template (with NNGPT_CORPUS_FIX, keep the
+        # template's own limit when the parameter count is unknown)
+        if corpus_fix and params <= 0:
+            user_content = self.user_template
+        else:
+            user_content = re.sub(
+                r'params\s*[≤<=]+\s*[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?\d+)?',
+                f'params ≤ {params_limit}',
+                self.user_template
+            )
         
         # Enhance the REQUIRED FORMAT section with additional requirements we've learned
         additional_requirements = (
@@ -176,7 +182,11 @@ class TrainingDataManager:
                     f"**REFERENCE**: Similar models achieve {accuracy*100:.2f}%+ on first epoch.\n\n**PRIMARY OBJECTIVE**"
                 )
         
-        assistant_content = f"```python\\n{code.strip()}\\n```"
+        if corpus_fix:
+            # Real newlines, as in the base corpus
+            assistant_content = f"```python\n{code.strip()}\n```"
+        else:
+            assistant_content = f"```python\\n{code.strip()}\\n```"
         
         # Match original format: use "id" and "meta" instead of "metadata"
         # Original format: {"id": "...", "messages": [...], "meta": {...}}

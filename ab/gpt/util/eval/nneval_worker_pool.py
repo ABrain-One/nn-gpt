@@ -24,6 +24,13 @@ class PersistentNNEvalWorkerError(RuntimeError):
     pass
 
 
+# Matches WORKER_MEMORY_ABORT_EXIT_CODE in nneval_worker_bootstrap: the worker
+# stepped aside on purpose rather than letting the machine run out of memory.
+WORKER_MEMORY_ABORT_EXIT_CODE = 17
+# The worker's host-floor abort, kept in step with nneval_worker_bootstrap.
+WORKER_HOST_FLOOR_EXIT_CODE = 18
+
+
 def _safe_int_env(name: str, default: int) -> int:
     raw = os.environ.get(name)
     if raw is None or raw == "":
@@ -306,6 +313,30 @@ def _read_process_rss_gib() -> Optional[float]:
     return None
 
 
+def _read_meminfo_gib(field: str) -> Optional[float]:
+    """Host memory figure from /proc/meminfo, in GiB.
+
+    The pool needs the *host* picture, not its own: the evaluation worker is
+    killed by the kernel for what the whole machine is doing, so a worker that
+    looks healthy on its own can still be about to take the trainer down.
+    """
+    try:
+        with open("/proc/meminfo", "r", encoding="utf-8") as handle:
+            for line in handle:
+                if line.startswith(field + ":"):
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        return float(parts[1]) / (1024.0 * 1024.0)
+                    break
+    except OSError:
+        return None
+    return None
+
+
+def _read_mem_available_gib() -> Optional[float]:
+    return _read_meminfo_gib("MemAvailable")
+
+
 def _format_mem_value(value: Optional[float]) -> str:
     if value is None:
         return "n/a"
@@ -415,12 +446,19 @@ class _PersistentNNEvalWorkerSession:
         assigned_gpu: Optional[int],
         assigned_cuda_visible_device: Optional[str],
         worker_slot: int,
+        disable_host_floor: bool = False,
     ) -> None:
         self._assigned_gpu = assigned_gpu
         self._assigned_cuda_visible_device = (
             None if assigned_cuda_visible_device is None else str(assigned_cuda_visible_device)
         )
         self._worker_slot = int(worker_slot)
+        # A persistent worker is recycled on these two counters. Host memory
+        # leaked by a generated network is only released when its process
+        # exits, so a worker that lives for the whole run accumulates every
+        # leak every model left behind.
+        self._tasks_done = 0
+        self._last_rss_gib = 0.0
         self._parent_conn, child_conn = mp.Pipe(duplex=True)
         child_fd = int(child_conn.fileno())
         os.set_inheritable(child_fd, True)
@@ -434,6 +472,11 @@ class _PersistentNNEvalWorkerSession:
                 else str(int(assigned_gpu))
             )
             child_env.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+        if disable_host_floor:
+            # The pool has concluded the shortage is not this worker's to fix,
+            # so the worker keeps watching its own size but stops aborting for
+            # the host's sake. Aborting again would only repeat the failure.
+            child_env["NNGPT_NNEVAL_HOST_ABORT_GIB"] = "0"
         command = [
             sys.executable,
             "-u",
@@ -454,6 +497,12 @@ class _PersistentNNEvalWorkerSession:
             stderr=None,
             close_fds=True,
             pass_fds=(child_fd,),
+            # Own session: a fatal signal aimed at the trainer's process group
+            # (or at the terminal it was started from) must not reach the
+            # worker, and a worker dying must not raise a signal in the shell.
+            # The worker ties itself back to the trainer with PR_SET_PDEATHSIG,
+            # so detaching it here does not leave orphans behind.
+            start_new_session=True,
         )
         child_conn.close()
         self._worker_info = self._wait_for_ready(timeout=30.0)
@@ -484,9 +533,12 @@ class _PersistentNNEvalWorkerSession:
 
         try:
             response = self._parent_conn.recv()
-        except EOFError as exc:
+        except (EOFError, OSError) as exc:
+            detail = self._exit_detail()
             self.close(force=True)
-            raise PersistentNNEvalWorkerError("Persistent NNEval worker closed its pipe unexpectedly") from exc
+            raise PersistentNNEvalWorkerError(
+                f"Persistent NNEval worker stopped responding{detail}"
+            ) from exc
         except Exception as exc:
             self.close(force=True)
             raise PersistentNNEvalWorkerError(f"Persistent NNEval worker recv failed: {exc}") from exc
@@ -494,6 +546,13 @@ class _PersistentNNEvalWorkerSession:
         if not isinstance(response, dict):
             self.close(force=True)
             raise PersistentNNEvalWorkerError("Persistent NNEval worker returned a non-dict response")
+        self._tasks_done += 1
+        reported_rss = response.get("worker_rss_gib")
+        if reported_rss is not None:
+            try:
+                self._last_rss_gib = float(reported_rss)
+            except (TypeError, ValueError):
+                pass
         return response
 
     def _wait_for_ready(self, *, timeout: float) -> Dict[str, Any]:
@@ -592,8 +651,61 @@ class _PersistentNNEvalWorkerSession:
             "slot": self._worker_slot,
         }
 
+    def _exit_detail(self) -> str:
+        """Say why the worker is gone, so a memory abort is not read as a bug."""
+        # Give a just-killed process a moment to be reaped before asking.
+        for _ in range(20):
+            code = self._process.poll()
+            if code is not None:
+                break
+            time.sleep(0.05)
+        else:
+            return ""
+        if code == WORKER_MEMORY_ABORT_EXIT_CODE:
+            return (
+                ": the worker's memory guard aborted this evaluation because the worker "
+                "itself grew past its limit (raise NNGPT_NNEVAL_WORKER_RSS_ABORT_GIB "
+                "to allow it more, if the machine has the memory to spare)"
+            )
+        if code == WORKER_HOST_FLOOR_EXIT_CODE:
+            return (
+                ": the worker's memory guard aborted this evaluation because the host "
+                "was close to out of memory"
+            )
+        if code is not None and code < 0:
+            return f": killed by signal {-code} (the kernel's OOM killer sends 9)"
+        return f": exited with status {code}"
+
+    def rss_gib(self) -> float:
+        """Host memory this worker is holding, as of its last completed model."""
+        return float(self._last_rss_gib)
+
+    def recycle_reason(self) -> Optional[str]:
+        """Why this worker should be replaced before it is handed another model.
+
+        Returning a reason here is what turns an unbounded persistent worker
+        into a bounded one. Restarting costs a few seconds of interpreter and
+        CUDA-context startup; not restarting costs the run.
+        """
+        if self._process.poll() is not None:
+            return "worker process is no longer running"
+        max_tasks = _safe_int_env("NNGPT_NNEVAL_WORKER_MAX_TASKS", 8)
+        if max_tasks > 0 and self._tasks_done >= max_tasks:
+            return f"handled {self._tasks_done} models (limit {max_tasks})"
+        max_rss_gib = _safe_float_env("NNGPT_NNEVAL_WORKER_MAX_RSS_GIB", 24.0)
+        if max_rss_gib > 0 and self._last_rss_gib >= max_rss_gib:
+            return (
+                f"worker RSS {self._last_rss_gib:.2f} GiB reached limit {max_rss_gib:.2f} GiB"
+            )
+        return None
+
     def diagnostics(self) -> Dict[str, Any]:
-        return {**self._worker_info, "alive": self._process.poll() is None}
+        return {
+            **self._worker_info,
+            "alive": self._process.poll() is None,
+            "tasks_done": int(self._tasks_done),
+            "current_rss_gib": float(self._last_rss_gib),
+        }
 
     def close(self, *, force: bool = False) -> None:
         try:
@@ -624,6 +736,14 @@ class _NNEvalWorkerPool:
     def __init__(self, *, plan: Optional[Dict[str, Any]] = None) -> None:
         self._plan = dict(plan or build_nneval_worker_plan())
         self._sessions: List[_PersistentNNEvalWorkerSession] = []
+        # Consecutive evaluations lost to the host-memory floor. A worker that
+        # aborts because the machine is short of memory has not necessarily
+        # done anything wrong, and if the memory belongs to something else --
+        # the trainer process leaking across cycles, say -- then every retry
+        # aborts at the same place and the whole epoch yields nothing, which is
+        # a worse outcome than the crash the floor was added to prevent.
+        self._host_floor_aborts = 0
+        self._host_floor_disabled = False
         try:
             if self._plan["eval_gpu_indices"]:
                 eval_gpu_tokens = list(self._plan.get("eval_gpu_tokens") or [])
@@ -638,6 +758,7 @@ class _NNEvalWorkerPool:
                             assigned_gpu=int(assigned_gpu),
                             assigned_cuda_visible_device=assigned_cuda_visible_device,
                             worker_slot=slot,
+                            disable_host_floor=self._host_floor_disabled,
                         )
                     )
             else:
@@ -697,7 +818,38 @@ class _NNEvalWorkerPool:
             "total_rss_gib": total_rss_gib,
         }
 
+    def _wait_for_host_memory(self) -> None:
+        """Pause before starting a replacement worker if memory is still tight.
+
+        A worker that just aborted for lack of memory has freed its own, but the
+        kernel may not have reclaimed page cache yet. Starting the replacement
+        into the same shortage would abort it immediately and burn the model's
+        retry for nothing.
+        """
+        floor_gib = _safe_float_env("NNGPT_NNEVAL_RESPAWN_MEM_FLOOR_GIB", 5.0)
+        budget = _safe_float_env("NNGPT_NNEVAL_RESPAWN_WAIT_SECONDS", 60.0)
+        if floor_gib <= 0 or budget <= 0:
+            return
+        deadline = time.time() + budget
+        announced = False
+        while time.time() < deadline:
+            available = _read_mem_available_gib()
+            if available is None or available >= floor_gib:
+                return
+            if not announced:
+                print(
+                    f"[NNEval Worker Pool] Waiting for host memory: "
+                    f"MemAvailable {available:.2f} GiB < {floor_gib:.2f} GiB "
+                    f"(up to {budget:.0f}s)"
+                )
+                announced = True
+            gc.collect()
+            time.sleep(2.0)
+        if announced:
+            print("[NNEval Worker Pool] Proceeding without the full memory floor")
+
     def _replace_session(self, slot: int) -> _PersistentNNEvalWorkerSession:
+        self._wait_for_host_memory()
         old_session = self._sessions[slot]
         old_info = old_session.diagnostics()
         assigned_gpu = old_info.get("assigned_gpu")
@@ -708,6 +860,7 @@ class _NNEvalWorkerPool:
                 assigned_gpu=assigned_gpu if assigned_gpu is not None else None,
                 assigned_cuda_visible_device=assigned_cuda_visible_device,
                 worker_slot=slot,
+                disable_host_floor=self._host_floor_disabled,
             )
         except Exception:
             new_session = _PersistentNNEvalWorkerSession(
@@ -738,7 +891,104 @@ class _NNEvalWorkerPool:
             "worker_device": str(worker_device),
         }
 
+    def _note_host_floor_outcome(self, session, *, failed: bool) -> None:
+        """Count consecutive evaluations lost to the host-memory floor.
+
+        The floor exists to stop the kernel having to kill something, and when
+        the worker is what filled the machine, aborting it is the right trade:
+        one model is lost and the run continues. But when the memory belongs to
+        another process, the replacement worker meets the same shortage and
+        aborts too, and an entire epoch can end with nothing evaluated -- which
+        is worse than the crash the floor was meant to prevent. After enough
+        consecutive host-floor aborts the floor is therefore switched off for
+        subsequent workers: they keep watching their own size, which is still
+        theirs to control, and the run gets to make progress.
+        """
+        if self._host_floor_disabled:
+            return
+        if not failed:
+            self._host_floor_aborts = 0
+            return
+        if session._process.poll() != WORKER_HOST_FLOOR_EXIT_CODE:
+            # Any other failure says nothing about the host's memory.
+            self._host_floor_aborts = 0
+            return
+
+        self._host_floor_aborts += 1
+        streak = _safe_int_env("NNGPT_NNEVAL_HOST_ABORT_STREAK", 3)
+        available = _read_mem_available_gib()
+        worker_rss = session.rss_gib()
+        print(
+            f"[NNEval Worker Pool] Host-floor abort {self._host_floor_aborts}"
+            f"/{streak} (MemAvailable {_format_mem_value(available)} GiB, "
+            f"this worker held {worker_rss:.2f} GiB, "
+            f"trainer process holds {_format_mem_value(_read_process_rss_gib())} GiB)"
+        )
+        if streak <= 0 or self._host_floor_aborts < streak:
+            return
+
+        self._host_floor_disabled = True
+        print(
+            "[NNEval Worker Pool] The host-memory floor has cost "
+            f"{self._host_floor_aborts} evaluations in a row, so the shortage is "
+            "not this worker's to fix -- it aborted while holding only "
+            f"{worker_rss:.2f} GiB of the machine. Disabling the floor for the "
+            "rest of the run so evaluations can proceed; workers still abort if "
+            "they outgrow NNGPT_NNEVAL_WORKER_RSS_ABORT_GIB. Whatever else holds "
+            f"the memory (this process is at "
+            f"{_format_mem_value(_read_process_rss_gib())} GiB) is the real "
+            "problem, and the kernel may kill something if it runs out."
+        )
+
+    def _recycle_if_needed(self, slot: int) -> None:
+        """Replace a worker that is due for recycling, before it is given work.
+
+        Two things trigger it: the worker itself is spent (model count or its
+        own resident set), or the host is running out of memory. The second
+        matters most. When the machine is close to out of memory the kernel
+        kills the largest process, which is the trainer holding the LLM, not
+        the worker that caused it -- which is exactly why the whole program,
+        and the console it was started in, disappears instead of one
+        evaluation failing. Restarting the worker here gives its memory back
+        before that point is reached.
+        """
+        session = self._sessions[slot]
+        reason = session.recycle_reason()
+        if reason is None:
+            available_gib = _read_mem_available_gib()
+            floor_gib = _safe_float_env("NNGPT_NNEVAL_HOST_MEM_FLOOR_GIB", 8.0)
+            # Restarting only helps if this worker is actually holding
+            # something worth reclaiming. On a machine whose free memory is
+            # simply modest, an ungated floor would restart the worker before
+            # every model -- paying the startup cost every time and freeing
+            # nothing, because the memory in short supply belongs to the
+            # trainer, not to the worker.
+            min_reclaim_gib = _safe_float_env("NNGPT_NNEVAL_WORKER_MIN_RECLAIM_GIB", 2.0)
+            if (
+                available_gib is not None
+                and floor_gib > 0
+                and available_gib < floor_gib
+                and session.rss_gib() >= min_reclaim_gib
+            ):
+                reason = (
+                    f"host MemAvailable {available_gib:.2f} GiB below floor {floor_gib:.2f} GiB "
+                    f"with {session.rss_gib():.2f} GiB held by this worker"
+                )
+        if reason is None:
+            return
+        print(f"[NNEval Worker Pool] Recycle slot={slot} reason={reason!r}")
+        try:
+            self._replace_session(slot)
+        except Exception as exc:
+            # A failed restart is reported by the request that follows it;
+            # losing the pool here would lose the run.
+            print(
+                f"[NNEval Worker Pool] Recycle failed slot={slot} "
+                f"error={type(exc).__name__}: {exc}"
+            )
+
     def _request_entry(self, slot: int, entry: Dict[str, Any], *, timeout: float) -> Dict[str, Any]:
+        self._recycle_if_needed(slot)
         session = self._sessions[slot]
         session_info = session.diagnostics()
         assigned_gpu = session_info.get("assigned_gpu")
@@ -753,11 +1003,17 @@ class _NNEvalWorkerPool:
             f"worker_slot={worker_slot} "
             f"assigned_gpu={assigned_gpu} "
             f"worker_device={worker_device} "
-            f"timeout_seconds={timeout:.0f}"
+            f"timeout_seconds={timeout:.0f} "
+            # These two make a cross-cycle leak visible without a profiler: if
+            # trainer_rss climbs from epoch to epoch while host_avail falls, the
+            # memory is going to this process, not to the evaluation worker.
+            f"trainer_rss_gib={_format_mem_value(_read_process_rss_gib())} "
+            f"host_avail_gib={_format_mem_value(_read_mem_available_gib())}"
         )
         try:
             result = session.request(entry["payload"], timeout=timeout)
         except PersistentNNEvalWorkerError as exc:
+            self._note_host_floor_outcome(session, failed=True)
             elapsed_seconds = max(0.0, time.time() - request_started_at)
             print(
                 "[NNEval Assign] error "
@@ -776,6 +1032,7 @@ class _NNEvalWorkerPool:
                 assigned_gpu=assigned_gpu,
                 worker_device=worker_device,
             )
+        self._note_host_floor_outcome(session, failed=False)
         result["worker_slot"] = worker_slot
         result["assigned_gpu"] = assigned_gpu
         result["worker_device"] = worker_device
@@ -1072,6 +1329,10 @@ def _persistent_nneval_worker_entry(conn, assigned_gpu: Optional[int], assigned_
             result["assigned_gpu"] = assigned_gpu
             result["worker_device"] = worker_device
             result["worker_slot"] = request.get("worker_slot")
+            # The pool recycles on this figure, so it is read after the model
+            # has been torn down -- what is still held once a model is gone is
+            # what the next model will be starting from.
+            result["worker_rss_gib"] = float(_read_process_rss_gib() or 0.0)
             conn.send(result)
             if bool(result.get("worker_restart_requested", False)):
                 break

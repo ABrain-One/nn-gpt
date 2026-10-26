@@ -1,6 +1,5 @@
 import argparse
 import inspect
-import sys
 import torch
 from peft import LoraConfig
 from trl import SFTConfig

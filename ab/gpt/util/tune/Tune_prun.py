@@ -130,7 +130,7 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
          training_args, peft_config, max_prompts=None, save_llm_output=True, max_new_tokens=16 * 1024,
          nn_name_prefix=None, temperature=1.0, top_k=50, top_p=0.9, test_metric=None, onnx_run=False,
          trans_mode=False, prompt_batch=1, use_agents=False, use_predictor=False, use_backbone=False, enable_merge=False,
-         context_length=None, max_input_length=None, num_cycles=None, only_best_accuracy=False, load_in_4bit=True):
+         context_length=None, max_input_length=None, num_cycles=None, only_best_accuracy=False, load_in_4bit=True, reset_previous_results=True):
 
     if not isinstance(conf_keys, (list, tuple)):
         conf_keys = (conf_keys,)

@@ -21,7 +21,7 @@ from ab.gpt.act.markov.config import PipelineConfig, DEFAULT_CONFIG
 from ab.gpt.act.markov.llm_client import LLMClient
 from ab.gpt.act.markov.code_generator import CodeGenerator, get_prompt_template
 from ab.gpt.act.markov.code_extractor import CodeExtractor
-from ab.gpt.act.markov.evaluator import Evaluator, EvaluationResult
+from ab.gpt.act.markov.evaluator import Evaluator
 from ab.gpt.act.markov.prompt_improver import PromptImprover
 
 

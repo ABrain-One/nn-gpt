@@ -81,8 +81,8 @@ if __name__ == '__main__':
                         help=f'Per device train batch size (default: {TuneNNGen.PER_DEVICE_TRAIN_BATCH_SIZE}).')
     parser.add_argument('--gradient_accumulation_steps', type=int, default=TuneNNGen.GRADIENT_ACCUMULATION_STEPS,
                         help=f'Gradient accumulation steps (default: {TuneNNGen.GRADIENT_ACCUMULATION_STEPS}).')
-    parser.add_argument('--warmup_ratio', type=float, default=TuneNNGen.WARMUP_RATIO,
-                        help=f'Warmup step ratio for one fine-tuning epoch (default: {TuneNNGen.WARMUP_RATIO}).')
+    parser.add_argument('--warmup_steps', type=float, default=TuneNNGen.WARMUP_STEPS,
+                        help=f'Warmup step ratio for one fine-tuning epoch (default: {TuneNNGen.WARMUP_STEPS}).')
     parser.add_argument('--logging_steps', type=int, default=TuneNNGen.LOGGING_STEPS,
                         help=f'Logging steps (default: {TuneNNGen.LOGGING_STEPS}).')
     parser.add_argument('--optimizer', type=str, default=TuneNNGen.OPTIMIZER,
@@ -119,7 +119,7 @@ if __name__ == '__main__':
     parser.add_argument('--metric_for_best_model', type=str, default=None,
                         help=f"[Pipeline] Metric to use for selecting best model (default: None).")
     parser.add_argument('--warmup_steps', type=int, default=None,
-                        help=f"[Pipeline] Warmup steps override (default: None, uses warmup_ratio for standalone).")
+                        help=f"[Pipeline] Warmup steps override (default: None, uses warmup_steps for standalone).")
     parser.add_argument('--weight_decay', type=float, default=None,
                         help=f"[Pipeline] Weight decay for regularization (default: None).")
 
@@ -143,7 +143,7 @@ if __name__ == '__main__':
          test_nn=args.test_nn,
          per_device_train_batch_size=args.per_device_train_batch_size,
          gradient_accumulation_steps=args.gradient_accumulation_steps,
-         warmup_ratio=args.warmup_ratio,
+         warmup_steps=args.warmup_steps,
          logging_steps=args.logging_steps,
          optimizer=args.optimizer,
          peft=args.peft,
@@ -168,10 +168,9 @@ if __name__ == '__main__':
          save_total_limit=args.save_total_limit,
          load_best_model_at_end=args.load_best_model_at_end,
          metric_for_best_model=args.metric_for_best_model,
-         warmup_steps=args.warmup_steps,
          weight_decay=args.weight_decay,
          num_cycles=3,
-         unsloth_opt=True,
+         use_unsloth=True,
          load_in_4bit=True,
          context_length=4600,
          )

@@ -17,7 +17,6 @@ import hashlib
 import json
 from pathlib import Path
 from typing import Dict, List, Set, Any, Optional
-from collections import defaultdict
 
 from ab.nn.util.Const import out_dir
 

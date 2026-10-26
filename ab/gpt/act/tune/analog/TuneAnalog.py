@@ -8,7 +8,6 @@ import ast
 import importlib.util
 from os import makedirs
 from os.path import isfile
-import glob
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -887,7 +886,7 @@ def _resolve_prompt_config(base_dir: Path, config_name: str) -> Path:
 
 def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_conf, conf_keys, llm_conf, training_args, peft_config,
          max_prompts=None, save_llm_output=True, max_new_tokens=16 * 1024, nn_name_prefix=None, temperature=1.0, top_k=50, top_p=0.9, test_metric=None,
-         onnx_run=False, trans_mode=False, prompt_batch=1, use_backbone=False, eval_save_to_db=True, context_length=None):
+         onnx_run=False, trans_mode=False, prompt_batch=1, use_backbone=False, eval_save_to_db=True, context_length=None, reset_previous_results=True):
     if not isinstance(conf_keys, (list, tuple)):
         conf_keys = (conf_keys,)
     with open(conf_llm_dir / llm_conf) as f:

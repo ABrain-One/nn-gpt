@@ -133,8 +133,23 @@ def _is_real_code(cand) -> bool:
     return True
 
 
+_FENCE_OPEN = re.compile(r'\A\s*```[ \t]*(?:python|py|python3)?[ \t]*\r?\n')
+_FENCE_CLOSE = re.compile(r'\r?\n[ \t]*```[ \t]*\s*\Z')
+
+
+def _strip_code_fence(cand):
+    """Remove a markdown fence the model put inside its <nn> block (a leading
+    ```python / ``` line and a trailing ``` line); the fence made the saved code
+    fail to parse at line 1. Code without a fence is returned unchanged."""
+    if cand is None:
+        return None
+    stripped = _FENCE_CLOSE.sub('', _FENCE_OPEN.sub('', cand, count=1), count=1)
+    return stripped.strip() if stripped != cand else cand
+
+
 def _guarded(cand):
     """Apply the rejection guard to an already-extracted candidate."""
+    cand = _strip_code_fence(cand)
     if cand is None:
         return None
     if _is_real_code(cand):

@@ -1,0 +1,135 @@
+{
+  "improve_classification_only": {
+    "comment": "Short-context variant of improve_classification_only for <=8192-ctx models (DeepSeek/Mistral). Trimmed prompt + seed cap.",
+    "system": [
+      "You are an expert PyTorch neural network architect.",
+      "Your task is to generate improved neural network architectures, training hyperparameters, and data transforms that maximise performance on computer vision tasks.",
+      "Always follow LEMUR NN Dataset conventions: class name 'Net', a standalone function 'supported_hyperparameters' (outside the class) returning a set of hyperparameter key names, and required methods __init__, forward, train_setup, and learn with their exact signatures.",
+      "Output only the requested XML tags (<hp>, <tr>, <nn>) in the correct order — no explanation, no markdown, no extra text."
+    ],
+    "task": "img-classification",
+    "addon_task": null,
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      },
+      {
+        "para": "epoch",
+        "value": "epoch"
+      },
+      {
+        "para": "dataset",
+        "value": "dataset"
+      },
+      {
+        "para": "task",
+        "value": "task"
+      },
+      {
+        "para": "metric",
+        "value": "metric"
+      },
+      {
+        "para": "metric_code",
+        "value": "metric_code"
+      },
+      {
+        "para": "transform_code",
+        "value": "transform_code"
+      },
+      {
+        "para": "prm",
+        "value": "prm"
+      }
+    ],
+    "no_repeat": [],
+    "keep_same": [],
+    "nn_prefixes": ["ga-"],
+    "prompt": [
+      "Provide the training hyperparameters (JSON between <hp> and </hp>), the transform code (between <tr> and </tr>), and a novel PyTorch neural network (between <nn> and </nn>).",
+      "1. <hp>: JSON with obligatory keys \"batch\", \"transform\", plus every key returned by supported_hyperparameters(). If unsure use {{\"batch\": 64, \"transform\": \"norm_128_flip\"}}.",
+      "2. <tr>: full transform code (torchvision transforms or custom).",
+      "3. <nn>: a COMPLETE Python model file following this LEMUR interface EXACTLY:",
+      "   - Module-level def supported_hyperparameters(): return a set of ONLY the keys you access via prm['key']. Safe default: {{'lr', 'momentum'}}. Declaring unused keys OR using undeclared keys both cause failure.",
+      "   - The top-level model class MUST be named exactly 'Net' and inherit from nn.Module (never from torchvision models). Helper/block classes may have any name.",
+      "   - Net.__init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device): store self.device=device. in_shape is a 4-tuple (batch, channels, H, W) — use in_shape[1] for channels (NEVER unpack as 3 values). Use out_shape[0] for num classes.",
+      "   - Define train_setup(self, prm) that SETS self.optimizer and self.criteria (a tuple) as attributes, and learn(self, train_data) that iterates `for inputs, labels in train_data:`.",
+      "   - Always `import torch` and `import torch.nn as nn` (add `import torch.nn.functional as F` if you use F.*). Use nn.AdaptiveAvgPool2d((1,1)) before flattening to avoid hardcoded spatial dims. Every attribute used in forward() must be created in __init__(). If you use List[...] or Optional[...] type hints, add: from typing import List, Optional",
+      "Fill in and adapt this EXACT skeleton (redesign the architecture inside __init__/forward, but keep every function name and signature below):",
+      "import torch",
+      "import torch.nn as nn",
+      "",
+      "def supported_hyperparameters():",
+      "    return {{'lr', 'momentum'}}",
+      "",
+      "class Net(nn.Module):",
+      "    def __init__(self, in_shape: tuple, out_shape: tuple, prm: dict, device: torch.device) -> None:",
+      "        super().__init__()",
+      "        self.device = device",
+      "        in_channels = in_shape[1]        # 4-tuple: (batch, channels, H, W)",
+      "        num_classes = out_shape[0]",
+      "        # ... build your layers here ...",
+      "        self.pool = nn.AdaptiveAvgPool2d((1, 1))",
+      "        self.fc = nn.Linear(64, num_classes)  # replace 64 with your last channel count",
+      "    def train_setup(self, prm):",
+      "        self.to(self.device)",
+      "        self.criteria = (nn.CrossEntropyLoss().to(self.device),)",
+      "        self.optimizer = torch.optim.SGD(self.parameters(), lr=prm['lr'], momentum=prm['momentum'])",
+      "    def learn(self, train_data):",
+      "        self.train()",
+      "        for inputs, labels in train_data:",
+      "            inputs, labels = inputs.to(self.device), labels.to(self.device)",
+      "            self.optimizer.zero_grad()",
+      "            loss = self.criteria[0](self(inputs), labels)",
+      "            loss.backward()",
+      "            self.optimizer.step()",
+      "    def forward(self, x):",
+      "        # ... your conv/feature layers ...",
+      "        x = self.pool(x)",
+      "        x = torch.flatten(x, 1)",
+      "        return self.fc(x)",
+      "ALL of supported_hyperparameters (module-level), __init__, train_setup, learn, and forward MUST be present. Omitting train_setup or learn, or renaming Net, makes the evaluator reject the network outright.",
+      "Design a DIFFERENT architecture from the reference model below; do not copy it. Reference model (for interface only):",
+      "{nn_code}",
+      "Provide a single COMPLETE Python file — no truncation, no '...' placeholders, no empty method bodies, all parentheses matched.",
+      "Output only three XML tags in this exact order: <hp>...</hp>, <tr>...</tr>, and <nn>...</nn>. No JSON wrapper, no markdown fences, no extra text."
+    ],
+    "nn_code_max_chars": 1500
+  },
+  "improve_segmentation_only": {
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      }
+    ],
+    "addon_list": [
+      {
+        "para": "addon_nn_code",
+        "value": "nn_code"
+      }
+    ],
+    "task": "img-segmentation",
+    "system": [
+      "You are an expert PyTorch neural network architect specialising in image segmentation.",
+      "Improve segmentation models while preserving the exact LEMUR interface: a standalone function 'supported_hyperparameters' (outside the class) returning a set of hyperparameter key names, class 'Net', methods __init__, forward, train_setup, and learn with unchanged signatures.",
+      "Never use torchvision pre-built models. Provide complete code only."
+    ],
+    "addon_task": "img-classification",
+    "prompt": [
+      "Improve the following implementation to make it a better performance on image segmentation tasks given another backbone implementation.",
+      "The class name should be 'Net' and you MUST PROVIDE FULL CODES of the changed implementation.",
+      "You can change the structure, alternatively also changed training procedure.",
+      "Strictly DO NOT remove the `train_setup` and `learn` method, and NEVER change their parameters or implementation.",
+      "Strictly NO use of models in `torchvision`.",
+      "Focus on improving the model architecture and forward pass only.",
+      "Code:\n```\n{nn_code}\n```",
+      "Backbone:\n```\n{addon_nn_code}\n```"
+    ]
+  }
+}

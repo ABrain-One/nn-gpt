@@ -1,3 +1,7 @@
-flash_attn==2.8.3.post1
+--no-binary causal_conv1d
+causal_conv1d
+
 # Required for Unsloth with OSS
-triton_kernels @ git+https://github.com/triton-lang/triton.git@v3.5.0#subdirectory=python/triton_kernels
+triton_kernels @ git+https://github.com/triton-lang/triton.git@v3.7.1#subdirectory=python/triton_kernels
+
+# flash_attn==2.8.3.post1 # conflicts with vLLM

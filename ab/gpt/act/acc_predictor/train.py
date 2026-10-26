@@ -35,7 +35,7 @@ def train_model(
     lora_r: int = LORA_R,
     lora_alpha: int = LORA_ALPHA,
     learning_rate: float = LEARNING_RATE,
-    warmup_ratio: float = WARMUP_RATIO,
+    warmup_steps: float = WARMUP_STEPS,
     batch_size: int = BATCH_SIZE,
     gradient_accumulation_steps: int = GRADIENT_ACCUMULATION_STEPS,
 ) -> None:
@@ -86,7 +86,6 @@ def train_model(
         // (batch_size * gradient_accumulation_steps),
     )
     total_steps = MAX_STEPS if MAX_STEPS > 0 else steps_per_epoch * num_epochs
-    warmup_steps = max(1, int(total_steps * warmup_ratio))
     if MAX_STEPS > 0 and warmup_steps >= MAX_STEPS:
         warmup_steps = max(1, MAX_STEPS // 10)
 

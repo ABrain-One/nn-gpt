@@ -5,8 +5,13 @@ Responsible for routing:
 finetune → generate → evaluate → (predict?) → finetune → ...
 """
 
+import os
 from typing import Dict, Any
 from ab.gpt.act.agents.state import AgentState
+
+
+def _skip_closing_eval() -> bool:
+    return os.environ.get("NNGPT_SKIP_CLOSING_EVAL", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def manager_node(state: AgentState) -> Dict[str, Any]:
@@ -16,8 +21,19 @@ def manager_node(state: AgentState) -> Dict[str, Any]:
     total_epochs = state.get("llm_tune_epochs", 1)
     next_action = state.get("next_action", "generate")
 
-    # Stop condition
+    # Stop condition. The cycle order is generate -> evaluate -> fine-tune, so
+    # when the counter runs out the most recent fine-tune has not been measured
+    # by anything. Run one closing generate+evaluate pass (no fine-tune after
+    # it) so the last adapter is validated and recorded, then stop.
     if epoch >= total_epochs:
+        if not state.get("final_eval_done") and _skip_closing_eval():
+            print(f"[MANAGER] All {total_epochs} fine-tuning cycles complete. "
+                  f"Closing validation pass skipped (NNGPT_SKIP_CLOSING_EVAL=1). Ending.")
+            return {"next_action": "end"}
+        if not state.get("final_eval_done"):
+            print(f"[MANAGER] All {total_epochs} fine-tuning cycles complete. "
+                  f"Running a closing validation pass for the final adapter.")
+            return {"next_action": "generate", "final_eval": True}
         print(f"[MANAGER] All {total_epochs} epochs complete. Ending.")
         return {"next_action": "end"}
 

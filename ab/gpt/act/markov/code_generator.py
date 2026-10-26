@@ -3,9 +3,6 @@ Code Generator module.
 Uses LLM to generate PyTorch vision model code for image classification.
 """
 
-import torch
-import random
-import numpy as np
 from typing import Optional
 from ab.gpt.act.markov.llm_client import LLMClient
 

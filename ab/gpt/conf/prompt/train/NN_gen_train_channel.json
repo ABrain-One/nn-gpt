@@ -9,7 +9,23 @@
     "type": "change_parameters",
     "is_generation": false,
     "task": "img-classification",
-    "addon_task": "channel_optimization",
+    "dataset": "cifar-10",
+    "epoch": 1,
+    "min_accuracy": 0.25,
+    "no_repeat": [
+      "nn"
+    ],
+    "keep_same": [
+      "epoch",
+      "metric",
+      "dataset",
+      "task"
+    ],
+    "nn_prefixes": [
+      "ast-dimension-"
+    ],
+    "num_joint_nns": 2,
+    "improve": true,
     "input_list": [
       {
         "para": "nn_code",
@@ -68,20 +84,6 @@
         "value": "prm_2"
       }
     ],
-    "no_repeat": [
-      "nn"
-    ],
-    "keep_same": [
-      "epoch",
-      "metric",
-      "dataset",
-      "task"
-    ],
-    "nn_prefixes": [
-      "ast-dimension-"
-    ],
-    "num_joint_nns": 2,
-    "improve": true,
     "prompt": [
       "Your task is to change the channel configuration of the baseline neural network to improve (increase) the value of a '{metric}' metric from {accuracy} at least to {addon_accuracy} for neural network model that was trained during {epoch} epochs on the '{dataset}' dataset for an '{task}' task.",
       "Current baseline model achieves {accuracy} with the given channel configuration.",

@@ -34,7 +34,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from ab.nn.util.Const import ab_root_path, out_dir
-from ab.gpt.util.Const import gpt_dir, conf_dir, conf_test_dir, conf_train_dir, conf_llm_dir
+from ab.gpt.util.Const import conf_dir, conf_test_dir, conf_train_dir, conf_llm_dir
 
 
 # ----- Project root ---------------------------------------------------------------------------------
@@ -702,7 +702,7 @@ def write_entry_script(dataset: str, level: str, k: int,
         'LR_SCHEDULER    = "cosine"',
         'PER_DEVICE_TRAIN_BATCH_SIZE = 1',
         'GRADIENT_ACCUMULATION_STEPS = 4',
-        'WARMUP_RATIO    = 0.05',
+        'WARMUP_STEPS    = 5',
         'MAX_GRAD_NORM   = 1.0',
         'LOGGING_STEPS   = 96',
         'OPTIMIZER       = "paged_adamw_8bit"',
@@ -725,7 +725,7 @@ def write_entry_script(dataset: str, level: str, k: int,
         '        lr_scheduler_type=LR_SCHEDULER,',
         '        per_device_train_batch_size=PER_DEVICE_TRAIN_BATCH_SIZE,',
         '        gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS,',
-        '        warmup_ratio=WARMUP_RATIO,',
+        '        warmup_steps=WARMUP_STEPS,',
         '        max_grad_norm=MAX_GRAD_NORM,',
         '        logging_steps=LOGGING_STEPS,',
         '        optim=OPTIMIZER,',

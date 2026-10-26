@@ -12,7 +12,7 @@ from pydantic import BaseModel, field_validator
 class AgentState(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
-    @field_validator('train_config_path', mode='before')
+    @field_validator('train_config_path', 'data_dir', mode='before')
     @classmethod
     def coerce_path_to_str(cls, v):
         return str(v) if isinstance(v, Path) else v
@@ -30,6 +30,11 @@ class AgentState(BaseModel):
     skip_epoch: Optional[int] = None
     next_action: Optional[str] = None
     status: Optional[str] = None
+    # Closing generate+evaluate pass that measures the LAST fine-tuned adapter.
+    # The loop is generate -> evaluate -> fine-tune, so without it the final
+    # fine-tune of a run is never exercised and never reported.
+    final_eval: Optional[bool] = None
+    final_eval_done: Optional[bool] = None
     use_predictor: Optional[bool] = None
     use_backbone: Optional[bool] = None
     enable_merge: Optional[bool] = None
@@ -49,6 +54,11 @@ class AgentState(BaseModel):
 
     # ---- Finetune Config ----
     train_config_path: Optional[str] = None
+    # On-disk SFT corpus. Must be declared here or it is silently dropped:
+    # AgentState is a pydantic model, so a field passed to the constructor but
+    # not declared is ignored, state.get("data_dir") returns None, and
+    # NNGenPrompt falls back to querying LEMUR instead of reading the corpus.
+    data_dir: Optional[str] = None
     base_model_name: Optional[str] = None
     only_best_accuracy: Optional[bool] = None
     max_prompts: Optional[int] = None
@@ -70,6 +80,11 @@ class AgentState(BaseModel):
     model_loader: Optional[Any] = None
     lora_tuner: Optional[Any] = None
     chat_bot: Optional[Any] = None
+    vllm_engine: Optional[Any] = None
+    # Adapter the vLLM engine generates with at epoch 0: the carried-over adapter
+    # (NNGPT_CARRY_ADAPTER), or None for the base weights.
+    vllm_init_adapter: Optional[str] = None
+    chat_bot_hf: Optional[Any] = None
 
     # ---- Optional outputs (predictor / metrics) ----
     accuracy: Optional[float] = None

@@ -189,7 +189,7 @@ def tune(test_nn, nn_train_epochs, skip_epoch, llm_path, llm_tune_conf, nn_gen_c
          top_k=50, top_p=0.9, test_metric=None,
          onnx_run=False, trans_mode=False, prompt_batch=1, use_agents=False, use_predictor=False, use_backbone=False,
          enable_merge=False, use_unsloth=False, context_length=None, num_cycles=None, only_best_accuracy=False,
-         load_in_4bit=True):
+         load_in_4bit=True, reset_previous_results=True):
     import torch
     import gc
     from pathlib import Path

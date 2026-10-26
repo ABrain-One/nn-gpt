@@ -23,10 +23,29 @@ side effects on import.
 
 from __future__ import annotations
 
+import json
 import math
+import os
 import random
 from dataclasses import dataclass, field, asdict
 from typing import Optional
+
+
+def _env_on(name) -> bool:
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def generated_descriptors() -> dict:
+    """``{nn_name: (params, depth)}`` of generated models from the sidecar file
+    (LLMATIC_DESC_FILE), when LLMATIC_ADMIT_GENERATED is set; else ``{}``."""
+    path = os.environ.get("LLMATIC_DESC_FILE")
+    if not _env_on("LLMATIC_ADMIT_GENERATED") or not path or not os.path.exists(path):
+        return {}
+    try:
+        with open(path) as f:
+            return {k: (v[0], v[1]) for k, v in json.load(f).items()}
+    except Exception:
+        return {}
 
 
 # --------------------------------------------------------------------------- #
@@ -183,21 +202,26 @@ class MAPElitesArchive:
         params/depth are architecture properties, so we take the first non-null
         per ``nn_name``. Returns ``{}`` on any failure -- never fatal.
         """
+        out = {}
         try:
             from ab.nn import api as lemur
 
             st = lemur.nn_stat_data()
-            if st is None or getattr(st, "empty", True):
-                return {}
-            cols = set(st.columns)
-            if not {"nn_name", "total_params", "total_layers"}.issubset(cols):
-                return {}
-            st = st.dropna(subset=["total_params", "total_layers"])
-            # first non-null (params/depth) per nn_name
-            grp = st.groupby("nn_name")[["total_params", "total_layers"]].first()
-            return {name: (row["total_params"], row["total_layers"]) for name, row in grp.iterrows()}
+            if st is not None and not getattr(st, "empty", True):
+                cols = set(st.columns)
+                if {"nn_name", "total_params", "total_layers"}.issubset(cols):
+                    st = st.dropna(subset=["total_params", "total_layers"])
+                    # first non-null (params/depth) per nn_name
+                    grp = st.groupby("nn_name")[["total_params", "total_layers"]].first()
+                    out = {name: (row["total_params"], row["total_layers"]) for name, row in grp.iterrows()}
         except Exception:
-            return {}
+            out = {}
+        # LLMATIC_ADMIT_GENERATED: generated models have no nn_stat row, so without
+        # this they never enter the archive. The pipeline parent writes their
+        # descriptors to the sidecar named by LLMATIC_DESC_FILE.
+        for name, desc in generated_descriptors().items():
+            out.setdefault(name, desc)
+        return out
 
     def init_from_corpus(
         self,
@@ -232,6 +256,11 @@ class MAPElitesArchive:
             from ab.nn import api as lemur
 
             kwargs = dict(only_best_accuracy=True)
+            fitness_epoch = os.environ.get("LLMATIC_FITNESS_EPOCH", "").strip()
+            if fitness_epoch:
+                # Same training budget for every elite: seeds can have later-epoch
+                # rows, generated models are evaluated for one epoch only.
+                kwargs["epoch"] = int(fitness_epoch)
             if task is not None:
                 kwargs["task"] = task
             if dataset is not None:
@@ -250,6 +279,7 @@ class MAPElitesArchive:
         if not descriptor_map:
             return 0
 
+        generated = generated_descriptors()
         before = self.n_improvements
         for _, row in df.iterrows():
             desc = descriptor_map.get(row.get("nn"))
@@ -268,7 +298,7 @@ class MAPElitesArchive:
                 descriptors={"params": params, "depth": depth},
                 nn_code=row.get("nn_code") if "nn_code" in df.columns else None,
                 prm=row.get("prm") if "prm" in df.columns else None,
-                source="corpus",
+                source="generated" if row.get("nn") in generated else "corpus",
                 row=row.to_dict(),
             )
         return self.n_improvements - before

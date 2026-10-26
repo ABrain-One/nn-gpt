@@ -1,13 +1,21 @@
-import re
+"""`{...}` is a format field, `<<...>>` is a formula str.format must not touch."""
+import unittest
 
-para_dict = {'accuracy': 0.9, 'duration': 0.1, 'model_name': 'test'}
-text = "Result: <<accuracy / duration>> ns⁻¹"
-print("Before:", text)
-text = text.format(**para_dict)
-print("After format:", text)
+PARAMS = {'accuracy': 0.9, 'duration': 0.1, 'model_name': 'test'}
 
-text2 = "Result: {{accuracy / duration}} ns⁻¹"
-print("Before 2:", text2)
-text2 = text2.format(**para_dict)
-print("After format 2:", text2)
 
+class TestPromptFormatting(unittest.TestCase):
+    def test_angle_delimited_formulas_survive_format(self):
+        text = "Result: <<accuracy / duration>> ns⁻¹".format(**PARAMS)
+        self.assertEqual("Result: <<accuracy / duration>> ns⁻¹", text)
+
+    def test_doubled_braces_become_literal_braces(self):
+        text = "Result: {{accuracy / duration}} ns⁻¹".format(**PARAMS)
+        self.assertEqual("Result: {accuracy / duration} ns⁻¹", text)
+
+    def test_a_single_braced_name_is_substituted(self):
+        self.assertEqual("acc 0.9", "acc {accuracy}".format(**PARAMS))
+
+
+if __name__ == '__main__':
+    unittest.main()

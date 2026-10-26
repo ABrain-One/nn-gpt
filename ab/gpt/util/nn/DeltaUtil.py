@@ -418,19 +418,21 @@ def _apply_delta_manual(baseline_code: str, delta: str) -> Optional[str]:
                 # Hunk is beyond end of file, append at end
                 line_pos = len(result_lines)
 
-            # Process hunk lines in order
+            # Process hunk lines in order. Context and removed lines must match the
+            # baseline at the current position (ignoring trailing whitespace);
+            # otherwise the hunk is not where the header says, and applying it
+            # anyway would silently edit unrelated lines -> reject the delta.
             for line in hunk_lines:
                 if line.startswith(' '):
-                    # Context line - verify it matches (optional check)
-                    # Just advance position
-                    if line_pos < len(result_lines):
-                        line_pos += 1
+                    if not _same_line(result_lines, line_pos, line):
+                        return None
+                    line_pos += 1
                 elif line.startswith('-'):
-                    # Deletion - remove line at current position
-                    if 0 <= line_pos < len(result_lines):
-                        del result_lines[line_pos]
-                        cumulative_offset -= 1
-                        # Don't advance position after deletion
+                    if not _same_line(result_lines, line_pos, line):
+                        return None
+                    del result_lines[line_pos]
+                    cumulative_offset -= 1
+                    # Don't advance position after deletion
                 elif line.startswith('+'):
                     # Addition - insert line at current position
                     new_line = line[1:]  # Remove '+' prefix
@@ -443,6 +445,11 @@ def _apply_delta_manual(baseline_code: str, delta: str) -> Optional[str]:
     except Exception as e:
         # Return None on any error (fallback method, so we don't want to crash)
         return None
+
+
+def _same_line(lines: List[str], pos: int, hunk_line: str) -> bool:
+    """True if lines[pos] equals the hunk line without its marker (trailing whitespace ignored)."""
+    return 0 <= pos < len(lines) and lines[pos].rstrip() == hunk_line[1:].rstrip()
 
 
 def _parse_unified_diff(delta_lines: List[str]) -> List[Tuple[int, int, int, int, List[str]]]:
