@@ -168,7 +168,6 @@ if __name__ == '__main__':
          save_total_limit=args.save_total_limit,
          load_best_model_at_end=args.load_best_model_at_end,
          metric_for_best_model=args.metric_for_best_model,
-         warmup_steps=args.warmup_steps,
          weight_decay=args.weight_decay,
          num_cycles=3,
          use_unsloth=True,
