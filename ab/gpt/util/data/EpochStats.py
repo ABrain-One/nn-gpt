@@ -137,6 +137,75 @@ def _label(name, dataset):
     return f"{name} ({dataset})" if dataset else str(name)
 
 
+#: Accuracy of the best design point in the LEMUR corpus the run started from.
+#: The objective is the best model a cycle produces, so the number that matters
+#: is how often a cycle clears this, not how far the mean moved.
+def _corpus_ceiling():
+    raw = os.environ.get("NNGPT_DESIGN_CEILING", "").strip()
+    try:
+        return float(raw) if raw else None
+    except ValueError:
+        return None
+
+
+FAILURE_CLASSES = ("no_code", "truncated", "no_delta", "rejected_delta",
+                   "duplicate", "verification", "oom", "runtime", "unknown")
+
+
+def classify_failures(models_dir):
+    """Why each generation produced no usable model.
+
+    `valid_rate` alone cannot be acted on: a cycle losing models to truncation
+    needs a bigger budget, one losing them to duplicates needs a different
+    sampler, and one losing them to OOM needs the trainer off the card. Those
+    are three different bugs behind one number.
+    """
+    counts = {k: 0 for k in FAILURE_CLASSES}
+    models_dir = Path(models_dir)
+    if not models_dir.is_dir():
+        return counts
+    for d in sorted(models_dir.iterdir()):
+        if not d.is_dir():
+            continue
+        if (d / "eval_info.json").is_file():
+            continue
+        out = ""
+        out_path = d / "full_output.txt"
+        if out_path.is_file():
+            try:
+                out = out_path.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                out = ""
+        err = ""
+        err_path = d / "error.txt"
+        if err_path.is_file():
+            try:
+                err = err_path.read_text(encoding="utf-8", errors="replace").lower()
+            except Exception:
+                err = ""
+        if err:
+            if "already exists" in err or "checksum" in err:
+                counts["duplicate"] += 1
+            elif "out of memory" in err or "cuda" in err:
+                counts["oom"] += 1
+            else:
+                counts["runtime"] += 1
+        elif (d / "eval_verification_failed.txt").is_file():
+            counts["verification"] += 1
+        elif not (d / "new_nn.py").is_file():
+            if out and "<delta>" in out and "</delta>" in out:
+                counts["rejected_delta"] += 1
+            elif out and ("<nn>" in out or "<hp>" in out) and "</delta>" not in out:
+                counts["no_delta"] += 1
+            elif out:
+                counts["truncated"] += 1
+            else:
+                counts["no_code"] += 1
+        else:
+            counts["unknown"] += 1
+    return counts
+
+
 def collect_epoch_stats(models_dir, epoch):
     """Build the statistics record for one epoch from its model directories.
 
@@ -187,9 +256,20 @@ def collect_epoch_stats(models_dir, epoch):
     # treating the two means as independent samples.
     delta = mean_ci(deltas)
 
+    ceiling = _corpus_ceiling()
+    above = [a for a in accuracies if ceiling is not None and a > ceiling]
+    failures = classify_failures(models_dir)
+
     return {
         "epoch": epoch,
         "timestamp": datetime.now().isoformat(),
+        # The objective is the tail, not the mean: one model above the corpus
+        # ceiling is the whole point of a cycle, and a mean that moved while
+        # the max did not is not progress toward it.
+        "cycle_max": gen["max"],
+        "corpus_ceiling": ceiling,
+        "n_above_ceiling": len(above),
+        "failures": failures,
         "models_generated": generated,
         "models_valid": valid,
         "models_failed": failed,
@@ -564,22 +644,9 @@ def _run_caption(config, rows):
     different curve, and nothing else on the figure records which one this is.
     Every setting recorded in run_config.json is shown rather than a chosen few,
     so two runs can be told apart by looking at them.
-
-    The entry point is named beside the model. The repository carries a script
-    per model and per experiment, and two of them can write the same settings
-    while differing in everything the config does not record -- which prompts
-    were edited, which corpus was curated -- so the model name alone does not
-    identify what produced the curves.
     """
     model = config.get("base_model_name") or config.get("llm_conf") or ""
     model = str(model).rstrip("/").split("/")[-1].replace(".json", "")
-    script = str(config.get("script") or "").strip()
-    if script:
-        script = Path(script).stem                 # a path or a .py, if either
-    if model and script:
-        model = f"{model} ({script})"
-    elif script:
-        model = f"({script})"
     return (model, _study_sentence(config, rows),
             _param_block(config.get("training") or {}))
 
@@ -760,18 +827,7 @@ AXIS_LABEL = "cycle"
 
 #: Label on the run time, so the figure says what the number measures. Without
 #: it a duration in the corner reads as a deadline, a budget or an age.
-RUNTIME_LABEL = "Run time"
-
-#: Label and format of the moment the figure itself was written. A run is
-#: re-plotted after every cycle and the file keeps its name, so two copies of
-#: epoch_statistics.png -- one in a message, one on disk -- are otherwise
-#: indistinguishable. To the minute: nothing here is decided by seconds.
-SAVED_LABEL = "saved"
-SAVED_FORMAT = "%Y-%m-%d %H:%M"
-
-
-def _saved_stamp(when=None):
-    return (when or datetime.now()).strftime(SAVED_FORMAT)
+RUNTIME_LABEL = "run time"
 
 
 #: The run time is set darker than the project mark beside it. The mark is an
@@ -781,65 +837,17 @@ def _saved_stamp(when=None):
 RUNTIME_COLOR = "#53585e"
 
 
-def _runtime_parts(duration, saved=None):
-    """The corner's two facts: what the run cost, and when this copy was drawn.
+def _draw_runtime(fig, text):
+    """The run's wall-clock duration, top-left, mirroring the project mark.
 
-    The save time is given whether or not a duration could be measured -- an
-    older tracker has no timestamps to measure one from, and the question
-    "which copy of this file am I looking at" is still worth answering.
-    """
-    parts = []
-    if duration:
-        parts.append(f"{RUNTIME_LABEL}  {duration}")
-    parts.append(f"{SAVED_LABEL} {_saved_stamp(saved)}")
-    return parts
-
-
-def _runtime_line(duration, saved=None):
-    return "   ".join(_runtime_parts(duration, saved))
-
-
-#: Size of the corner line, and the clear space kept between it and the title.
-RUNTIME_FONTSIZE = 7.5
-RUNTIME_TITLE_GAP = 0.012
-
-
-def _draw_runtime(fig, parts, title_left=1.0):
-    """The run's cost and this copy's date, top-left, opposite the mark.
-
-    Set in the same quiet grey and on the same band: they identify the run
-    rather than reporting a result, and drawn any heavier they would compete
+    Set in the same quiet grey and on the same band: it identifies the run
+    rather than reporting a result, and drawn any heavier it would compete
     with the accuracies for attention.
-
-    Side by side when they fit, stacked when they do not. The title is centred
-    and grows with the model and script names, so on a long one the single
-    line ran under it -- measured against where the title actually starts, the
-    two never meet whatever either of them is called.
     """
-    if not parts:
+    if not text:
         return
-    x, top = 0.0115, 0.9955
-    step = RUNTIME_FONTSIZE * 1.45 / 72.0 / fig.get_size_inches()[1]
-
-    def _draw(lines):
-        drawn = []
-        for i, line in enumerate(lines):
-            drawn.append(fig.text(x, top - i * step, line, ha="left", va="top",
-                                  fontsize=RUNTIME_FONTSIZE,
-                                  color=RUNTIME_COLOR, family="monospace",
-                                  zorder=0))
-        return drawn
-
-    drawn = _draw(["   ".join(parts)])
-    if len(parts) < 2:
-        return
-    renderer = fig.canvas.get_renderer()
-    right = drawn[0].get_window_extent(renderer=renderer).x1 / fig.bbox.width
-    if right <= title_left - RUNTIME_TITLE_GAP:
-        return
-    for artist in drawn:
-        artist.remove()
-    _draw(parts)
+    fig.text(0.0115, 0.9955, f"{RUNTIME_LABEL}  {text}", ha="left", va="top",
+             fontsize=7.5, color=RUNTIME_COLOR, family="monospace", zorder=0)
 
 
 #: Project mark set in the top-right corner, on the band occupied by the title
@@ -1403,17 +1411,14 @@ def plot_epoch_stats(rows, out_path, base_dir=None):
     # Which model and which fine-tuning settings produced these numbers, and on
     # which dataset. Without them the curves cannot be compared between runs.
     head, tail, params = _run_caption(_run_config(base_dir) if base_dir else {}, rows)
-    y = 1.0 - 0.005 * band
-    title_left = 1.0          # scaled with the rest of the band
+    y = 1.0 - 0.005 * band          # scaled with the rest of the band
     if head:
         # Drawn as figure text rather than through suptitle: tight_layout
         # reserves a band of its own for a suptitle, which reappeared as a gap
         # between the caption and the first panel that no spacing value here
         # could close.
-        head_text = fig.text(0.5, y, head, ha="center", va="top", fontsize=11,
-                             fontweight="bold")
-        fig.canvas.draw()
-        title_left = (head_text.get_window_extent().x0 / fig.bbox.width)
+        fig.text(0.5, y, head, ha="center", va="top", fontsize=11,
+                 fontweight="bold")
         y -= 0.026 * band
     if tail:
         # The band below keeps its height whatever size this lands at, so a
@@ -1690,8 +1695,8 @@ def plot_epoch_stats(rows, out_path, base_dir=None):
             only = ep[0]
             bottom_ax.set_xlim(only - 0.5, only + 0.5)
     _draw_brand(fig)
-    _draw_runtime(fig, _runtime_parts(_fmt_duration(_run_duration(
-        _run_config(base_dir) if base_dir else {}, rows))), title_left)
+    _draw_runtime(fig, _fmt_duration(_run_duration(
+        _run_config(base_dir) if base_dir else {}, rows)))
     note = _wrap_note(fig, _figure_note(
         bool(improved), _common_k(rows) if improved else None))
     # The note is given a strip of its own at the foot of the figure, so it
@@ -1916,6 +1921,20 @@ def update_epoch_report(models_dir, epoch, base_dir):
         + (f" | datasets {', '.join(stats.get('datasets') or [])}"
            if stats.get("datasets") else "")
     )
+
+    cycle_max = stats.get("cycle_max")
+    ceiling = stats.get("corpus_ceiling")
+    best_ever = max((r.get("cycle_max") for r in rows
+                     if r.get("cycle_max") is not None), default=None)
+    print(
+        f"[EPOCH STATS] epoch {epoch}: cycle_max {fmt(cycle_max)} | "
+        f"best_ever {fmt(best_ever)} | "
+        f"above corpus ceiling {fmt(ceiling)}: {stats.get('n_above_ceiling')}"
+    )
+    losses = stats.get("failures") or {}
+    if any(losses.values()):
+        print("[EPOCH STATS] epoch %d losses: %s" % (
+            epoch, ", ".join(f"{k}={v}" for k, v in losses.items() if v)))
 
     seeds = stats.get("baseline_models_with_dataset") or []
     if seeds:

@@ -215,6 +215,127 @@ def warn_if_truncated(full_out, max_new_tokens, idx, tokenizer=None):
     return False
 
 
+def _edit_seen_path():
+    return nngpt_dir / "edit_seen.json"
+
+
+def _load_seen_code():
+    seen = set()
+    init = os.environ.get("NNGPT_EDIT_KNOWN_UIDS", "").strip()
+    if init and Path(init).is_file():
+        try:
+            seen.update(json.loads(Path(init).read_text(encoding="utf-8")))
+        except Exception as exc:
+            print(f"[edit] could not read {init}: {exc}", flush=True)
+    path = _edit_seen_path()
+    if path.is_file():
+        try:
+            seen.update(json.loads(path.read_text()))
+        except Exception as exc:
+            print(f"[edit] could not read {path}: {exc}", flush=True)
+    return seen
+
+
+def _save_seen_code(seen):
+    try:
+        _edit_seen_path().parent.mkdir(parents=True, exist_ok=True)
+        _edit_seen_path().write_text(json.dumps(sorted(seen)))
+    except Exception as exc:
+        print(f"[edit] could not persist seen code: {exc}", flush=True)
+
+
+def _write_edit_candidates(models_dir, idx, origdf, full_out, seen,
+                           save_llm_output):
+    """Apply the reply's <edit> blocks to the baseline and save the result.
+
+    Unlike the design path there is no closed set to validate against, so the
+    guards are the ones that work for any architecture: the edit has to match
+    exactly one place in the file, the result has to parse, it has to keep the
+    LEMUR interface, and it has to be a file nothing has produced before.
+    """
+    from ab.gpt.util.data.code_edit import (
+        apply_edit_sets, derive_prm, drop_noop_edits, hp_text, model_identity,
+        uses_pretrained_weights,
+        parse_edits, parse_full, parse_hp, validate_model)
+    import hashlib
+
+    base_dir = models_dir / f"B{idx}"
+    makedirs(base_dir, exist_ok=True)
+    create_file(base_dir, new_out_file, full_out or "")
+    if origdf is not None:
+        try:
+            origdf.to_pickle(base_dir / "dataframe.df")
+        except Exception as exc:
+            print(f"[edit] B{idx}: could not save the baseline row: {exc}", flush=True)
+    if origdf is None:
+        print(f"[edit] B{idx}: no baseline row", flush=True)
+        return 0
+
+    baseline_code = origdf.get("nn_code", "") or ""
+    hp = parse_hp(full_out)
+    raw_edits = parse_edits(full_out)
+    edits = drop_noop_edits(raw_edits)
+    if raw_edits and not edits:
+        print(f"[edit] B{idx}: all {len(raw_edits)} edit(s) return the text "
+              f"unchanged", flush=True)
+    elif len(raw_edits) != len(edits):
+        print(f"[edit] B{idx}: {len(raw_edits) - len(edits)} of {len(raw_edits)} "
+              f"edit(s) change nothing and were dropped", flush=True)
+
+    # Candidates come from the edit sets *and* from any whole file in the same
+    # reply. A reply that opens with edits and then thinks better of it and
+    # rewrites the file is common, and taking the edits merely because they
+    # came first threw the rewrite away.
+    candidates = [(code, f"{applied} edit(s)"
+                   + (f", {skipped} skipped" if skipped else ""))
+                  for code, applied, skipped in apply_edit_sets(baseline_code, edits)]
+    whole = parse_full(full_out)
+    if whole:
+        candidates.append((whole, "whole file"))
+    if not candidates:
+        head = " ".join((full_out or "").split())[:160]
+        print(f"[edit] B{idx}: nothing applied; reply starts: {head!r}", flush=True)
+        return 0
+
+    written = 0
+    for n, (code, how) in enumerate(candidates):
+        bad = validate_model(code)
+        if bad:
+            print(f"[edit] B{idx} candidate {n}: rejected ({bad})", flush=True)
+            continue
+        # LEMUR's own identity, which ignores comments, whitespace and local
+        # names. Checking it here rejects a duplicate before it costs an hour
+        # of training instead of after, when copy_to_lemur refuses the insert.
+        prm = derive_prm(code, origdf.get("prm") or {}, hp)
+        key = model_identity(code, prm)
+        if key == model_identity(baseline_code, origdf.get("prm") or {}):
+            print(f"[edit] B{idx} candidate {n}: same architecture as the "
+                  f"baseline", flush=True)
+            continue
+        if key in seen:
+            print(f"[edit] B{idx} candidate {n}: architecture already produced",
+                  flush=True)
+            continue
+        seen.add(key)
+        model_dir = base_dir if written == 0 else models_dir / f"B{idx}_{written}"
+        makedirs(model_dir, exist_ok=True)
+        if save_llm_output and model_dir is not base_dir:
+            create_file(model_dir, new_out_file, full_out)
+            origdf.to_pickle(model_dir / "dataframe.df")
+        create_file(model_dir, new_nn_file, code)
+        with open(model_dir / hp_file, "w+") as f:
+            json.dump(prm, f)
+        create_file(model_dir, f"original_{origdf['nn']}.py", baseline_code)
+        print(f"[edit] {model_dir.name}: {how}"
+              + (f", hp {hp}" if hp else "")
+              + f", {len(code.splitlines())} lines",
+              flush=True)
+        written += 1
+    if not written:
+        print(f"[ERROR] No code generated for model B{idx}", flush=True)
+    return written
+
+
 def _seed_pool_size(test_nn):
     """Number of seed rows to draw so test_nn prompts survive the length filter."""
     if not test_nn or test_nn < 1:
@@ -314,6 +435,21 @@ def nn_gen(
     sft_dataset=None,
 ):
     print("Preparing prompts for generation, this might take a while...")
+
+    from ab.gpt.util.data.code_edit import hp_text, uses_pretrained_weights
+
+    edit_mode = _env_on("NNGPT_EDIT_MODE")
+    seen_code = _load_seen_code() if edit_mode else None
+    seed_context = {}
+    _ctx_path = os.environ.get("NNGPT_EDIT_SEED_CONTEXT", "").strip()
+    if edit_mode and _ctx_path and Path(_ctx_path).is_file():
+        try:
+            seed_context = json.loads(Path(_ctx_path).read_text(encoding="utf-8"))
+        except Exception as exc:
+            print(f"[edit] could not read {_ctx_path}: {exc}", flush=True)
+    if edit_mode:
+        print(f"[edit] edit mode on; {len(seen_code)} files already produced",
+              flush=True)
 
     use_delta = nn_name_prefix == "delta"
     if not use_delta and isinstance(prompt_dict, dict) and conf_keys:
@@ -442,15 +578,54 @@ def nn_gen(
 
             # LLMatic crossover supplies a fully-rendered two-parent prompt that
             # the single-row template cannot express; use it verbatim when present.
+            if edit_mode:
+                # The edit prompt names the accuracy to beat. It is not a
+                # column on the row, so it is injected here the way the design
+                # path injects its own facts.
+                # Pretrained and from-scratch baselines are scored against
+                # their own group's ceiling, the same split the corpus used; a
+                # scratch model asked to beat a pretrained one has no reachable
+                # target. Falls back to the shared ceiling when only one is set.
+                _shared = os.environ.get("NNGPT_DESIGN_CEILING", "")
+                _grouped = os.environ.get(
+                    "NNGPT_DESIGN_CEILING_PRETRAINED"
+                    if uses_pretrained_weights(str(para_dict.get("nn_code") or ""))
+                    else "NNGPT_DESIGN_CEILING_SCRATCH", "")
+                try:
+                    _ceiling = float(_grouped or _shared or 0.0)
+                except ValueError:
+                    _ceiling = 0.0
+                para_dict.setdefault("target", max(
+                    _ceiling, float(para_dict.get("accuracy") or 0.0)))
+                # The same neighbour examples the corpus was rendered with. An
+                # empty string keeps the prompt valid when a baseline has none.
+                para_dict.setdefault(
+                    "examples", seed_context.get(str(row.get("nn", "")), ""))
+                # The baseline's own hyperparameters. The corpus prompt states
+                # them, and without them here the model cannot tell an
+                # architectural gain from a tuning one, nor aim an <hp> block.
+                para_dict.setdefault("hyper", hp_text(row.get("prm")))
+
             llmatic_prompt = row.get("__llmatic_prompt__") if hasattr(row, "get") else None
             if isinstance(llmatic_prompt, str) and llmatic_prompt:
                 prompt_text = llmatic_prompt
             else:
-                prompt_text = (
-                    para_dict["backbone_prompt"]
-                    if use_backbone
-                    else prompt.format(**para_dict)
-                )
+                try:
+                    prompt_text = (
+                        para_dict["backbone_prompt"]
+                        if use_backbone
+                        else prompt.format(**para_dict)
+                    )
+                except KeyError as exc:
+                    # A placeholder the prompt config asks for that nothing
+                    # supplies. Raised from deep inside the generator this was
+                    # a bare KeyError naming only the key; say which prompt and
+                    # what *is* available, and drop the seed rather than
+                    # killing the run.
+                    print(f"[gen] prompt key {exc} is not available for seed "
+                          f"{row.get('nn', '?')}; have "
+                          f"{sorted(para_dict)}. Skipping this seed.", flush=True)
+                    continue
             prompts.append((system_text, prompt_text, row, output_type))
 
     # Length filter runs once, over the whole over-provisioned pool, so the
@@ -656,6 +831,12 @@ def nn_gen(
             for (idx, system_text, prompt_text, origdf, output_type), output in zip(batch, batch_outputs):
                 model_dir = models_dir / f"B{idx}"
                 code, hp, tr, full_out = output
+                if edit_mode:
+                    warn_if_truncated(full_out, max_new_tokens, idx,
+                                      getattr(chat_bot, "tokenizer", None))
+                    _write_edit_candidates(models_dir, idx, origdf, full_out,
+                                           seen_code, save_llm_output)
+                    continue
                 if use_backbone:
                     code = SFTUtil.assemble_backbone_xml_completion(full_out)
                     if code is None:
@@ -714,6 +895,9 @@ def nn_gen(
                     create_file(
                         model_dir, f"original_{origdf['nn']}.py", origdf['nn_code'])
                     origdf.to_pickle(df_file)
+
+    if edit_mode:
+        _save_seen_code(seen_code)
 
     # NOTE: epoch statistics used to be written here. nn_gen() runs BEFORE the
     # models are evaluated, so the accuracy it read out of cycle_results.json
@@ -930,6 +1114,69 @@ def generate_step(state: AgentState) -> dict:
     return {"next_action": "evaluate"}
 
 
+def _rebuild_design_corpus():
+    """Re-render the SFT corpus from LEMUR, including this run's own results.
+
+    Without this the trainer sees the same rows every cycle: training loss goes
+    to ~0.02, the model memorises its own corpus and every cycle regenerates
+    the designs it has already produced. Evaluated models are written back to
+    LEMUR under the corpus prefix, so rebuilding here is what turns the loop
+    into a loop instead of eight passes over one dataset.
+
+    The pinned test baselines are held out by name inside build(), so growth
+    cannot leak the test set into training. Never raises: a rebuild failure
+    leaves the previous corpus in place and the cycle continues on it.
+    """
+    edit_path = os.environ.get("NNGPT_EDIT_REBUILD", "").strip()
+    args_path = edit_path or os.environ.get("NNGPT_DESIGN_REBUILD", "").strip()
+    if not args_path or not Path(args_path).is_file():
+        return None
+    try:
+        if edit_path:
+            from ab.gpt.util.data import edit_pairs as builder
+        else:
+            from ab.gpt.util.data import design_pairs as builder
+        args = json.loads(Path(args_path).read_text(encoding="utf-8"))
+        lemur.data.cache_clear()
+        stats = builder.build(**args)
+        print(f"[corpus] rebuilt: records={stats['records']} "
+              f"pairs={stats['pairs']} train={stats['train_examples']} "
+              f"observed_max={stats['observed_max']}", flush=True)
+        return stats
+    except Exception as exc:
+        print(f"[design-corpus] rebuild skipped ({type(exc).__name__}: {exc}); "
+              f"continuing on the previous corpus", flush=True)
+        return None
+
+
+def _park_trainer_for_eval(model):
+    """Take the trainer off the card for the duration of evaluation.
+
+    Generation parks it and then restores it before _evaluate_epoch runs, so
+    the evaluator started with ~7.3 GiB already resident and lost candidates to
+    CUDA OOM -- silently, because an OOM looks like any other failed model.
+    """
+    if model is None or not _env_on("NNGPT_PARK_TRAINER_FOR_EVAL"):
+        return None
+    try:
+        from ab.gpt.util.llm.VLLMSleep import park_trainer
+        return park_trainer(model)
+    except Exception as exc:
+        print(f"[eval] could not park the trainer ({type(exc).__name__}: {exc}); "
+              f"evaluating with it resident", flush=True)
+        return None
+
+
+def _unpark_trainer_after_eval(model, parked):
+    if not parked:
+        return
+    try:
+        from ab.gpt.util.llm.VLLMSleep import unpark_trainer
+        unpark_trainer(model, parked)
+    except Exception as exc:
+        print(f"[eval] could not restore the trainer: {exc}", flush=True)
+
+
 def _evaluate_epoch(
     epoch,
     out_path,
@@ -938,6 +1185,7 @@ def _evaluate_epoch(
     trans_mode,
     classification_mode=False,
     custom_synth_dir=None,
+    trainer_model=None,
 ):
     """
     Single source of truth for one evaluation epoch.
@@ -947,7 +1195,19 @@ def _evaluate_epoch(
     """
     models_dir = synth_dir(out_path)
     results = {"epoch": epoch}
+    parked = _park_trainer_for_eval(trainer_model)
 
+    try:
+        return _evaluate_epoch_inner(
+            epoch, out_path, nn_name_prefix, nn_train_epochs, trans_mode,
+            classification_mode, custom_synth_dir, models_dir, results)
+    finally:
+        _unpark_trainer_after_eval(trainer_model, parked)
+
+
+def _evaluate_epoch_inner(epoch, out_path, nn_name_prefix, nn_train_epochs,
+                          trans_mode, classification_mode, custom_synth_dir,
+                          models_dir, results):
     if exists(models_dir):
         release_memory()
         # Repair generated models that almost follow the LEMUR interface (class
@@ -1130,6 +1390,7 @@ def evaluate_step(state: AgentState) -> dict:
         state["nn_train_epochs"],
         state.get("trans_mode", False),
         state.get("classification_mode", False),
+        trainer_model=state.get("model"),
     )
 
     updates = {}
@@ -1212,6 +1473,10 @@ def _finetune_epoch(
     Called by both the classic for-loop and the agent finetuner node.
     Returns (model, chat_bot) with the newly fine-tuned model.
     """
+    # Which rows this cycle trains on. Without it every cycle samples the same
+    # subset and a corpus larger than max_prompts is mostly unused.
+    os.environ["NNGPT_SFT_SAMPLE_SEED"] = str(epoch)
+
     if trans_mode:
         data_processor = TransformGenPrompt(
             context_length if context_length else model_loader.get_max_length(),
@@ -1280,6 +1545,7 @@ def finetune_step(state: AgentState) -> dict:
     print(f"[DEBUG] Perform finetune at epoch {epoch}")
 
     _prev_bot = state.get("chat_bot")
+    _rebuild_design_corpus()
     vllm_engine = state.get("vllm_engine")
     if vllm_engine is not None:
         vllm_engine.ensure_asleep()
@@ -1629,12 +1895,14 @@ def tune(
                 trans_mode,
                 classification_mode,
                 custom_synth_dir=synth_dir(out_path),
+                trainer_model=model,
             )
 
         if skip_lm_finetune:
             print(f'[INFO] skip_lm_finetune=True — skipping LLM LoRA update at epoch {epoch}.')
         else:
             print(f'[DEBUG]Perform finetune at epoch {epoch}.')
+            _rebuild_design_corpus()
             if vllm_engine is not None:
                 vllm_engine.ensure_asleep()
             model, chat_bot = _finetune_epoch(
@@ -1702,6 +1970,7 @@ def tune(
             trans_mode,
             classification_mode,
             custom_synth_dir=synth_dir(out_path),
+            trainer_model=model,
         )
 
     if vllm_engine is not None:

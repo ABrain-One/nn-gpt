@@ -618,6 +618,21 @@ def _flatten_token_ids(obj):
     raise TypeError(f"cannot read token ids from {type(obj).__name__}")
 
 
+def assistant_prefill():
+    """Text the assistant turn is forced to begin with (NNGPT_ASSISTANT_PREFILL).
+
+    A reasoning model expands to fill whatever budget it is given: at 1024
+    tokens every reply was cut off mid-deliberation, and at 3072 all thirty
+    still were. Telling it to be brief does not work, because the instruction
+    is itself something to reason about. Starting the assistant turn mid-token
+    removes the opportunity: there is no position at which prose could go.
+
+    The prefix is prepended back onto the generated text, so everything
+    downstream sees a complete reply and nothing else needs to know.
+    """
+    return os.environ.get("NNGPT_ASSISTANT_PREFILL", "")
+
+
 def _render_messages(tok, messages, suppress_thinking=False):
     """Render a messages list to a prompt string.
 
@@ -656,14 +671,14 @@ def _render_messages(tok, messages, suppress_thinking=False):
                 # Batched processors return a list of strings.
                 rendered = rendered[0] if rendered else ""
             if rendered:
-                return rendered
+                return rendered + assistant_prefill()
         except Exception as exc:
             print(f"[vLLM] apply_chat_template failed "
                   f"({type(exc).__name__}: {exc}); using the plain "
                   f"User/Assistant format.", flush=True)
     body = "\n".join(f"{m['role'].capitalize()}: {m['content']}"
                       for m in messages)
-    return f"{body}\nAssistant:"
+    return f"{body}\nAssistant:" + assistant_prefill()
 
 
 def _encode_prompt(tok, messages, suppress_thinking=False):
@@ -1111,8 +1126,11 @@ class VLLMSleepEngine:
         outputs = self.llm.generate(requests, sampling,
                                     lora_request=self._lora_request())
 
+        prefill = assistant_prefill()
         for pos, out in zip(kept, outputs):
             text = out.outputs[0].text if out.outputs else ""
+            if prefill and text:
+                text = prefill + text
             results[pos] = (*extract_all_to_train(text), text)
         return [results[pos] for pos in range(len(prompts))]
 

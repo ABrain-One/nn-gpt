@@ -105,7 +105,16 @@ def reset_pinned_seeds(seed_file=None):
 
     Returns the path when something was removed, else None. Never raises: a
     file that cannot be deleted is reported and the run continues.
+
+    ``NNGPT_SEED_FILE_EXTERNAL`` suppresses the reset. A caller that builds the
+    seed list itself -- a held-out test set written before the run starts --
+    would otherwise have it deleted here and silently replaced by a fresh draw
+    over the whole corpus, so the models used to measure the run would be the
+    same ones the fine-tune was trained on.
     """
+    if os.environ.get("NNGPT_SEED_FILE_EXTERNAL", "").strip().lower() not in _FALSE:
+        print("[seeds] external seed file: keeping the pinned set", flush=True)
+        return None
     path = seed_file_path(seed_file)
     if not path.is_file():
         return None
