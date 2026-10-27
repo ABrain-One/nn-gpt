@@ -13,14 +13,6 @@ LOGS_DIR = os.path.join(BASE_DIR, "logs")
 PIPELINE_DIR = os.environ.get("PIPELINE_DIR", os.path.join(BASE_DIR, "cifar10_pipeline"))
 VIZ_ROOT = os.path.join(PIPELINE_DIR, "visualizations")
 
-# if len(sys.argv) > 1:
-#     LOG_FILE = sys.argv[1]
-# else:
-#     log_files = glob.glob(os.path.join(LOGS_DIR, "baseline_evaluations_cifar10_*.jsonl")) + \
-#                 glob.glob(os.path.join(LOGS_DIR, "baseline_evaluations_*.jsonl"))
-#     if not log_files:
-#         raise FileNotFoundError(f"No baseline_evaluations*.jsonl found in {LOGS_DIR}")
-#     LOG_FILE = max(log_files, key=os.path.getmtime)
 
 GEN1_SIZE = 20
 REST_SIZE = 15
@@ -45,41 +37,8 @@ def split_into_generations(entries, gen1_size=20, rest_size=15):
         idx += rest_size
     return generations
 
-# def main():
-#     print(f"Loading: {LOG_FILE}")
-# def main(dataset=None, log_file_override=None):
-#     if dataset:
-#         target_logs_dir = os.path.join(BASE_DIR, f"logs_{dataset}")
-#     else:
-#         target_logs_dir = os.path.join(BASE_DIR, "logs_cifar10")
-# 
-#     if log_file_override:
-#         LOG_FILE = log_file_override
-#     elif len(sys.argv) > 1:
-#         LOG_FILE = sys.argv[1]
-#     else:
-#         if dataset:
-#             log_files = glob.glob(os.path.join(target_logs_dir, f"baseline_evaluations_{dataset}_*.jsonl"))
-#         else:
-#             log_files = glob.glob(os.path.join(target_logs_dir, "baseline_evaluations_cifar10_*.jsonl")) + \
-#                         glob.glob(os.path.join(target_logs_dir, "baseline_evaluations_*.jsonl"))
-#         if not log_files:
-#             raise FileNotFoundError(f"No baseline_evaluations*.jsonl found in {target_logs_dir}")
-#         LOG_FILE = max(log_files, key=os.path.getmtime)
 def main(dataset=None, log_file_override=None):
     global VIZ_ROOT
-    # if not dataset:
-    #     dataset = os.environ.get("DATASET", "cifar10")
-    # 
-    # target_pipeline_dir = os.environ.get("PIPELINE_DIR", os.path.join(BASE_DIR, f"{dataset}_pipeline"))
-    # VIZ_ROOT = os.path.join(target_pipeline_dir, "visualizations")
-    # 
-    # if log_file_override and os.path.exists(log_file_override):
-    #     LOG_FILE = log_file_override
-    # elif os.environ.get("GA_EVAL_LOG") and os.path.exists(os.environ.get("GA_EVAL_LOG")):
-    #     LOG_FILE = os.environ.get("GA_EVAL_LOG")
-    # elif len(sys.argv) > 1 and os.path.exists(sys.argv[1]):
-    #     LOG_FILE = sys.argv[1]
 
     # Resolve candidate log file first
     candidate_log = None
@@ -184,7 +143,6 @@ def main(dataset=None, log_file_override=None):
     log_basename = os.path.basename(LOG_FILE)
     title_prefix = "Baseline GA" if "baseline_evaluations_" in log_basename else "LLM-Guided GA"
 
-    # fig, ax = plt.subplots(figsize=(14, 7))
     fig, ax = plt.subplots(figsize=(14, 7), facecolor='white')
     ax.set_facecolor('white')
 
@@ -197,7 +155,6 @@ def main(dataset=None, log_file_override=None):
 
     ax.set_xlabel("Generation", fontsize=13)
     ax.set_ylabel("Accuracy (%)", fontsize=13)
-    # ax.set_title("Baseline GA: Accuracy per Generation", fontsize=15, fontweight="bold")
     ax.set_title(f"{title_prefix}: Accuracy per Generation", fontsize=15, fontweight="bold")
     ax.legend(fontsize=11, loc="lower right")
     ax.grid(True, color='gray', linestyle='--', linewidth=0.5, alpha=0.7)
@@ -221,10 +178,6 @@ def main(dataset=None, log_file_override=None):
                 arrowprops=dict(arrowstyle="->", color="#10b981"))
 
     plt.tight_layout()
-    # Extract timestamp from log filename (e.g., "baseline_evaluations_2026-06-10_17-13-19.jsonl" -> "2026-06-10_17-13-19")
-    # log_basename = os.path.basename(LOG_FILE)
-    # timestamp = log_basename.replace("baseline_evaluations_", "").replace(".jsonl", "")
-    # plot_dir = os.path.join(BASE_DIR, "visualizations", f"baseline_{timestamp}")
     if "baseline_evaluations_" in log_basename:
         if "imagenet100" in log_basename: dataset = "imagenet100"
         elif "cifar100" in log_basename: dataset = "cifar100"
@@ -273,12 +226,10 @@ def main(dataset=None, log_file_override=None):
         plot_dir = os.path.join(VIZ_ROOT, f"baseline_visualization_{suffix}")
     os.makedirs(plot_dir, exist_ok=True)
     plot_path = os.path.join(plot_dir, f"baseline_accuracy_per_generation_{suffix}.png")
-    # plt.savefig(plot_path, dpi=150)
     plt.savefig(plot_path, dpi=150, facecolor='white', transparent=False)
     print(f"\nAccuracy plot saved to: {plot_path}")
 
     # --- Plot 2: Time per generation ---
-    # fig2, ax2 = plt.subplots(figsize=(14, 7))
     fig2, ax2 = plt.subplots(figsize=(14, 7), facecolor='white')
     ax2.set_facecolor('white')
     ax2.plot(gen_numbers, gen_times, label="Time Taken (per gen)",
@@ -286,10 +237,8 @@ def main(dataset=None, log_file_override=None):
     
     ax2.set_xlabel("Generation", fontsize=13)
     ax2.set_ylabel("Time Taken (Minutes)", fontsize=13)
-    # ax2.set_title("Baseline GA: Compute Time per Generation", fontsize=15, fontweight="bold")
     ax2.set_title(f"{title_prefix}: Compute Time per Generation", fontsize=15, fontweight="bold")
     ax2.legend(fontsize=11, loc="upper right")
-    # ax2.grid(True, alpha=0.3)
     ax2.grid(True, color='gray', linestyle='--', linewidth=0.5, alpha=0.7)
     if len(generations) <= 1:
         ax2.set_xlim(0, 2)
@@ -298,7 +247,6 @@ def main(dataset=None, log_file_override=None):
     
     plt.tight_layout()
     plot_time_path = os.path.join(plot_dir, f"baseline_time_per_generation_{suffix}.png")
-    # fig2.savefig(plot_time_path, dpi=150)
     fig2.savefig(plot_time_path, dpi=150, facecolor='white', transparent=False)
     print(f"Time plot saved to: {plot_time_path}")
 

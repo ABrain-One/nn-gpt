@@ -1,0 +1,303 @@
+LEMUR root /a/mm
+2026-09-17 15:12:42,911 - INFO - Note: detected 128 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-09-17 15:12:42,911 - INFO - Note: NumExpr detected 128 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-09-17 15:12:42,911 - INFO - NumExpr defaulting to 16 threads.
+2026-09-17 15:12:44,595 - WARNING - Skipping import of cpp extensions due to incompatible torch version 2.7.1+cu126 for torchao version 0.15.0+cu126             Please see https://github.com/pytorch/ao/issues/2919 for more info
+[Config] Loaded model_config.json  (context_length=8192)
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/ga_history_backup/historic_runs/run_2026-09-17_15-12-45 for fresh start.
+[Meta] Moved LLM LoRA weights to /a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/qwen_adapter/historic_runs/run_2026-09-17_15-12-45 for fresh start.
+[Meta] LOAD_PREVIOUS_ADAPTER is FALSE. Starting with fresh LLM weights.
+[Config] Loaded model_config.json  (context_length=8192)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-09-17 15:12:46,975 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:26<01:19, 26.59s/it]Loading checkpoint shards:  50%|█████     | 2/4 [01:01<01:02, 31.22s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [01:28<00:29, 29.56s/it]Loading checkpoint shards: 100%|██████████| 4/4 [01:37<00:00, 21.46s/it]Loading checkpoint shards: 100%|██████████| 4/4 [01:37<00:00, 24.42s/it]
+[LoRA] No adapter directory found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+[Meta] Loaded Baseline Score: 33.56%
+
+[Meta] Target: 5 evolutions with up to 5 attempts per iteration.
+
+=== Iteration 1/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        else:
+            return parent2_value
+
+-------------------------
+[Meta] Generation Temperature (BOOSTED): 0.90
+--- [DEBUG] Raw Response ---
+```python
+def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+    # Introduce uniform crossover strategy with higher probability
+    if random.random() < 0.7:
+        if gene_index < crossover_point:
+            return parent1_value
+        else:
+            return parent2_value
+    else:
+        # Introduce a different combination strategy
+        if isinstance(parent1_value, int):
+            # Crossover between two integers
+            min_val = min(parent1_value, parent2_value)
+            max_val = max(parent1_value, parent2_value)
+            return random.randint(min_val, max_val)
+        elif isinstance(parent1_value, float):
+            # Blend between two floats
+            alpha = random.uniform(0.2, 0.8)
+            return parent1_value * alpha + parent2_value * (1 - alpha)
+        elif isinstance(parent1_value, str):
+            # Randomly choose from both values
+            if random.random() < 0.5:
+                return parent1_value
+            else:
+                return parent2_value
+        elif isinstance(parent1_value, list):
+            # Uniform crossover for lists
+            combined_list = []
+            for i in range(len(parent1_value)):
+                if random.random() < 0.5:
+                    combined_list.append(parent1_value[i])
+                else:
+                    combined_list.append(parent2_value[i])
+            return combined_list
+        else:
+            # Default to simple crossover
+            if gene_index < crossover_point:
+                return parent1_value
+            else:
+                return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '0.16636606454520503' for gene 'dropout_prob', not in search space
+---> Reverting file and skipping benchmark.
+   [RL] Penalty: Invalid Syntax/Crash.
+--> REGRESSION (Failed to beat SOTA). Fine-tuning on past successes to maintain syntax.
+[Meta] GPU cleanup attempted (gc + empty_cache)
+--> Reverting File (Syntax Error).
+[Meta] ✗ Iteration 1 (Attempt 1/10) failed (Syntax Error). Code reverted.
+[Meta] Retrying combine_genes...
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        else:
+            return parent2_value
+
+-------------------------
+[Meta] Generation Temperature (BOOSTED): 0.90
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        else:
+            # Introduce a more diverse crossover strategy
+            if isinstance(parent1_value, int) or isinstance(parent2_value, int):
+                # Crossover between two integers
+                min_val = min(parent1_value, parent2_value)
+                max_val = max(parent1_value, parent2_value)
+                return random.randint(min_val, max_val)
+            elif isinstance(parent1_value, float) or isinstance(parent2_value, float):
+                # Blend between two floats
+                alpha = random.uniform(0.2, 0.8)
+                return alpha * parent1_value + (1 - alpha) * parent2_value
+            elif isinstance(parent1_value, str):
+                # Randomly choose between the two string values
+                return random.choice([parent1_value, parent2_value])
+            else:
+                raise ValueError(f"Unsupported gene type: {type(parent1_value)}")
+
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+[Meta] Setting STATS_SUBDIR=meta for subprocess → stats/meta/
+
+[Meta] Running Benchmark 1/1...
+Skipping import of cpp extensions due to incompatible torch version 2.7.1+cu126 for torchao version 0.15.0+cu126             Please see https://github.com/pytorch/ao/issues/2919 for more info
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+LEMUR root /a/mm
+[Config] STATS_SUBDIR=meta → STATS_DIR=/a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/stats/meta
+[Run] Continuing evolution from gen 0 to 5
+
+
+ >>> GENERATION 1 <<<
+
+  Evaluating Individual 1/5 ---- Generation: 1/5
+  - Evaluating unique arch (checksum: b6b5baeb...)
+Evaluating /a/mm/out_cifar100_fd8e2bcf_nneval_tmp_pid_254/nn/tmp/GenFractalNet-b6b5baeb31ac33d6f4bc55889ceba88b-fae4364d53ceb51d6665836fd3c9c26b.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 2/782 [00:00<00:40, 19.14it/s]
+  1%|          | 9/782 [00:00<00:16, 46.49it/s]
+  2%|▏         | 16/782 [00:00<00:13, 55.27it/s]
+  3%|▎         | 23/782 [00:00<00:12, 59.03it/s]
+  4%|▍         | 30/782 [00:00<00:12, 60.97it/s]
+  5%|▍         | 37/782 [00:00<00:11, 62.15it/s]
+  6%|▌         | 44/782 [00:00<00:11, 62.99it/s]
+  7%|▋         | 51/782 [00:00<00:11, 63.68it/s]
+  7%|▋         | 58/782 [00:00<00:11, 64.05it/s]
+  8%|▊         | 65/782 [00:01<00:11, 64.75it/s]
+  9%|▉         | 72/782 [00:01<00:10, 65.21it/s]
+ 10%|█         | 79/782 [00:01<00:10, 65.71it/s]
+ 11%|█         | 86/782 [00:01<00:10, 66.35it/s]
+ 12%|█▏        | 93/782 [00:01<00:10, 66.30it/s]
+ 13%|█▎        | 100/782 [00:01<00:10, 65.87it/s]
+ 14%|█▎        | 107/782 [00:01<00:10, 66.45it/s]
+ 15%|█▍        | 114/782 [00:01<00:10, 66.59it/s]
+ 15%|█▌        | 121/782 [00:01<00:09, 66.46it/s]
+ 16%|█▋        | 128/782 [00:02<00:09, 66.76it/s]
+ 17%|█▋        | 135/782 [00:02<00:09, 66.77it/s]
+ 18%|█▊        | 142/782 [00:02<00:09, 66.11it/s]
+ 19%|█▉        | 149/782 [00:02<00:09, 66.06it/s]
+ 20%|█▉        | 156/782 [00:02<00:09, 66.24it/s]
+ 21%|██        | 163/782 [00:02<00:09, 65.98it/s]
+ 22%|██▏       | 170/782 [00:02<00:09, 65.44it/s]
+ 23%|██▎       | 177/782 [00:02<00:09, 65.06it/s]
+ 24%|██▎       | 184/782 [00:02<00:09, 65.64it/s]
+ 24%|██▍       | 191/782 [00:02<00:08, 65.94it/s]
+ 25%|██▌       | 198/782 [00:03<00:08, 65.37it/s]
+ 26%|██▌       | 205/782 [00:03<00:08, 65.52it/s]
+ 27%|██▋       | 212/782 [00:03<00:08, 65.52it/s]
+ 28%|██▊       | 219/782 [00:03<00:08, 65.47it/s]
+ 29%|██▉       | 226/782 [00:03<00:08, 64.80it/s]
+ 30%|██▉       | 233/782 [00:03<00:08, 65.35it/s]
+ 31%|███       | 240/782 [00:03<00:08, 65.36it/s]
+ 32%|███▏      | 247/782 [00:03<00:08, 65.37it/s]
+ 32%|███▏      | 254/782 [00:03<00:08, 65.32it/s]
+ 33%|███▎      | 261/782 [00:04<00:07, 65.52it/s]
+ 34%|███▍      | 268/782 [00:04<00:07, 65.46it/s]
+ 35%|███▌      | 275/782 [00:04<00:07, 65.27it/s]
+ 36%|███▌      | 282/782 [00:04<00:07, 65.07it/s]
+ 37%|███▋      | 289/782 [00:04<00:07, 65.60it/s]
+ 38%|███▊      | 296/782 [00:04<00:07, 64.64it/s]
+ 39%|███▊      | 303/782 [00:04<00:07, 64.05it/s]
+ 40%|███▉      | 310/782 [00:04<00:07, 64.01it/s]
+ 41%|████      | 317/782 [00:04<00:07, 64.02it/s]
+ 41%|████▏     | 324/782 [00:05<00:07, 64.18it/s]
+ 42%|████▏     | 331/782 [00:05<00:07, 64.29it/s]
+ 43%|████▎     | 338/782 [00:05<00:07, 61.41it/s]
+ 44%|████▍     | 345/782 [00:05<00:06, 63.20it/s]
+ 45%|████▌     | 352/782 [00:05<00:06, 63.86it/s]
+ 46%|████▌     | 359/782 [00:05<00:06, 64.08it/s]
+ 47%|████▋     | 366/782 [00:05<00:06, 64.60it/s]
+ 48%|████▊     | 373/782 [00:05<00:06, 64.93it/s]
+ 49%|████▊     | 380/782 [00:05<00:06, 64.74it/s]
+ 49%|████▉     | 387/782 [00:06<00:06, 64.21it/s]
+ 50%|█████     | 394/782 [00:06<00:06, 64.46it/s]
+ 51%|█████▏    | 401/782 [00:06<00:05, 64.57it/s]
+ 52%|█████▏    | 408/782 [00:06<00:05, 64.42it/s]
+ 53%|█████▎    | 415/782 [00:06<00:06, 59.43it/s]
+ 54%|█████▍    | 422/782 [00:06<00:06, 58.86it/s]
+ 55%|█████▍    | 429/782 [00:06<00:05, 60.10it/s]
+ 56%|█████▌    | 436/782 [00:06<00:05, 61.85it/s]
+ 57%|█████▋    | 443/782 [00:06<00:05, 62.41it/s]
+ 58%|█████▊    | 450/782 [00:07<00:05, 63.39it/s]
+ 58%|█████▊    | 457/782 [00:07<00:05, 59.30it/s]
+ 59%|█████▉    | 464/782 [00:07<00:05, 56.98it/s]
+ 60%|██████    | 470/782 [00:07<00:05, 56.12it/s]
+ 61%|██████    | 476/782 [00:07<00:05, 55.06it/s]
+ 62%|██████▏   | 483/782 [00:07<00:05, 57.71it/s]
+ 63%|██████▎   | 490/782 [00:07<00:04, 60.77it/s]
+ 64%|██████▎   | 497/782 [00:07<00:04, 62.94it/s]
+ 64%|██████▍   | 504/782 [00:07<00:04, 61.60it/s]
+ 65%|██████▌   | 511/782 [00:08<00:04, 63.43it/s]
+ 66%|██████▋   | 519/782 [00:08<00:04, 65.72it/s]
+ 67%|██████▋   | 526/782 [00:08<00:03, 64.41it/s]
+ 68%|██████▊   | 533/782 [00:08<00:03, 64.71it/s]
+ 69%|██████▉   | 540/782 [00:08<00:03, 65.85it/s]
+ 70%|██████▉   | 547/782 [00:08<00:03, 66.95it/s]
+ 71%|███████   | 554/782 [00:08<00:03, 67.81it/s]
+ 72%|███████▏  | 561/782 [00:08<00:03, 67.44it/s]
+ 73%|███████▎  | 568/782 [00:08<00:03, 67.58it/s]
+ 74%|███████▎  | 575/782 [00:09<00:03, 67.77it/s]
+ 74%|███████▍  | 582/782 [00:09<00:02, 67.91it/s]
+ 75%|███████▌  | 589/782 [00:09<00:02, 66.22it/s]
+ 76%|███████▌  | 596/782 [00:09<00:02, 65.36it/s]
+ 77%|███████▋  | 603/782 [00:09<00:02, 64.81it/s]
+ 78%|███████▊  | 610/782 [00:09<00:02, 64.48it/s]
+ 79%|███████▉  | 617/782 [00:09<00:02, 64.79it/s]
+ 80%|███████▉  | 624/782 [00:09<00:02, 64.11it/s]
+ 81%|████████  | 631/782 [00:09<00:02, 63.60it/s]
+ 82%|████████▏ | 638/782 [00:09<00:02, 62.92it/s]
+ 82%|████████▏ | 645/782 [00:10<00:02, 62.02it/s]
+ 83%|████████▎ | 652/782 [00:10<00:02, 61.30it/s]
+ 84%|████████▍ | 659/782 [00:10<00:02, 60.82it/s]
+ 85%|████████▌ | 666/782 [00:10<00:01, 62.03it/s]
+ 86%|████████▌ | 673/782 [00:10<00:01, 63.44it/s]
+ 87%|████████▋ | 680/782 [00:10<00:01, 62.43it/s]
+ 88%|████████▊ | 687/782 [00:10<00:01, 62.98it/s]
+ 89%|████████▊ | 694/782 [00:10<00:01, 63.27it/s]
+ 90%|████████▉ | 701/782 [00:11<00:01, 63.47it/s]
+ 91%|█████████ | 708/782 [00:11<00:01, 64.12it/s]
+ 91%|█████████▏| 715/782 [00:11<00:01, 63.47it/s]
+ 92%|█████████▏| 722/782 [00:11<00:00, 63.90it/s]
+ 93%|█████████▎| 729/782 [00:11<00:00, 63.86it/s]
+ 94%|█████████▍| 736/782 [00:11<00:00, 64.65it/s]
+ 95%|█████████▌| 743/782 [00:11<00:00, 64.79it/s]
+ 96%|█████████▌| 750/782 [00:11<00:00, 64.01it/s]
+ 97%|█████████▋| 757/782 [00:11<00:00, 64.06it/s]
+ 98%|█████████▊| 764/782 [00:11<00:00, 64.06it/s]
+ 99%|█████████▊| 771/782 [00:12<00:00, 64.10it/s]
+ 99%|█████████▉| 778/782 [00:12<00:00, 63.56it/s]
+100%|██████████| 782/782 [00:12<00:00, 63.40it/s]
+  Train Loss: 5.4402, Test Loss: 5.4624
+  Train Acc: 0.0131, Test Acc: 0.0130
+  LR: 0.029828, Grad Norm: 1.9565, Throughput: 1459.6 samples/s
+accuracy_to_time_metric 0.008757193613222783
+Trial (accuracy 0.013) for (img-classification, cifar-100, acc, GenFractalNet-b6b5baeb31ac33d6f4bc55889ceba88b-fae4364d53ceb51d6665836fd3c9c26b, 1) saved at /a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/stats/meta/img-classification_cifar-100_acc_GenFractalNet-b6b5baeb31ac33d6f4bc55889ceba88b/1.json
+epoch 2
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 1/782 [00:00<01:27,  8.94it/s]
+  1%|          | 8/782 [00:00<00:18, 41.80it/s]
+  2%|▏         | 15/782 [00:00<00:14, 53.18it/s]
+  3%|▎         | 22/782 [00:00<00:13, 57.10it/s]
+  4%|▎         | 28/782 [00:00<00:13, 57.87it/s]
+  4%|▍         | 34/782 [00:00<00:12, 58.08it/s]
+  5%|▌         | 40/782 [00:00<00:12, 58.27it/s]
+  6%|▌         | 46/782 [00:00<00:12, 57.90it/s]
+  7%|▋         | 52/782 [00:00<00:12, 57.15it/s]
+  7%|▋         | 58/782 [00:01<00:12, 56.79it/s]
+  8%|▊         | 64/782 [00:01<00:12, 57.48it/s]
+  9%|▉         | 70/782 [00:01<00:12, 56.74it/s]
+ 10%|▉         | 76/782 [00:01<00:12, 54.62it/s]
+ 11%|█         | 83/782 [00:01<00:11, 58.33it/s]
+ 12%|█▏        | 90/782 [00:01<00:11, 60.89it/s]
+ 12%|█▏        | 97/782 [00:01<00:10, 62.33it/s]
+ 13%|█▎        | 104/782 [00:01<00:10, 63.10it/s]
+ 14%|█▍        | 111/782 [00:01<00:10, 61.17it/s]
+ 15%|█▌        | 118/782 [00:02<00:10, 61.99it/s]
+ 16%|█▌        | 125/782 [00:02<00:10, 62.73it/s]
+ 17%|█▋        | 132/782 [00:02<00:10, 63.45it/s]
+ 18%|█▊        | 139/782 [00:02<00:09, 64.55it/s]
+ 19%|█▊        | 146/782 [00:02<00:09, 65.21it/s]
+ 20%|█▉        | 153/782 [00:02<00:09, 65.64it/s]
+ 20%|██        | 160/782 [00:02<00:09, 63.12it/s]
+ 21%|██▏       | 167/782 [00:02<00:09, 63.85it/s]
+ 22%|██▏       | 174/782 [00:02<00:09, 64.35it/s]
+ 23%|██▎       | 181/782 [00:03<00:09, 63.95it/s]
+ 24%|██▍       | 188/782 [00:03<00:09, 63.90it/s]
+ 25%|██▍       | 195/782 [00:03<00:09, 63.44it/s]
+ 26%|██▌       | 202/782 [00:03<00:09, 63.95it/s]
+ 27%|██▋       | 209/782 [00:03<00:08, 64.14it/s]
+ 28%|██▊       | 216/782 [00:03<00:09, 61.16it/s]
+ 29%|██▊       | 223/782 [00:03<00:09, 59.57it/s]
+ 29%|██▉       | 229/782 [00:03<00:09, 58.16it/s]
+ 30%|███       | 235/782 [00:03<00:09, 58.45it/s]
+ 31%|███       | 242/782 [00:04<00:09, 59.79it/s]
+ 32%|███▏      | 249/782 [00:04<00:08, 61.27it/s]
