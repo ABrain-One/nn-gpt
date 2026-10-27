@@ -12,8 +12,6 @@ SEARCH_SPACE = {
     'n_blocks': [2, 3, 4],                
     
     # Stochastic & Regularization
-    # 'dropout_prob': [0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5],
-    # 'fc_dropout': [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5],
     'dropout_prob': [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5],
     'fc_dropout': [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5],
     
@@ -93,7 +91,6 @@ def generate_model_code_string(chromosome: dict) -> str:
 
     # 5. Optimizer Setup String
     if opt_type == "AdamW":
-        # opt_str = "torch.optim.AdamW(self.parameters(), lr=prm['lr'], weight_decay=1e-4)"
         # FIX: Map momentum gene to Adam's beta1 (which functions as momentum) so prm['momentum'] is always accessed
         opt_str = "torch.optim.AdamW(self.parameters(), lr=prm['lr'], betas=(prm['momentum'], 0.999), weight_decay=1e-4)"
     elif opt_type == "RMSprop":
@@ -103,7 +100,7 @@ def generate_model_code_string(chromosome: dict) -> str:
 
     # =====================================================================
 
-    # 2. PyTorch String Generation (Now perfectly clean, single-stream code)
+# Generate the PyTorch model source.
     code = textwrap.dedent(f"""
         import torch
         import torch.nn as nn
