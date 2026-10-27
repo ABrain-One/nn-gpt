@@ -18,7 +18,6 @@ import sys
 import glob
 import gc
 import torch
-# from ab.gpt.util.Eval import Eval
 from ab.gpt.util.eval.Eval import Eval
 import ab.nn.api as nn_dataset
 import pandas as pd
@@ -249,7 +248,6 @@ class FrozenPipeline:
             "llm_loaded": False,
             "reward": 0.0,
             "fine_tune_expected": False,
-            # "fine_tune_completed": False,
             # Omitted from frozen iteration logs: no operator-model fine-tuning occurs.
         }
 

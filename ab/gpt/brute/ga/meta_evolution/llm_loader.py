@@ -50,7 +50,6 @@ class LocalLLMLoader:
         self.config = _load_model_config()
 
         # If no model_path provided, use the one from config
-        # self.model_path = model_path
         if model_path is None:
             model_path = self.config["base_model_name"]
         self.model_path = model_path
@@ -235,8 +234,6 @@ class LocalLLMLoader:
                 mask_length = min(prompt_length, labels.shape[1] - 1)
                 labels[0, :mask_length] = -100  # Mask prompt tokens from loss
 
-                # # Causal LM: Labels = Inputs (old: trained on full prompt+completion)
-                # outputs = self.model(**inputs, labels=inputs["input_ids"])
                 outputs = self.model(**inputs, labels=labels)
 
                 # Scale the loss since we are accumulating

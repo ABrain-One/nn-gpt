@@ -97,9 +97,8 @@ os.makedirs(STATS_DIR, exist_ok=True)
 # Baseline runs use STATS_SUBDIR=baseline; meta-evo runs use STATS_SUBDIR=meta
 print(f"[Config] STATS_SUBDIR={STATS_SUBDIR} → STATS_DIR={STATS_DIR}")
 
-# seen_checksums = set()
 fitness_cache = {}
-# Population-level dedup tracking (Approach A+C for Rec #7)
+# Track repeat proposals across this GA invocation.
 _generation_seen = set()
 
 # --- Evaluation Step Counter ---
@@ -169,11 +168,7 @@ def _log_eval(checksum, accuracy, is_cached, log_type="predicted"):
         except Exception as e:
             print(f"[ERROR] Failed to write GA eval log: {e}")
 
-# --- RECOMMENDATION #2: Reset fitness_cache between runs ---
-# _load_existing_checksums() is DISABLED — each run starts with a
-# fresh fitness_cache = {}. The cache still builds incrementally
-# during the run (line ~583), but stale checksums from previous
-# runs are NOT pre-loaded.
+# Start each run with an empty cache; do not preload previous results.
 def _load_existing_checksums():
     """DISABLED by Rec #2. Each run starts fresh to prevent cross-run cache contamination."""
     print("[Cache] Pre-loading DISABLED (Rec #2: fresh cache per run)")
@@ -244,12 +239,8 @@ def fitness_function(chromosome: dict) -> float:
         # 1. Generate Source Code
         code_str = generate_model_code_string(chromosome)
         
-        # New md5_hash checksum matching LLM_guided
         model_checksum = md5_hash(code_str)
         
-        # Deduplication — look up stored fitness instead of discarding signal
-        # if model_checksum in seen_checksums:
-        #     return _lookup_stored_fitness(model_checksum)
         if model_checksum in fitness_cache:
             ultimate_fitness, true_fitness, epoch_1_fitness = fitness_cache[model_checksum]
             print(f"  - Duplicate {model_checksum[:8]}: reusing cached fitness {ultimate_fitness:.2f}% (True: {true_fitness:.2f}%, 1-Ep: {epoch_1_fitness:.2f}%)")
@@ -264,14 +255,11 @@ def fitness_function(chromosome: dict) -> float:
         # 2. Write model code to a TEMPORARY file; only persist after
         #    evaluation succeeds and stats are verified on disk.
         model_name = f"GenFractalNet-{model_checksum}"
-        # filepath = os.path.join(ARCH_DIR, f"{model_name}.py")
         final_filepath = os.path.join(ARCH_DIR, f"{model_name}.py")
         MODEL_NAME_FOR_TMP = os.environ.get("MODEL_NAME", "unknown")
         tmp_filepath = os.path.join(ARCH_DIR, f"_tmp_{model_name}_{MODEL_NAME_FOR_TMP}.py")
         filepath = tmp_filepath  # evaluator works on the temp file
         
-        # with open(filepath, 'w') as f: 
-        #     f.write(code_str)
         with open(tmp_filepath, 'w') as f:
             f.write(code_str)
             
@@ -280,22 +268,11 @@ def fitness_function(chromosome: dict) -> float:
             'lr': chromosome['lr'],
             'momentum': chromosome['momentum'],
             'batch': 64,  # Increased from 32: more signal per step, avoids AccuracyException floor
-            # 'epoch': 1,   # Short epochs for Meta-Evaluation
             'epoch': 3,   # 3-epoch proxy for LLM predictor
             'transform': "norm_32_flip",  # Native CIFAR-10 resolution (was 256 → massive slowdown)
             'max_batches': None,  # None = full dataset (782 batches), or set int for proxy eval (e.g. 200)
         }
 
-        # --- PREVIOUS CODE (Commented out per protocol) ---
-        # # --- FIX: Delete stale training_summary.json before eval so it
-        # # cannot be picked up and mistaken for the current model's stats.
-        # summary_path = os.path.join(os.getcwd(), 'out', 'training_summary.json')
-        # if os.path.exists(summary_path):
-        #     try:
-        #         os.remove(summary_path)
-        #         print(f"  - Cleared stale training_summary.json before eval")
-        #     except Exception as e:
-        #         print(f"  - Warning: could not remove stale summary: {e}")
         
         # We don't need `Eval` to make its own subfolder if we want a flat JSON
         # However, to get per-epoch stats (1.json, 2.json), Train.py requires save_to_db=True.
@@ -336,18 +313,6 @@ def fitness_function(chromosome: dict) -> float:
             if _original_db_save_nn:
                 DB_Write.save_nn = _original_db_save_nn
         
-        # --- PREVIOUS CODE (Commented out per protocol) ---
-        # # Fetch stats from the freshly-written training_summary.json.
-        # # Only trust it if it was actually written by THIS evaluation
-        # # (guard: the file must exist AND belong to the current model checksum).
-        # full_res = {}
-        # if os.path.exists(summary_path):
-        #     try:
-        #         with open(summary_path, 'r') as f:
-        #             candidate = json.load(f)
-        #         file_uid = candidate.get('uid', model_checksum)
-        #         if file_uid == model_checksum:
-        #             full_res = candidate
         # Ensure the final fallback is structured correctly if native save failed
         full_res = {}
         # We assume Train.py correctly wrote 1.json, 2.json to model_stats_dir_path.
@@ -413,7 +378,7 @@ def fitness_function(chromosome: dict) -> float:
         os.rename(tmp_filepath, final_filepath)
         print(f"  - Model persisted to {os.path.basename(ARCH_DIR)}/ (stats verified: {len(_stats_json_files)} JSON file(s))")
 
-        # --- NEW CODE: Query LLM Predictor ---
+        # Query the accuracy predictor.
         predicted_final_accuracy = 0.0
         predicted_final_epoch = 0
         prediction_successful = False
@@ -449,7 +414,6 @@ def fitness_function(chromosome: dict) -> float:
                     nn_code=code_str,
                     epoch_1_accuracy=epoch_accs[1],
                     epoch_2_accuracy=epoch_accs[2],
-                    # epoch_3_accuracy=epoch_accs[3],
                 )
                 predicted_final_accuracy = float(pred_acc)
                 # Normalize decimal probabilities (e.g., 0.85) to percentages (85.0)
@@ -479,7 +443,6 @@ def fitness_function(chromosome: dict) -> float:
         }
         with open(os.path.join(model_stats_dir_path, "predictor_summary.json"), 'w') as f:
             json.dump(pred_summary, f, indent=4)
-        # --- END NEW CODE ---
 
         # --- Layered accuracy extraction ---
         # Priority: top-level > hyperparameters (library writes here) >
@@ -517,11 +480,6 @@ def fitness_function(chromosome: dict) -> float:
                 final_accuracy = float(result) * 100
                 _acc_source = "result scalar"
 
-        # --- PREVIOUS CODE (Commented out per protocol) ---
-        # print(f"\n  {'='*40}")
-        # print(f"  >>> FITNESS SCORE: {final_accuracy:.2f}%  (source: {_acc_source}, checksum: {model_checksum})")
-        # print(f"  {'='*40}\n")
-        # # seen_checksums.add(model_checksum)
         # Use predicted accuracy for GA fitness/elitism; use actual 3-epoch for true fitness.
         ultimate_fitness = predicted_final_accuracy if prediction_successful and predicted_final_accuracy > 0 else final_accuracy
         true_fitness = final_accuracy
@@ -561,8 +519,6 @@ def fitness_function(chromosome: dict) -> float:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    # parser.add_argument("--gens", type=int, default=3)
-    # parser.add_argument("--pop", type=int, default=10)
     parser.add_argument("--gens", type=int, default=int(os.environ.get("GENERATIONS", 3)))
     parser.add_argument("--pop", type=int, default=int(os.environ.get("POPULATION_SIZE", 10)))
     parser.add_argument("--clean", action="store_true")
@@ -586,7 +542,6 @@ if __name__ == "__main__":
         ga = GeneticAlgorithm(
             population_size=args.pop,
             search_space=SEARCH_SPACE,
-            # elitism_count=5,
             elitism_count=max(1, int(args.pop * 0.25)),  # Dynamic: 25% of population
             mutation_rate=0.2,
             checkpoint_path=CHECKPOINT
@@ -598,8 +553,6 @@ if __name__ == "__main__":
         print(f"[Run] Continuing evolution from gen {start_gen} to {target_gens}")
 
         # Wrap fitness_function to sanitize chromosomes and update MAP-Elites archive
-        # Rec #7: Population-level dedup (Approach A+C)
-        # Previous description: Approach A: Track checksums within this generation; Approach C: Penalize duplicates
         # Track checksums across this GA invocation; a new benchmark starts a fresh set.
         generation_seen = set()
 
@@ -607,13 +560,11 @@ if __name__ == "__main__":
             sanitized = sanitize_chromosome(chromosome, SEARCH_SPACE)
             chromosome.update(sanitized)  # Fix in-place so GA sees clean values
 
-            # Approach A+C: Check for population-level duplicates
+            # Check for repeat architecture proposals.
             code_str = generate_model_code_string(chromosome)
             model_checksum = md5_hash(code_str)
 
             if model_checksum in generation_seen:
-                # Previous description: Approach C: Fitness penalty for duplicates within same generation
-                # print(f"  - Duplicate {model_checksum[:8]}: applying 50% fitness penalty (Rec #7)")
                 # Assign the same repeat-proposal penalty as the baseline runner.
                 print(f"  - Duplicate {model_checksum[:8]}: assigning -1.0 fitness (already seen in this GA invocation)")
                 chromosome['accuracy'] = -1.0
