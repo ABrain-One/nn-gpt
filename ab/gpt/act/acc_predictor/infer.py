@@ -49,7 +49,9 @@ def predict_best_accuracy(
     epoch_1_accuracy: float,
     epoch_2_accuracy: float,
     prm: dict | None = None,
-layer_stats: str | None = None,
+    layer_stats: str | None = None,
+    *,
+    epoch_3_accuracy: float | None = None,
 ) -> tuple[float, int]:
     """Predict best_accuracy and best_epoch using ABrain/Accuracy-Prediction.
     If proxies are enabled and nn_code is given, they are computed from the code
@@ -62,6 +64,8 @@ layer_stats: str | None = None,
         "accuracy_epoch_1": epoch_1_accuracy,
         "accuracy_epoch_2": epoch_2_accuracy,
     }
+    if epoch_3_accuracy is not None:
+        record["accuracy_epoch_3"] = epoch_3_accuracy
     if layer_stats:
         record["layer_stats"] = layer_stats
     _attach_computed_proxies(record, nn_code, prm)
@@ -107,6 +111,9 @@ layer_stats: str | None = None,
 
     fallback_acc = max(float(epoch_1_accuracy), float(epoch_2_accuracy))
     fallback_epoch = 2 if float(epoch_2_accuracy) >= float(epoch_1_accuracy) else 1
+    if epoch_3_accuracy is not None and float(epoch_3_accuracy) >= fallback_acc:
+        fallback_acc = float(epoch_3_accuracy)
+        fallback_epoch = 3
 
     if not parsed:
         return fallback_acc, fallback_epoch
