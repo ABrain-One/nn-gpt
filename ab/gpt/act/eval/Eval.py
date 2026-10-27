@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 import os
 import shutil
 import sys
@@ -504,6 +505,54 @@ def _collect_epoch_requests(
     return requests, immediate_results
 
 
+def _predict_taylor(spec):
+    accuracies, table, run_prm = [], ["epoch\ttaylor_imp"], None
+    for epoch in (1, 2, 3):
+        path = Path(spec["model_dir"]) / f"{epoch}.json"
+        rows = json.loads(path.read_text(encoding="utf-8"))
+        rows = rows if isinstance(rows, list) else [rows]
+        if len(rows) != 1 or not isinstance(rows[0], dict):
+            raise ValueError(f"Expected one trial record in {path}")
+        row = rows[0]
+        epoch_prm = {
+            key: value for key, value in row.items()
+            if key not in {"uid", "accuracy", "duration", "duration_seconds", "train_stat", "layer_stat"}
+            and not key.startswith("metric_")
+        }
+        if run_prm is not None and epoch_prm != run_prm:
+            raise ValueError(f"Training configuration changed between epochs in {path}")
+        run_prm = epoch_prm
+        accuracy = float(row["accuracy"])
+        if not math.isfinite(accuracy) or not 0 <= accuracy <= 1:
+            raise ValueError(f"Expected measured accuracy in [0,1] in {path}")
+        accuracies.append(100 * accuracy)
+        values = [float(layer["taylor_imp"]) for layer in row["layer_stat"]["layers"]
+                  if layer.get("taylor_imp") is not None and math.isfinite(float(layer["taylor_imp"]))]
+        if not values:
+            raise ValueError(f"No finite Taylor values in {path}")
+        table.append(f"{epoch}\t{sum(values) / len(values):.6g}")
+
+    from ab.gpt.act.acc_predictor import config, infer
+    settings = dict(USE_LAYER_STATS=True, ACTIVE_LAYER_FEATURES=("taylor_imp",),
+                    USE_THIRD_EARLY_EPOCH=True)
+    previous = {key: getattr(config, key) for key in settings}
+    try:
+        for key, value in settings.items():
+            setattr(config, key, value)
+        accuracy, epoch = infer.predict_best_accuracy(
+            task=spec["task"], dataset=spec["dataset"], metric=spec["metric"],
+            nn_code=read_py_file_as_string(spec["code_file"]), prm=spec["prm"],
+            epoch_1_accuracy=accuracies[0], epoch_2_accuracy=accuracies[1],
+            epoch_3_accuracy=accuracies[2], layer_stats="\n".join(table),
+        )
+    finally:
+        for key, value in previous.items():
+            setattr(config, key, value)
+    return {"status": "complete", "predicted_best_accuracy": accuracy,
+            "predicted_best_epoch": epoch, "accuracy_unit": "percent",
+            "observed_epochs": 3, "prediction_horizon": infer.PREDICTOR_DEFAULT_MAX_EPOCHS}
+
+
 def main(
     nn_name_prefix=NN_NAME_PREFIX,
     nn_train_epochs=NN_TRAIN_EPOCHS,
@@ -539,7 +588,12 @@ def main(
     cycle=CYCLE,
     use_all_visible_gpus: Optional[bool] = None,
     save_eval_checkpoint: bool = False,
+    culling_nn: bool = False,
 ):
+    if culling_nn:
+        if not save_to_db or save_eval_checkpoint:
+            raise ValueError("Culling requires save_to_db=True and no eval checkpoint")
+        nn_train_epochs = 3
     base_nngpt_path = nngpt_dir
     custom_synth_path = Path(custom_synth_dir) if custom_synth_dir else None
     if nn_alter_epochs is None:
@@ -582,6 +636,15 @@ def main(
 
                 # Build eval requests first so already successful models can be
                 # skipped without waking workers unnecessarily.
+                if culling_nn:
+                    for folder in models_base_dir.iterdir():
+                        if (folder / new_nn_file).is_file() and (
+                            any(folder.glob("[0-9]*.json")) or any(
+                                (folder / name).exists() for name in
+                                ("eval_info.json", "eval_summary.json", "error.txt", "prediction.json")
+                            )
+                        ):
+                            raise FileExistsError(f"Culling requires fresh output files: {folder}")
                 requests, epoch_results = _collect_epoch_requests(
                     models_base_dir=models_base_dir,
                     nn_name_prefix=nn_name_prefix,
@@ -615,6 +678,12 @@ def main(
                     save_eval_checkpoint=save_eval_checkpoint,
                 )
 
+                if culling_nn:
+                    for request in requests:
+                        if request["task"] != "img-classification" or request["metric"] != "acc":
+                            raise ValueError("Taylor prediction currently supports img-classification/acc")
+                        request["layer_analysis"] = True
+
                 if requests:
                     NNEvalWorkerPool.prewarm_nneval_workers(
                         use_all_visible_gpus=resolved_use_all_visible_gpus,
@@ -634,6 +703,26 @@ def main(
                             print(f"  Error evaluating model {model_id}: {worker_result.get('error')}")
                             epoch_results.append(_write_failure_outputs(request, worker_result))
                         release_memory()
+
+                    if culling_nn:
+                        NNEvalWorkerPool.shutdown_nneval_workers()
+                        from ab.gpt.act.acc_predictor import model as predictor_model
+                        cached = predictor_model._predictor_model, predictor_model._predictor_tokenizer
+                        try:
+                            for request, result in zip(requests, worker_results):
+                                if not result.get("success"):
+                                    continue
+                                try:
+                                    prediction = _predict_taylor(request)
+                                except Exception as exc:
+                                    prediction = {"status": "failed", "error": str(exc)}
+                                path = Path(request["model_dir"]) / "prediction.json"
+                                with path.open("x", encoding="utf-8") as stream:
+                                    json.dump(prediction, stream, indent=2, allow_nan=False)
+                                print(f"Prediction for {request['model_id']}: {prediction}")
+                        finally:
+                            predictor_model._predictor_model, predictor_model._predictor_tokenizer = cached
+                            release_memory()
 
                 # Rebuild cycle_results.json from the artifacts produced in this
                 # epoch directory after all worker results have been written.
@@ -891,6 +980,8 @@ if __name__ == "__main__":
         help="Cycle number (finetuning iteration, separate from epoch).",
     )
 
+    parser.add_argument("--culling_nn", action="store_true",
+                        help="Train three epochs with Taylor statistics and save predicted best accuracy.")
     args = parser.parse_args()
     prm_json_dict = None
     if args.prm_json:
@@ -901,7 +992,7 @@ if __name__ == "__main__":
             sys.exit(1)
     print("Starting evaluation of altered NNs...")
     print(f"NNAlter run epochs to scan: {args.nn_alter_epochs}")
-    print(f"Each altered NN will be trained for: {args.nn_train_epochs} epochs for evaluation.")
+    print(f"Each altered NN will be trained for: {3 if args.culling_nn else args.nn_train_epochs} epochs for evaluation.")
     print(f"Base task: {args.task}, Base dataset: {args.dataset}, Base metric: {args.metric}")
     print("Base Hyperparameters for NNEval (before df override):")
     print(
@@ -944,4 +1035,5 @@ if __name__ == "__main__":
         epoch_limit_minutes=args.epoch_limit_minutes,
         custom_synth_dir=args.custom_synth_dir,
         cycle=args.cycle,
+        culling_nn=args.culling_nn,
     )

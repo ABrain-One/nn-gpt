@@ -42,7 +42,9 @@ class Eval:
         else:
             self.use_ast_validation = use_ast_validation
 
-    def evaluate(self, nn_file, checkpoint_path=None):
+    def evaluate(self, nn_file, checkpoint_path=None, layer_analysis=False):
+        if layer_analysis and (checkpoint_path or not self.save_to_db):
+            raise ValueError("Layer analysis requires save_to_db=True and no eval checkpoint")
         os.listdir(self.model_package)
         code = read_py_file_as_string(nn_file)
         if not code or not code.strip():
@@ -96,6 +98,20 @@ class Eval:
         allow_retrain = bool(checkpoint_path) or not self.save_to_db
         if new_checksum not in ids_list or allow_retrain:
             with _isolated_eval_tmp_modules():
+                if layer_analysis:
+                    from ab.nn.util import LayerAnalysis, Train
+                    previous = LayerAnalysis.ACTIVE_LAYER_FEATURES
+                    LayerAnalysis.ACTIVE_LAYER_FEATURES = ("taylor_imp",)
+                    try:
+                        return Train.train_new(
+                            code, self.task, self.dataset, self.metric, self.prm,
+                            save_to_db=self.save_to_db, prefix=self.prefix,
+                            save_path=self.save_path, layer_analysis=True,
+                            **({"epoch_limit_minutes": self.epoch_limit_minutes}
+                               if getattr(self, "epoch_limit_minutes", None) is not None else {}),
+                        )
+                    finally:
+                        LayerAnalysis.ACTIVE_LAYER_FEATURES = previous
                 if checkpoint_path:
                     from ab.gpt.util.eval.eval_checkpoint import train_and_eval_with_checkpoint
 
