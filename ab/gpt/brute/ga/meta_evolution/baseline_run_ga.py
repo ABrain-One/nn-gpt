@@ -188,9 +188,36 @@ def fitness_function(chromosome: dict) -> float:
         # New md5_hash checksum matching LLM_guided
         model_checksum = md5_hash(code_str)
         
-        # Deduplication — look up stored fitness instead of discarding signal
-        # if model_checksum in seen_checksums:
-        #     return _lookup_stored_fitness(model_checksum)
+        # Previous cache-first duplicate handling (preserved for reference):
+        # # Deduplication — look up stored fitness instead of discarding signal
+        # # if model_checksum in seen_checksums:
+        # #     return _lookup_stored_fitness(model_checksum)
+        # if model_checksum in fitness_cache:
+        #     ultimate_fitness, true_fitness, epoch_1_fitness = fitness_cache[model_checksum]
+        #     print(f"  - Duplicate {model_checksum[:8]}: reusing cached fitness {ultimate_fitness:.2f}% (True: {true_fitness:.2f}%, 1-Ep: {epoch_1_fitness:.2f}%)")
+        #     _log_eval(model_checksum, ultimate_fitness, True, log_type="predicted")
+        #     _log_eval(model_checksum, true_fitness, True, log_type="true")
+        #     _log_eval(model_checksum, epoch_1_fitness, True, log_type="1_epoch")
+        #     chromosome['accuracy'] = ultimate_fitness
+        #     return ultimate_fitness
+        #
+        # # Rec #7: Population-level dedup (Approach A+C)
+        # if model_checksum in _generation_seen:
+        #     print(f"  - Duplicate {model_checksum[:8]}: applying 50% fitness penalty (Rec #7)")
+        #     chromosome['accuracy'] = -1.0
+        #     return -1.0
+        #
+        # _generation_seen.add(model_checksum)
+
+        # Match meta's duplicate policy across this entire GA invocation.
+        # Check before cache reuse; failed evaluations also remain in the set.
+        if model_checksum in _generation_seen:
+            print(f"  - Duplicate {model_checksum[:8]}: assigning -1.0 fitness (already seen in this GA invocation)")
+            chromosome['accuracy'] = -1.0
+            return -1.0
+
+        _generation_seen.add(model_checksum)
+
         if model_checksum in fitness_cache:
             ultimate_fitness, true_fitness, epoch_1_fitness = fitness_cache[model_checksum]
             print(f"  - Duplicate {model_checksum[:8]}: reusing cached fitness {ultimate_fitness:.2f}% (True: {true_fitness:.2f}%, 1-Ep: {epoch_1_fitness:.2f}%)")
@@ -199,14 +226,6 @@ def fitness_function(chromosome: dict) -> float:
             _log_eval(model_checksum, epoch_1_fitness, True, log_type="1_epoch")
             chromosome['accuracy'] = ultimate_fitness
             return ultimate_fitness
-
-        # Rec #7: Population-level dedup (Approach A+C)
-        if model_checksum in _generation_seen:
-            print(f"  - Duplicate {model_checksum[:8]}: applying 50% fitness penalty (Rec #7)")
-            chromosome['accuracy'] = -1.0
-            return -1.0
-
-        _generation_seen.add(model_checksum)
 
         print(f"  - Evaluating unique arch (checksum: {model_checksum[:8]}...)")
         
@@ -399,7 +418,7 @@ def fitness_function(chromosome: dict) -> float:
                     nn_code=code_str,
                     epoch_1_accuracy=epoch_accs[1],
                     epoch_2_accuracy=epoch_accs[2],
-                    epoch_3_accuracy=epoch_accs[3],
+                    # epoch_3_accuracy=epoch_accs[3],
                 )
                 predicted_final_accuracy = float(pred_acc)
                 # Normalize decimal probabilities (e.g., 0.85) to percentages (85.0)

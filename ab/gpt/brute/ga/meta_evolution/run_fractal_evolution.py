@@ -45,7 +45,6 @@ import torch
 from ab.gpt.brute.ga.meta_evolution.FractalNet_evolvable_backbone import SEARCH_SPACE, generate_model_code_string
 from ab.gpt.util.eval.Eval import Eval
 from ab.gpt.util.eval.acc_client import predict_best_accuracy
-from ab.gpt.util.method.llmatic import ga_bridge
 import ab.nn.api as nn_dataset
 import pandas as pd
 # MONKEYPATCH: Bypass the massive remote database download inside Eval.py
@@ -450,7 +449,7 @@ def fitness_function(chromosome: dict) -> float:
                     nn_code=code_str,
                     epoch_1_accuracy=epoch_accs[1],
                     epoch_2_accuracy=epoch_accs[2],
-                    epoch_3_accuracy=epoch_accs[3],
+                    # epoch_3_accuracy=epoch_accs[3],
                 )
                 predicted_final_accuracy = float(pred_acc)
                 # Normalize decimal probabilities (e.g., 0.85) to percentages (85.0)
@@ -592,8 +591,6 @@ if __name__ == "__main__":
             mutation_rate=0.2,
             checkpoint_path=CHECKPOINT
         )
-        llmatic_ga = ga_bridge.from_env(PIPELINE_DIR, DATASET)  # opt-in via LLMATIC_GA; None when unset
-        if llmatic_ga: llmatic_ga.patch_initial_population(ga)
         
         # No checkpoint — start from generation 0
         start_gen = 0
@@ -602,7 +599,8 @@ if __name__ == "__main__":
 
         # Wrap fitness_function to sanitize chromosomes and update MAP-Elites archive
         # Rec #7: Population-level dedup (Approach A+C)
-        # Approach A: Track checksums within this generation; Approach C: Penalize duplicates
+        # Previous description: Approach A: Track checksums within this generation; Approach C: Penalize duplicates
+        # Track checksums across this GA invocation; a new benchmark starts a fresh set.
         generation_seen = set()
 
         def fitness_with_archive(chromosome):
@@ -614,8 +612,10 @@ if __name__ == "__main__":
             model_checksum = md5_hash(code_str)
 
             if model_checksum in generation_seen:
-                # Approach C: Fitness penalty for duplicates within same generation
-                print(f"  - Duplicate {model_checksum[:8]}: applying 50% fitness penalty (Rec #7)")
+                # Previous description: Approach C: Fitness penalty for duplicates within same generation
+                # print(f"  - Duplicate {model_checksum[:8]}: applying 50% fitness penalty (Rec #7)")
+                # Assign the same repeat-proposal penalty as the baseline runner.
+                print(f"  - Duplicate {model_checksum[:8]}: assigning -1.0 fitness (already seen in this GA invocation)")
                 chromosome['accuracy'] = -1.0
                 update_archive({'chromosome': chromosome, 'fitness': -1.0}, SEARCH_SPACE)
                 return -1.0
@@ -623,13 +623,11 @@ if __name__ == "__main__":
             generation_seen.add(model_checksum)
 
             fitness = fitness_function(chromosome)
-            if llmatic_ga: llmatic_ga.add({k: chromosome[k] for k in SEARCH_SPACE}, code_str, fitness)
             # Update archive after evaluation
             update_archive({'chromosome': chromosome, 'fitness': fitness}, SEARCH_SPACE)
             return fitness
 
         best, history = ga.run(target_gens, fitness_with_archive)
-        if llmatic_ga: llmatic_ga.save()
         
         # Save Best Architecture
         if best:

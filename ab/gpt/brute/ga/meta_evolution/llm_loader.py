@@ -90,7 +90,7 @@ class LocalLLMLoader:
                 quantization_config=bnb_config,
                 device_map=device_map,
                 trust_remote_code=True,
-                dtype=torch.float16 if torch.cuda.is_available() else torch.float32
+                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
             )
         except OSError:
              # Fallback to local
@@ -100,7 +100,7 @@ class LocalLLMLoader:
                 device_map=device_map,
                 trust_remote_code=True,
                 local_files_only=False,
-                 dtype=torch.float16 if torch.cuda.is_available() else torch.float32
+                 torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
             )
 
         # Prepare for Training (k-bit)

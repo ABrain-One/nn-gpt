@@ -865,10 +865,12 @@ class MetaEvolver:
         return True
 
 if __name__ == "__main__":
-    pipeline_dir = os.environ.get("PIPELINE_DIR", BASE_DIR)
-    with open(os.path.join(pipeline_dir, "model_config.json"), "r") as f:
-        MODEL_PATH = json.load(f).get("base_model_name", "mistralai/Mistral-7B-Instruct-v0.2")
-    evolver = MetaEvolver(MODEL_PATH)
+    # pipeline_dir = os.environ.get("PIPELINE_DIR", BASE_DIR)
+    # with open(os.path.join(pipeline_dir, "model_config.json"), "r") as f:
+    #     MODEL_PATH = json.load(f).get("base_model_name", "mistralai/Mistral-7B-Instruct-v0.2")
+    # evolver = MetaEvolver(MODEL_PATH)
+    # Let LocalLLMLoader resolve LLM_BASE_MODEL before the model_config.json default.
+    evolver = MetaEvolver(None)
 
     # LOOP: CYCLE THROUGH ALL EVOLVABLE COMPONENTS
     # [OLD — fixed attempt count, stopped after N tries regardless of success]
