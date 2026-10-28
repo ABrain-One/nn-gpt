@@ -18,85 +18,6 @@ from ab.gpt.util.Const import conf_llm_dir
 
 RUN_META = out_dir / 'nngpt' / 'run_config.json'
 
-
-def persist_llm_conf(llm_conf, enable_merge=False, params=None,
-                     nn_gen_conf=None, nn_gen_conf_id=None, llm_tune_conf=None):
-    """Save run configuration including llm_conf, base_model_name, and enable_merge.
-
-    ``params`` carries the fine-tuning settings so the plot can state which model
-    and which hyper-parameters produced it. Statistics without the configuration
-    that produced them cannot be compared between runs.
-
-    ``nn_gen_conf`` names the generation prompt config, which is where the task
-    and the dataset are recorded. They are copied in under the keys the dataset
-    itself uses, so the figure can be matched against the database.
-
-    The two prompt configs are recorded by name as well: ``llm_tune_conf`` is
-    what the model was fine-tuned on and ``nn_gen_conf`` is what it was asked
-    to generate from. Two runs of identical hyper-parameters on different
-    prompts produce different curves, and nothing else distinguishes them.
-
-    ``script`` is the entry point this run was started from. The repository
-    carries a script per model and per experiment, and two of them can produce
-    the same run_config.json while differing in everything the config does not
-    record, so the figure names the one that ran.
-
-    ``started_at`` is stamped here, at the one moment that is the start of the
-    run for certain. The epoch rows carry the time each epoch finished, so the
-    two together are what the figure states the run cost; without the stamp the
-    first epoch -- generation, training and evaluation -- is uncounted.
-    """
-
-    RUN_META.parent.mkdir(parents=True, exist_ok=True)
-
-    # Read base_model_name from llm_conf
-    base_model_name = None
-    llm_conf_path = conf_llm_dir / llm_conf
-
-    if llm_conf_path.exists():
-        try:
-            with open(llm_conf_path) as f:
-                config = json.load(f)
-            base_model_name = config.get("base_model_name")
-        except Exception as e:
-            print(f"Failed to read base_model_name from {llm_conf}: {e}")
-
-    # Save llm_conf, base_model_name, and enable_merge
-    run_config = {
-        "llm_conf": llm_conf,
-        "enable_merge": enable_merge,
-        "started_at": datetime.now().isoformat(),
-    }
-    if base_model_name:
-        run_config["base_model_name"] = base_model_name
-    script = Path(sys.argv[0]).stem if sys.argv and sys.argv[0] else ""
-    if script and not script.startswith("-"):      # -c, -m: no script to name
-        run_config["script"] = script
-    prompts = {"train": llm_tune_conf, "test": nn_gen_conf,
-               "test_id": nn_gen_conf_id}
-    prompts = {k: v for k, v in prompts.items() if v}
-    if prompts:
-        run_config["prompts"] = prompts
-    if params:
-        run_config["training"] = {k: v for k, v in params.items() if v is not None}
-    if nn_gen_conf:
-        try:
-            from ab.gpt.util.Const import conf_test_dir
-            with open(conf_test_dir / nn_gen_conf) as f:
-                gen_cfg = json.load(f)
-            key = nn_gen_conf_id if isinstance(nn_gen_conf_id, str) else None
-            entry = gen_cfg.get(key) if key else next(iter(gen_cfg.values()), None)
-            if isinstance(entry, dict):
-                for field in ("task", "dataset"):
-                    if entry.get(field):
-                        run_config[field] = entry[field]
-        except Exception as e:
-            print(f"Failed to read task/dataset from {nn_gen_conf}: {e}")
-
-    with open(RUN_META, "w") as f:
-        json.dump(run_config, f, indent=2)
-
-    print(f"Run config saved: {RUN_META}")
 # --- Default Evaluation Parameters ---
 # None now means "adapt every layer"; pass -s/-e to restrict it.
 START_LAYER = None
@@ -315,6 +236,86 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
         'unsloth': use_unsloth,
         'vllm_sleep': use_vllm,
     }
+
+    def persist_llm_conf(llm_conf, enable_merge=False, params=None,
+                         nn_gen_conf=None, nn_gen_conf_id=None, llm_tune_conf=None):
+        """Save run configuration including llm_conf, base_model_name, and enable_merge.
+
+        ``params`` carries the fine-tuning settings so the plot can state which model
+        and which hyper-parameters produced it. Statistics without the configuration
+        that produced them cannot be compared between runs.
+
+        ``nn_gen_conf`` names the generation prompt config, which is where the task
+        and the dataset are recorded. They are copied in under the keys the dataset
+        itself uses, so the figure can be matched against the database.
+
+        The two prompt configs are recorded by name as well: ``llm_tune_conf`` is
+        what the model was fine-tuned on and ``nn_gen_conf`` is what it was asked
+        to generate from. Two runs of identical hyper-parameters on different
+        prompts produce different curves, and nothing else distinguishes them.
+
+        ``script`` is the entry point this run was started from. The repository
+        carries a script per model and per experiment, and two of them can produce
+        the same run_config.json while differing in everything the config does not
+        record, so the figure names the one that ran.
+
+        ``started_at`` is stamped here, at the one moment that is the start of the
+        run for certain. The epoch rows carry the time each epoch finished, so the
+        two together are what the figure states the run cost; without the stamp the
+        first epoch -- generation, training and evaluation -- is uncounted.
+        """
+
+        RUN_META.parent.mkdir(parents=True, exist_ok=True)
+
+        # Read base_model_name from llm_conf
+        base_model_name = None
+        llm_conf_path = conf_llm_dir / llm_conf
+
+        if llm_conf_path.exists():
+            try:
+                with open(llm_conf_path) as f:
+                    config = json.load(f)
+                base_model_name = config.get("base_model_name")
+            except Exception as e:
+                print(f"Failed to read base_model_name from {llm_conf}: {e}")
+
+        # Save llm_conf, base_model_name, and enable_merge
+        run_config = {
+            "llm_conf": llm_conf,
+            "enable_merge": enable_merge,
+            "started_at": datetime.now().isoformat(),
+        }
+        if base_model_name:
+            run_config["base_model_name"] = base_model_name
+        script = Path(sys.argv[0]).stem if sys.argv and sys.argv[0] else ""
+        if script and not script.startswith("-"):  # -c, -m: no script to name
+            run_config["script"] = script
+        prompts = {"train": llm_tune_conf, "test": nn_gen_conf,
+                   "test_id": nn_gen_conf_id}
+        prompts = {k: v for k, v in prompts.items() if v}
+        if prompts:
+            run_config["prompts"] = prompts
+        if params:
+            run_config["training"] = {k: v for k, v in params.items() if v is not None}
+        if nn_gen_conf:
+            try:
+                from ab.gpt.util.Const import conf_test_dir
+                with open(conf_test_dir / nn_gen_conf) as f:
+                    gen_cfg = json.load(f)
+                key = nn_gen_conf_id if isinstance(nn_gen_conf_id, str) else None
+                entry = gen_cfg.get(key) if key else next(iter(gen_cfg.values()), None)
+                if isinstance(entry, dict):
+                    for field in ("task", "dataset"):
+                        if entry.get(field):
+                            run_config[field] = entry[field]
+            except Exception as e:
+                print(f"Failed to read task/dataset from {nn_gen_conf}: {e}")
+
+        with open(RUN_META, "w") as f:
+            json.dump(run_config, f, indent=2)
+
+        print(f"Run config saved: {RUN_META}")
+
     persist_llm_conf(llm_conf, enable_merge, params=run_params,
                      nn_gen_conf=nn_gen_conf or NN_GEN_CONF,
                      nn_gen_conf_id=nn_gen_conf_id,
