@@ -291,7 +291,16 @@ HEADER_PRM = {"LR": "lr", "Momentum": "momentum"}
 #: training time rather than written in the file, so no edit can reach them,
 #: and everything else (batch size, epoch count, transform) is the fixed
 #: protocol the measurement depends on.
-TUNABLE_PRM = ("lr", "momentum")
+#: Which training-configuration keys an <hp> block may set.
+#:
+#: Was ("lr", "momentum"). Every one of 60 evaluated generations of one run
+#: trained at lr=0.01, momentum=0.9, dropout=0.2 -- the values of the seed
+#: whose family supplied almost every baseline -- and two of them diverged to
+#: 0.13 accuracy at that learning rate. Dropout is added because it is the one
+#: regularisation dial the file itself reads from prm; batch is deliberately
+#: left out, as a model that raises it changes the memory envelope the eval
+#: worker was sized for.
+TUNABLE_PRM = ("lr", "momentum", "dropout")
 
 def hp_text(prm) -> str:
     """The tunable hyperparameters of a record, as the prompt shows them.
@@ -311,6 +320,31 @@ def hp_text(prm) -> str:
 
 
 HP_RE = re.compile(r"<hp[^>]*>(.*?)</hp>", re.S)
+TR_RE = re.compile(r"<tr[^>]*>(.*?)</tr>", re.S)
+
+
+def parse_tr(text: str) -> Optional[str]:
+    """The transform module in a <tr> block, or None.
+
+    Guards the one failure this slot has: the model putting a whole network in
+    it. A transform module defines ``transform`` and nothing that looks like a
+    ``Net``; anything else is refused rather than written out as tr.py, where
+    it would silently replace the data pipeline with a model.
+    """
+    for body in reversed(TR_RE.findall(text or "")):
+        code = body.strip()
+        if not code or "def transform" not in code:
+            continue
+        if re.search(r"^class\s+Net\b", code, re.M):
+            continue
+        if "supported_hyperparameters" in code:
+            continue
+        try:
+            ast.parse(code)
+        except SyntaxError:
+            continue
+        return code
+    return None
 
 
 def parse_hp(text: str) -> Dict[str, float]:

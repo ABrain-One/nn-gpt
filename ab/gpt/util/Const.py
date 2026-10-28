@@ -42,6 +42,10 @@ submission_dir_name = 'ab_LEMUR_submission'
 new_dataset_dir = nngpt_dir / submission_dir_name
 new_lemur_nn_dir = new_dataset_dir / 'nn'
 new_lemur_stat_dir = new_dataset_dir / 'train'
+# Generated input pipelines. A statistics row names its transform, so a
+# submission that carries nn/ and train/ but not transform/ points at a module
+# that is not in it -- the row cannot be reproduced from the submission alone.
+new_lemur_transform_dir = new_dataset_dir / 'transform'
 
 brute_dir = gpt_dir / 'brute'
 ast_dir = brute_dir / 'ast'

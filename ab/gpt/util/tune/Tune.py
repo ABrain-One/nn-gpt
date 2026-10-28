@@ -244,6 +244,49 @@ def _save_seen_code(seen):
         print(f"[edit] could not persist seen code: {exc}", flush=True)
 
 
+#: Set to 1 to make a generated <tr> module usable by evaluation.
+#:
+#: ``prm["transform"]`` is resolved by NAME out of the installed ab/nn/transform
+#: package, so a module that exists only as tr.py in the generation directory is
+#: written, submitted -- and never trained with. Installing it under its
+#: content-addressed name is what closes that gap. Off by default because it
+#: writes a file into the installed dataset package; with it off the transform is
+#: still saved and still shipped in the submission, and evaluation uses the
+#: baseline's pipeline.
+INSTALL_TRANSFORMS_ENV = "NNGPT_INSTALL_GENERATED_TRANSFORMS"
+
+
+def _ab_nn_transform_dir():
+    """Where the installed LEMUR package keeps its transform modules."""
+    import importlib.util
+    spec = importlib.util.find_spec("ab.nn")
+    if not spec or not spec.origin:
+        return None
+    d = Path(spec.origin).parent / "transform"
+    return d if d.is_dir() else None
+
+
+def _install_generated_transform(code):
+    """Make a generated transform resolvable by name. Returns the name or None."""
+    if not _env_on(INSTALL_TRANSFORMS_ENV):
+        return None
+    from ab.gpt.util.Util import generated_transform_name
+    target_dir = _ab_nn_transform_dir()
+    if target_dir is None:
+        print("[edit] cannot install the generated transform: ab/nn/transform "
+              "not found; evaluation will use the baseline pipeline", flush=True)
+        return None
+    name = generated_transform_name(code)
+    path = target_dir / f"{name}.py"
+    try:
+        if not path.exists():
+            path.write_text(code, encoding="utf-8")
+        return name
+    except Exception as exc:
+        print(f"[edit] could not install transform {name}: {exc}", flush=True)
+        return None
+
+
 def _write_edit_candidates(models_dir, idx, origdf, full_out, seen,
                            save_llm_output):
     """Apply the reply's <edit> blocks to the baseline and save the result.
@@ -256,7 +299,7 @@ def _write_edit_candidates(models_dir, idx, origdf, full_out, seen,
     from ab.gpt.util.data.code_edit import (
         apply_edit_sets, derive_prm, drop_noop_edits, hp_text, model_identity,
         uses_pretrained_weights,
-        parse_edits, parse_full, parse_hp, validate_model)
+        parse_edits, parse_full, parse_hp, parse_tr, validate_model)
     import hashlib
 
     base_dir = models_dir / f"B{idx}"
@@ -273,6 +316,18 @@ def _write_edit_candidates(models_dir, idx, origdf, full_out, seen,
 
     baseline_code = origdf.get("nn_code", "") or ""
     hp = parse_hp(full_out)
+    # The reply's input pipeline, if it offered one. Extracted here because the
+    # edit path never looked for it: of 210 generations in one run the transform
+    # slot was read 0 times, so the data-augmentation axis -- the cheapest
+    # accuracy on a one-epoch CIFAR budget -- was never searched at all.
+    tr_code = parse_tr(full_out)
+    tr_name = _install_generated_transform(tr_code) if tr_code else None
+    if tr_code:
+        print(f"[edit] B{idx}: transform offered"
+              + (f", installed as {tr_name}" if tr_name
+                 else " (saved and submitted; evaluation keeps the baseline "
+                      "pipeline -- set NNGPT_INSTALL_GENERATED_TRANSFORMS=1 to "
+                      "train with it)"), flush=True)
     raw_edits = parse_edits(full_out)
     edits = drop_noop_edits(raw_edits)
     if raw_edits and not edits:
@@ -315,6 +370,16 @@ def _write_edit_candidates(models_dir, idx, origdf, full_out, seen,
         if key in seen:
             print(f"[edit] B{idx} candidate {n}: architecture already produced",
                   flush=True)
+            # Leave a reason behind. classify_failures() reads error.txt and
+            # falls through to "truncated" when there is nothing to read, so a
+            # cycle that lost 76 candidates to the duplicate check reported
+            # them as truncated replies and the budget was raised instead of
+            # the sampler being fixed.
+            try:
+                create_file(base_dir, "duplicate.txt",
+                            f"architecture already produced: {key}\n")
+            except Exception:
+                pass
             continue
         seen.add(key)
         model_dir = base_dir if written == 0 else models_dir / f"B{idx}_{written}"
@@ -323,6 +388,10 @@ def _write_edit_candidates(models_dir, idx, origdf, full_out, seen,
             create_file(model_dir, new_out_file, full_out)
             origdf.to_pickle(model_dir / "dataframe.df")
         create_file(model_dir, new_nn_file, code)
+        if tr_code:
+            create_file(model_dir, transformer_file, tr_code)
+            if tr_name:
+                prm["transform"] = tr_name
         with open(model_dir / hp_file, "w+") as f:
             json.dump(prm, f)
         create_file(model_dir, f"original_{origdf['nn']}.py", baseline_code)
@@ -605,6 +674,15 @@ def nn_gen(
                 # them, and without them here the model cannot tell an
                 # architectural gain from a tuning one, nor aim an <hp> block.
                 para_dict.setdefault("hyper", hp_text(row.get("prm")))
+                # ...and its input pipeline, for the same reason: the corpus
+                # prompt shows it, and a <tr> block cannot keep an entry point
+                # the model was never shown.
+                from ab.gpt.util.data.edit_pairs import transform_prompt_block
+                from ab.gpt.util.data.edit_pairs import Record as _Rec
+                para_dict.setdefault("transform", transform_prompt_block(_Rec(
+                    str(row.get("nn", "")), "", 0.0, 1, {},
+                    str(row.get("transform") or ""),
+                    str(row.get("transform_code") or ""))))
 
             llmatic_prompt = row.get("__llmatic_prompt__") if hasattr(row, "get") else None
             if isinstance(llmatic_prompt, str) and llmatic_prompt:
@@ -832,10 +910,22 @@ def nn_gen(
                 model_dir = models_dir / f"B{idx}"
                 code, hp, tr, full_out = output
                 if edit_mode:
-                    warn_if_truncated(full_out, max_new_tokens, idx,
-                                      getattr(chat_bot, "tokenizer", None))
-                    _write_edit_candidates(models_dir, idx, origdf, full_out,
-                                           seen_code, save_llm_output)
+                    cut = warn_if_truncated(full_out, max_new_tokens, idx,
+                                            getattr(chat_bot, "tokenizer", None))
+                    written = _write_edit_candidates(
+                        models_dir, idx, origdf, full_out, seen_code,
+                        save_llm_output)
+                    # Record the verdict instead of leaving the statistics to
+                    # re-derive it from the reply text. classify_failures()
+                    # could not tell a truncated reply from edits that did not
+                    # apply, so one run reported 71 truncations and the token
+                    # budget was blamed for a matching problem.
+                    if cut and not written:
+                        try:
+                            create_file(models_dir / f"B{idx}", "truncated.txt",
+                                        f"hit the {max_new_tokens}-token budget\n")
+                        except Exception:
+                            pass
                     continue
                 if use_backbone:
                     code = SFTUtil.assemble_backbone_xml_completion(full_out)
@@ -1364,6 +1454,20 @@ def _evaluate_epoch_inner(epoch, out_path, nn_name_prefix, nn_train_epochs,
             except Exception:
                 continue
 
+    # Stage 2: re-measure the best few candidates before the cycle's headline
+    # number is taken from a single training run. Does nothing unless
+    # NNGPT_STAGE2_TOPK is set. Runs before the statistics so the summary can be
+    # carried in them.
+    stage2_summary = None
+    if exists(models_dir) and not trans_mode:
+        try:
+            from ab.gpt.util.eval import stage2
+            stage2_summary = stage2.run(
+                models_dir, epoch, nn_name_prefix=nn_name_prefix,
+                nn_train_epochs=nn_train_epochs)
+        except Exception as exc:
+            print(f'[WARN] stage 2 re-measurement skipped: {exc}', flush=True)
+
     # Epoch statistics: valid-generation rate with a Wilson interval, accuracy
     # of the generated models (mean with 95% CI, and max) and the accuracy the
     # seed models had before modification. Written after evaluation so the row
@@ -1372,7 +1476,11 @@ def _evaluate_epoch_inner(epoch, out_path, nn_name_prefix, nn_train_epochs,
         from ab.gpt.util.data.EpochStats import update_epoch_report
         epoch_stats = update_epoch_report(models_dir, epoch, nngpt_dir)
         if epoch_stats:
+            if stage2_summary:
+                epoch_stats["stage2"] = stage2_summary
             results["epoch_stats"] = epoch_stats
+        if stage2_summary:
+            results["stage2"] = stage2_summary
 
     return results
 

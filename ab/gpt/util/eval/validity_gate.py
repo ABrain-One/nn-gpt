@@ -16,6 +16,21 @@ already knows how to answer "will this file run" by AST alone; nothing in the
 generate -> evaluate path called it. This module calls it at the one place
 where it decides something.
 
+The AST check is necessary and not sufficient. On one measured run every one of
+218 evaluation failures passed it and then died in ``Net.__init__`` -- a
+generated helper unpacking a 4-tuple ``in_shape`` into five names. So the gate
+has a second stage, ``ab/gpt/util/eval/smoke.py``: build the model on CPU and
+push one batch through it. It is fail-open (a verdict of None keeps the model),
+because a lost good generation costs a sample while a kept bad one costs only
+the training time the pipeline was going to spend anyway.
+
+Which candidates fill the budget is decided per seed, not alphabetically.
+``sorted()`` over ``B0, B0_1, B1, B10, B10_1, B11 ...`` spends the budget on the
+alternatives of the lowest-numbered seeds: measured, the 30 slots were filled
+before seed B20 was reached at all, so ten test baselines were never evaluated
+in that cycle. One candidate per seed is taken per pass, so every seed gets its
+first candidate before any seed gets its second.
+
 Rejected generations are deleted rather than archived, so the epoch directory
 holds only the models the experiment actually measures. Their names and
 reasons stay in ``validity_report.json``, which is what the
@@ -83,6 +98,62 @@ def _discard(model_dir: Path, reject_dir: Path, keep_rejected: bool) -> None:
         print(f"[validity-gate] could not discard {model_dir.name}: {exc}", flush=True)
 
 
+#: Set to 0 to skip the build-and-run stage and keep only the AST check.
+SMOKE_ENV = "NNGPT_VALIDITY_SMOKE"
+
+#: Wall-clock seconds the whole smoke stage may take for one cycle. Past it the
+#: remaining candidates are kept untested: the point of the stage is to stop
+#: wasting GPU minutes, and spending an hour of CPU to do it defeats that.
+SMOKE_BUDGET_ENV = "NNGPT_SMOKE_BUDGET_SECONDS"
+
+
+def _smoke_enabled() -> bool:
+    return os.environ.get(SMOKE_ENV, "1").strip().lower() not in ("0", "false", "no", "off")
+
+
+def _smoke_budget() -> float:
+    try:
+        return float(os.environ.get(SMOKE_BUDGET_ENV, "900") or 900)
+    except ValueError:
+        return 900.0
+
+
+def _seed_group(name: str) -> str:
+    """Which seed a generation directory belongs to: ``B12_3`` -> ``B12``."""
+    return name.split("_", 1)[0]
+
+
+def _fill_budget(model_dirs: List[Path], keep: Optional[int]) -> List[Path]:
+    """Up to ``keep`` directories, one per seed per pass.
+
+    Alphabetical order spends the budget on the alternatives of the
+    lowest-numbered seeds: with 38 candidates over 30 slots, sorted() filled
+    every slot before seed B20 and ten pinned test baselines went unevaluated.
+    Each seed contributes its first candidate before any seed contributes its
+    second, so the cycle measures as many distinct baselines as it can.
+    """
+    if keep is None or keep >= len(model_dirs):
+        return list(model_dirs)
+    groups: dict = {}
+    for d in model_dirs:
+        groups.setdefault(_seed_group(d.name), []).append(d)
+    order = sorted(groups)
+    out: List[Path] = []
+    depth = 0
+    while len(out) < keep:
+        took = 0
+        for g in order:
+            if depth < len(groups[g]):
+                out.append(groups[g][depth])
+                took += 1
+                if len(out) >= keep:
+                    break
+        if not took:
+            break
+        depth += 1
+    return out
+
+
 def gate_directory(models_dir: str, keep: Optional[int] = None,
                    move_rejected: bool = None) -> Tuple[List[str], List[dict]]:
     """Statically validate generated models; keep the first ``keep`` that pass.
@@ -111,7 +182,7 @@ def gate_directory(models_dir: str, keep: Optional[int] = None,
     # the valid-generation rate depend on how many slots were left, and that
     # rate is a headline result -- a fine-tune that raises accuracy while
     # breaking the interface more often has not improved the model. So every
-    # generation is checked, then the first `keep` valid ones are trained.
+    # generation is checked, then the budget is filled from what passed.
     checked = []
     for nn_file in _model_files(base):
         try:
@@ -120,37 +191,80 @@ def gate_directory(models_dir: str, keep: Optional[int] = None,
             reason = getattr(result, "reason", None) or getattr(result, "error", None)
         except Exception as exc:                      # checker failure -> pass
             ok, reason = True, f"validity check errored: {exc}"
-        checked.append((nn_file.parent, ok, reason))
+        checked.append([nn_file.parent, ok, reason, "static"])
 
-    n_invalid = sum(1 for _, ok, _ in checked if not ok)
-    for model_dir, ok, reason in checked:
+    n_static_invalid = sum(1 for _, ok, _, _ in checked if not ok)
+
+    # Second stage: actually build it. Only on what passed the AST check, and
+    # only while the budget lasts -- 30 candidates at the per-candidate timeout
+    # would be hours, so a run that goes long stops testing and keeps the rest.
+    n_smoke_invalid = 0
+    if _smoke_enabled():
+        import time
+        from ab.gpt.util.eval.smoke import smoke_check_dir
+        budget = _smoke_budget()
+        started = time.time()
+        for entry in checked:
+            model_dir, ok = entry[0], entry[1]
+            if not ok:
+                continue
+            if budget and (time.time() - started) > budget:
+                entry[3] = "smoke_skipped_budget"
+                continue
+            verdict, reason = smoke_check_dir(model_dir)
+            if verdict is False:
+                entry[1], entry[2], entry[3] = False, reason, "smoke"
+                n_smoke_invalid += 1
+            elif verdict is None:
+                entry[3] = "smoke_unknown"
+            else:
+                entry[3] = "smoke_ok"
+        print(f"[validity-gate] smoke test: {n_smoke_invalid} of "
+              f"{len(checked) - n_static_invalid} statically valid generations "
+              f"cannot build or run a batch", flush=True)
+
+    n_invalid = n_static_invalid + n_smoke_invalid
+    for model_dir, ok, reason, stage in checked:
         if not ok:
             rejected.append({"model": model_dir.name, "reason": str(reason),
-                             "valid": False})
+                             "valid": False, "stage": stage})
             _discard(model_dir, reject_dir, keep_rejected)
-        elif keep is not None and len(kept) >= keep:
-            rejected.append({"model": model_dir.name, "reason": "over budget",
-                             "valid": True})
-            _discard(model_dir, reject_dir, keep_rejected)
-        else:
+
+    survivors = [(m, s) for m, ok, _r, s in checked if ok]
+    chosen = _fill_budget([m for m, _s in survivors], keep)
+    chosen_set = {str(p) for p in chosen}
+    stage_of = {str(m): s for m, s in survivors}
+    for model_dir, _s in survivors:
+        if str(model_dir) in chosen_set:
             kept.append(str(model_dir))
+        else:
+            rejected.append({"model": model_dir.name, "reason": "over budget",
+                             "valid": True, "stage": stage_of.get(str(model_dir))})
+            _discard(model_dir, reject_dir, keep_rejected)
 
     n_checked = len(checked)
     n_valid = n_checked - n_invalid
     report = {
         "generated": n_checked,
-        "statically_valid": n_valid,
-        "statically_invalid": n_invalid,
+        "statically_valid": n_checked - n_static_invalid,
+        "statically_invalid": n_static_invalid,
+        # Builds and runs one batch. This is the number that predicts how many
+        # of the cycle's slots will come back with an accuracy.
+        "runnable": n_valid,
+        "smoke_invalid": n_smoke_invalid,
         # Over every generation, not only those checked before the budget
         # filled, so the rate is comparable across cycles.
         "valid_rate": round(n_valid / n_checked, 4) if n_checked else None,
+        "seeds_covered": len({_seed_group(Path(k).name) for k in kept}),
         "trained": len(kept),
         "rejected": rejected,
     }
     (base / REPORT_NAME).write_text(json.dumps(report, indent=2), encoding="utf-8")
-    print(f"[validity-gate] {n_valid} of {n_checked} generations are statically "
-          f"valid; training {len(kept)} and discarding {len(rejected)} "
-          f"({n_invalid} invalid, {len(rejected) - n_invalid} over budget)"
+    print(f"[validity-gate] {n_valid} of {n_checked} generations build and run "
+          f"({n_static_invalid} fail the AST check, {n_smoke_invalid} fail to "
+          f"build); training {len(kept)} from "
+          f"{report['seeds_covered']} distinct seed(s) and discarding "
+          f"{len(rejected)}"
           + ("" if not keep_rejected else f" into {REJECT_DIRNAME}/") + ".",
           flush=True)
     return kept, rejected

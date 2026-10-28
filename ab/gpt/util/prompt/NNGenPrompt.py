@@ -106,13 +106,20 @@ class NNGenPrompt(Prompt):
             # and the model starts reproducing its own corpus. The seed is the
             # cycle number, so each cycle draws a different subset and the run
             # is still reproducible.
+            #
+            # Uniform over rows is not uniform over architectures, and it is
+            # not aimed at the objective either: see
+            # ab/gpt/util/data/corpus_sample.py. The draw is spread over
+            # families and weighted by each pair's measured gain;
+            # NNGPT_SFT_SAMPLER=uniform restores the previous behaviour.
             try:
                 sample_seed = int(os.environ.get("NNGPT_SFT_SAMPLE_SEED", "0") or 0)
             except ValueError:
                 sample_seed = 0
             available = len(rows)
-            rows = random.Random(sample_seed).sample(rows, n_training_prompts)
-            print(f"[SFT] sampled {n_training_prompts} of {available} corpus rows "
+            from ab.gpt.util.data.corpus_sample import sample_rows
+            rows = sample_rows(rows, n_training_prompts, seed=sample_seed)
+            print(f"[SFT] sampled {len(rows)} of {available} corpus rows "
                   f"(cycle seed {sample_seed})", flush=True)
         frame = _empty_frame()
         for row in rows:

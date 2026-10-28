@@ -74,6 +74,42 @@ MAX_CHANGED_LINES = 40
 
 TEST_NN = 30
 
+#: How many of the 30 test baselines may come from one architecture group --
+#: the MinHash similarity cluster the corpus recorded, or the name prefix when
+#: it recorded none.
+#:
+#: Measured without it: 29 of 30 were rl-bb-init-*, one search family's
+#: near-identical variants. Nothing is learned from such a test set that
+#: generalises, and the fine-tune that follows reproduces that family's
+#: template -- 60 of 60 valid generations of one run shared a class skeleton
+#: and differed by a backbone string. The cap is relaxed automatically if the
+#: corpus cannot fill 30 slots under it.
+TEST_NN_FAMILY_CAP = 3
+
+#: Every similarity cluster in the corpus contributes at least this many
+#: baselines to the holdout, so the cap above has diverse candidates to pick
+#: from in the first place.
+HOLDOUT_MIN_PER_FAMILY = 2
+
+#: Neighbour examples per prompt. Four of them, next to a ~700-line baseline in
+#: a 16k window, is what forced the answer budget down to 256 tokens and cost
+#: one run 71 truncated replies. Two leaves room to answer.
+CONTEXT_EXAMPLES = 2
+
+#: Smallest answer worth asking for, in tokens. The upstream default is 1280
+#: and exists precisely to drop a prompt that cannot be answered; lowering it
+#: to 256 did not make those prompts answerable, it only moved the failure from
+#: "prompt dropped" to "reply cut off mid-class".
+MIN_ANSWER_TOKENS = 1280
+
+#: Re-measure this many of a cycle's best candidates, this many times each,
+#: before reporting the cycle's result. One training run of one epoch is the
+#: only measurement behind every number in this pipeline, and the same model
+#: re-run scored 0.9562 and 0.9621 -- so a 0.0087 cycle-to-cycle "gain" is
+#: inside the noise. Set STAGE2_TOPK to 0 to turn the ladder off.
+STAGE2_TOPK = 5
+STAGE2_REPEATS = 3
+
 CORPUS_DIR = Path(nngpt_dir).parent / "edit_improve"
 SEED_FILE = CORPUS_DIR / "seeds.json"
 TEST_CONF = "NN_edit_improve_test.json"
@@ -90,6 +126,8 @@ def emit_test_config(path, menu_unused=None):
             dataset=DATASET, metric=METRIC, epoch=EPOCH).split("\n"),
         "task": TASK, "dataset": DATASET, "metric": METRIC, "epoch": EPOCH,
         "min_accuracy": 0.0, "no_repeat": [], "keep_same": [],
+        # "transform"/"hyper"/"examples"/"target" are injected by the edit
+        # branch of nn_gen, not taken from a dataset column.
         "input_list": [{"para": p, "value": p} for p in (
             "nn_code", "accuracy", "epoch", "dataset", "task", "metric", "prm")],
         "prompt": edit_pairs.USER_PROMPT.split("\n"),
@@ -101,55 +139,103 @@ def emit_test_config(path, menu_unused=None):
     return path
 
 
-def emit_pinned_seeds(corpus_dir, seed_file, n=TEST_NN):
-    """Test baselines, two thirds from the top quartile.
+def emit_pinned_seeds(corpus_dir, seed_file, n=TEST_NN,
+                      family_cap=TEST_NN_FAMILY_CAP):
+    """Test baselines: strong, spread over the range, and spread over families.
 
-    The objective is the best model a cycle produces, and a baseline far below
-    the ceiling cannot reach it by editing a few lines, so a set spread evenly
-    over the range spends most of its budget where the ceiling is unreachable.
+    Two objectives at once. The objective of the run is the best model a cycle
+    produces, and a baseline far below the ceiling cannot reach it by editing a
+    few lines -- so the set is drawn mostly from the top of the holdout. But a
+    set drawn only by accuracy is drawn from whichever family happens to own
+    the top of the corpus, and measured that was 29 of 30 from one family: a
+    benchmark that says nothing about any other architecture, and a fine-tuning
+    signal that collapses onto one template.
+
+    So the pick is capped per family, strongest first within each family, and
+    the cap is relaxed one step at a time only if 30 slots cannot be filled
+    under it. The previous version's "two thirds from the top quartile" was
+    also unreachable as written: with 37 holdout rows the quartile holds 9, so
+    min((2*n)//3, len(quartile)) gave 9 of 30, not 20.
     """
+    from ab.gpt.util.data.family import describe, family_of
+
     rows = [json.loads(l) for l in
             open(Path(corpus_dir) / "holdout_baselines.jsonl", encoding="utf-8")]
+
+    def group_of(row):
+        """What the cap counts. The similarity cluster the corpus recorded, and
+        only failing that the name prefix -- prefixes are a heuristic, and this
+        is the one decision that determines whether the 30 test baselines
+        measure anything beyond one search family's neighbourhood."""
+        return row.get("cluster") or family_of(row["nn"])
     rows.sort(key=lambda r: r["observed"])
     if n >= len(rows):
-        chosen = rows
+        chosen = list(rows)
     else:
-        quartile = rows[-(len(rows) // 4 or 1):]
-        n_top = min((2 * n) // 3, len(quartile)) or 1
-        step = len(quartile) / n_top
-        chosen = [quartile[min(len(quartile) - 1, int(i * step + step / 2))]
-                  for i in range(n_top)]
-        seen = {r["nn"] for r in chosen}
-        rest = [r for r in rows if r["nn"] not in seen]
-        n_rest = n - len(chosen)
-        if n_rest > 0 and rest:
-            step = len(rest) / n_rest
-            for i in range(n_rest):
-                r = rest[min(len(rest) - 1, int(i * step + step / 2))]
-                if r["nn"] not in seen:
-                    seen.add(r["nn"])
-                    chosen.append(r)
-        for r in reversed(rows):
+        n_top = max(1, (2 * n) // 3)
+        # Deep enough to actually hold n_top rows, which the quartile need not.
+        band = rows[-max(len(rows) // 4 or 1, n_top):]
+        tail = [r for r in rows if r not in band]
+
+        def pick(pool, want, cap):
+            """`want` rows from `pool`, strongest first, <= cap per family."""
+            out, taken = [], {}
+            for r in sorted(pool, key=lambda r: -r["observed"]):
+                fam = group_of(r)
+                if cap and taken.get(fam, 0) >= cap:
+                    continue
+                out.append(r)
+                taken[fam] = taken.get(fam, 0) + 1
+                if len(out) >= want:
+                    break
+            return out
+
+        chosen, cap = [], family_cap
+        while True:
+            chosen = pick(band, n_top, cap)
+            seen = {r["nn"] for r in chosen}
+            # The tail keeps the set from being only near-ceiling models: a
+            # baseline with room to improve is where a large gain can show.
+            for r in pick([r for r in tail if r["nn"] not in seen],
+                          n - len(chosen), cap):
+                chosen.append(r)
+                seen.add(r["nn"])
             if len(chosen) >= n:
                 break
-            if r["nn"] not in seen:
-                seen.add(r["nn"])
-                chosen.append(r)
+            # Still short: either take more from the band under the same cap,
+            # or, if the corpus simply has too few families, loosen it.
+            extra = pick([r for r in rows if r["nn"] not in seen],
+                         n - len(chosen), cap * 2 if cap else 0)
+            chosen.extend(extra)
+            if len(chosen) >= n or not cap:
+                break
+            cap *= 2
+            print(f"[edit-improve] family cap relaxed to {cap} to fill "
+                  f"{n} test baselines", flush=True)
         chosen = chosen[:n]
+    names = [r["nn"] for r in chosen]
+    print(f"[edit-improve] pinned test set: {describe(names)}; "
+          f"{len({group_of(r) for r in chosen})} similarity cluster(s)",
+          flush=True)
     Path(seed_file).parent.mkdir(parents=True, exist_ok=True)
     Path(seed_file).write_text(
-        json.dumps({"nn": [r["nn"] for r in chosen], "pinned_at_epoch": 0}, indent=2),
+        json.dumps({"nn": names, "pinned_at_epoch": 0}, indent=2),
         encoding="utf-8")
     return seed_file
 
 
 def prepare(offline_root=None) -> dict:
+    # Read by edit_pairs.render_context for BOTH the corpus and the test
+    # prompts, so set it before the corpus is built or the two diverge.
+    os.environ["NNGPT_CONTEXT_EXAMPLES"] = str(CONTEXT_EXAMPLES)
+    edit_pairs.CONTEXT_EXAMPLES = CONTEXT_EXAMPLES
+
     stats = edit_pairs.build(
         out_dir=str(CORPUS_DIR), task=TASK, dataset=DATASET, metric=METRIC,
         epoch=EPOCH, nn_prefixes=NN_PREFIXES,
         min_observed_gain=MIN_OBSERVED_GAIN,
         max_changed_lines=MAX_CHANGED_LINES, bands=BANDS,
-        min_holdout=TEST_NN,
+        min_holdout=TEST_NN, holdout_min_per_family=HOLDOUT_MIN_PER_FAMILY,
         pinned_seed_file=str(SEED_FILE), offline_root=offline_root)
     print(f"[edit-improve] corpus: {stats}")
 
@@ -171,7 +257,12 @@ def prepare(offline_root=None) -> dict:
     # the whole corpus -- measuring the run on models it was trained on.
     os.environ["NNGPT_SEED_FILE_EXTERNAL"] = "1"
     os.environ["NNGPT_SEED_POOL_FACTOR"] = "1"
-    os.environ["NNGPT_MIN_ANSWER_TOKENS"] = "256"
+    # Was "256". The floor is what drops a prompt that leaves no room for an
+    # answer; set below the length of an answer it makes the prompt fit and the
+    # reply truncate instead, which is strictly worse -- the cycle pays the full
+    # generation cost for a reply extraction cannot use. CONTEXT_EXAMPLES above
+    # is the dial that makes prompts shorter without taking answer room away.
+    os.environ["NNGPT_MIN_ANSWER_TOKENS"] = str(MIN_ANSWER_TOKENS)
     os.environ["NNGPT_DESIGN_CEILING"] = str(stats["observed_max"])
     os.environ["NNGPT_DESIGN_CEILING_SCRATCH"] = str(
         stats.get("observed_max_scratch", stats["observed_max"]))
@@ -183,6 +274,43 @@ def prepare(offline_root=None) -> dict:
     os.environ["NNGPT_TRAIN_ON_COMPLETIONS_ONLY"] = "1"
     os.environ["NNGPT_VALIDITY_GATE"] = "1"
     os.environ["NNGPT_VALIDITY_KEEP"] = str(TEST_NN)
+    # Build each candidate on CPU and push one batch through it before it is
+    # given a GPU worker. The AST gate passes code that cannot run: in one
+    # measured run 218 evaluation failures were a single generated helper
+    # unpacking a 4-tuple in_shape into five names, and every one of them cost
+    # a worker start, a dataset load and a slot in the cycle.
+    os.environ["NNGPT_VALIDITY_SMOKE"] = "1"
+    os.environ.setdefault("NNGPT_SMOKE_BUDGET_SECONDS", "900")
+
+    # The <hp> block the system prompt offers is only honoured in "generated"
+    # mode. The default, "seed", does prm.update(baseline_prm) AFTER reading
+    # hp.txt, so the baseline's own values win and the model cannot change the
+    # learning rate at all: all 60 evaluated models of one run trained at
+    # lr=0.01, momentum=0.9, dropout=0.2 -- the values of the family that
+    # supplied nearly every baseline -- and two diverged to 0.13 there.
+    os.environ.setdefault("NNGPT_EVAL_PRM_MODE", "generated")
+    # Make a generated <tr> module resolvable by name so evaluation can train
+    # with it. The transform slot was read 0 times in 210 generations, so data
+    # augmentation -- the cheapest accuracy there is on a one-epoch CIFAR
+    # budget -- was never searched. Writes the module into the installed
+    # ab/nn/transform package; if that is not writable the run says so once and
+    # keeps the baseline pipeline.
+    os.environ.setdefault("NNGPT_INSTALL_GENERATED_TRANSFORMS", "1")
+
+    # Draw each cycle's rows spread over families and weighted by the measured
+    # gain, instead of uniformly over rows. No pair is removed from the corpus;
+    # only the mix of what is drawn from it changes, so the trainer still sees
+    # 2048 rows and cannot overfit a narrower set.
+    os.environ.setdefault("NNGPT_SFT_MAX_FAMILY_SHARE", "0.25")
+    os.environ.setdefault("NNGPT_SFT_GAIN_SCALE", "12")
+
+    # Re-measure the best few candidates before reporting the cycle's result.
+    os.environ["NNGPT_STAGE2_TOPK"] = str(STAGE2_TOPK)
+    os.environ["NNGPT_STAGE2_REPEATS"] = str(STAGE2_REPEATS)
+    # Same epoch count as stage 1 on purpose: a repeat at a different epoch
+    # writes a LEMUR row the corpus builder (which queries epoch=EPOCH) will
+    # never see, so it would inform the report and not the next cycle.
+    os.environ["NNGPT_STAGE2_EPOCHS"] = str(EPOCH)
     # Force the reply to open with a tag. A reasoning model expands to fill
     # whatever budget it is given, and prose before the first block is the one
     # thing that makes a reply unusable. A single "<" is deliberately weaker
@@ -197,6 +325,7 @@ def prepare(offline_root=None) -> dict:
                    min_observed_gain=MIN_OBSERVED_GAIN,
                    max_changed_lines=MAX_CHANGED_LINES, bands=list(BANDS),
                    min_holdout=TEST_NN,
+                   holdout_min_per_family=HOLDOUT_MIN_PER_FAMILY,
                    pinned_seed_file=str(SEED_FILE))
     rebuild_path = CORPUS_DIR / "corpus_build_args.json"
     rebuild_path.write_text(json.dumps(rebuild, indent=2), encoding="utf-8")

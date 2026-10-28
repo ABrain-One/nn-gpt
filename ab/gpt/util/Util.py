@@ -7,7 +7,9 @@ import re
 import shutil
 from pathlib import Path
 
-from ab.gpt.util.Const import new_lemur_nn_dir, new_nn_file, new_lemur_stat_dir
+from ab.gpt.util.Const import (hp_file, new_lemur_nn_dir, new_lemur_stat_dir,
+                               new_lemur_transform_dir, new_nn_file,
+                               transformer_file)
 
 from ab.gpt.util.nn.Code import *
 
@@ -342,6 +344,56 @@ def extract_delta(txt):
     return None
 
 
+def generated_transform_name(code) -> str:
+    """Stable name for a generated transform module, from its own text.
+
+    Content-addressed for the same reason model names are: the same pipeline
+    produced in two cycles is one module in the submission, and a statistics row
+    naming it stays valid when the run is repeated.
+    """
+    import hashlib
+    digest = hashlib.md5((code or "").strip().encode("utf-8")).hexdigest()[:12]
+    return f"gen_{digest}"
+
+
+def copy_generated_transform(gen_nn_dir, name=None):
+    """Put this model's transform module into the submission, next to nn/.
+
+    A statistics row records ``prm["transform"]`` by name. If the generated
+    module is not shipped alongside, the submitted row refers to a transform
+    that is not in the submission and cannot be reproduced from it. Returns the
+    name written, or None when the model used a dataset transform that the
+    LEMUR tree already holds.
+    """
+    tr_path = Path(gen_nn_dir) / transformer_file
+    if not tr_path.is_file():
+        return None
+    try:
+        code = tr_path.read_text(encoding='utf-8')
+    except Exception:
+        return None
+    if not code.strip():
+        return None
+    if not name:
+        # Prefer the name the evaluation actually trained under.
+        hp_path = Path(gen_nn_dir) / hp_file
+        if hp_path.is_file():
+            try:
+                import json as _json
+                prm = _json.loads(hp_path.read_text(encoding='utf-8'))
+                if isinstance(prm, dict) and isinstance(prm.get('transform'), str):
+                    name = prm['transform']
+            except Exception:
+                name = None
+    if not name or not str(name).startswith('gen_'):
+        name = generated_transform_name(code)
+    Path(new_lemur_transform_dir).mkdir(parents=True, exist_ok=True)
+    target = new_lemur_transform_dir / f'{name}.py'
+    if not target.exists():
+        target.write_text(code, encoding='utf-8')
+    return name
+
+
 def copy_to_lemur(gen_nn_dir, name, task, dataset, metric):
     Path(new_lemur_nn_dir).mkdir(parents=True, exist_ok=True)
     shutil.copyfile(gen_nn_dir / new_nn_file, new_lemur_nn_dir / f'{name}.py')
@@ -349,6 +401,12 @@ def copy_to_lemur(gen_nn_dir, name, task, dataset, metric):
     Path(dr_nm).mkdir(parents=True, exist_ok=True)
     for f_nm in [f for f in os.listdir(gen_nn_dir) if re.match(r'[0-9]+\.json', f)]:
         shutil.copyfile(gen_nn_dir / f_nm, dr_nm / f_nm)
+    try:
+        written = copy_generated_transform(gen_nn_dir)
+        if written:
+            print(f'[submission] transform {written}.py copied for {name}', flush=True)
+    except Exception as exc:
+        print(f'[submission] could not copy the transform for {name}: {exc}', flush=True)
 
 
 # ========== FORMULA EVALUATION FUNCTION ==========
