@@ -209,7 +209,7 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
     if num_cycles is not None:
         cycles = int(num_cycles)
 
-    import os
+    import os, sys
     os.environ["NNGPT_VLLM_SLEEP"] = "1" if use_vllm else "0"
 
     run_params = {
