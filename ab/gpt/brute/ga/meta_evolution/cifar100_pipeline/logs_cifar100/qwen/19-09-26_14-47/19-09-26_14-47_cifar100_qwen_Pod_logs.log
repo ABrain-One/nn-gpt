@@ -1,0 +1,71 @@
+LEMUR root /a/mm
+2026-09-19 14:47:40,282 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-09-19 14:47:40,282 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-09-19 14:47:40,282 - INFO - NumExpr defaulting to 16 threads.
+2026-09-19 14:47:41,839 - WARNING - Skipping import of cpp extensions due to incompatible torch version 2.7.1+cu126 for torchao version 0.15.0+cu126             Please see https://github.com/pytorch/ao/issues/2919 for more info
+[Config] Loaded model_config.json  (context_length=8192)
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/ga_history_backup/historic_runs/run_2026-09-19_14-47-43 for fresh start.
+[Meta] Moved LLM LoRA weights to /a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/qwen_adapter/historic_runs/run_2026-09-19_14-47-43 for fresh start.
+[Meta] LOAD_PREVIOUS_ADAPTER is FALSE. Starting with fresh LLM weights.
+[Config] Loaded model_config.json  (context_length=8192)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-09-19 14:47:44,163 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:03<00:09,  3.21s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:07<00:07,  3.62s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:10<00:03,  3.53s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:10<00:00,  2.23s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:10<00:00,  2.70s/it]
+[LoRA] No adapter directory found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+[Meta] Loaded Baseline Score: 46.92%
+
+[Meta] Target: 5 evolutions with up to 5 attempts per iteration.
+
+=== Iteration 1/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        else:
+            return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_name == 'base_channels' or gene_name == 'kernel_size':
+            # Crossover with a higher probability for critical architectural parameters
+            if random.random() < 0.7:
+                if gene_index < crossover_point:
+                    return parent1_value
+                else:
+                    return parent2_value
+            else:
+                # Randomly choose from both parents
+                return random.choice([parent1_value, parent2_value])
+        elif gene_name == 'dropout_prob' or gene_name == 'fc_dropout':
+            # Use linear interpolation for continuous parameters
+            alpha = random.random()
+            return parent1_value * (1 - alpha) + parent2_value * alpha
+        else:
+            # Standard crossover for other parameters
+            if gene_index < crossover_point:
+                return parent1_value
+            else:
+                return parent2_value
+```
+--------------------------
+[Meta] Runtime smoke test FAILED: Smoke test: crossover produced '0.24240480416906487' for gene 'dropout_prob', not in search space
+---> Reverting file and skipping benchmark.
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/meta_evolver.py", line 895, in <module>
+    success = evolver.evolve_component(component, attempt=iteration+1, total_attempts=META_ITERATIONS)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/meta_evolver.py", line 602, in evolve_component
+    new_score = bench_stats["true_peak_accuracy"]
+                ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'true_peak_accuracy'

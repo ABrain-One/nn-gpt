@@ -1,0 +1,25 @@
+{
+  "dataset": "cifar10",
+  "seed": 1001,
+  "pod_uid": "ef270532-7d29-4c29-a870-8423d44ba945",
+  "population_size": 20,
+  "generations": 26,
+  "evaluation_epochs": 3,
+  "evaluation_batch_size": 64,
+  "fitness_policy": "positive LLM prediction, otherwise measured evaluator accuracy",
+  "duplicate_policy": "-1 for repeat proposals across this continuous GA invocation; elites retain fitness",
+  "source_sha256": {
+    "ab/gpt/brute/ga/meta_evolution/baseline_run_ga.py": "4d67e1f1bef463f02f4e3e6a55a54a150c57777d9a40a659e510a15c4d983b18",
+    "ab/gpt/brute/ga/meta_evolution/genetic_algorithm_baseline.py": "a63c5e52ec4a7a9650e878adcafec1d4b619413d56a3a69aaf0146d02347a4cd",
+    "ab/gpt/brute/ga/meta_evolution/FractalNet_evolvable_backbone.py": "88deb54c3969c14ad2afaf207f3d72359aac6aa2582db3bfd775a163989c6056",
+    "ab/gpt/util/eval/acc_client.py": "adb773f2de6626e0ba08a7154edf06128484c97115895fbc9cf826bdebd8b3b3",
+    "ab/gpt/util/eval/Eval.py": "5532e20e2417a8bef158424d559641c743068ed95a17490ea6ec406a65453d64",
+    "ab/nn/util/Train.py": "cc4446fd1d4ec49576e9b23b683c05c5026ddc8d29c5b936cb380be75273a327"
+  },
+  "python": "3.12.11 | packaged by Anaconda, Inc. | (main, Jun  5 2025, 13:09:17) [GCC 11.2.0]",
+  "torch": "2.7.1+cu126",
+  "numpy": "2.2.5",
+  "cuda_runtime": "12.6",
+  "gpu": "NVIDIA GeForce RTX 3090",
+  "gpu_total_memory_bytes": 25296044032
+}

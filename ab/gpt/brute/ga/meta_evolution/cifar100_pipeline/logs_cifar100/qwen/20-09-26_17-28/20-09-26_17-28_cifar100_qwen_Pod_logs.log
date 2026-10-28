@@ -1,0 +1,16 @@
+LEMUR root /a/mm
+2026-09-20 17:28:53,942 - INFO - Note: detected 128 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-09-20 17:28:53,943 - INFO - Note: NumExpr detected 128 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-09-20 17:28:53,943 - INFO - NumExpr defaulting to 16 threads.
+2026-09-20 17:28:56,138 - WARNING - Skipping import of cpp extensions due to incompatible torch version 2.7.1+cu126 for torchao version 0.15.0+cu126             Please see https://github.com/pytorch/ao/issues/2919 for more info
+[Config] Loaded model_config.json  (context_length=8192)
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/ga_history_backup/historic_runs/run_2026-09-20_17-28-57 for fresh start.
+[Meta] Moved LLM LoRA weights to /a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/qwen_adapter/historic_runs/run_2026-09-20_17-28-57 for fresh start.
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/a/mm/ab/gpt/brute/ga/meta_evolution/meta_evolver.py", line 80, in <module>
+    BENCH_POP = int(os.environ.get("POPULATION_SIZE", 20))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: ''

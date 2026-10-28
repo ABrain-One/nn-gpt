@@ -1,0 +1,201 @@
+{
+  "apiVersion": "batch/v1",
+  "kind": "Job",
+  "metadata": {
+    "name": "nngpt-meta-cifar10-deepseek-s1001",
+    "labels": {
+      "experiment": "seeded-meta-evolution",
+      "dataset": "cifar10",
+      "model": "deepseek",
+      "seed": "1001"
+    }
+  },
+  "spec": {
+    "parallelism": 1,
+    "ttlSecondsAfterFinished": 86400,
+    "template": {
+      "spec": {
+        "tolerations": [
+          {
+            "key": "dgx",
+            "operator": "Exists"
+          }
+        ],
+        "containers": [
+          {
+            "name": "ml",
+            "image": "abrainone/ai-linux:cu12.6.3-latest",
+            "imagePullPolicy": "Always",
+            "command": [
+              "/bin/bash",
+              "-c"
+            ],
+            "args": [
+              "# Previous launch command (disabled; retained as shell comments):\n# set -euo pipefail\n# cd /a/mm && (pip uninstall -y flash-attn || true) && pip install \"torchao==0.15.0\" --no-deps --upgrade --extra-index-url https://download.pytorch.org/whl/cu126\n# export PYTHONPATH=/a/mm\n# export RUN_TS=$(date +%d-%m-%y_%H-%M)\n# export RUN_ID=\"seed${EXPERIMENT_SEED}_${POD_UID}\"\n# export PIPELINE_DIR=\"${RUN_OUTPUT_ROOT}/${RUN_ID}\"\n# python3 -u -m ab.gpt.brute.ga.meta_evolution.prepare_seeded_run\n# mkdir -p \"${PIPELINE_DIR}/logs_${DATASET}/${MODEL_NAME}/${RUN_TS}\"\n# python3 -u -m ab.gpt.brute.ga.meta_evolution.meta_evolver 2>&1 | tee \"${PIPELINE_DIR}/logs_${DATASET}/${MODEL_NAME}/${RUN_TS}/${RUN_TS}_${DATASET}_${MODEL_NAME}_Pod_logs.log\"\nset -euo pipefail\ncd /a/mm\n(pip uninstall -y flash-attn || true)\npip install \"torchao==0.15.0\" --no-deps --upgrade --extra-index-url https://download.pytorch.org/whl/cu126\nexport PYTHONPATH=/a/mm\nexport PYTHONDONTWRITEBYTECODE=1\nexport RUN_TS=$(date +%d-%m-%y_%H-%M)\nexport RUN_ID=\"seed${EXPERIMENT_SEED}_${POD_UID}\"\nexport PIPELINE_DIR=\"${RUN_OUTPUT_ROOT}/${RUN_ID}\"\nmkdir -p \"${RUN_OUTPUT_ROOT}\"\nmkdir \"${PIPELINE_DIR}\"\ncp \"${MODEL_CONFIG_TEMPLATE}\" \"${PIPELINE_DIR}/model_config.json\"\ncp \"${BASELINE_INFO_TEMPLATE}\" \"${PIPELINE_DIR}/best_baseline_info_cifar10.json\"\ncp \"${LAUNCH_JSON}\" \"${PIPELINE_DIR}/launch.json\"\nmkdir \"${PIPELINE_DIR}/modified_GA_deepseek\"\n# Both existing GA imports resolve to the source that meta_evolver rewrites.\nln -s modified_GA_deepseek \"${PIPELINE_DIR}/modified_GA\"\nmkdir -p \"${PIPELINE_DIR}/logs_${DATASET}/${MODEL_NAME}/${RUN_TS}\"\npython3 -u - <<'MODEL_RUN_PY' 2>&1 | tee \"${PIPELINE_DIR}/logs_${DATASET}/${MODEL_NAME}/${RUN_TS}/${RUN_TS}_${DATASET}_${MODEL_NAME}_Pod_logs.log\"\nimport json\nimport os\nimport random\nimport runpy\nimport subprocess\nimport sys\nimport numpy as np\nimport torch\n\nseed = int(os.environ[\"EXPERIMENT_SEED\"])\nwith open(os.path.join(os.environ[\"PIPELINE_DIR\"], \"model_config.json\")) as stream:\n    if json.load(stream)[\"base_model_name\"] != os.environ[\"LLM_BASE_MODEL\"]:\n        raise ValueError(\"Model configuration and LLM_BASE_MODEL disagree\")\nrandom.seed(seed)\nnp.random.seed(seed)\ntorch.manual_seed(seed)\nif torch.cuda.is_available():\n    torch.cuda.manual_seed_all(seed)\nprint(f\"[Run] CIFAR-10 DeepSeek | seed={seed} | output={os.environ['PIPELINE_DIR']}\", flush=True)\n\n# Initialize the GA subprocess RNGs too; an environment variable alone does not seed them.\noriginal_popen = subprocess.Popen\nbenchmark_index = 0\nrunner_bootstrap = \"import os, random, runpy, sys; import numpy as np; import torch; seed=int(os.environ['GA_SEED']); random.seed(seed); np.random.seed(seed); torch.manual_seed(seed); torch.cuda.manual_seed_all(seed) if torch.cuda.is_available() else None; print('[Run] GA seed:', seed, flush=True); script=sys.argv.pop(1); runpy.run_path(script, run_name='__main__')\"\ndef seeded_popen(command, *args, **kwargs):\n    global benchmark_index\n    if isinstance(command, (list, tuple)) and len(command) > 1 and os.path.basename(command[1]) == \"run_fractal_evolution.py\":\n        env = dict(kwargs.get(\"env\") or os.environ)\n        env[\"GA_SEED\"] = str((seed + benchmark_index) % 2**32)\n        benchmark_index += 1\n        kwargs[\"env\"] = env\n        command = [command[0], \"-c\", runner_bootstrap, *command[1:]]\n    return original_popen(command, *args, **kwargs)\nsubprocess.Popen = seeded_popen\n\n# Point the existing plot readers at this run's logs without changing the plotting code.\ntry:\n    from ab.gpt.brute.ga.meta_evolution import meta_visualization as plots\n    plots.BASE_DIR = os.environ[\"PIPELINE_DIR\"]\n    plots.LOGS_DIR = os.path.join(plots.BASE_DIR, \"logs\")\n    plots.STATS_DIR = os.path.join(plots.BASE_DIR, \"stats\")\nexcept Exception as error:\n    print(f\"[WARN] Visualization import unavailable: {error}\", flush=True)\n\nrunpy.run_module(\"ab.gpt.brute.ga.meta_evolution.meta_evolver\", run_name=\"__main__\")\nMODEL_RUN_PY\n"
+            ],
+            "env": [
+              {
+                "name": "LLM_BASE_MODEL",
+                "value": "deepseek-ai/deepseek-coder-6.7b-instruct"
+              },
+              {
+                "name": "LOAD_PREVIOUS_ADAPTER",
+                "value": "false"
+              },
+              {
+                "name": "HF_HOME",
+                "value": "/a/mm/.cache/huggingface"
+              },
+              {
+                "name": "PIP_CACHE_DIR",
+                "value": "/a/mm/.cache/pip"
+              },
+              {
+                "name": "POPULATION_SIZE",
+                "value": "20"
+              },
+              {
+                "name": "GENERATIONS",
+                "value": "5"
+              },
+              {
+                "name": "MUTATION_RATE",
+                "value": "0.6"
+              },
+              {
+                "name": "META_ATTEMPTS",
+                "value": "5"
+              },
+              {
+                "name": "PYTORCH_CUDA_ALLOC_CONF",
+                "value": "expandable_segments:True"
+              },
+              {
+                "name": "LORA_REPLAY_BATCH_SIZE",
+                "value": "4"
+              },
+              {
+                "name": "LORA_REPLAY_BATCH_FALLBACKS",
+                "value": "2,1"
+              },
+              {
+                "name": "DATASET",
+                "value": "cifar10"
+              },
+              {
+                "name": "MODEL_NAME",
+                "value": "deepseek"
+              },
+              {
+                "name": "EXPERIMENT_SEED",
+                "value": "1001"
+              },
+              {
+                "name": "PYTHONHASHSEED",
+                "value": "1001"
+              },
+              {
+                "name": "RUN_OUTPUT_ROOT",
+                "value": "/a/mm/ab/gpt/brute/ga/meta_evolution/cifar10_pipeline/DeepSeekRun/runs"
+              },
+              {
+                "name": "MODEL_CONFIG_TEMPLATE",
+                "value": "/a/mm/ab/gpt/brute/ga/meta_evolution/cifar10_pipeline/DeepSeekRun/model_config.json"
+              },
+              {
+                "name": "BASELINE_INFO_TEMPLATE",
+                "value": "/a/mm/ab/gpt/brute/ga/meta_evolution/cifar10_pipeline/DeepSeekRun/best_baseline_info_cifar10.json"
+              },
+              {
+                "name": "LAUNCH_JSON",
+                "value": "/a/mm/ab/gpt/brute/ga/meta_evolution/cifar10_pipeline/DeepSeekRun/run1_seed1001.json"
+              },
+              {
+                "name": "POD_UID",
+                "valueFrom": {
+                  "fieldRef": {
+                    "fieldPath": "metadata.uid"
+                  }
+                }
+              }
+            ],
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "runAsUser": 1017,
+              "runAsGroup": 1376
+            },
+            "resources": {
+              "requests": {
+                "nvidia.com/gpu": 1,
+                "cpu": 10,
+                "memory": "24Gi"
+              },
+              "limits": {
+                "nvidia.com/gpu": 1,
+                "cpu": 10,
+                "memory": "24Gi"
+              }
+            },
+            "volumeMounts": [
+              {
+                "mountPath": "/dev/shm",
+                "name": "shm"
+              },
+              {
+                "mountPath": "/a/mm",
+                "name": "v0"
+              },
+              {
+                "mountPath": "/a/mm/data",
+                "name": "v1"
+              }
+            ]
+          }
+        ],
+        "restartPolicy": "Never",
+        "volumes": [
+          {
+            "name": "shm",
+            "emptyDir": {
+              "medium": "Memory",
+              "sizeLimit": "16Gi"
+            }
+          },
+          {
+            "name": "v0",
+            "hostPath": {
+              "path": "/shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt",
+              "type": "Directory"
+            }
+          },
+          {
+            "name": "v1",
+            "hostPath": {
+              "path": "/shared/local/data/a-group-automl/data",
+              "type": "Directory"
+            }
+          }
+        ],
+        "affinity": {
+          "nodeAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+              "nodeSelectorTerms": [
+                {
+                  "matchExpressions": [
+                    {
+                      "key": "kubernetes.io/hostname",
+                      "operator": "In",
+                      "values": [
+                        "dgx-h100"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

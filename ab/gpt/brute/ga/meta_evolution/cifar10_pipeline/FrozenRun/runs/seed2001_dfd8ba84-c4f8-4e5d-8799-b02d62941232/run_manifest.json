@@ -1,0 +1,29 @@
+{
+  "dataset": "cifar10",
+  "seed": 2001,
+  "pod_uid": "dfd8ba84-c4f8-4e5d-8799-b02d62941232",
+  "method": "frozen_identity",
+  "population_size": 20,
+  "segments": 5,
+  "generations_per_segment": 5,
+  "evaluation_epochs": 3,
+  "evaluation_batch_size": 64,
+  "operator_llm_loaded": false,
+  "accuracy_predictor_enabled": true,
+  "source_sha256": {
+    "ab/gpt/brute/ga/meta_evolution/frozen_pipeline.py": "6634ce7d71187c4cc0d8dedc94ccabb0cf234dba52b9a43a783687a6ae4880cb",
+    "ab/gpt/brute/ga/meta_evolution/run_fractal_frozen.py": "bd189164613fa9ef9f2e8b43089473df8645bceddc0f8040d949d47945710a57",
+    "ab/gpt/brute/ga/meta_evolution/genetic_algorithm_baseline.py": "a63c5e52ec4a7a9650e878adcafec1d4b619413d56a3a69aaf0146d02347a4cd",
+    "ab/gpt/brute/ga/meta_evolution/FractalNet_evolvable_backbone.py": "88deb54c3969c14ad2afaf207f3d72359aac6aa2582db3bfd775a163989c6056",
+    "ab/gpt/brute/ga/meta_evolution/llm_loader.py": "cecc3dc57b6f266c7b9c6a982e7c4074516f6fb04c3dfa57a2028b2454a51735",
+    "ab/gpt/util/eval/acc_client.py": "adb773f2de6626e0ba08a7154edf06128484c97115895fbc9cf826bdebd8b3b3",
+    "ab/gpt/util/eval/Eval.py": "5532e20e2417a8bef158424d559641c743068ed95a17490ea6ec406a65453d64",
+    "ab/nn/util/Train.py": "cc4446fd1d4ec49576e9b23b683c05c5026ddc8d29c5b936cb380be75273a327"
+  },
+  "python": "3.12.11 | packaged by Anaconda, Inc. | (main, Jun  5 2025, 13:09:17) [GCC 11.2.0]",
+  "numpy": "2.2.5",
+  "torch": "2.7.1+cu126",
+  "cuda_runtime": "12.6",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "gpu_total_memory_bytes": 85017624576
+}

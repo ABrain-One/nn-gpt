@@ -1,0 +1,96 @@
+LEMUR root /a/mm
+2026-09-16 17:57:45,377 - INFO - Note: NumExpr detected 32 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-09-16 17:57:45,377 - INFO - NumExpr defaulting to 16 threads.
+2026-09-16 17:57:47,317 - WARNING - Skipping import of cpp extensions due to incompatible torch version 2.7.1+cu126 for torchao version 0.15.0+cu126             Please see https://github.com/pytorch/ao/issues/2919 for more info
+[Config] Loaded model_config.json  (context_length=8192)
+[Meta] LOAD_PREVIOUS_ADAPTER is FALSE. Starting with fresh LLM weights.
+[Config] Loaded model_config.json  (context_length=8192)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-09-16 17:57:49,734 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:16<00:49, 16.52s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:34<00:35, 17.53s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:17, 17.06s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:55<00:00, 12.17s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:55<00:00, 13.98s/it]
+[LoRA] No adapter directory found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+[Meta] Loaded Baseline Score: 99.84%
+
+[Meta] Target: 5 evolutions with up to 5 attempts per iteration.
+
+=== Iteration 1/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Use a custom crossover strategy to maintain genetic diversity
+        if gene_index < crossover_point:
+            return parent1_value
+        else:
+            return parent2_value
+    
+        # Example of a more complex crossover strategy
+        # Use arithmetic mean for numeric values
+        if isinstance(parent1_value, (int, float)):
+            return (parent1_value + parent2_value) / 2
+    
+        # For categorical values, use a combination of both parents with a twist
+        if isinstance(parent1_value, str):
+            options = set([parent1_value, parent2_value])
+            if len(options) == 2:
+                return random.choice(list(options))
+    
+        # Default to standard crossover for other types
+        return parent1_value
+
+-------------------------
+[Meta] Generation Temperature (BOOSTED): 0.90
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        # Custom crossover strategy to maintain genetic diversity
+        if gene_index < crossover_point:
+            return parent1_value
+        else:
+            return parent2_value
+        
+        # Example of a more complex crossover strategy
+        # Use arithmetic mean for numeric values
+        if isinstance(parent1_value, (int, float)):
+            return (parent1_value + parent2_value) / 2
+        
+        # For categorical values, use a combination of both parents with a twist
+        if isinstance(parent1_value, str):
+            options = set([parent1_value, parent2_value])
+            if len(options) == 2:
+                return random.choice(list(options))
+        
+        # Default to standard crossover for other types
+        return parent1_value
+```
+
+### Improved Implementation
+
+To ensure genetic diversity and avoid premature convergence, we can use a more sophisticated crossover strategy. One effective approach is to combine elements from both parents in a way that encourages exploration and innovation. Here's an improved version of the `combine_genes` method:
+
+```python
+def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+    # Use a custom crossover strategy to maintain genetic diversity
+    if gene_index < crossover_point:
+        return parent1_value
+    else:
+        return parent2_value
+    
+    # Example of a more complex crossover strategy
+    # Use arithmetic mean for numeric values
+    if isinstance(parent1_value, (int, float)):
+        return (parent1_value + parent2_value) / 2
+    
+    # For categorical values, use a combination of both parents with a twist
+    if isinstance(parent1_value, str):
+        options = set([parent1_value, parent2_value])
+        if len(options) == 2:
+            return random.choice(list(options))
+    
+    # Default to standard crossover for other types
+    return parent1_value
+```
+--------------------------

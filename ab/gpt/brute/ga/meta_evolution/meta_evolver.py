@@ -75,7 +75,7 @@ os.makedirs(LOGS_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOGS_DIR, f"LLM-evolution-logs_{DATASET}_{_model_name}_{RUN_TIMESTAMP}.jsonl")
 GA_EVAL_LOG_FILE = os.path.join(LOGS_DIR, f"ga_evaluations_{DATASET}_{_model_name}_{RUN_TIMESTAMP}.jsonl")
 
-# KEEP BENCHMARKS SMALL FOR FAST FEEDBACK. Do not use K8s env vars here or it will take forever.
+# Read the inner benchmark budget from the job environment.
 BENCH_GENS = int(os.environ.get("GENERATIONS", 5))
 BENCH_POP = int(os.environ.get("POPULATION_SIZE", 20))
 
@@ -195,7 +195,6 @@ class MetaEvolver:
         import statistics
         if gens is None:
             gens = BENCH_GENS
-        # Removed --clean to persist the GA archive and population across LLM attempts
         cmd = [sys.executable, RUNNER_SCRIPT, "--gens", str(gens), "--pop", str(BENCH_POP)]
         env = os.environ.copy()
         env["GA_EVAL_LOG"] = GA_EVAL_LOG_FILE
@@ -865,20 +864,10 @@ class MetaEvolver:
         return True
 
 if __name__ == "__main__":
-    pipeline_dir = os.environ.get("PIPELINE_DIR", BASE_DIR)
-    with open(os.path.join(pipeline_dir, "model_config.json"), "r") as f:
-        MODEL_PATH = json.load(f).get("base_model_name", "mistralai/Mistral-7B-Instruct-v0.2")
-    evolver = MetaEvolver(MODEL_PATH)
+    # Let LocalLLMLoader resolve LLM_BASE_MODEL before the model_config.json default.
+    evolver = MetaEvolver(None)
 
     # LOOP: CYCLE THROUGH ALL EVOLVABLE COMPONENTS
-    # [OLD — fixed attempt count, stopped after N tries regardless of success]
-    # META_ITERATIONS = int(os.environ.get("META_ATTEMPTS"))
-    # for i in range(META_ITERATIONS):
-    #     component = COMPONENTS[i % len(COMPONENTS)]
-    #     print(f"\n=== Meta-Evolution Iteration {i+1}/{META_ITERATIONS} ===")
-    #     evolver.evolve_component(component, attempt=i+1, total_attempts=META_ITERATIONS)
-    #     time.sleep(2)
-    # [END OLD]
 
     # Priority: env var META_ATTEMPTS > model_config.json meta_attempts > default 5
     META_ITERATIONS = int(os.environ.get("META_ATTEMPTS", evolver.llm.config.get("meta_attempts", 5)))

@@ -415,7 +415,10 @@ def _execute_nneval_task(payload: Dict[str, Any]) -> Dict[str, Any]:
     checkpoint_path = None
     if payload.get("save_eval_checkpoint"):
         checkpoint_path = payload.get("checkpoint_path") or str(eval_checkpoint_path(model_dir))
-    eval_results = evaluator.evaluate(code_file, checkpoint_path=checkpoint_path)
+    eval_results = evaluator.evaluate(
+        code_file, checkpoint_path=checkpoint_path,
+        layer_analysis=bool(payload.get("layer_analysis", False)),
+    )
     checksum, accuracy = _extract_accuracy(eval_results)
     if accuracy is None:
         raise ValueError(f"Could not extract accuracy from evaluation results: {type(eval_results).__name__}")

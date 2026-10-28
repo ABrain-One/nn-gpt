@@ -1,0 +1,61 @@
+{
+  "improvement_with_web_knowledge": {
+    "input_list": [
+      {
+        "para": "nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "accuracy",
+        "value": "accuracy"
+      }
+    ],
+    "addon_list": [
+      {
+        "para": "addon_nn_code",
+        "value": "nn_code"
+      },
+      {
+        "para": "addon_accuracy",
+        "value": "accuracy"
+      }
+    ],
+    "task": "img-classification",
+    "system": [
+      "You are an expert PyTorch neural network architect.",
+      "Synthesise an improved model by combining the strongest structural elements from multiple reference implementations.",
+      "Output a complete, runnable Python class named 'Net' with all required LEMUR interface methods.",
+      "Use only standard PyTorch \u2014 no torchvision pre-built models."
+    ],
+    "addon_task": "img-classification",
+    "no_repeat": [
+      "nn"
+    ],
+    "keep_same": [],
+    "prompt": [
+      "CREATE an IMPROVED neural network by combining the best elements from these models:",
+      "",
+      "MAIN MODEL (current accuracy: {accuracy}):",
+      "```python",
+      "{nn_code}",
+      "```",
+      "",
+      "{supporting_models_prompt}",
+      "",
+      "{extra_info}",
+      "IMPROVEMENT RULES - FOLLOW EXACTLY:",
+      "1. Start with `import torch` and `import torch.nn as nn`; use only standard PyTorch (no torchvision).",
+      "2. Keep the interface of the MAIN MODEL: a module-level function `supported_hyperparameters()` returning a set, and `class Net(nn.Module)` with `__init__(self, in_shape, out_shape, prm, device)`, `forward(self, x)`, `train_setup(self, prm)` and `learn(self, train_data)`.",
+      "3. Every name returned by `supported_hyperparameters()` must be read from `prm` in the code (e.g. `prm['lr']` and `prm['momentum']` for the optimizer in `train_setup`); list nothing you do not use.",
+      "4. Define helper classes before `Net`. Take input channels from `in_shape[1]` and the number of classes from `out_shape[0]`; never hard-code them.",
+      "5. Do not assume a fixed input resolution: training images may be resized (e.g. to 256 or 299 px). Use adaptive pooling (e.g. `nn.AdaptiveAvgPool2d`) before the classifier; never hard-code spatial sizes or flattened feature dimensions.",
+      "6. Complete, self-contained, executable code only: define every class and function you use; no placeholders, no `...`.",
+      "",
+      "IMPROVE by combining best features from all models above.",
+      "Provide COMPLETE improved model code:"
+    ],
+    "dataset": "cifar-10",
+    "addon_dataset": "cifar-10",
+    "extra_info_header": "WEB RESEARCH SUGGESTIONS for this architecture (apply those that fit):\n"
+  }
+}
