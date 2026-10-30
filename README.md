@@ -106,12 +106,6 @@ python -m ab.stat.export
 
   Requires a GPU with ≥24 GB VRAM, `unsloth`, and the LEMUR/nn-dataset package installed.
 
-- **`ab.gpt.act.tune.delta.py`** – Delta-based fine-tuning entry point (see [arXiv:2605.04903](https://arxiv.org/abs/2605.04903)). The LLM generates compact unified diffs (deltas) to refine baseline architectures instead of full code. Uses paper-aligned hyperparameters (lr=1e-5, temperature=0.35, top-k=50, LoRA with `lm_head`). Calls `TuneNNGen.main()` with delta defaults — no upstream behavior is changed.
-  ```bash
-  python -m ab.gpt.act.tune.delta
-  python -m ab.gpt.act.tune.delta --llm_conf qwen2.5_coder_7b_instruct.json
-  ```
-
 ## LangGraph Multi-Agent Workflow
 
 NNGPT supports an optional LangGraph-based multi-agent orchestration mode. The agent system integrates directly inside `tune()` — no separate entry point, no duplicated logic.
@@ -178,7 +172,7 @@ If recently added dependencies are missing in the <a href='https://hub.docker.co
 
 ## Citation
 
-The original version of this project was created at the Computer Vision Laboratory of the University of Würzburg by the authors mentioned below, under the supervision and technical guidance of <strong>Dr. Dmitry Ignatov</strong>, whose foundational work established the basis for the project. If you find this project to be useful for your research, please consider citing our articles for <a target='_blank' href='https://openaccess.thecvf.com/content/CVPR2026W/CVPR-NAS26/papers/Kochnev_NNGPT_Rethinking_AutoML_with_Large_Language_Models_CVPRW_2026_paper.pdf'>NNGPT</a>, <a target='_blank' href='https://openaccess.thecvf.com/content/CVPR2026W/CVPR-NAS26/papers/Khalid_From_Memorization_to_Creativity_LLM_as_a_Designer_of_Novel_CVPRW_2026_paper.pdf'>architecture design</a>, <a target='_blank' href='https://openaccess.thecvf.com/content/ICCV2025W/AIM/papers/Kochnev_Optuna_vs_Code_Llama_Are_LLMs_a_New_Paradigm_for_ICCVW_2025_paper.pdf'>hyperparameter tuning</a> and <a target='_blank' href='https://arxiv.org/abs/2605.04903'>delta-based NAS</a>:
+The original version of this project was created at the Computer Vision Laboratory of the University of Würzburg by the authors mentioned below, under the supervision and technical guidance of <strong>Dr. Dmitry Ignatov</strong>, whose foundational work established the basis for the project. If you find this project to be useful for your research, please consider citing our articles for <a target='_blank' href='https://openaccess.thecvf.com/content/CVPR2026W/CVPR-NAS26/papers/Kochnev_NNGPT_Rethinking_AutoML_with_Large_Language_Models_CVPRW_2026_paper.pdf'>NNGPT</a>, <a target='_blank' href='https://openaccess.thecvf.com/content/CVPR2026W/CVPR-NAS26/papers/Khalid_From_Memorization_to_Creativity_LLM_as_a_Designer_of_Novel_CVPRW_2026_paper.pdf'>architecture design</a> and <a target='_blank' href='https://openaccess.thecvf.com/content/ICCV2025W/AIM/papers/Kochnev_Optuna_vs_Code_Llama_Are_LLMs_a_New_Paradigm_for_ICCVW_2025_paper.pdf'>hyperparameter tuning</a>:
 ```bibtex
 
 @InProceedings{ABrain.NNGPT,
@@ -205,13 +199,6 @@ The original version of this project was created at the Computer Vision Laborato
 	pages = {5664--5674},
 	year={2025},
 	doi={10.1109/ICCVW69036.2025.00598}
-}
-
-@Article{ABrain.DeltaNAS,
-	title={Delta-Based Neural Architecture Search: {LLM} Fine-Tuning via Code Diffs},
-	author={Adhikari, Santosh Premi and Timofte, Radu and Ignatov, Dmitry},
-	journal={arXiv preprint arXiv:2605.04903},
-	year={2026}
 }
 
 ```
