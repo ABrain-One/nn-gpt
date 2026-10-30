@@ -132,6 +132,12 @@ def run(models_dir, epoch, nn_name_prefix=None, nn_train_epochs=1) -> Optional[D
     # computed over a handful of re-measured copies.
     previous = os.environ.get("NNGPT_SUPPRESS_EPOCH_REPORT")
     os.environ["NNGPT_SUPPRESS_EPOCH_REPORT"] = "1"
+    # Screening runs are kept out of the database (NNGPT_EVAL_SAVE_TO_DB=0 in
+    # the run script) precisely so this pass can be the only thing that writes
+    # to it: a model enters the corpus because it was measured several times,
+    # not because it was lucky once.
+    previous_save = os.environ.get("NNGPT_EVAL_SAVE_TO_DB")
+    os.environ["NNGPT_EVAL_SAVE_TO_DB"] = "1"
     try:
         from ab.gpt.act.eval import Eval as NNEval
         NNEval.main(nn_name_prefix=nn_name_prefix, nn_train_epochs=epochs,
@@ -144,6 +150,10 @@ def run(models_dir, epoch, nn_name_prefix=None, nn_train_epochs=1) -> Optional[D
             os.environ.pop("NNGPT_SUPPRESS_EPOCH_REPORT", None)
         else:
             os.environ["NNGPT_SUPPRESS_EPOCH_REPORT"] = previous
+        if previous_save is None:
+            os.environ.pop("NNGPT_EVAL_SAVE_TO_DB", None)
+        else:
+            os.environ["NNGPT_EVAL_SAVE_TO_DB"] = previous_save
 
     by_candidate: Dict[str, List[float]] = {}
     for row in _measured(stage_dir):

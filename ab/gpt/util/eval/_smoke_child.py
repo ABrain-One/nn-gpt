@@ -42,11 +42,28 @@ def main():
             raise TypeError(
                 f"supported_hyperparameters() returned {type(names).__name__}, "
                 "expected a set of names")
+        # Built the way ab/nn/util/Train.py builds it, which is: the record's
+        # own prm, passed through. Train.py does not synthesise a value per
+        # declared name, so neither does this.
+        #
+        # Inventing one made the gate stricter than the trainer and wrong in
+        # the same move. Every declared key absent from PRM_DEFAULTS got 0.1,
+        # so `prm.get('use_amp', False)` returned 0.1 -- truthy -- and turned
+        # on an autocast('cuda') path in a subprocess run with
+        # CUDA_VISIBLE_DEVICES="", while `prm.get('patch_size', 16)` returned
+        # 0.1 and reached Conv2d as a kernel size. Under the real trainer those
+        # keys are simply missing and each model falls back to its own default.
+        #
+        # So: the caller's prm, with the standard keys filled in only where it
+        # lacks them. A declared name the record does not carry stays absent,
+        # exactly as in training -- a `.get` finds the model's default and a
+        # direct `prm[name]` raises KeyError here instead of an hour later.
+        defaults = dict(args.get("defaults") or {})
         prm = dict(args["prm"])
-        # The trainer passes exactly the keys the file asks for, so a file that
-        # asks for a key nobody supplies fails at training time, not here.
         for key in names:
-            prm.setdefault(str(key), 0.1)
+            key = str(key)
+            if key not in prm and key in defaults:
+                prm[key] = defaults[key]
 
         device = torch.device("cpu")
         in_shape = tuple(args["in_shape"])
@@ -63,10 +80,19 @@ def main():
         net.train_setup(prm)
 
         verdict["stage"] = "forward"
-        batch = max(2, int(args.get("batch", 2)))
+        light = bool(args.get("light"))
+        batch = max(1 if light else 2, int(args.get("batch", 2)))
         x = torch.randn((batch,) + in_shape[1:], device=device)
         net.train()
-        y = net(x)
+        if light:
+            # No graph is kept, so the activations are freed as the forward
+            # walks the model instead of being held for a backward that is not
+            # going to happen. That is the difference between a few hundred
+            # megabytes and several gigabytes at 256 square.
+            with torch.no_grad():
+                y = net(x)
+        else:
+            y = net(x)
         if y is None:
             raise RuntimeError("forward() returned None")
         if hasattr(y, "shape") and len(y.shape) >= 2 and out_shape:

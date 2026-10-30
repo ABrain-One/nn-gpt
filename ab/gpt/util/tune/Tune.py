@@ -9,6 +9,7 @@ ab/gpt/util/Tune.py — Central tuning pipeline for NNGPT.
 
 import os
 import random
+import re
 import shutil
 import json
 import subprocess
@@ -59,8 +60,16 @@ TRANSFORM_OUT_DIR = trans_dir / 'dataset_epoch1'
 TRANSFORM_RES_DIR = trans_dir / 'result_epoch1'
 
 
-def _env_on(name) -> bool:
-    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+def _env_on(name, default: bool = False) -> bool:
+    """Is this switch on? ``default`` applies when the variable is unset.
+
+    Needed for switches that are on unless turned off; the original form could
+    only express opt-in, so an unset variable always meant "off".
+    """
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _carry_probe(model, tokenizer, max_len, out_dir):
@@ -201,9 +210,20 @@ def warn_if_truncated(full_out, max_new_tokens, idx, tokenizer=None):
                 reasons.append(f"hit the {max_new_tokens}-token generation budget")
         except Exception:
             pass
+    # An unclosed block is only evidence of truncation when the reply stops
+    # inside it. The model also just forgets the closing tag and carries on:
+    # measured on one cycle, three replies held a finished file, a closed <tr>
+    # and a closed <reason> and were reported as cut off over one absent
+    # </nn>. If any block closes after this one opened, the reply reached the
+    # end of its answer and the tag was merely omitted -- code_edit's
+    # block_bodies reads it anyway, so there is nothing to report.
     for tag in ("nn", "tr", "hp"):
-        if f"<{tag}>" in full_out and f"</{tag}>" not in full_out:
-            reasons.append(f"<{tag}> was opened and never closed")
+        opened = [m.end() for m in re.finditer(rf"<\s*{tag}\b[^>]*>", full_out)]
+        if not opened or re.search(rf"<\s*/\s*{tag}\s*>", full_out):
+            continue
+        if re.search(r"<\s*/\s*(?:nn|tr|hp|edit|reason)\s*>", full_out[opened[-1]:]):
+            continue
+        reasons.append(f"<{tag}> was opened and never closed")
     if full_out.count("```") % 2:
         reasons.append("an unterminated code fence")
 
@@ -213,6 +233,157 @@ def warn_if_truncated(full_out, max_new_tokens, idx, tokenizer=None):
               f"or raise max_seq_length so the answer has room.", flush=True)
         return True
     return False
+
+
+#: Set to 0 to skip the repair pass.
+#: Off by default. The repair turn is the only thing that smoke-tests a
+#: candidate *during generation*, and generation is the one moment the host
+#: cannot afford it: the vLLM engine is resident and the trainer is parked in
+#: RAM, which left 6 to 7 GiB free on a 31 GiB machine. Every candidate was
+#: already being tested a second time at the validity gate, which runs after
+#: the engine is torn down and has the memory for it, so the work was
+#: duplicated and only the duplicate was dangerous. Removing it makes every
+#: cycle behave identically -- the first one included, so a single cycle's log
+#: shows whether the problem is gone.
+#:
+#: Set NNGPT_REPAIR_TURN=1 to have it back. It is cheap now (a build check, no
+#: backward pass) and bounded by the host-headroom guard, but it still runs in
+#: the tight window, and a cycle that skips it loses one retry, not a model.
+REPAIR_ENV = "NNGPT_REPAIR_TURN"
+
+
+def _repair_targets(models_dir, queue):
+    """Written candidates that cannot be built, with the reason.
+
+    The smoke test exists and runs -- but in the validity gate, after
+    generation, when the model is parked and nothing can be asked. Running it
+    here, while the engine is still up, is what makes a repair turn possible at
+    all. In one measured run 218 evaluation failures were a single generated
+    helper unpacking a 4-tuple in_shape into five names, regenerated every
+    cycle because the model was never shown the traceback.
+    """
+    from ab.gpt.util.eval.smoke import smoke_check_dir
+    out = []
+    for idx, origdf, prompt_text in queue:
+        for d in sorted(Path(models_dir).glob(f"B{idx}") ) + sorted(
+                Path(models_dir).glob(f"B{idx}_*")):
+            if not (d / new_nn_file).is_file():
+                continue
+            verdict, reason = smoke_check_dir(d, light=True)
+            if verdict is False:
+                out.append((d, origdf, prompt_text, reason))
+    return out
+
+
+REPAIR_PROMPT = """\
+The edits you returned were applied, and the resulting file does not run. It \
+was built exactly as the evaluation builds it -- Net(in_shape, out_shape, prm, \
+device) with a 4-tuple in_shape, then train_setup, then one batch through \
+forward and learn -- and it raised:
+
+{reason}
+
+Return the same design again, corrected, as <edit> blocks against the ORIGINAL \
+baseline file you were given (not against your previous answer). Keep the \
+improvement you intended; change only what is needed to make it run."""
+
+
+def _run_repair_pass(models_dir, queue, chat_bot, seen, max_new_tokens,
+                     save_llm_output):
+    """One more turn for candidates that do not build, with their traceback.
+
+    A second chance, not a loop: if the repair also fails to build, the
+    validity gate discards it as before. Costs one generation round per cycle
+    against the ten minutes of GPU time each broken candidate would otherwise
+    take to fail in exactly the way already known here.
+    """
+    if not queue:
+        return 0
+    if not _env_on(REPAIR_ENV, default=False):
+        print(f"[repair] off; candidates go straight to the validity gate, "
+              f"which smoke-tests them once the engine is down "
+              f"({REPAIR_ENV}=1 to re-enable)", flush=True)
+        return 0
+    try:
+        targets = _repair_targets(models_dir, queue)
+    except Exception as exc:
+        print(f"[repair] skipped: {type(exc).__name__}: {exc}", flush=True)
+        return 0
+    if not targets:
+        print("[repair] every generated candidate builds; nothing to repair",
+              flush=True)
+        return 0
+
+    try:
+        from ab.gpt.util.eval.smoke import _host_available_gib, HOST_FLOOR_GIB
+        print(f"[repair] host has {_host_available_gib():.1f} GiB available "
+              f"(floor {HOST_FLOOR_GIB:.0f} GiB)", flush=True)
+    except Exception:
+        pass
+    print(f"[repair] {len(targets)} candidate(s) do not build (build check "
+          f"only: construct, train_setup and one forward without gradients); "
+          f"asking once more with the traceback", flush=True)
+    prompts, meta = [], []
+    for d, origdf, prompt_text, reason in targets:
+        prompts.append(prompt_text + "\n\n"
+                       + REPAIR_PROMPT.format(reason=reason))
+        meta.append((d, origdf))
+    try:
+        if hasattr(chat_bot, "chat_batch"):
+            outputs = chat_bot.chat_batch(
+                prompts, engineer_prompt=False, max_new_tokens=max_new_tokens)
+        else:
+            outputs = [chat_bot.chat(p, engineer_prompt=False,
+                                     max_new_tokens=max_new_tokens)
+                       for p in prompts]
+    except Exception as exc:
+        print(f"[repair] generation failed: {type(exc).__name__}: {exc}",
+              flush=True)
+        return 0
+
+    fixed = 0
+    for (d, origdf), output in zip(meta, outputs):
+        full_out = output[3] if isinstance(output, (list, tuple)) else output
+        if not isinstance(full_out, str) or not full_out.strip():
+            continue
+        # Replaces the broken candidate in place, under its own name, so the
+        # cycle's slot count and its seed pairing are unchanged.
+        try:
+            shutil.rmtree(d, ignore_errors=True)
+        except Exception:
+            pass
+        idx = d.name[1:]
+        written = _write_edit_candidates(Path(models_dir), idx, origdf,
+                                        full_out, seen, save_llm_output)
+        if written:
+            fixed += 1
+            try:
+                create_file(Path(models_dir) / f"B{idx}", "repaired.txt",
+                            "rewritten after a failed build\n")
+            except Exception:
+                pass
+    print(f"[repair] {fixed} of {len(targets)} rewritten", flush=True)
+    return fixed
+
+
+def _best_of_n() -> int:
+    """How many samples to draw per seed."""
+    try:
+        return max(1, int(os.environ.get("NNGPT_BEST_OF_N", "1") or 1))
+    except ValueError:
+        return 1
+
+
+def _elite_block() -> str:
+    """The run's best-so-far, as prompt context. Empty before the first one."""
+    if not _env_on("NNGPT_ELITE_IN_PROMPT", default=True):
+        return ""
+    try:
+        from ab.gpt.util.data import elite
+        return elite.prompt_block(nngpt_dir)
+    except Exception as exc:
+        print(f"[elite] not shown in the prompt: {exc}", flush=True)
+        return ""
 
 
 def _edit_seen_path():
@@ -244,6 +415,15 @@ def _save_seen_code(seen):
         print(f"[edit] could not persist seen code: {exc}", flush=True)
 
 
+#: Transform names this cycle reused from the dataset, and minted itself.
+_transform_counts = {"reused": set(), "new": set()}
+
+
+def reset_transform_counts():
+    _transform_counts["reused"].clear()
+    _transform_counts["new"].clear()
+
+
 #: Set to 1 to make a generated <tr> module usable by evaluation.
 #:
 #: ``prm["transform"]`` is resolved by NAME out of the installed ab/nn/transform
@@ -266,17 +446,39 @@ def _ab_nn_transform_dir():
     return d if d.is_dir() else None
 
 
+def _check_transform(code):
+    """``(ok, reason)``; None when the check could not run, so the block stays."""
+    if not _env_on("NNGPT_TRANSFORM_SMOKE", default=True):
+        return None, "transform check disabled"
+    try:
+        from ab.gpt.util.eval.smoke import transform_check
+        return transform_check(code)
+    except Exception as exc:
+        return None, f"transform check unavailable: {type(exc).__name__}: {exc}"
+
+
 def _install_generated_transform(code):
-    """Make a generated transform resolvable by name. Returns the name or None."""
+    """Make a generated transform resolvable by name. Returns the name or None.
+
+    Checks the uid against what already exists first. A model very often
+    proposes a pipeline the dataset already has -- crop, flip, ToTensor,
+    Normalize is the obvious CIFAR answer -- and installing it again under a
+    generated name produced several files for one transform, none of them
+    connected to the dataset's own name for it.
+    """
     if not _env_on(INSTALL_TRANSFORMS_ENV):
         return None
-    from ab.gpt.util.Util import generated_transform_name
+    from ab.gpt.util.Util import resolve_transform_name
+    name, is_new = resolve_transform_name(code)
+    if not is_new:
+        print(f"[edit] transform already in the dataset as {name}; reusing it",
+              flush=True)
+        return name
     target_dir = _ab_nn_transform_dir()
     if target_dir is None:
         print("[edit] cannot install the generated transform: ab/nn/transform "
               "not found; evaluation will use the baseline pipeline", flush=True)
         return None
-    name = generated_transform_name(code)
     path = target_dir / f"{name}.py"
     try:
         if not path.exists():
@@ -285,6 +487,47 @@ def _install_generated_transform(code):
     except Exception as exc:
         print(f"[edit] could not install transform {name}: {exc}", flush=True)
         return None
+
+
+#: Estimated Jaccard above which a new candidate counts as a restatement of
+#: one already accepted this cycle.
+#:
+#: model_identity is a graph hash plus lr/momentum, so a candidate that swaps
+#: one backbone name is a different architecture by that measure and passes.
+#: Measured: all 60 valid generations of one run shared a class skeleton and
+#: differed by about twelve lines, and every one of them passed. 0.95 rejects a
+#: token swap (measured 0.953 on a one-token change) while leaving a genuine
+#: edit (0.0-0.8) alone.
+NEAR_DUPLICATE_JACCARD = float(
+    os.environ.get("NNGPT_NEAR_DUPLICATE_JACCARD", "0.95") or 0.95)
+
+#: Signatures accepted in this cycle, so the check is intra-cycle only; across
+#: cycles the graph-identity check and known_uids already apply.
+_cycle_signatures: list = []
+
+
+def reset_cycle_signatures():
+    _cycle_signatures.clear()
+
+
+def _too_similar(code, idx, n):
+    """Why this candidate is a restatement of an accepted one, or None."""
+    if NEAR_DUPLICATE_JACCARD >= 1.0:
+        return None
+    try:
+        from ab.gpt.util.data.minhash_clusters import estimate_jaccard, signature
+        sig = signature(code)
+    except Exception:
+        return None
+    if sig is None:
+        return None
+    for other_name, other in _cycle_signatures:
+        j = estimate_jaccard(sig, other)
+        if j >= NEAR_DUPLICATE_JACCARD:
+            return (f"a restatement of {other_name} (estimated Jaccard "
+                    f"{j:.3f} >= {NEAR_DUPLICATE_JACCARD:.2f})")
+    _cycle_signatures.append((f"B{idx}" + (f"_{n}" if n else ""), sig))
+    return None
 
 
 def _write_edit_candidates(models_dir, idx, origdf, full_out, seen,
@@ -321,6 +564,16 @@ def _write_edit_candidates(models_dir, idx, origdf, full_out, seen,
     # slot was read 0 times, so the data-augmentation axis -- the cheapest
     # accuracy on a one-epoch CIFAR budget -- was never searched at all.
     tr_code = parse_tr(full_out)
+    if tr_code:
+        # Built and applied to one image before it is installed anywhere. A
+        # broken pipeline used to reach the trainer and kill every evaluation
+        # that used it; refusing it here costs the transform and keeps the
+        # architecture edit, which is the part worth measuring.
+        ok, why = _check_transform(tr_code)
+        if ok is False:
+            print(f"[edit] B{idx}: transform rejected ({why}); keeping the "
+                  f"baseline pipeline", flush=True)
+            tr_code = None
     tr_name = _install_generated_transform(tr_code) if tr_code else None
     if tr_code:
         print(f"[edit] B{idx}: transform offered"
@@ -367,6 +620,14 @@ def _write_edit_candidates(models_dir, idx, origdf, full_out, seen,
             print(f"[edit] B{idx} candidate {n}: same architecture as the "
                   f"baseline", flush=True)
             continue
+        near = _too_similar(code, idx, n)
+        if near is not None:
+            print(f"[edit] B{idx} candidate {n}: {near}", flush=True)
+            try:
+                create_file(base_dir, "duplicate.txt", f"{near}\n")
+            except Exception:
+                pass
+            continue
         if key in seen:
             print(f"[edit] B{idx} candidate {n}: architecture already produced",
                   flush=True)
@@ -392,6 +653,8 @@ def _write_edit_candidates(models_dir, idx, origdf, full_out, seen,
             create_file(model_dir, transformer_file, tr_code)
             if tr_name:
                 prm["transform"] = tr_name
+                _transform_counts["reused" if not tr_name.startswith("tr-")
+                                  else "new"].add(tr_name)
         with open(model_dir / hp_file, "w+") as f:
             json.dump(prm, f)
         create_file(model_dir, f"original_{origdf['nn']}.py", baseline_code)
@@ -668,8 +931,14 @@ def nn_gen(
                     _ceiling, float(para_dict.get("accuracy") or 0.0)))
                 # The same neighbour examples the corpus was rendered with. An
                 # empty string keeps the prompt valid when a baseline has none.
+                # The neighbour examples, plus the best result this run has
+                # produced so far. Without the latter the prompt names a
+                # ceiling computed once at cycle 0 and never tells the model
+                # what is actually reachable -- and the run's own best was
+                # never beaten after cycle 0.
                 para_dict.setdefault(
-                    "examples", seed_context.get(str(row.get("nn", "")), ""))
+                    "examples", seed_context.get(str(row.get("nn", "")), "")
+                    + _elite_block())
                 # The baseline's own hyperparameters. The corpus prompt states
                 # them, and without them here the model cannot tell an
                 # architectural gain from a tuning one, nor aim an <hp> block.
@@ -711,6 +980,23 @@ def nn_gen(
     prompts, _ = _select_fitting_prompts(
         prompts, chat_bot, test_nn, max_new_tokens, unsloth_max_input_length)
 
+    # Best-of-N: ask each seed N times and keep whichever answer measures
+    # best. The objective is the maximum of a cycle, and the maximum of N
+    # samples from one prompt beats the maximum of one sample from N prompts
+    # when the variance is in the sampling rather than in the seed. Off by
+    # default because it multiplies the EVALUATION budget, not just the
+    # generation budget: at N=2 a cycle trains twice as many models, so raise
+    # NNGPT_VALIDITY_KEEP with it or the gate throws the extra ones away.
+    best_of = _best_of_n()
+    if best_of > 1 and prompts:
+        prompts = [p for p in prompts for _ in range(best_of)]
+        print(f"[gen] best-of-{best_of}: {len(prompts)} prompt(s) from "
+              f"{len(prompts) // best_of} seed(s). Evaluation budget scales "
+              f"with this; NNGPT_VALIDITY_KEEP is "
+              f"{os.environ.get('NNGPT_VALIDITY_KEEP', 'unset')}", flush=True)
+
+    reset_cycle_signatures()
+    reset_transform_counts()
     models_dir = synth_dir(out_path)
 
     if use_delta:
@@ -894,6 +1180,7 @@ def nn_gen(
             print(
                 f'[INFO] Batch generation enabled: prompt_batch={prompt_batch}')
 
+        repair_queue = []
         for start in range(0, len(pending), prompt_batch):
             batch = pending[start: start + prompt_batch]
             chat_bot.system_prompt = batch[0][1] or None
@@ -926,6 +1213,8 @@ def nn_gen(
                                         f"hit the {max_new_tokens}-token budget\n")
                         except Exception:
                             pass
+                    if written:
+                        repair_queue.append((idx, origdf, prompt_text))
                     continue
                 if use_backbone:
                     code = SFTUtil.assemble_backbone_xml_completion(full_out)
@@ -987,7 +1276,13 @@ def nn_gen(
                     origdf.to_pickle(df_file)
 
     if edit_mode:
+        _run_repair_pass(models_dir, repair_queue, chat_bot, seen_code,
+                         max_new_tokens, save_llm_output)
         _save_seen_code(seen_code)
+        print(f"[edit] transforms: {len(_transform_counts['reused'])} reused "
+              f"from the dataset, {len(_transform_counts['new'])} new "
+              f"({', '.join(sorted(_transform_counts['new'])) or 'none'})",
+              flush=True)
 
     # NOTE: epoch statistics used to be written here. nn_gen() runs BEFORE the
     # models are evaluated, so the accuracy it read out of cycle_results.json
@@ -1458,6 +1753,15 @@ def _evaluate_epoch_inner(epoch, out_path, nn_name_prefix, nn_train_epochs,
     # number is taken from a single training run. Does nothing unless
     # NNGPT_STAGE2_TOPK is set. Runs before the statistics so the summary can be
     # carried in them.
+    # The run's own champions, recorded before the statistics so the next
+    # cycle's prompts can name the number to beat.
+    if exists(models_dir) and not trans_mode:
+        try:
+            from ab.gpt.util.data import elite
+            elite.update(models_dir, nngpt_dir, epoch=epoch)
+        except Exception as exc:
+            print(f'[elite] archive not updated: {exc}', flush=True)
+
     stage2_summary = None
     if exists(models_dir) and not trans_mode:
         try:
@@ -1639,6 +1943,7 @@ def _finetune_epoch(
 
     del dataset
     release_memory()
+    _report_host_memory("after fine-tuning")
 
     chat_bot = ChatBot(
         model, tokenizer, temperature=temperature, top_k=top_k, top_p=top_p,
@@ -1646,11 +1951,33 @@ def _finetune_epoch(
     return model, chat_bot
 
 
+def _report_host_memory(when):
+    try:
+        import resource
+        from ab.gpt.util.eval.smoke import _host_available_gib
+        fields = {}
+        with open("/proc/meminfo", encoding="ascii") as f:
+            for line in f:
+                name = line.split(":")[0]
+                if name in ("Dirty", "Writeback", "Cached", "MemFree"):
+                    fields[name] = int(line.split()[1]) / 2**20
+        rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 / 1024
+        print(f"[mem] {when}: this process peak RSS {rss:.1f} GiB, host "
+              f"available {_host_available_gib():.1f} GiB, free "
+              f"{fields.get('MemFree', 0):.1f} GiB, cached "
+              f"{fields.get('Cached', 0):.1f} GiB, dirty "
+              f"{fields.get('Dirty', 0):.2f} GiB, writeback "
+              f"{fields.get('Writeback', 0):.2f} GiB", flush=True)
+    except Exception as exc:
+        print(f"[mem] {when}: unavailable ({exc})", flush=True)
+
+
 def finetune_step(state: AgentState) -> dict:
     """Thin agent wrapper — all logic lives in _finetune_epoch()."""
     epoch = state["current_epoch"]
     out_path = epoch_dir(epoch)
     print(f"[DEBUG] Perform finetune at epoch {epoch}")
+    _report_host_memory("before fine-tuning")
 
     _prev_bot = state.get("chat_bot")
     _rebuild_design_corpus()

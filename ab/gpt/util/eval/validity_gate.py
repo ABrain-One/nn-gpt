@@ -108,7 +108,25 @@ SMOKE_BUDGET_ENV = "NNGPT_SMOKE_BUDGET_SECONDS"
 
 
 def _smoke_enabled() -> bool:
-    return os.environ.get(SMOKE_ENV, "1").strip().lower() not in ("0", "false", "no", "off")
+    """Off by default: the build now happens where the training happens.
+
+    This gate used to build every candidate in a separate CPU subprocess, and
+    the repair turn built them again during generation. Three builds per
+    candidate per cycle, two of them approximations: a different device, a
+    guessed input shape, and no dataset. The second one ran while the vLLM
+    engine was resident and the trainer was parked in RAM, and it is what the
+    kernel killed the run over.
+
+    The evaluation worker already constructs the model, on the real device,
+    with the real dataset and the real prm, moments before training it -- so
+    its own attempt is both the cheaper check and the truthful one. A candidate
+    that cannot build fails there in seconds, with a real traceback, and is
+    reported as a failed evaluation. Nothing is gained by predicting that
+    outcome beforehand in a process that cannot afford to.
+
+    Set NNGPT_VALIDITY_SMOKE=1 to build here as well.
+    """
+    return os.environ.get(SMOKE_ENV, "0").strip().lower() in ("1", "true", "yes", "on")
 
 
 def _smoke_budget() -> float:
@@ -222,6 +240,11 @@ def gate_directory(models_dir: str, keep: Optional[int] = None,
         print(f"[validity-gate] smoke test: {n_smoke_invalid} of "
               f"{len(checked) - n_static_invalid} statically valid generations "
               f"cannot build or run a batch", flush=True)
+    else:
+        print(f"[validity-gate] no build here: the evaluation worker builds "
+              f"each candidate on the real device with the real dataset and "
+              f"reports what happened ({SMOKE_ENV}=1 to build here too)",
+              flush=True)
 
     n_invalid = n_static_invalid + n_smoke_invalid
     for model_dir, ok, reason, stage in checked:

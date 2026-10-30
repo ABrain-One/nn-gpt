@@ -22,6 +22,7 @@ from this epoch's own directory removes the lag entirely.
 
 import json
 import math
+import collections
 import os
 import random
 from datetime import datetime
@@ -140,12 +141,36 @@ def _label(name, dataset):
 #: Accuracy of the best design point in the LEMUR corpus the run started from.
 #: The objective is the best model a cycle produces, so the number that matters
 #: is how often a cycle clears this, not how far the mean moved.
-def _corpus_ceiling():
-    raw = os.environ.get("NNGPT_DESIGN_CEILING", "").strip()
+def _corpus_ceiling(group=None):
+    """The best accuracy the corpus holds, for the group a seed belongs to.
+
+    One number for every seed was wrong once the test set stopped being a
+    single family: pretrained-backbone models reach 0.9717 after one epoch and
+    from-scratch ones reach 0.8645, so comparing a scratch seed's result
+    against the pretrained maximum reports "0 above the ceiling" for a cycle
+    that may have done well. prepare() already exports both.
+    """
+    keys = {"scratch": "NNGPT_DESIGN_CEILING_SCRATCH",
+            "pretrained": "NNGPT_DESIGN_CEILING_PRETRAINED"}
+    for name in ([keys[group]] if group in keys else []) + ["NNGPT_DESIGN_CEILING"]:
+        raw = os.environ.get(name, "").strip()
+        if raw:
+            try:
+                return float(raw)
+            except ValueError:
+                continue
+    return None
+
+
+def _model_group(model_dir):
+    """"pretrained" or "scratch" for one generation, from its own code."""
     try:
-        return float(raw) if raw else None
-    except ValueError:
+        from ab.gpt.util.data.code_edit import uses_pretrained_weights
+        code = (Path(model_dir) / "new_nn.py").read_text(
+            encoding="utf-8", errors="replace")
+    except Exception:
         return None
+    return "pretrained" if uses_pretrained_weights(code) else "scratch"
 
 
 def quantiles(values):
@@ -159,6 +184,9 @@ def quantiles(values):
 
     return {"min": xs[0], "p50": q(0.5), "p90": q(0.9)}
 
+
+#: Below this many valid models a cycle is recorded but marked not comparable.
+MIN_COMPARABLE_N = int(os.environ.get("NNGPT_MIN_COMPARABLE_N", "5") or 5)
 
 FAILURE_CLASSES = ("no_code", "truncated", "no_delta", "rejected_delta",
                    "duplicate", "verification", "oom", "runtime", "unknown")
@@ -298,8 +326,18 @@ def collect_epoch_stats(models_dir, epoch):
     # treating the two means as independent samples.
     delta = mean_ci(deltas)
 
-    ceiling = _corpus_ceiling()
-    above = [a for a in accuracies if ceiling is not None and a > ceiling]
+    # Each model against its own group's ceiling, and the headline ceiling is
+    # the one most of this cycle's models were measured against.
+    groups = [_model_group(r["model_dir"]) for r in eval_results
+              if r.get("accuracy") is not None]
+    above = 0
+    for acc, group in zip(accuracies, groups):
+        limit = _corpus_ceiling(group)
+        if limit is not None and acc > limit:
+            above += 1
+    main_group = collections.Counter(g for g in groups if g).most_common(1)
+    ceiling = _corpus_ceiling(main_group[0][0] if main_group else None)
+    above = [None] * above
     failures = classify_failures(models_dir)
     # Order statistics, because the mean of this quantity is not interpretable.
     # Measured: a cycle whose nine valid models scored 0.95-0.97 except two that
@@ -344,6 +382,11 @@ def collect_epoch_stats(models_dir, epoch):
         # not a weak architecture). These are what destroy the mean, and they
         # are a hyperparameter symptom: one fixed lr for every architecture.
         "accuracy_collapsed": sum(1 for a in accuracies if a < 0.5),
+        # A cycle whose valid models can be counted on one hand says nothing
+        # about a trend: one run reported a cycle on n=2. Flagged rather than
+        # hidden, so a reader does not compare it with a cycle of 14.
+        "comparable": gen["n"] is not None and gen["n"] >= MIN_COMPARABLE_N,
+        "min_comparable_n": MIN_COMPARABLE_N,
         # accuracy the SAME models had before the LLM modified them (LEMUR),
         # restricted to the valid ones so the two means are comparable
         "baseline_accuracy_mean": base["mean"],
@@ -362,6 +405,11 @@ def collect_epoch_stats(models_dir, epoch):
         "datasets": sorted(set(datasets)),
         # paired generated-minus-seed difference
         "paired_n": delta["n"],
+        # The quantity to judge a cycle on now that the seeds are unique
+        # architectures: cycle_max partly reflects which seeds were drawn,
+        # while this is what the model did to the ones it was given.
+        "median_improvement": quantiles(deltas)["p50"],
+        "improved_seeds": sum(1 for d in deltas if d > 0),
         "mean_improvement": delta["mean"],
         "improvement_ci_low": delta["ci_low"],
         "improvement_ci_high": delta["ci_high"],
@@ -1940,12 +1988,7 @@ def _cycle_results_from_stats(stats):
     return {
         "cycle": stats.get("epoch"),
         "success": bool(valid),
-        "training": {
-            "data_dir": None,
-            "total_examples": None,
-            "new_examples_added": None,
-            "training_time_minutes": None,
-        },
+        "training": _training_block(),
         "generation": {
             "total_generated": total,
             "successful": valid,
@@ -2011,6 +2054,46 @@ def finalize_epoch_results(base_dir, epoch, stats):
             print(f"[EPOCH STATS] Could not write {path}: {exc}")
     print(f"[EPOCH STATS] Epoch {epoch} results finalised -> {per_epoch}")
     return per_epoch
+
+
+def _training_block() -> dict:
+    """What the fine-tune of this cycle actually did.
+
+    These four fields were hard-coded to None, so every cycle_results file
+    reported the training half of the cycle as unknown -- including
+    training_time_minutes, which is most of the wall clock. The corpus writes
+    its own counts to corpus_stats.json and the trainer writes its runtime to
+    outputs/train_results.json; both are on disk, so neither has to be guessed.
+    """
+    out = {"data_dir": None, "total_examples": None,
+           "new_examples_added": None, "training_time_minutes": None}
+    try:
+        from ab.gpt.util.Const import nngpt_dir
+        root = Path(nngpt_dir)
+    except Exception:
+        return out
+    corpus = root.parent / "edit_improve" / "corpus_stats.json"
+    if corpus.is_file():
+        try:
+            payload = json.loads(corpus.read_text(encoding="utf-8"))
+            out["data_dir"] = str(corpus.parent)
+            out["total_examples"] = payload.get("train_rows_total") or payload.get("train_examples")
+            out["corpus_pairs"] = payload.get("pairs")
+            out["corpus_records"] = payload.get("records")
+            out["aux_rows"] = payload.get("aux_rows")
+        except Exception:
+            pass
+    results = root / "outputs" / "train_results.json"
+    if results.is_file():
+        try:
+            payload = json.loads(results.read_text(encoding="utf-8"))
+            runtime = payload.get("train_runtime")
+            if isinstance(runtime, (int, float)):
+                out["training_time_minutes"] = round(runtime / 60.0, 2)
+            out["train_loss"] = payload.get("train_loss")
+        except Exception:
+            pass
+    return out
 
 
 def _recorded_stats(tracker_path, epoch):
@@ -2080,6 +2163,8 @@ def update_epoch_report(models_dir, epoch, base_dir):
         f"max {fmt(stats['accuracy_max'])} "
         f"(mean {fmt(stats['accuracy_mean'])}, "
         f"{stats.get('accuracy_collapsed') or 0} collapsed) | "
+        f"median improvement {fmt(stats.get('median_improvement'))} "
+        f"({stats.get('improved_seeds')} of {stats.get('paired_n')} seeds up) | "
         f"before modification mean {fmt(stats['baseline_accuracy_mean'])} "
         f"[{fmt(stats['baseline_accuracy_ci_low'])}, {fmt(stats['baseline_accuracy_ci_high'])}] "
         f"(n={stats['baseline_accuracy_n']})"
@@ -2087,6 +2172,10 @@ def update_epoch_report(models_dir, epoch, base_dir):
            if stats.get("datasets") else "")
     )
 
+    if not stats.get("comparable", True):
+        print(f"[EPOCH STATS] epoch {epoch}: only "
+              f"{stats.get('accuracy_n')} valid model(s) -- recorded but NOT "
+              f"comparable with a full cycle (min {stats.get('min_comparable_n')})")
     cycle_max = stats.get("cycle_max")
     ceiling = stats.get("corpus_ceiling")
     best_ever = max((r.get("cycle_max") for r in rows

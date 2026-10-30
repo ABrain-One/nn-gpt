@@ -121,6 +121,7 @@ class NNGenPrompt(Prompt):
             rows = sample_rows(rows, n_training_prompts, seed=sample_seed)
             print(f"[SFT] sampled {len(rows)} of {available} corpus rows "
                   f"(cycle seed {sample_seed})", flush=True)
+        rows = self._drop_overlong_rows(rows)
         frame = _empty_frame()
         for row in rows:
             messages = row.get("messages", [])
@@ -135,6 +136,43 @@ class NNGenPrompt(Prompt):
         print(f"[SFT] Loaded {len(frame)} training rows from {train_path} "
               f"(LEMUR query bypassed)", flush=True)
         return frame
+
+    def _drop_overlong_rows(self, rows):
+        """Remove rows the trainer would silently drop for length.
+
+        SFTTrainer discards any row longer than max_len without naming it, so
+        an over-long row is not an error -- it is a row that never trains.
+        Measured: 75 of 4096 vanished that way, invisibly. Counting them here,
+        with the real tokenizer and per task, turns that into a number.
+
+        The character budget in aux_tasks is a proxy; this is the actual
+        measure, so it runs last and has the final say.
+        """
+        limit = getattr(self, "max_len", None) or 0
+        tok = getattr(self, "tokenizer", None)
+        if not rows or not limit or tok is None:
+            return rows
+        import collections
+        kept, dropped = [], collections.Counter()
+        for row in rows:
+            messages = row.get("messages", [])
+            try:
+                text = self._apply_chat_template(messages, tokenize=False)
+                length = len(tok(text, add_special_tokens=False)["input_ids"])
+            except Exception:
+                kept.append(row)
+                continue
+            if length > limit:
+                meta = row.get("meta") or {}
+                dropped[str(meta.get("task") or "improve")] += 1
+                continue
+            kept.append(row)
+        if dropped:
+            print(f"[SFT] dropped {sum(dropped.values())} row(s) longer than "
+                  f"{limit} tokens before training: "
+                  + ", ".join(f"{k}={v}" for k, v in dropped.most_common()),
+                  flush=True)
+        return kept
 
     # ------------------------------------------------------------------
     # SQL config

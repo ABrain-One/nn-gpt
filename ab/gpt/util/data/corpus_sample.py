@@ -92,11 +92,18 @@ def _weighted_order(rows: Sequence, rng: random.Random,
     return [r for _k, r in keyed]
 
 
+def _task_of(row) -> str:
+    meta = row.get("meta") if isinstance(row, dict) else None
+    if isinstance(meta, dict) and meta.get("task"):
+        return str(meta["task"])
+    return "improve"
+
+
 def sample_rows(rows: Sequence, n: int, seed: int = 0,
                 gain_scale: Optional[float] = None,
                 max_family_share: Optional[float] = None,
                 verbose: bool = True) -> List:
-    """``n`` rows: spread over families, weighted by measured gain."""
+    """``n`` rows: the corpus's task mix, each task spread over its clusters."""
     rows = list(rows)
     if n is None or n >= len(rows) or n <= 0:
         return rows
@@ -107,6 +114,57 @@ def sample_rows(rows: Sequence, n: int, seed: int = 0,
         if verbose:
             print(f"[SFT] uniform sample of {n} of {len(rows)} rows", flush=True)
         return picked
+
+    # The task mix is decided when the corpus is built, and it has to survive
+    # this draw. It would not otherwise: an auxiliary row has no measured gain,
+    # so the weighting below gives it the floor weight of 1.0 while an
+    # improvement row with a 0.15 gain gets 2.8 -- the auxiliary tasks would be
+    # built at a 40% share and then trained at a fraction of it. So each task
+    # is allocated its share of n first, and the weighting operates inside a
+    # task, where every row is the same kind of answer and the comparison is
+    # meaningful.
+    by_task: Dict[str, List] = collections.defaultdict(list)
+    for row in rows:
+        by_task[_task_of(row)].append(row)
+    if len(by_task) > 1:
+        picked: List = []
+        order = sorted(by_task, key=lambda t: -len(by_task[t]))
+        allocated = 0
+        for i, task in enumerate(order):
+            quota = (n - allocated if i == len(order) - 1
+                     else int(round(n * len(by_task[task]) / len(rows))))
+            quota = max(0, min(quota, len(by_task[task]), n - allocated))
+            if quota:
+                picked.extend(_sample_one_task(
+                    by_task[task], quota, rng, gain_scale, max_family_share))
+                allocated += quota
+        # A task with fewer rows than its quota leaves slots; the largest task
+        # takes them, which is the improvement task in any sane corpus.
+        if allocated < n:
+            have = {id(r) for r in picked}
+            rest = [r for r in rows if id(r) not in have]
+            rng.shuffle(rest)
+            picked.extend(rest[:n - allocated])
+        rng.shuffle(picked)
+        if verbose:
+            got = collections.Counter(_task_of(r) for r in picked)
+            print(f"[SFT] balanced sample of {len(picked)} of {len(rows)} rows "
+                  f"over {len(by_task)} task(s): "
+                  + ", ".join(f"{k}={v}" for k, v in got.most_common()),
+                  flush=True)
+        return picked
+    return _sample_one_task(rows, n, rng, gain_scale, max_family_share,
+                            verbose=verbose)
+
+
+def _sample_one_task(rows: Sequence, n: int, rng: random.Random,
+                     gain_scale: Optional[float],
+                     max_family_share: Optional[float],
+                     verbose: bool = False) -> List:
+    """Cluster-balanced, gain-weighted draw within a single task."""
+    rows = list(rows)
+    if n >= len(rows):
+        return rows
 
     gain_scale = GAIN_SCALE if gain_scale is None else gain_scale
     share = MAX_FAMILY_SHARE if max_family_share is None else max_family_share

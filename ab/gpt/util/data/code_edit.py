@@ -60,11 +60,51 @@ MAX_CONTEXT = 12
 
 FULL_RE = re.compile(r"<nn[^>]*>(.*?)</nn>", re.S)
 
+#: Every tag that may follow one of the answer blocks. An unclosed block ends
+#: where the next one begins.
+SIBLING_OPEN = re.compile(r"<\s*/?\s*(?:nn|tr|hp|edit|find|with|reason)\b[^>]*>",
+                          re.I)
+
+
+def block_bodies(text: str, tag: str) -> List[str]:
+    """Bodies of ``<tag>...</tag>``, tolerating a missing closing tag.
+
+    The model sometimes writes a complete block and simply omits the close --
+    goes straight from the end of its file to ``<tr>``. Requiring ``</nn>``
+    threw those replies away whole: measured on one cycle, three of thirty
+    seeds produced a finished file, a closed <tr> and a closed <reason>, and
+    were discarded for one absent tag and then reported as truncated.
+
+    So a block that is never closed ends at the next answer tag, or at the end
+    of the reply. That is the only reading available, and it is the right one
+    whenever the content is complete -- and when it is not, the file fails to
+    parse a moment later in validate_model, which is where a genuinely cut-off
+    block should be caught.
+    """
+    out: List[str] = []
+    open_re = re.compile(rf"<\s*{tag}\b[^>]*>", re.I)
+    close_re = re.compile(rf"<\s*/\s*{tag}\s*>", re.I)
+    for m in open_re.finditer(text or ""):
+        start = m.end()
+        close = close_re.search(text, start)
+        end = close.start() if close else len(text)
+        # A sibling tag before the close means this block was never closed.
+        for sib in SIBLING_OPEN.finditer(text, start):
+            if sib.start() >= end:
+                break
+            if close_re.match(text, sib.start()):
+                continue
+            end = sib.start()
+            break
+        body = text[start:end]
+        if body.strip():
+            out.append(body)
+    return out
+
 
 def parse_full(text: str) -> Optional[str]:
     """A whole replacement file, when the reply gave one instead of edits."""
-    hits = FULL_RE.findall(text or "")
-    for body in reversed(hits):
+    for body in reversed(block_bodies(text, "nn")):
         body = body.strip()
         if body:
             return body
@@ -302,6 +342,29 @@ HEADER_PRM = {"LR": "lr", "Momentum": "momentum"}
 #: worker was sized for.
 TUNABLE_PRM = ("lr", "momentum", "dropout")
 
+#: Columns a LEMUR record carries that are results of a training run, not
+#: inputs to one. They arrive in the record's prm and have no business in the
+#: hyperparameters written beside a generated model.
+MEASURED_PRM = frozenset({
+    "uid", "accuracy", "metric_acc", "duration", "duration_seconds",
+    "epoch_max", "nn", "task", "dataset", "metric", "train_stat",
+    "layer_stat", "prm",
+})
+
+#: What an <hp> block may not set: the results of a past run, the record's
+#: identity, and the epoch budget, which belongs to the cycle. Everything else
+#: is the model's to propose.
+RESERVED_PRM = MEASURED_PRM | frozenset({"epoch"})
+
+
+def _hp_value(value):
+    """Keep a proposed value in the type the model will read it as."""
+    if isinstance(value, bool) or isinstance(value, str):
+        return value
+    if isinstance(value, (int, float)):
+        return value
+    raise TypeError(type(value).__name__)
+
 def hp_text(prm) -> str:
     """The tunable hyperparameters of a record, as the prompt shows them.
 
@@ -347,9 +410,20 @@ def parse_tr(text: str) -> Optional[str]:
     return None
 
 
-def parse_hp(text: str) -> Dict[str, float]:
-    """Hyperparameters named in an <hp> block, restricted to TUNABLE_PRM."""
-    out: Dict[str, float] = {}
+def parse_hp(text: str) -> Dict:
+    """Every hyperparameter an <hp> block proposes.
+
+    Not a fixed list. supported_hyperparameters() names what a file really
+    takes from prm, and a generated file may take whatever it likes -- a
+    normalisation epsilon, a patch size, a mixup weight -- provided it proposes
+    a value for it here, alongside the standard ones.
+
+    This used to keep only lr, momentum and dropout. Every other name a model
+    declared then reached the trainer with nothing behind it, so the file's own
+    prm[name] raised KeyError: the model asked for a hyperparameter, the
+    pipeline dropped the answer, and the candidate was discarded for it.
+    """
+    out: Dict = {}
     for body in HP_RE.findall(text or ""):
         try:
             payload = json.loads(body.strip())
@@ -357,12 +431,14 @@ def parse_hp(text: str) -> Dict[str, float]:
             continue
         if not isinstance(payload, dict):
             continue
-        for key in TUNABLE_PRM:
-            if key in payload:
-                try:
-                    out[key] = float(payload[key])
-                except (TypeError, ValueError):
-                    pass
+        for key, value in payload.items():
+            key = str(key)
+            if key in RESERVED_PRM:
+                continue
+            try:
+                out[key] = _hp_value(value)
+            except TypeError:
+                pass
     return out
 
 
@@ -385,10 +461,13 @@ def derive_prm(code: str, base_prm, hp=None) -> Dict:
                 prm[name] = float(m.group(1))
             except ValueError:
                 pass
+    # Every proposed name, not a fixed three: the trainer has to carry a value
+    # for each name the file declares, or the file cannot read it.
     for name, value in (hp or {}).items():
-        if name in TUNABLE_PRM:
+        if name not in RESERVED_PRM:
             prm[name] = value
-    prm.pop("uid", None)
+    for key in MEASURED_PRM:
+        prm.pop(key, None)
     return prm
 
 

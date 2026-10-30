@@ -33,6 +33,7 @@ Run
 
 import json
 import os
+import shutil
 from pathlib import Path
 
 import ab.gpt.act.tune.Tune as TuneNNGen
@@ -72,6 +73,10 @@ MIN_OBSERVED_GAIN = 0.05
 #: being a patch and becomes a rewrite, which is the failure this avoids.
 MAX_CHANGED_LINES = 40
 
+#: Prefix this run writes its own evaluated models back under. Must match the
+#: nn_name_prefix passed to TuneNNGen.main below.
+NN_NAME_PREFIX = "llm"
+
 TEST_NN = 30
 
 #: How many of the 30 test baselines may come from one architecture group --
@@ -96,18 +101,43 @@ HOLDOUT_MIN_PER_FAMILY = 2
 #: one run 71 truncated replies. Two leaves room to answer.
 CONTEXT_EXAMPLES = 2
 
+#: Context window and answer budget.
+#:
+#: Raised from 16384/4096. A ~700-line baseline is ~9k tokens, and with two
+#: examples and the now-required <tr> block the prompt reaches ~11k, leaving
+#: under 5k for an answer -- which produced seven truncated replies in a
+#: thirty-prompt cycle. Buying room is the right fix; cutting examples trades
+#: away the context the model edits from. Qwen3.5 handles far more than this,
+#: so the cost is KV cache on a card that also holds the parked trainer: if
+#: the engine cannot allocate, lower max_num_seqs before lowering this.
+CONTEXT_LENGTH = 24 * 1024
+MAX_NEW_TOKENS = 10240
+SFT_MAX_LENGTH = 20 * 1024
+
 #: Smallest answer worth asking for, in tokens. The upstream default is 1280
 #: and exists precisely to drop a prompt that cannot be answered; lowering it
 #: to 256 did not make those prompts answerable, it only moved the failure from
 #: "prompt dropped" to "reply cut off mid-class".
-MIN_ANSWER_TOKENS = 1280
+MIN_ANSWER_TOKENS = 8192
 
 #: Re-measure this many of a cycle's best candidates, this many times each,
-#: before reporting the cycle's result. One training run of one epoch is the
-#: only measurement behind every number in this pipeline, and the same model
-#: re-run scored 0.9562 and 0.9621 -- so a 0.0087 cycle-to-cycle "gain" is
-#: inside the noise. Set STAGE2_TOPK to 0 to turn the ladder off.
-STAGE2_TOPK = 5
+#: before reporting the cycle's result.
+#:
+#: OFF. The ladder re-trains the top candidates with nothing changed but the
+#: random seed, to separate a better architecture from a luckier draw -- the
+#: same model measured 0.9562 and 0.9621 on this budget. That costs
+#: STAGE2_TOPK * STAGE2_REPEATS extra trainings per cycle, which at 10 minutes
+#: each is most of an hour, and it is being given up deliberately.
+#:
+#: Two things follow automatically from the 0 and are worth knowing:
+#: screening results go back to being written to LEMUR (the suppression below
+#: is conditional on this value), so the corpus keeps growing from every
+#: evaluated candidate rather than only from re-measured ones; and
+#: MIN_OBSERVED_GAIN stays at its configured 0.05, because the noise floor in
+#: edit_pairs has no measured repeat spread to raise it with.
+#:
+#: Set back to 5 to turn the ladder on again; nothing else has to change.
+STAGE2_TOPK = 0
 STAGE2_REPEATS = 3
 
 CORPUS_DIR = Path(nngpt_dir).parent / "edit_improve"
@@ -224,11 +254,62 @@ def emit_pinned_seeds(corpus_dir, seed_file, n=TEST_NN,
     return seed_file
 
 
+#: Generated transforms written before names were derived from content.
+#:
+#: They were named gen_<md5 of the raw text>, so the same pipeline written with
+#: a different blank line became a different transform: one cycle shipped six
+#: files for three pipelines, three of which the dataset already had under
+#: norm_32_flip. Nothing will ever refer to these names again -- a statistics
+#: row naming one is a row for a transform that is a duplicate -- so they are
+#: removed from both the submission and the installed dataset.
+LEGACY_TRANSFORM_GLOB = "gen_[0-9a-f]*.py"
+
+
+def sweep_legacy_transforms() -> int:
+    """Delete gen_<hash>.py transforms left by the pre-uid naming."""
+    import importlib.util
+    from ab.gpt.util.Const import new_lemur_transform_dir
+
+    dirs = [Path(new_lemur_transform_dir)]
+    try:
+        spec = importlib.util.find_spec("ab.nn")
+        roots = [Path(spec.origin).parent] if (spec and spec.origin) else []
+        roots += [Path(p) for p in (spec.submodule_search_locations or ())] if spec else []
+        dirs += [r / "transform" for r in roots]
+    except Exception:
+        pass
+    removed = []
+    for d in dirs:
+        try:
+            if not d.is_dir():
+                continue
+            for f in sorted(d.glob(LEGACY_TRANSFORM_GLOB)):
+                f.unlink()
+                removed.append(str(f))
+        except Exception as exc:
+            print(f"[edit-improve] could not sweep {d}: {exc}", flush=True)
+    if removed:
+        print(f"[edit-improve] removed {len(removed)} transform(s) named by the "
+              f"old raw-text hash: {', '.join(Path(r).name for r in removed)}",
+              flush=True)
+    return len(removed)
+
+
 def prepare(offline_root=None) -> dict:
+    if CORPUS_DIR.exists():
+        print(f"[edit-improve] removing the previous corpus: {CORPUS_DIR}", flush=True)
+        shutil.rmtree(CORPUS_DIR, ignore_errors=True)
+
     # Read by edit_pairs.render_context for BOTH the corpus and the test
     # prompts, so set it before the corpus is built or the two diverge.
     os.environ["NNGPT_CONTEXT_EXAMPLES"] = str(CONTEXT_EXAMPLES)
     edit_pairs.CONTEXT_EXAMPLES = CONTEXT_EXAMPLES
+    # Also read by build(), so it has to be set before the call below and not
+    # with the rest of the environment further down. This run's own
+    # generations are training data, never test baselines: a benchmark made of
+    # your own output measures editing your own output, and it changes every
+    # cycle, which is the opposite of a frozen test set.
+    os.environ.setdefault("NNGPT_HOLDOUT_EXCLUDE_PREFIXES", NN_NAME_PREFIX)
 
     stats = edit_pairs.build(
         out_dir=str(CORPUS_DIR), task=TASK, dataset=DATASET, metric=METRIC,
@@ -274,12 +355,19 @@ def prepare(offline_root=None) -> dict:
     os.environ["NNGPT_TRAIN_ON_COMPLETIONS_ONLY"] = "1"
     os.environ["NNGPT_VALIDITY_GATE"] = "1"
     os.environ["NNGPT_VALIDITY_KEEP"] = str(TEST_NN)
-    # Build each candidate on CPU and push one batch through it before it is
-    # given a GPU worker. The AST gate passes code that cannot run: in one
-    # measured run 218 evaluation failures were a single generated helper
-    # unpacking a 4-tuple in_shape into five names, and every one of them cost
-    # a worker start, a dataset load and a slot in the cycle.
+    # The build check belongs to the evaluation worker, which constructs the
+    # model on the real device, with the real dataset and the real prm, moments
+    # before training it. Building it here as well meant a second, approximate
+    # build per candidate in a separate CPU process -- and a third during
+    # generation, where the engine is resident and the trainer is parked in
+    # RAM. That third one is what the kernel killed the run over.
     os.environ["NNGPT_VALIDITY_SMOKE"] = "1"
+    # Keep the code of rejected generations. The gate otherwise deletes it and
+    # keeps only the reason, and a reason with no code cannot become a training
+    # prompt -- which is what the "will_it_run" auxiliary task needs. These are
+    # the model's own mistakes, and nothing in the corpus has ever told it
+    # which of its outputs fail to build.
+    os.environ.setdefault("NNGPT_VALIDITY_KEEP_REJECTED", "1")
     os.environ.setdefault("NNGPT_SMOKE_BUDGET_SECONDS", "900")
 
     # The <hp> block the system prompt offers is only honoured in "generated"
@@ -311,6 +399,43 @@ def prepare(offline_root=None) -> dict:
     # writes a LEMUR row the corpus builder (which queries epoch=EPOCH) will
     # never see, so it would inform the report and not the next cycle.
     os.environ["NNGPT_STAGE2_EPOCHS"] = str(EPOCH)
+    if STAGE2_TOPK > 0:
+        # Screening results stay out of LEMUR; the stage-2 pass turns this
+        # back on for itself. A pair built on a single one-epoch run selects on
+        # noise as often as on architecture -- the same model measured 0.9562
+        # and 0.9621 -- and that noise was going straight into the next
+        # cycle's training corpus.
+        os.environ.setdefault("NNGPT_EVAL_SAVE_TO_DB", "0")
+
+    # Show the best result the run has produced so far in every prompt, and
+    # keep an archive of the champions. The objective is the maximum, and
+    # nothing used to tell the model what the maximum currently was: the run's
+    # best, 0.9708, was reached in cycle 0 and never beaten.
+    sweep_legacy_transforms()
+    os.environ.setdefault("NNGPT_ELITE_IN_PROMPT", "1")
+    # One more turn, with the traceback, for a candidate that does not build.
+    # It earns its place: measured over six cycles it rewrote 12 to 16 of every
+    # 15 to 22 broken candidates, and the one cycle that ran without it trained
+    # 3 of 21 instead of the usual 10 or 11. Turning it off to save memory cost
+    # far more than it saved.
+    #
+    # What made it dangerous was not the turn itself but what it used to do: a
+    # full build, forward and backward at the record's own resolution, in a
+    # separate process, while the engine was resident and the trainer parked in
+    # RAM. It now asks only whether the file builds -- construct, train_setup,
+    # one forward without gradients at batch 1, measured at 0.95 GiB against
+    # 2.05 for the full rehearsal -- under a ceiling set below the host's real
+    # headroom. The validity gate no longer builds at all, so this is the only
+    # build before training, where there used to be three.
+    os.environ.setdefault("NNGPT_REPAIR_TURN", "1")
+    # Reject a candidate that merely restates one already accepted this cycle.
+    os.environ.setdefault("NNGPT_NEAR_DUPLICATE_JACCARD", "0.95")
+    # Retry an out-of-memory evaluation once at half the batch size.
+    os.environ.setdefault("NNGPT_OOM_RETRY", "1")
+    # Best-of-N is OFF: it multiplies the evaluation budget, not just
+    # generation. Set NNGPT_BEST_OF_N=2 and raise NNGPT_VALIDITY_KEEP with it
+    # if there is time for twice as many trainings per cycle.
+    os.environ.setdefault("NNGPT_BEST_OF_N", "1")
     # Force the reply to open with a tag. A reasoning model expands to fill
     # whatever budget it is given, and prose before the first block is the one
     # thing that makes a reply unusable. A single "<" is deliberately weaker
@@ -330,7 +455,7 @@ def prepare(offline_root=None) -> dict:
     rebuild_path = CORPUS_DIR / "corpus_build_args.json"
     rebuild_path.write_text(json.dumps(rebuild, indent=2), encoding="utf-8")
     os.environ["NNGPT_EDIT_REBUILD"] = str(rebuild_path)
-    os.environ.setdefault("NNGPT_VLLM_MAX_MODEL_LEN", "16*1024")
+    os.environ.setdefault("NNGPT_VLLM_MAX_MODEL_LEN", f"{CONTEXT_LENGTH // 1024}*1024")
     return stats
 
 
@@ -349,22 +474,43 @@ def main():
         # GenFractalNet-* only, so records stayed at 3,909 and every cycle
         # retrained on the same 2,141 rows. Keeping a distinct prefix also keeps
         # this run's own output telling apart from the seed corpus.
-        nn_name_prefix='llm',
+        nn_name_prefix=NN_NAME_PREFIX,
         cycles=16,
         num_train_epochs=1,
-        context_length=16 * 1024,
-        sft_max_length=12 * 1024,
+        context_length=CONTEXT_LENGTH,
+        sft_max_length=SFT_MAX_LENGTH,
         # An edit is short, but the baseline in the prompt is not, and at cycle
         # 0 the model has never seen the format and reasons first.
-        max_new_tokens=4096,
+        max_new_tokens=MAX_NEW_TOKENS,
         # Rows per cycle, now sampled rather than taken from the head. One
         # measured cycle spent 42 minutes generating and training networks
         # against 8 minutes fine-tuning; the corpus is the cheap half and was
         # being starved. Raising this rebalances without touching the
         # expensive half.
+        # Rows per cycle. 2048 at 8-step accumulation is 231 optimiser steps,
+        # which was thin for one task and is far too thin for ten: the
+        # auxiliary tasks need enough gradient to register at all. Doubling
+        # this doubles the steps and costs only fine-tuning time, which is the
+        # cheap half of the cycle.
         max_prompts=2048,
         only_best_accuracy=False,
-        learning_rate=1e-5,
+        # Was 1e-5, which is a full-finetune rate, not a LoRA one. Measured
+        # consequence: training loss sat at 0.0501 and flat from step 96 to
+        # step 231 with a gradient norm of 0.21 -- the adapter barely moved,
+        # and no cycle ever beat the 0.9708 the base model reached before any
+        # fine-tuning. Standard for r=32 is 1e-4 to 3e-4; this is the bottom of
+        # that range, because the risk of going higher is the adapter damaging
+        # the base model's ability to write code at all. Watch valid_rate: if
+        # it falls, this is why.
+        learning_rate=1e-4,
+        # Cosine decayed to 7.5e-7 by step 192 of 231, so the second half of
+        # every cycle was a no-op that still cost 76 minutes. A run that
+        # fine-tunes 16 times wants a rate that stays up within each cycle.
+        lr_scheduler='constant_with_warmup',
+        # Five steps of warmup made sense at 231 steps; at ~460 it is a
+        # rounding error, and a constant schedule needs a real ramp to avoid
+        # a large first update.
+        warmup_steps=20,
         lora_alpha=64,
         suppress_thinking=True,
         use_unsloth=True,

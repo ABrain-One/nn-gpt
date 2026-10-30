@@ -361,27 +361,48 @@ Give only the ones you are changing, and omit the block entirely if you are chan
 baseline's values are stated below; they are the ones it was measured at, not ones chosen for your \
 architecture, and a design that wants a different learning rate has to ask for it here.
 
-The input pipeline is also not in the file. The baseline's own transform module is shown below; to \
-replace it, add one <tr> block holding a complete module with the same entry point, \
-`def transform(_)` returning a `torchvision.transforms.Compose`:
+The <hp> block is not limited to those three. If your design needs a hyperparameter of its own -- \
+a normalisation epsilon, a patch size, a mixup weight, a flag -- name it in \
+supported_hyperparameters() and give it a value in <hp>. Those two have to agree exactly: \
+supported_hyperparameters() returns the names the file really takes out of prm, every one of them \
+gets its value from <hp> or from the standard set, and a name in neither place is a prm key that \
+will not exist when the file reads it.
+
+The input pipeline is also not in the file, and it is scored with your architecture: the baseline's \
+accuracy below was measured with the module shown under it, and yours will be measured with the one \
+you return. So every answer ends with exactly one <tr> block, holding a complete module with the \
+same entry point, `def transform(_)` returning a `torchvision.transforms.Compose`:
 
 <tr>
 import torchvision.transforms as transforms
 def transform(_):
-    return transforms.Compose([...])
+    return transforms.Compose([transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip(), transforms.ToTensor()])
 </tr>
 
-Omit the block to keep the baseline's pipeline. One epoch is a single pass, so augmentation that \
-speeds early convergence is worth more here than augmentation that only pays off over many epochs. \
-Nothing else about the training protocol is yours to set.
+This block is required, not optional. If the baseline's pipeline is already the right one for your \
+architecture, return it unchanged -- but say so deliberately rather than by leaving the block out. \
+One epoch is a single pass, so augmentation that speeds early convergence is worth more here than \
+augmentation that only pays off over many epochs. Nothing else about the training protocol is \
+yours to set.
 
 Keep class Net, supported_hyperparameters, train_setup and learn: the file is evaluated through \
-them. Use only PyTorch, torchvision and torchvision.transforms. Pretrained backbones are allowed: which backbone, how many, where each is cut, how their features are fused, and the stem and head built around them for this input size are all yours to choose. The accuracy to beat below was measured under the same rules, so simply loading a pretrained backbone is not by itself an improvement over it.
+them. Everything you read out of prm must be named in supported_hyperparameters, and everything \
+named there must be read: the framework supplies exactly the declared keys, so index prm directly \
+as prm['lr'] and never defend against a missing one -- a key that is absent is an error in the \
+declaration, not something to work around.
+
+Build every layer in __init__ and move it to the device you were given; nothing may be constructed \
+inside forward, which leaves the new weights on the CPU while the data is on the GPU.
+
+torchvision.transforms.Normalize takes two sequences, a mean and a standard deviation, not six \
+numbers: write transforms.Normalize(*norm) and let the dataset supply them. Use only PyTorch, torchvision and torchvision.transforms. Pretrained backbones are allowed: which backbone, how many, where each is cut, how their features are fused, and the stem and head built around them for this input size are all yours to choose. The accuracy to beat below was measured under the same rules, so simply loading a pretrained backbone is not by itself an improvement over it.
 One epoch is a single pass over the data, so favour fast early convergence over regularisation \
 that only pays off over many epochs.
 
-Then give one <reason> block: one short sentence per change. Begin your answer with <edit> or \
-<nn> immediately and write no prose before or between the blocks."""
+Answer in this order and nothing else: the <edit> blocks (or one <nn> block), then <hp> if you are \
+changing a hyperparameter, then the required <tr> block, then one <reason> block of one short \
+sentence per change. Begin with <edit> or <nn> immediately and write no prose before or between \
+the blocks."""
 
 
 USER_PROMPT = """\
@@ -429,17 +450,21 @@ def transform_prompt_block(record: Record) -> str:
 
 
 def transform_answer_block(a: Record, b: Record) -> str:
-    """A <tr> block for the target's pipeline, when it is not the baseline's.
+    """The <tr> block for the target's pipeline. Always, when one is known.
 
-    The corpus has to demonstrate every block the system prompt asks for, or
-    the model is being told about a format it never sees used. LEMUR records
-    carry transform_code, so improving pairs that differ in their pipeline --
-    not only in their layers -- can teach that axis directly.
+    This used to fire only when the target's transform differed from the
+    baseline's, which on a single-dataset corpus is almost never: measured,
+    zero generations across a whole cycle contained a <tr> block, at epoch 0,
+    before any fine-tuning. The prompt asked for it as an optional extra and
+    the model declined; a corpus whose targets never carry one would then have
+    taught the omission from cycle 1 regardless.
+
+    So the block is now unconditional and the prompt requires it. A target that
+    keeps the baseline's pipeline says so by returning it, which is also what
+    the prompt asks a generation to do -- train and test demand the same thing.
     """
-    code = (b.transform_code or "").strip()
-    if not code or (b.transform or "") == (a.transform or ""):
-        return ""
-    if code == (a.transform_code or "").strip():
+    code = (b.transform_code or a.transform_code or "").strip()
+    if not code:
         return ""
     return f"\n<tr>{code}</tr>"
 
@@ -557,6 +582,7 @@ def render_example(a: Record, b: Record, cfg, ceiling, neighbours=()) -> Optiona
                  # the trainer can balance over families instead of over rows.
                  "baseline_family": family_of(a.nn),
                  "target_family": family_of(b.nn),
+                 "task": "improve",
                  "format": kind,
                  "edit_blocks": len(parse_edits(body)) if kind == "edit" else 0},
     }
@@ -804,6 +830,206 @@ def holdout_members(names, holdout_frac, seed, pinned_seed_file=None,
     return out
 
 
+#: How many measured standard deviations a pair's gain must clear.
+NOISE_SIGMAS = float(os.environ.get("NNGPT_NOISE_SIGMAS", "3") or 3)
+
+
+def _noise_floor(out_dir, configured) -> float:
+    """The larger of the configured gain and what repeat measurements say.
+
+    Reads the repeat spread stage2.py recorded for this run. Absent (cycle 0,
+    or the ladder turned off) the configured value stands, so this can only
+    ever tighten the threshold, never loosen it.
+    """
+    try:
+        from ab.gpt.util.Const import nngpt_dir
+        paths = sorted(Path(nngpt_dir).glob("llm/epoch/*/synth_nn/stage2_results.json"))
+    except Exception:
+        return configured
+    stds = []
+    for p in paths:
+        try:
+            payload = json.loads(Path(p).read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        v = payload.get("repeat_std")
+        if isinstance(v, (int, float)) and v > 0:
+            stds.append(float(v))
+    if not stds:
+        return configured
+    measured = NOISE_SIGMAS * (sum(stds) / len(stds))
+    if measured <= configured:
+        print(f"[edit-pairs] noise floor: {NOISE_SIGMAS:.0f} sigma over "
+              f"{len(stds)} stage-2 cycle(s) is {measured:.4f}, below the "
+              f"configured {configured:.4f}; keeping the configured value",
+              flush=True)
+        return configured
+    print(f"[edit-pairs] noise floor raised {configured:.4f} -> "
+          f"{measured:.4f} ({NOISE_SIGMAS:.0f} sigma of the measured repeat "
+          f"spread over {len(stds)} cycle(s))", flush=True)
+    return measured
+
+
+#: Smallest cluster a test baseline may be taken from.
+#:
+#: A seed needs neighbours: training prompts carry example edits from the
+#: baseline's own cluster, and a seed whose cluster has none is tested on a
+#: prompt shape it never saw. Holding one member out of a cluster of 3 leaves 2
+#: behind, which is enough for context.
+SEED_CLUSTER_MIN = int(os.environ.get("NNGPT_SEED_CLUSTER_MIN", "3") or 3)
+
+#: Name prefixes a test baseline may never be drawn from, comma separated.
+#:
+#: Set to this run's own nn_name_prefix. A model this pipeline produced is good
+#: training data -- it is measured, and a (parent -> child) pair carrying a
+#: real gain is exactly the signal the corpus is built on -- but it is poor
+#: test data: a benchmark made of your own outputs measures editing your own
+#: outputs, and it drifts, because every cycle changes what the test set is
+#: made of. That is the opposite of the frozen benchmark the pinned seeds are
+#: meant to be.
+#:
+#: Without this the fraction is left to cluster-size accidents: generated
+#: models cluster together, their clusters grow past SEED_CLUSTER_MAX, and they
+#: drop out of the holdout eventually -- but a new one unlike the others still
+#: lands in a small cluster and can be drawn. Measured: 10 of 60 held-out
+#: baselines were llm-*, and 7 of 30 pinned seeds in an earlier run.
+#:
+#: A prefix is the right instrument here and nowhere else: "llm-" is a fact
+#: about where the model came from, not a claim about what it looks like.
+#: Read at call time, not bound at import: the run script sets the variable
+#: inside prepare(), which runs after this module is imported, so a constant
+#: evaluated here would always be empty.
+def holdout_exclude_prefixes() -> tuple:
+    return tuple(p.strip() for p in os.environ.get(
+        "NNGPT_HOLDOUT_EXCLUDE_PREFIXES", "").split(",") if p.strip())
+
+
+#: How many candidate baselines to withhold, as a multiple of the test set.
+#:
+#: Taking one from every eligible cluster withheld 173 models so that 30 could
+#: be used -- about 143 removed from the training pairs for no benefit, since
+#: nothing is ever measured on them. A reserve is still wanted, because
+#: emit_pinned_seeds picks by accuracy and a set of exactly 30 would leave it no
+#: choice at all, but twice the test set is enough for that.
+HOLDOUT_RESERVE = float(os.environ.get("NNGPT_HOLDOUT_RESERVE", "2") or 2)
+
+
+#: Largest cluster a test baseline may be taken from.
+#:
+#: The pair-rich neighbourhoods are the large ones, and the hashed holdout used
+#: to take members out of them -- punching holes in exactly the clusters the
+#: corpus is built from. Above this size a cluster is never touched and
+#: contributes every member to training.
+SEED_CLUSTER_MAX = int(os.environ.get("NNGPT_SEED_CLUSTER_MAX", "10") or 10)
+
+
+def _excluded_from_holdout(name, prefixes=None) -> bool:
+    """Is this model barred from the test set by where it came from?"""
+    prefixes = holdout_exclude_prefixes() if prefixes is None else prefixes
+    if not prefixes:
+        return False
+    text = str(name or "")
+    return any(text.startswith(p if p.endswith("-") else p + "-")
+               for p in prefixes)
+
+
+def holdout_from_small_clusters(cluster_id_of, min_size=None, max_size=None,
+                                seed=17, pinned_seed_file=None,
+                                min_holdout=30, per_cluster=1) -> set:
+    """Test baselines taken one per small cluster, leaving large ones whole.
+
+    Two things the hashed holdout could not do. It drew uniformly over models,
+    so it removed members from the biggest clusters -- the ones that supply
+    almost all the training pairs -- and it could leave a seed with no
+    neighbours at all, which is a train/test prompt mismatch.
+
+    Here a cluster in [min_size, max_size] contributes exactly one baseline and
+    keeps the rest for training, so every seed is guaranteed real neighbour
+    context; a cluster above max_size contributes none and stays intact. One
+    seed per cluster also means 30 seeds are 30 distinct architectures, which
+    makes "this architecture already exists in the database" unlikely rather
+    than routine.
+
+    Selection inside a cluster is by a stable hash, so it is reproducible and
+    independent of accuracy. The band widens upward only if it cannot fill
+    min_holdout.
+    """
+    import hashlib
+
+    def h_of(n):
+        return int.from_bytes(
+            hashlib.sha1(f"{seed}:{n}".encode()).digest()[:4], "big") / 2**32
+
+    min_size = SEED_CLUSTER_MIN if min_size is None else min_size
+    max_size = SEED_CLUSTER_MAX if max_size is None else max_size
+
+    pinned = set()
+    if pinned_seed_file and Path(pinned_seed_file).is_file():
+        try:
+            pinned = set(json.loads(Path(pinned_seed_file).read_text(
+                encoding="utf-8")).get("nn") or [])
+        except Exception:
+            pinned = set()
+
+    members_of = collections.defaultdict(list)
+    for name, cid in cluster_id_of.items():
+        members_of[cid].append(name)
+
+    target = max(min_holdout, int(min_holdout * max(1.0, HOLDOUT_RESERVE)))
+
+    def draw(hi):
+        out = set(pinned)
+        eligible = []
+        for cid, members in members_of.items():
+            if min_size <= len(members) <= hi:
+                eligible.append((cid, members))
+        # Clusters that already hold a pinned seed come first -- the pinned set
+        # is the frozen benchmark and cannot be dropped -- then the rest in a
+        # stable hashed order, so the reserve is reproducible and is not the
+        # database's own ordering.
+        eligible.sort(key=lambda kv: (
+            0 if any(m in pinned for m in kv[1]) else 1,
+            hashlib.sha1(f"{seed}:{kv[0]}".encode()).hexdigest()))
+        for cid, members in eligible:
+            if len(out) >= target:
+                break
+            # Never take so many that fewer than 2 are left for context.
+            room = min(per_cluster, max(0, len(members) - 2))
+            if room < 1:
+                continue
+            if any(m in out for m in members):
+                continue
+            takeable = [m for m in sorted(members, key=h_of)
+                        if not _excluded_from_holdout(m)]
+            if not takeable:
+                continue
+            for m in takeable[:room]:
+                out.add(m)
+        return out, len(eligible)
+
+    hi = max_size
+    held, eligible = draw(hi)
+    while len(held) < min_holdout and hi < 10 ** 6:
+        hi *= 2
+        held, eligible = draw(hi)
+        print(f"[edit-pairs] seed cluster band widened to "
+              f"[{min_size}, {hi}] to reach {len(held)} test baseline(s)",
+              flush=True)
+    _prefixes = holdout_exclude_prefixes()
+    if _prefixes:
+        barred = sum(1 for n in cluster_id_of if _excluded_from_holdout(n, _prefixes))
+        print(f"[edit-pairs] holdout: {barred} model(s) with prefix "
+              f"{'/'.join(_prefixes)} are training-only "
+              f"(this run's own output is not its own benchmark)", flush=True)
+    print(f"[edit-pairs] holdout: {len(held)} baseline(s), one per cluster, "
+          f"from {eligible} cluster(s) sized [{min_size}, {hi}] "
+          f"(reserve {HOLDOUT_RESERVE:g}x of {min_holdout}); the other "
+          f"{max(0, eligible - len(held))} eligible and "
+          f"{len([1 for m in members_of.values() if len(m) > hi])} larger "
+          f"cluster(s) stay whole for training", flush=True)
+    return held
+
+
 def build(out_dir, task="img-classification", dataset="cifar-10", metric="acc",
           epoch=1, nn_prefixes=None, min_observed_gain=0.05, max_changed_lines=40,
           per_baseline=12, val_frac=0.08, holdout_frac=0.12, seed=17,
@@ -812,6 +1038,14 @@ def build(out_dir, task="img-classification", dataset="cifar-10", metric="acc",
           n_anchors=24, min_holdout=30, holdout_min_per_family=2) -> dict:
     rng = random.Random(seed)
     cfg = dict(task=task, dataset=dataset, metric=metric, epoch=epoch)
+
+    # A pair rests on two single training runs, so the gain it claims has to
+    # clear the noise of one. stage2.py re-trains the best candidates several
+    # times and writes the spread it measures; once that number exists it is a
+    # better floor than a constant guessed in advance. Measured on one run: the
+    # same model scored 0.9562 and 0.9621, so a 0.05 threshold admits pairs
+    # whose entire gain could be noise.
+    min_observed_gain = _noise_floor(out_dir, min_observed_gain)
 
     # A cluster is a set of architecturally similar models: one similarity band
     # from LEMUR, or -- offline, where there is no database -- the class-name
@@ -990,12 +1224,26 @@ def build(out_dir, task="img-classification", dataset="cifar-10", metric="acc",
     # 289 models at 0.12 it left 37 against a TEST_NN of 30, which is no margin
     # at all: a slightly smaller corpus and the run fails at the seed assert
     # rather than here, where the cause is visible.
-    holdout = holdout_members([r.nn for r in records], holdout_frac, seed,
-                              pinned_seed_file=pinned_seed_file,
-                              min_per_family=holdout_min_per_family,
-                              group_of=group_of)
+    known = {r.nn: group_of(r.nn) for r in records}
+    holdout = set()
+    if SEED_CLUSTER_MIN > 0:
+        try:
+            holdout = holdout_from_small_clusters(
+                known, seed=seed, pinned_seed_file=pinned_seed_file,
+                min_holdout=min_holdout)
+        except Exception as exc:
+            print(f"[edit-pairs] cluster-banded holdout failed "
+                  f"({type(exc).__name__}: {exc}); falling back to the hashed "
+                  f"holdout", flush=True)
+            holdout = set()
     if len(holdout) < min_holdout:
+        holdout = holdout_members([r.nn for r in records], holdout_frac, seed,
+                                  pinned_seed_file=pinned_seed_file,
+                                  min_per_family=holdout_min_per_family,
+                                  group_of=group_of)
         for frac in (0.2, 0.3, 0.4):
+            if len(holdout) >= min_holdout:
+                break
             holdout = holdout_members([r.nn for r in records], frac, seed,
                                       pinned_seed_file=pinned_seed_file,
                                       min_per_family=holdout_min_per_family,
@@ -1003,7 +1251,6 @@ def build(out_dir, task="img-classification", dataset="cifar-10", metric="acc",
             if len(holdout) >= min_holdout:
                 print(f"[edit-pairs] holdout raised to {frac:.0%} to reach "
                       f"{len(holdout)} test baselines", flush=True)
-                break
     if len(holdout) < min_holdout:
         raise RuntimeError(
             f"only {len(holdout)} baselines can be held out of {len(records)} "
@@ -1080,6 +1327,29 @@ def build(out_dir, task="img-classification", dataset="cifar-10", metric="acc",
     n_val = max(1, int(len(examples) * val_frac))
     val, train = examples[:n_val], examples[n_val:]
 
+    # Auxiliary tasks over the same training pool. Added after the split, and
+    # after the statistics below are computed over `examples`, so the
+    # improvement corpus is reported exactly as before and the only thing that
+    # changes is what the trainer is fed. Nothing here sees a held-out
+    # baseline: the run is still validated on the improvement task alone.
+    aux = []
+    try:
+        from ab.gpt.util.Const import nngpt_dir as _nngpt_dir
+        from ab.gpt.util.data import aux_tasks
+        aux = aux_tasks.build_all(
+            train_pool, pairs, train_clusters, cfg, seed=seed,
+            nngpt_dir=_nngpt_dir, n_improve=len(train))
+        for e in aux:
+            meta = e["meta"]
+            base = meta.get("baseline_nn")
+            if base:
+                meta["baseline_cluster"] = cluster_id_of.get(base, "")
+        train = train + aux
+        rng.shuffle(train)
+    except Exception as exc:
+        print(f"[aux] auxiliary tasks skipped: {type(exc).__name__}: {exc}",
+              flush=True)
+
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -1098,8 +1368,35 @@ def build(out_dir, task="img-classification", dataset="cifar-10", metric="acc",
     for r in hold_pool:
         nb = [x for x in cluster_of.get(r.nn, ()) if x.nn not in holdout_names]
         seed_ctx[r.nn] = render_context(r, nb) if nb else ""
-    (out / "seed_context.json").write_text(
-        json.dumps(seed_ctx, indent=1), encoding="utf-8")
+    # Written once. Every cycle rebuilds the corpus, and rewriting this file
+    # each time silently changed the 30 test prompts underneath a ceiling
+    # (NNGPT_DESIGN_CEILING) that stays frozen at cycle 0 -- so the benchmark
+    # drifted while the target it was measured against did not. The pinned
+    # seeds are fixed for the run; their context has to be too.
+    ctx_path = out / "seed_context.json"
+    freeze = os.environ.get("NNGPT_FREEZE_SEED_CONTEXT", "1").strip().lower() \
+        not in ("0", "false", "no", "off")
+    if ctx_path.is_file() and freeze:
+        try:
+            kept = json.loads(ctx_path.read_text(encoding="utf-8"))
+        except Exception:
+            kept = {}
+        # Merged, not compared. Two writers share this file -- build() writes
+        # every held-out baseline, prepare() writes only the 30 pinned ones --
+        # so an all-or-nothing comparison never matched and the file was
+        # rewritten every cycle, which is the drift the freeze exists to stop.
+        # A baseline that already has context keeps it byte for byte; new ones
+        # are added. The test prompts therefore cannot change under a frozen
+        # ceiling, while the holdout is still free to grow.
+        frozen = sum(1 for n, v in seed_ctx.items() if kept.get(n))
+        for name, old_ctx in kept.items():
+            if old_ctx and name in seed_ctx:
+                seed_ctx[name] = old_ctx
+        print(f"[edit-pairs] seed context: {frozen} baseline(s) kept frozen, "
+              f"{len(seed_ctx) - frozen} new", flush=True)
+        ctx_path.write_text(json.dumps(seed_ctx, indent=1), encoding="utf-8")
+    else:
+        ctx_path.write_text(json.dumps(seed_ctx, indent=1), encoding="utf-8")
     with_ctx = sum(1 for v in seed_ctx.values() if v)
     print(f"[edit-pairs] neighbour context for {with_ctx}/{len(seed_ctx)} "
           f"held-out baselines", flush=True)
@@ -1155,6 +1452,7 @@ def build(out_dir, task="img-classification", dataset="cifar-10", metric="acc",
         "train_baselines": len(train_pool), "holdout_baselines": len(hold_pool),
         "pairs": len(pairs), "train_examples": len(train), "val_examples": len(val),
         "min_observed_gain": min_observed_gain, "max_changed_lines": max_changed_lines,
+        "noise_sigmas": NOISE_SIGMAS,
         "changed_lines_p50": changed[len(changed) // 2],
         "changed_lines_p90": changed[int(0.9 * (len(changed) - 1))],
         # Target concentration is the thing to watch: if a few networks anchor
@@ -1180,10 +1478,32 @@ def build(out_dir, task="img-classification", dataset="cifar-10", metric="acc",
         "holdout_families": family_histogram(r.nn for r in hold_pool),
         "record_clusters": len(set(cluster_id_of.values())),
         "holdout_clusters": len({group_of(r.nn) for r in hold_pool}),
+        "seed_cluster_band": [SEED_CLUSTER_MIN, SEED_CLUSTER_MAX],
+        "holdout_reserve": HOLDOUT_RESERVE,
+        "holdout_exclude_prefixes": list(holdout_exclude_prefixes()),
+        "holdout_own_output": sum(
+            1 for r in hold_pool if _excluded_from_holdout(r.nn)),
+        # One baseline per cluster means this should equal holdout_baselines.
+        "holdout_per_cluster_max": max(
+            (collections.Counter(group_of(r.nn) for r in hold_pool).values()),
+            default=0),
         "pair_baseline_families": family_histogram(
             e["meta"]["baseline_nn"] for e in examples),
         "transform_changed_pairs": sum(
             1 for e in examples if e["meta"].get("transform_changed")),
+        # How many targets carry the <tr> block the prompt requires. If this is
+        # 0 the model is being asked for a format the corpus never shows, which
+        # is exactly how the transform axis stayed empty for a whole run.
+        "pairs_with_transform_block": sum(
+            1 for e in examples
+            if "<tr>" in e["messages"][2]["content"]),
+        # Training rows that are not the improvement task. The run is still
+        # scored on improvement only; these exist so the loss cannot be
+        # lowered by learning the shape of one answer.
+        "aux_rows": len(aux),
+        "aux_by_task": dict(collections.Counter(
+            e["meta"].get("task") for e in aux)),
+        "train_rows_total": len(train),
         "round_trip": report,
         # Said plainly: there is no factor model here, so a pair rests on two
         # single training runs and the only guard is the size of the gain.

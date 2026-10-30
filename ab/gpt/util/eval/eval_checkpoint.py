@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional, Union
 
-import ab.nn.util.CodeEval as codeEvaluator
 import ab.nn.util.Train as train_runtime
 import ab.nn.util.db.Write as DB_Write
 from ab.nn.util.Const import ab_root_path, default_epoch_limit_minutes
@@ -41,7 +40,7 @@ def train_and_eval_with_checkpoint(
     export_onnx: bool = False,
     epoch_limit_minutes=default_epoch_limit_minutes,
     transform_dir=None,
-) -> tuple[str, float, float, float]:
+) -> tuple[str, float, float]:
     """
     Train/evaluate NN code and persist state_dict to checkpoint_path.
 
@@ -59,11 +58,9 @@ def train_and_eval_with_checkpoint(
     trainer = None
     accuracy = 0.0
     accuracy_to_time = 0.0
-    res = {"score": 0.0}
     try:
         with open(temp_file_path, "w", encoding="utf-8") as handle:
             handle.write(nn_code)
-        res = codeEvaluator.evaluate_single_file(temp_file_path)
         out_shape, minimum_accuracy, train_set, test_set = load_dataset(
             task, dataset, prm["transform"], transform_dir
         )
@@ -128,4 +125,4 @@ def train_and_eval_with_checkpoint(
             pass
         release_memory()
 
-    return model_name, accuracy, accuracy_to_time, res["score"]
+    return model_name, accuracy, accuracy_to_time

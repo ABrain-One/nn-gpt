@@ -7,6 +7,7 @@ import re
 import shutil
 from pathlib import Path
 
+from ab.nn.util.Util import uuid4
 from ab.gpt.util.Const import (hp_file, new_lemur_nn_dir, new_lemur_stat_dir,
                                new_lemur_transform_dir, new_nn_file,
                                transformer_file)
@@ -344,16 +345,108 @@ def extract_delta(txt):
     return None
 
 
-def generated_transform_name(code) -> str:
-    """Stable name for a generated transform module, from its own text.
+#: Generated transform names: "tr-<uid>".
+#:
+#: A hyphen, never an underscore. The dataset's own transforms are named this
+#: way -- bf-v1-CenterCrop_Pad and 223 others -- so the loader clearly resolves
+#: them by file and not by importing ab.nn.transform.<name>, where a hyphen
+#: would not be a legal module name. Not configurable: an underscore separator
+#: would produce exactly the name shape this avoids.
+TRANSFORM_NAME_SEP = "-"
 
-    Content-addressed for the same reason model names are: the same pipeline
-    produced in two cycles is one module in the submission, and a statistics row
-    naming it stays valid when the run is repeated.
+TRANSFORM_NAME_PREFIX = "tr"
+
+
+def normalise_transform_code(code) -> str:
+    """A transform's text with formatting that cannot change behaviour removed.
+
+    Blank lines and trailing whitespace only. Measured need: one cycle shipped
+    six generated transforms of which three were the same pipeline differing by
+    a blank line after the import, and two more were another such pair -- six
+    files, three transforms, and none of them checked against the ones the
+    dataset already holds.
     """
-    import hashlib
-    digest = hashlib.md5((code or "").strip().encode("utf-8")).hexdigest()[:12]
-    return f"gen_{digest}"
+    return "\n".join(line.rstrip() for line in (code or "").strip().splitlines()
+                      if line.strip())
+
+
+def transform_uid(code) -> str:
+    """The project's standard uid, over the normalised transform text.
+
+    The same ab.nn.util.Util.uuid4 the dataset uses to name a model, so a
+    transform is identified the way everything else in the pipeline is. No
+    local fallback: a divergent uid would silently split one transform into
+    two, which is the bug this exists to fix.
+    """
+    return uuid4(normalise_transform_code(code))
+
+
+def known_transforms() -> dict:
+    """``{uid: name}`` for every transform already available by name.
+
+    Both sources that matter: the transforms the installed dataset ships, and
+    the ones earlier cycles of this run already generated and submitted. A
+    transform found here needs no new file and no new name -- the row simply
+    refers to the name that already exists.
+    """
+    index = {}
+    dirs = []
+    try:
+        import importlib.util
+        spec = importlib.util.find_spec("ab.nn")
+        roots = []
+        if spec is not None:
+            if spec.origin:
+                roots.append(Path(spec.origin).parent)
+            # A namespace package has no origin, only search locations.
+            for loc in (spec.submodule_search_locations or ()):
+                roots.append(Path(loc))
+        for root in roots:
+            d = root / "transform"
+            if d.is_dir() and d not in dirs:
+                dirs.append(d)
+    except Exception:
+        pass
+    dirs.append(Path(new_lemur_transform_dir))
+    for d in dirs:
+        try:
+            if not d.is_dir():
+                continue
+            for f in sorted(d.glob("*.py")):
+                if f.name.startswith("_"):
+                    continue
+                try:
+                    code = f.read_text(encoding="utf-8", errors="replace")
+                except Exception:
+                    continue
+                if "def transform" not in code:
+                    continue
+                # First writer wins, and the dataset's own directory is first,
+                # so a dataset name is never shadowed by a generated one.
+                index.setdefault(transform_uid(code), f.stem)
+        except Exception:
+            continue
+    return index
+
+
+def resolve_transform_name(code):
+    """``(name, is_new)`` for a transform. Reuses an existing name when it can.
+
+    This is the check that was missing: a generated transform was named from a
+    hash of its raw text, so the same pipeline written with a different blank
+    line became a new transform, and one the dataset already had under
+    norm_32_flip became a second copy under a generated name.
+    """
+    uid = transform_uid(code)
+    existing = known_transforms().get(uid)
+    if existing:
+        return existing, False
+    return f"{TRANSFORM_NAME_PREFIX}{TRANSFORM_NAME_SEP}{uid}", True
+
+
+def generated_transform_name(code) -> str:
+    """The name a transform should be recorded under. Kept for callers."""
+    return resolve_transform_name(code)[0]
 
 
 def copy_generated_transform(gen_nn_dir, name=None):
@@ -385,8 +478,13 @@ def copy_generated_transform(gen_nn_dir, name=None):
                     name = prm['transform']
             except Exception:
                 name = None
-    if not name or not str(name).startswith('gen_'):
-        name = generated_transform_name(code)
+    resolved, is_new = resolve_transform_name(code)
+    if not is_new:
+        # Already in the dataset under its own name. Shipping a second copy
+        # under a different name is exactly the duplication this avoids.
+        return resolved
+    if not name or name != resolved:
+        name = resolved
     Path(new_lemur_transform_dir).mkdir(parents=True, exist_ok=True)
     target = new_lemur_transform_dir / f'{name}.py'
     if not target.exists():
@@ -395,11 +493,34 @@ def copy_generated_transform(gen_nn_dir, name=None):
 
 
 def copy_to_lemur(gen_nn_dir, name, task, dataset, metric):
+    """Stage one trained network and its statistics for submission.
+
+    A submission is a network *and* the measurements behind it. This used to
+    create the statistics directory first and then copy whatever numbered JSON
+    it found, so a model whose statistics never reached gen_nn_dir -- the
+    trainer warns and carries on when save_path is unset -- was staged with an
+    empty directory beside it. The archive counted the directory, reported the
+    record, and the submission claimed a measurement it did not have.
+
+    So the statistics decide. No numbered JSON, nothing staged.
+    """
+    try:
+        stats = sorted(f for f in os.listdir(gen_nn_dir)
+                       if re.match(r'[0-9]+\.json$', f))
+    except OSError as exc:
+        print(f'[submission] {name} skipped: cannot read {gen_nn_dir} ({exc})',
+              flush=True)
+        return
+    if not stats:
+        print(f'[submission] {name} skipped: no statistics in {gen_nn_dir}; '
+              f'a network is not submitted without the measurement behind it',
+              flush=True)
+        return
     Path(new_lemur_nn_dir).mkdir(parents=True, exist_ok=True)
     shutil.copyfile(gen_nn_dir / new_nn_file, new_lemur_nn_dir / f'{name}.py')
     dr_nm = new_lemur_stat_dir / f"{task}_{dataset}_{metric}_{name}"
     Path(dr_nm).mkdir(parents=True, exist_ok=True)
-    for f_nm in [f for f in os.listdir(gen_nn_dir) if re.match(r'[0-9]+\.json', f)]:
+    for f_nm in stats:
         shutil.copyfile(gen_nn_dir / f_nm, dr_nm / f_nm)
     try:
         written = copy_generated_transform(gen_nn_dir)

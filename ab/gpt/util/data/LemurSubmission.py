@@ -76,6 +76,42 @@ def _merge_tree(src: Path, dst: Path, tally: dict):
         tally["moved"] += 1
 
 
+def _record_dirs(train_dir: Path):
+    """Statistics directories that hold at least one numbered JSON."""
+    if not train_dir.is_dir():
+        return []
+    out = []
+    for d in sorted(train_dir.iterdir()):
+        if d.is_dir() and any(p.is_file() and p.stem.isdigit() and p.suffix == ".json"
+                              for p in d.iterdir()):
+            out.append(d)
+    return out
+
+
+def _prune_empty_records(train_dir: Path) -> int:
+    """Drop statistics directories with no measurement in them.
+
+    Repairs what the earlier copy_to_lemur left behind: a directory per model
+    whether or not its statistics existed. An empty one is not a record, and
+    leaving it makes the archive look complete when it is not.
+    """
+    if not train_dir.is_dir():
+        return 0
+    removed = 0
+    for d in sorted(train_dir.iterdir()):
+        if not d.is_dir():
+            continue
+        if any(p.is_file() and p.stem.isdigit() and p.suffix == ".json"
+               for p in d.iterdir()):
+            continue
+        try:
+            shutil.rmtree(d)
+            removed += 1
+        except Exception:
+            pass
+    return removed
+
+
 def archive_submission(base_dir, archive=None):
     """Move submission-ready networks and statistics out of the run directory.
 
@@ -100,9 +136,14 @@ def archive_submission(base_dir, archive=None):
         print(f"[LEMUR] Could not archive {source}: {exc}")
         return None
 
+    pruned = _prune_empty_records(archive / "train")
     models = len(list((archive / "nn").glob("*.py"))) if (archive / "nn").is_dir() else 0
-    records = len([p for p in (archive / "train").iterdir()
-                   if p.is_dir()]) if (archive / "train").is_dir() else 0
+    # Only a directory that actually holds a measurement counts. Counting bare
+    # directories reported records the archive did not have.
+    records = len(_record_dirs(archive / "train"))
+    if pruned:
+        print(f"[LEMUR] Removed {pruned} empty statistics director"
+              f"{'y' if pruned == 1 else 'ies'} left by earlier runs")
     note = f", {tally['identical']} already present" if tally["identical"] else ""
     note += f", {tally['renamed']} renamed to avoid overwriting" if tally["renamed"] else ""
     print(f"[LEMUR] Moved {tally['moved']} file(s) to {archive}{note}; "

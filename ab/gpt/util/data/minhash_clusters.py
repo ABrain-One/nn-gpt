@@ -25,6 +25,7 @@ from __future__ import annotations
 import collections
 import json
 import os
+import random
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -86,6 +87,61 @@ def load_signatures(names: Iterable[str],
             continue
         out[name] = tuple(int(v) for v in values)
     return out
+
+
+#: Shingle width, matching ab/nn/stat/nn's own ``shingle_n``.
+SHINGLE_N = 7
+
+#: Permutations for a locally computed signature.
+NUM_PERM = 128
+
+_MERSENNE = (1 << 61) - 1
+_PERMS = None
+
+
+def _perms():
+    """Fixed permutation coefficients, so signatures are comparable."""
+    global _PERMS
+    if _PERMS is None:
+        rng = random.Random(0xA11CE)
+        _PERMS = [(rng.randrange(1, _MERSENNE), rng.randrange(0, _MERSENNE))
+                  for _ in range(NUM_PERM)]
+    return _PERMS
+
+
+def signature(code: str, shingle_n: int = SHINGLE_N) -> Optional[Tuple[int, ...]]:
+    """MinHash of a source file computed here, for code not yet in the dataset.
+
+    The dataset's own signatures only exist for models it already holds, and
+    the thing most in need of a similarity check is a candidate the model has
+    just produced: measured, all 60 valid generations of one run were the same
+    template with a different backbone string, and the duplicate check passed
+    every one of them because it compares graph identity, which a renamed
+    backbone changes.
+
+    Not comparable with the dataset's signatures -- a different permutation
+    family -- but self-consistent, which is all an intra-cycle comparison
+    needs.
+    """
+    import hashlib
+    words = (code or "").split()
+    if len(words) < shingle_n:
+        return None
+    shingles = {hashlib.blake2b(" ".join(words[i:i + shingle_n]).encode(),
+                                digest_size=8).digest()
+                for i in range(len(words) - shingle_n + 1)}
+    if not shingles:
+        return None
+    values = [int.from_bytes(sh, "big") % _MERSENNE for sh in shingles]
+    return tuple(min((a * v + b) % _MERSENNE for v in values)
+                 for a, b in _perms())
+
+
+def estimate_jaccard(a, b) -> float:
+    """Fraction of signature positions that agree."""
+    if not a or not b:
+        return 0.0
+    return _agreement(a, b)
 
 
 def _agreement(a: Sequence[int], b: Sequence[int]) -> float:
