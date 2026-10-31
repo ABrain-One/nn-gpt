@@ -10,18 +10,18 @@ Only new files; no existing file is changed.
 ## How to run
 ```bash
 # baseline
-python -m ab.gpt.util.knowledge.exp3.staged_alter --set SET.csv --vllm_url http://<server>/v1 --samples 5 --seed 3000 --out OUT --name staged_base
+python -m ab.gpt.act.alter.web_alter.exp3.staged_alter --set SET.csv --vllm_url http://<server>/v1 --samples 5 --seed 3000 --out OUT --name staged_base
 # with web knowledge: JSON {nn or family: text}
-python -m ab.gpt.util.knowledge.exp3.staged_alter --set SET.csv --vllm_url http://<server>/v1 --extra_info notes.json --samples 5 --seed 3000 --out OUT --name staged_web
+python -m ab.gpt.act.alter.web_alter.exp3.staged_alter --set SET.csv --vllm_url http://<server>/v1 --extra_info notes.json --samples 5 --seed 3000 --out OUT --name staged_web
 # train the generated models (Eval), chunk by chunk
-python -m ab.gpt.util.knowledge.run_eval_chunks OUT/staged_base OUT/staged_web
+python -m ab.gpt.act.alter.web_alter.run_eval_chunks OUT/staged_base OUT/staged_web
 ```
 `--set` is a CSV with a column `nn` listing the LEMUR models to alter. `--only`, `--samples`, `--workers` and the sampling settings are listed in `--help`. Any OpenAI-compatible vLLM endpoint works; tested with Llama-3.3-70B-Instruct-FP8.
 
 ## Files
-- `ab/gpt/util/knowledge/exp3/`: the two-stage pipeline (`staged_alter`, `edit_alter`, `comprehension`)
-- `ab/gpt/util/knowledge/exp2/`: the code the implement stage imports, and the smoke test
-- `ab/gpt/act/alter/web_alter.py` + `conf/prompt/test/NN_alter_web.json`: job building and vLLM backend
+- `ab/gpt/act/alter/web_alter/exp3/`: the two-stage pipeline (`staged_alter`, `edit_alter`, `comprehension`)
+- `ab/gpt/act/alter/web_alter/exp2/`: the code the implement stage imports, and the smoke test
+- `ab/gpt/act/alter/web_alter/__init__.py` + `conf/prompt/test/NN_alter_web.json`: job building and vLLM backend
 - `build_extra_info.py`, `retrieve.py`, `blocks.py`: turn retrieved web notes into `--extra_info`
 - `run_eval_chunks.py`: chunked training of generated models
 

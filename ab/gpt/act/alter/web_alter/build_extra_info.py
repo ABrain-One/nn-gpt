@@ -4,7 +4,7 @@ Differences from the pilot (retrieve.py): the search names the architecture fami
 papers about published families), and the question lists the blocks the network already uses and
 asks only for architectural changes it does not have yet (no training or augmentation tips).
 
-Usage:  python -m ab.gpt.util.knowledge.build_extra_info SET_CSV OUT_DIR
+Usage:  python -m ab.gpt.act.alter.web_alter.build_extra_info SET_CSV OUT_DIR
 Writes OUT_DIR/extra_info.json ({nn: suggestion}) and OUT_DIR/extra_info_details.jsonl.
 Resumable: networks already in extra_info.json are skipped, failed ones are retried on the next run.
 """
@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from ab.gpt.util.knowledge.retrieve import block_signature, retrieve
+from ab.gpt.act.alter.web_alter.retrieve import block_signature, retrieve
 
 
 def build_request_v2(family: str, signature: tuple, task: str = "CIFAR-10 image classification") -> dict:

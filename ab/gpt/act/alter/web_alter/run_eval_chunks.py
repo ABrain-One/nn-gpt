@@ -9,7 +9,7 @@ A folder that still has no result after 2 Eval attempts gets error.txt "EvalNoRe
 (another lab job filled the shared GPU during Experiment 3 and caused 11 out-of-memory failures, E38). Waits are
 logged in RUN_DIR/gpu_waits.log.
 
-Usage: python -m ab.gpt.util.knowledge.run_eval_chunks RUN_DIR [RUN_DIR ...] [--chunk 10]
+Usage: python -m ab.gpt.act.alter.web_alter.run_eval_chunks RUN_DIR [RUN_DIR ...] [--chunk 10]
 """
 import argparse
 import json
@@ -20,7 +20,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[4]
+REPO = next(p for p in Path(__file__).resolve().parents if (p / "ab" / "gpt").is_dir())  # repo root, at any depth
 DONE = ("eval_info.json", "error.txt", "eval_verification_failed.txt")
 
 

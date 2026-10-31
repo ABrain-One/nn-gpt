@@ -16,7 +16,7 @@ Per job:  edit prompt (+ web suggestions in the web condition) -> extract + appl
           messages are identical in both conditions, the suggestions are only in the first message)
           -> up to --max_repairs rounds. The last code that applied is saved for Eval.
 
-Usage: python -m ab.gpt.util.knowledge.exp2.delta_alter --set SET.csv --vllm_url URL [--extra_info JSON]
+Usage: python -m ab.gpt.act.alter.web_alter.exp2.delta_alter --set SET.csv --vllm_url URL [--extra_info JSON]
 """
 import argparse
 import ast
@@ -36,7 +36,7 @@ from ab.gpt.act.alter.web_alter import VLLMBackend, build_jobs, family, load_row
 from ab.gpt.util.Const import new_nn_file, new_out_file
 from ab.gpt.util.Util import extract_delta
 
-REPO = Path(__file__).resolve().parents[5]
+REPO = next(p for p in Path(__file__).resolve().parents if (p / "ab" / "gpt").is_dir())  # repo root, at any depth
 
 SYSTEM = ("You are an expert software engineer specialising in neural network optimisation. "
           "You improve PyTorch models with small, precise, targeted changes to the exact code you are given.")
@@ -122,7 +122,7 @@ def smoke(code, row, workdir, timeout):
     (workdir / "smoke_nn.py").write_text(code)
     row.to_pickle(workdir / "dataframe.df")
     try:
-        p = subprocess.run([sys.executable, "-m", "ab.gpt.util.knowledge.exp2.smoke", str(workdir / "smoke_nn.py"),
+        p = subprocess.run([sys.executable, "-m", "ab.gpt.act.alter.web_alter.exp2.smoke", str(workdir / "smoke_nn.py"),
                             str(workdir / "dataframe.df")], cwd=REPO, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired:
         return {"ok": False, "error": f"TimeoutError: building and training 2 batches took more than {timeout}s",

@@ -11,7 +11,7 @@ Everything else (feasibility, expected effect, reason) is saved for reading and 
 generation results. Uses only the vLLM server, not the GPU. This analysis step is also stage 1 of a multi-stage
 pipeline (analyse -> decide -> implement), so it is reusable.
 
-Usage: python -m ab.gpt.util.knowledge.exp3.comprehension --set SET.csv --extra_info JSON --vllm_url URL --name NAME
+Usage: python -m ab.gpt.act.alter.web_alter.exp3.comprehension --set SET.csv --extra_info JSON --vllm_url URL --name NAME
 """
 import argparse
 import ast
@@ -23,7 +23,7 @@ from datetime import datetime
 from pathlib import Path
 
 from ab.gpt.act.alter.web_alter import build_jobs, load_rows
-from ab.gpt.util.knowledge.exp3.edit_alter import Backend
+from ab.gpt.act.alter.web_alter.exp3.edit_alter import Backend
 
 SYSTEM = "You are an expert in neural network architecture. You analyse precisely and answer only in the requested format."
 
