@@ -1,6 +1,6 @@
 """Retrieve block-level improvement suggestions from the gist service.
 
-For each distinct block set (from ab.gpt.util.knowledge.blocks.ast_blocks),
+For each distinct block set (from ab.gpt.act.alter.web_alter.blocks.ast_blocks),
 build a search query and a question from the blocks the network CONTAINS only
 (never from blocks we expect it to lack), call the gist service in question
 mode, and save the results as JSON.
@@ -14,7 +14,7 @@ from pathlib import Path
 
 import httpx
 
-from ab.gpt.util.knowledge.blocks import ast_blocks
+from ab.gpt.act.alter.web_alter.blocks import ast_blocks
 
 GIST_URL = os.environ.get("KNOW_GIST_URL", "http://127.0.0.1:8999/gist/")
 NOT_BLOCKS = {"Sequential", "ModuleList", "ModuleDict", "Identity", "Parameter",

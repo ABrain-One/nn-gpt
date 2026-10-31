@@ -11,7 +11,7 @@ staged_base and staged_web measures the web information, not the effect of plann
 If stage 1 fails (no valid JSON after its retry), the job continues without a plan (recorded as stage1_ok=False);
 this rule is the same in both conditions.
 
-Usage: python -m ab.gpt.util.knowledge.exp3.staged_alter --set SET.csv --vllm_url URL [--extra_info JSON] --name NAME
+Usage: python -m ab.gpt.act.alter.web_alter.exp3.staged_alter --set SET.csv --vllm_url URL [--extra_info JSON] --name NAME
 """
 import argparse
 import hashlib
@@ -24,8 +24,8 @@ from importlib.metadata import version
 from pathlib import Path
 
 from ab.gpt.act.alter.web_alter import build_jobs, load_rows
-from ab.gpt.util.knowledge.exp3 import edit_alter as ea
-from ab.gpt.util.knowledge.exp3.comprehension import code_index, parse_json
+from ab.gpt.act.alter.web_alter.exp3 import edit_alter as ea
+from ab.gpt.act.alter.web_alter.exp3.comprehension import code_index, parse_json
 
 SYSTEM1 = "You are an expert in neural network architecture. You analyse precisely and answer only in the requested format."
 

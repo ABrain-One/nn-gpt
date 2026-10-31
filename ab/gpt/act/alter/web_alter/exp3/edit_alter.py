@@ -18,7 +18,7 @@ Changes against Experiment 2 (all apply to BOTH conditions):
   OOM: the smoke check already treats CUDA out-of-memory as an infrastructure result (no repair round); the code is
   kept and goes to Eval.
 
-Usage: python -m ab.gpt.util.knowledge.exp3.edit_alter --set SET.csv --vllm_url URL [--extra_info JSON] --name NAME
+Usage: python -m ab.gpt.act.alter.web_alter.exp3.edit_alter --set SET.csv --vllm_url URL [--extra_info JSON] --name NAME
        test on CPU without touching the GPU:  CUDA_VISIBLE_DEVICES= python -m ... --only MaxVit --samples 1
 """
 import argparse
@@ -36,9 +36,9 @@ from pathlib import Path
 
 from ab.gpt.act.alter.web_alter import build_jobs, family, load_rows
 from ab.gpt.util.Const import new_nn_file, new_out_file
-from ab.gpt.util.knowledge.exp2 import delta_alter as d2
+from ab.gpt.act.alter.web_alter.exp2 import delta_alter as d2
 
-REPO = Path(__file__).resolve().parents[5]
+REPO = next(p for p in Path(__file__).resolve().parents if (p / "ab" / "gpt").is_dir())  # repo root, at any depth
 
 PROMPT = """Task: improve the ARCHITECTURE of the baseline model below with a few targeted changes, \
 to increase its accuracy on CIFAR-10 image classification after 1 training epoch.

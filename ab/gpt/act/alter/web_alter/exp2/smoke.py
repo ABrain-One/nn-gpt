@@ -5,7 +5,7 @@ Same prm as Eval (Eval defaults updated with the original's prm, epoch 1), same 
 ab.gpt.util.eval.Eval (string-count mode, Eval's default for non-delta prefixes). Then: Net(...),
 train_setup(prm), learn() on 2 real batches, forward on 1 batch, output shape check.
 Run as a subprocess (generated code can crash or hang):
-    python -m ab.gpt.util.knowledge.exp2.smoke CODE_FILE DATAFRAME_DF
+    python -m ab.gpt.act.alter.web_alter.exp2.smoke CODE_FILE DATAFRAME_DF
 Prints one line "SMOKE_RESULT {json}" with ok / error / where / infra.
 """
 import ast
