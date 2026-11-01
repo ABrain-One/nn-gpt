@@ -243,6 +243,7 @@ def run_kto(
     llm_conf: str = LLM_CONF,
     kto_data_file: Optional[str] = None,
     peft_path: Optional[str] = None,
+    continual_adapter: bool = False,
     # KTO hyperparameters
     kto_beta: float = KTO_BETA,
     kto_desirable_weight: float = KTO_DESIRABLE_WEIGHT,
@@ -353,7 +354,7 @@ def run_kto(
     # ── 3. Load model + tokenizer ───────────────────────────────────────────
     llm_conf_data = _read_llm_conf(llm_conf)
     model, tokenizer = _load_base_model_and_tokenizer(
-        llm_conf_data, peft_path, training_args
+        llm_conf_data, None if continual_adapter else peft_path, training_args
     )
 
     # ── 4. Build KTO dataset ────────────────────────────────────────────────
@@ -370,6 +371,7 @@ def run_kto(
         tokenizer=tokenizer,
         training_args=training_args,
         peft_config=peft_config,
+        init_adapter_path=peft_path if continual_adapter else None,
     )
 
     kto.train(
@@ -427,6 +429,8 @@ def main():
                              "Set per-run to avoid collisions when two runs train concurrently.")
     parser.add_argument("--peft", dest="peft_path", type=str, default=None,
                         help="Previous LoRA adapter to warm-start from (merged into base, then fresh LoRA on top)")
+    parser.add_argument("--continual_adapter", action="store_true", default=False,
+                        help="Keep training the --peft adapter itself (no merge, no fresh LoRA)")
 
     # KTO hyperparameters
     parser.add_argument("--kto_beta", type=float, default=KTO_BETA)
@@ -445,7 +449,6 @@ def main():
     parser.add_argument("-l", "--learning_rate", type=float, default=LEARNING_RATE)
     parser.add_argument("--weight_decay", type=float, default=WEIGHT_DECAY)
     parser.add_argument("--warmup_steps", type=int, default=WARMUP_STEPS)
-    parser.add_argument("--warmup_steps", type=float, default=WARMUP_STEPS)
     parser.add_argument("-g", "--max_grad_norm", type=float, default=MAX_GRAD_NORM)
     parser.add_argument("-ls", "--lr_scheduler", dest="lr_scheduler_type", type=str, default=LR_SCHEDULER)
     parser.add_argument("--per_device_train_batch_size", type=int, default=PER_DEVICE_TRAIN_BATCH_SIZE)
@@ -543,6 +546,7 @@ def main():
         llm_conf=args.llm_conf,
         kto_data_file=args.kto_data_file,
         peft_path=args.peft_path,
+        continual_adapter=args.continual_adapter,
         kto_beta=args.kto_beta,
         kto_desirable_weight=args.kto_desirable_weight,
         kto_undesirable_weight=args.kto_undesirable_weight,

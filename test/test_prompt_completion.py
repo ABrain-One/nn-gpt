@@ -11,7 +11,7 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
+from _unittest_bridge import load_tests_from, pytest  # stdlib stand-in without pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -92,7 +92,8 @@ _CHAT = ("<|im_start|>system\nS<|im_end|>\n<|im_start|>user\n{user}<|im_end|>\n"
 
 
 class _Tok:
-    def __call__(self, texts, truncation=False, max_length=None):
+    def __call__(self, text=None, truncation=False, max_length=None, texts=None):
+        texts = text if text is not None else texts
         if isinstance(texts, str):
             texts = [texts]
         ids = [list(range(min(len(t), max_length or 10 ** 9))) for t in texts]
@@ -153,3 +154,6 @@ def test_full_sequence_training_is_still_available():
     ds = _Stub(frame, max_len=1000).get_dataset(max_new_tokens=4096, as_prompt_completion=False)
     assert "input_ids" in ds.column_names
     assert "prompt" not in ds.column_names
+
+
+load_tests = load_tests_from(globals())

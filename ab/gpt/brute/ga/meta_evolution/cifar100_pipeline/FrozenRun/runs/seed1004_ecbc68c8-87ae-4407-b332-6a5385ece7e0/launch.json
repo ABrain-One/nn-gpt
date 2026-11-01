@@ -1,0 +1,220 @@
+{
+  "apiVersion": "batch/v1",
+  "kind": "Job",
+  "metadata": {
+    "name": "nngpt-frozen-cifar100-s1004",
+    "labels": {
+      "experiment": "seeded-frozen",
+      "dataset": "cifar100",
+      "model": "frozen",
+      "seed": "1004"
+    }
+  },
+  "spec": {
+    "parallelism": 1,
+    "ttlSecondsAfterFinished": 86400,
+    "template": {
+      "spec": {
+        "tolerations": [
+          {
+            "key": "dgx",
+            "operator": "Exists"
+          }
+        ],
+        "containers": [
+          {
+            "name": "ml",
+            "image": "abrainone/ai-linux:cu12.6.3-latest",
+            "imagePullPolicy": "Always",
+            "command": [
+              "/bin/bash",
+              "-c"
+            ],
+            "args": [
+              "set -euo pipefail\ncd /a/mm\n(pip uninstall -y flash-attn || true)\npip install \"torchao==0.15.0\" --no-deps --upgrade --extra-index-url https://download.pytorch.org/whl/cu126\nexport PYTHONPATH=/a/mm\nexport PYTHONDONTWRITEBYTECODE=1\nexport RUN_TS=$(date +%d-%m-%y_%H-%M)\nexport RUN_ID=\"seed${FROZEN_SEED}_${POD_UID}\"\nexport PIPELINE_DIR=\"${RUN_OUTPUT_ROOT}/${RUN_ID}\"\nmkdir -p \"${RUN_OUTPUT_ROOT}\"\nmkdir \"${PIPELINE_DIR}\"\ncp \"${LAUNCH_JSON}\" \"${PIPELINE_DIR}/launch.json\"\ncp \"${BASELINE_INFO_TEMPLATE}\" \"${PIPELINE_DIR}/best_baseline_info_${DATASET}.json\"\nmkdir -p \"${PIPELINE_DIR}/logs_${DATASET}/frozen/${RUN_TS}\"\npython3 -u - <<'FROZEN_RUN_PY' 2>&1 | tee \"${PIPELINE_DIR}/logs_${DATASET}/frozen/${RUN_TS}/${RUN_TS}_${DATASET}_frozen_Pod_logs.log\"\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport random\nimport runpy\nimport shutil\nimport subprocess\nimport sys\nimport numpy as np\nimport torch\n\nseed = int(os.environ[\"FROZEN_SEED\"])\noutput = Path(os.environ[\"PIPELINE_DIR\"])\nrandom.seed(seed)\nnp.random.seed(seed)\ntorch.manual_seed(seed)\nif torch.cuda.is_available():\n    torch.cuda.manual_seed_all(seed)\n\nsnapshot = output / \"source_snapshot\"\nsnapshot.mkdir()\nsources = [\n    \"ab/gpt/brute/ga/meta_evolution/frozen_pipeline.py\",\n    \"ab/gpt/brute/ga/meta_evolution/run_fractal_frozen.py\",\n    \"ab/gpt/brute/ga/meta_evolution/genetic_algorithm_baseline.py\",\n    \"ab/gpt/brute/ga/meta_evolution/FractalNet_evolvable_backbone.py\",\n    \"ab/gpt/brute/ga/meta_evolution/llm_loader.py\",\n    \"ab/gpt/util/eval/acc_client.py\",\n    \"ab/gpt/util/eval/Eval.py\",\n    \"ab/nn/util/Train.py\",\n]\nhashes = {}\nfor relative in sources:\n    source = Path(\"/a/mm\") / relative\n    hashes[relative] = hashlib.sha256(source.read_bytes()).hexdigest()\n    shutil.copy2(source, snapshot / source.name)\nmanifest = {\n    \"dataset\": os.environ[\"DATASET\"],\n    \"seed\": seed,\n    \"pod_uid\": os.environ[\"POD_UID\"],\n    \"method\": \"frozen_identity\",\n    \"population_size\": int(os.environ[\"POPULATION_SIZE\"]),\n    \"segments\": int(os.environ[\"META_ATTEMPTS\"]),\n    \"generations_per_segment\": int(os.environ[\"GENERATIONS\"]),\n    \"evaluation_epochs\": 3,\n    \"evaluation_batch_size\": 64,\n    \"operator_llm_loaded\": False,\n    \"accuracy_predictor_enabled\": True,\n    \"source_sha256\": hashes,\n    \"python\": sys.version,\n    \"numpy\": np.__version__,\n    \"torch\": torch.__version__,\n    \"cuda_runtime\": torch.version.cuda,\n    \"gpu\": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,\n    \"gpu_total_memory_bytes\": torch.cuda.get_device_properties(0).total_memory if torch.cuda.is_available() else None,\n}\n(output / \"run_manifest.json\").write_text(json.dumps(manifest, indent=2) + \"\\n\")\nprint(f\"[Run] {os.environ['DATASET']} frozen | seed={seed} | output={output}\", flush=True)\n\n# A new GA process is started for each segment; seed each process explicitly.\noriginal_popen = subprocess.Popen\nbenchmark_index = 0\nrunner_bootstrap = \"import os, random, runpy, sys; import numpy as np; import torch; seed=int(os.environ['GA_SEED']); random.seed(seed); np.random.seed(seed); torch.manual_seed(seed); torch.cuda.manual_seed_all(seed) if torch.cuda.is_available() else None; print('[Run] GA seed:', seed, flush=True); script=sys.argv.pop(1); runpy.run_path(script, run_name='__main__')\"\ndef seeded_popen(command, *args, **kwargs):\n    global benchmark_index\n    if isinstance(command, (list, tuple)) and len(command) > 1 and os.path.basename(command[1]) == \"run_fractal_frozen.py\":\n        env = dict(kwargs.get(\"env\") or os.environ)\n        env[\"GA_SEED\"] = str((seed + benchmark_index) % 2**32)\n        benchmark_index += 1\n        kwargs[\"env\"] = env\n        command = [command[0], \"-c\", runner_bootstrap, *command[1:]]\n    return original_popen(command, *args, **kwargs)\nsubprocess.Popen = seeded_popen\nrunpy.run_module(\"ab.gpt.brute.ga.meta_evolution.frozen_pipeline\", run_name=\"__main__\")\nFROZEN_RUN_PY\n"
+            ],
+            "env": [
+              {
+                "name": "POPULATION_SIZE",
+                "value": "20"
+              },
+              {
+                "name": "GENERATIONS",
+                "value": "5"
+              },
+              {
+                "name": "META_ATTEMPTS",
+                "value": "5"
+              },
+              {
+                "name": "FROZEN_SEED",
+                "value": "1004"
+              },
+              {
+                "name": "EXPERIMENT_SEED",
+                "value": "1004"
+              },
+              {
+                "name": "PYTHONHASHSEED",
+                "value": "1004"
+              },
+              {
+                "name": "DATASET",
+                "value": "cifar100"
+              },
+              {
+                "name": "MODEL_NAME",
+                "value": "frozen"
+              },
+              {
+                "name": "PYTORCH_CUDA_ALLOC_CONF",
+                "value": "expandable_segments:True"
+              },
+              {
+                "name": "RUN_OUTPUT_ROOT",
+                "value": "/a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/FrozenRun/runs"
+              },
+              {
+                "name": "LAUNCH_JSON",
+                "value": "/a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/FrozenRun/run4_seed1004.json"
+              },
+              {
+                "name": "BASELINE_INFO_TEMPLATE",
+                "value": "/a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/best_baseline_info_cifar100.json"
+              },
+              {
+                "name": "HF_HOME",
+                "value": "/a/mm/.cache/huggingface"
+              },
+              {
+                "name": "PIP_CACHE_DIR",
+                "value": "/a/mm/.cache/pip"
+              },
+              {
+                "name": "POD_UID",
+                "valueFrom": {
+                  "fieldRef": {
+                    "fieldPath": "metadata.uid"
+                  }
+                }
+              }
+            ],
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "runAsUser": 1017,
+              "runAsGroup": 1376
+            },
+            "resources": {
+              "requests": {
+                "nvidia.com/gpu": 1,
+                "cpu": 8,
+                "memory": "24Gi"
+              },
+              "limits": {
+                "nvidia.com/gpu": 1,
+                "cpu": 8,
+                "memory": "24Gi"
+              }
+            },
+            "volumeMounts": [
+              {
+                "mountPath": "/dev/shm",
+                "name": "shm"
+              },
+              {
+                "mountPath": "/a/mm",
+                "name": "v0"
+              },
+              {
+                "mountPath": "/a/mm/data",
+                "name": "v1"
+              },
+              {
+                "mountPath": "/a/mm/nn-dataset",
+                "name": "v2"
+              }
+            ]
+          }
+        ],
+        "restartPolicy": "Never",
+        "volumes": [
+          {
+            "name": "shm",
+            "emptyDir": {
+              "medium": "Memory",
+              "sizeLimit": "16Gi"
+            }
+          },
+          {
+            "name": "v0",
+            "hostPath": {
+              "path": "/shared/ssd/home/b-a-singh/Thesis/cloneScience/nn-gpt",
+              "type": "Directory"
+            }
+          },
+          {
+            "name": "v1",
+            "hostPath": {
+              "path": "/shared/local/data/a-group-automl/data",
+              "type": "Directory"
+            }
+          },
+          {
+            "name": "v2",
+            "hostPath": {
+              "path": "/shared/ssd/home/b-a-singh/Thesis/NN-DATASET/C1/nn-dataset",
+              "type": "Directory"
+            }
+          }
+        ],
+        "affinity": {
+          "nodeAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+              "nodeSelectorTerms": [
+                {
+                  "matchExpressions": [
+                    {
+                      "key": "kubernetes.io/hostname",
+                      "operator": "In",
+                      "values": [
+                        "dgx-h100"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "matchExpressions": [
+                    {
+                      "key": "nvidia.com/gpu.memory",
+                      "operator": "Gt",
+                      "values": [
+                        "22888"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "preferredDuringSchedulingIgnoredDuringExecution": [
+              {
+                "weight": 100,
+                "preference": {
+                  "matchExpressions": [
+                    {
+                      "key": "kubernetes.io/hostname",
+                      "operator": "In",
+                      "values": [
+                        "dgx-h100"
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "backoffLimit": 0
+  }
+}

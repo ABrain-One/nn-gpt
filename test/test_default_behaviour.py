@@ -10,7 +10,7 @@ import sys
 import types
 from pathlib import Path
 
-import pytest
+from _unittest_bridge import load_tests_from, pytest  # stdlib stand-in without pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 ACT = ROOT / "ab" / "gpt" / "act"
@@ -73,6 +73,10 @@ def _no_new_flags(monkeypatch):
 def engine_class(monkeypatch, tmp_path):
     """The real VLLMSleepEngine with a stub vllm package that records SamplingParams."""
     from ab.gpt.util.llm import VLLMSleep
+    # What a machine without CUDA reports. The sampling parameters are the
+    # subject here, and probing a real card makes the test fail whenever
+    # something else is using it.
+    monkeypatch.setattr(VLLMSleep, "_free_gpu", lambda: (0, 0))
     calls = []
     vllm = types.ModuleType("vllm")
     vllm.SamplingParams = lambda **kw: calls.append(kw) or kw
@@ -158,3 +162,6 @@ def test_flags_enable_the_fixes(engine_class, monkeypatch):
     assert flags(2, {})[1] is not None  # vLLM without carry-over: a warning, no new argument
     monkeypatch.setenv("NNGPT_VLLM_INHERIT_GEN_CONFIG", "1")
     assert engine_class(temperature=0.2, top_k=50, top_p=0.9)["repetition_penalty"] == 1.1
+
+
+load_tests = load_tests_from(globals())

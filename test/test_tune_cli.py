@@ -39,3 +39,8 @@ def test_warmup_steps_whole_numbers_stay_int():
     assert parse("20") == 20 and isinstance(parse("20"), int)
     assert parse("20.0") == 20 and isinstance(parse("20.0"), int)
     assert parse("0.05") == 0.05 and isinstance(parse("0.05"), float)
+
+
+from _unittest_bridge import load_tests_from  # noqa: E402
+
+load_tests = load_tests_from(globals())

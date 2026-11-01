@@ -27,6 +27,7 @@ import argparse
 import csv
 import json
 import multiprocessing as mp
+import re
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -49,15 +50,18 @@ def _trace_worker(job: Tuple[str, dict]) -> Tuple[str, Optional[str]]:
         return path_str, None
 
 
-def discover_runs(explicit: List[str], runs_root: Optional[str]) -> List[Tuple[str, Path]]:
-    """(label, path) for each run output_subdir holding cycle_*/nneval/."""
+def discover_runs(explicit: List[str], runs_root: Optional[str], prefix: Optional[str] = None,
+                  seed: int = 43) -> List[Tuple[str, Path]]:
+    """(label, path) for each run output_subdir holding cycle_*/nneval/. With a prefix, only
+    out_<prefix>_<config>_s<seed>/nngpt/* are taken, labelled <config> (v2 runs all share
+    the subdir name pref_v2)."""
     runs: List[Tuple[str, Path]] = []
     seen = set()
 
-    def add(p: Path) -> None:
+    def add(p: Path, label: Optional[str] = None) -> None:
         if not any((c / "nneval").is_dir() for c in p.glob("cycle_*")):
             return
-        label = p.name
+        label = label or p.name
         if label in seen:                      # disambiguate same subdir under two tags
             label = f"{p.parent.parent.name}:{label}"
         if label in seen:
@@ -67,11 +71,56 @@ def discover_runs(explicit: List[str], runs_root: Optional[str]) -> List[Tuple[s
 
     for r in explicit or []:
         add(Path(r))
-    if runs_root:
+    if runs_root and prefix:
+        pat = re.compile(rf"^out_{re.escape(prefix)}_(.+)_s{seed}$")
+        for d in sorted(Path(runs_root).glob(f"out_{prefix}_*_s{seed}")):
+            m = pat.match(d.name)
+            for p in sorted((d / "nngpt").glob("*")):
+                if m and p.is_dir():
+                    add(p, m.group(1))
+    elif runs_root:
         for p in sorted(Path(runs_root).glob("out_*/nngpt/*")):
             if p.is_dir():
                 add(p)
     return runs
+
+
+def seed_cache_from_run_logs(runs: List[Tuple[str, Path]], max_cycle: int, gate: dict,
+                             cache_file: Path) -> int:
+    """v2 runs log every candidate's WL hash (cycle_*/candidates.jsonl), traced with this same
+    function and settings; reuse them so only the rest is traced. Runs traced with other
+    settings are skipped. Returns the number of hashes added to the cache."""
+    cache: Dict[str, Optional[str]] = {}
+    if cache_file.exists():
+        try:
+            cache = json.loads(cache_file.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            cache = {}
+    added = 0
+    for _, path in runs:
+        cfg_file = path / "v2_config.json"
+        if not cfg_file.exists():
+            continue
+        trace = json.loads(cfg_file.read_text(encoding="utf-8")).get("trace", {})
+        if any(trace.get(k) != gate[k] for k in ("sizes", "in_ch", "n_cls", "granularity", "wl_rounds")):
+            continue
+        for orig in present_cycles(path, max_cycle):
+            cdir = path / f"cycle_{orig}"
+            log = cdir / "candidates.jsonl"
+            if not log.exists():
+                continue
+            for line in log.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                r = json.loads(line)
+                cf = _gen_code_file(cdir / "nneval" / r.get("model_id", "")) if r.get("wl_hash") else None
+                if cf is not None and str(cf) not in cache:
+                    cache[str(cf)] = r["wl_hash"]
+                    added += 1
+    if added:
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        cache_file.write_text(json.dumps(cache), encoding="utf-8")
+    return added
 
 
 def present_cycles(run_path: Path, max_cycle: int) -> List[int]:
@@ -199,6 +248,9 @@ def main() -> None:
                    help="A run output_subdir (…/nngpt/<subdir>). Repeatable.")
     p.add_argument("--runs_root", type=str, default=None,
                    help="Auto-discover out_*/nngpt/*/ under this dir")
+    p.add_argument("--prefix", type=str, default=None,
+                   help="With --runs_root: only out_<prefix>_<config>_s<seed>/nngpt/*, labelled <config>")
+    p.add_argument("--seed", type=int, default=43)
     p.add_argument("--out_dir", type=str, default="novelty_compare")
     p.add_argument("--max_cycle", type=int, default=20)
     p.add_argument("--sim_threshold", type=float, default=0.85)
@@ -212,7 +264,7 @@ def main() -> None:
     p.add_argument("--workers", type=int, default=min(12, (mp.cpu_count() or 4)))
     args = p.parse_args()
 
-    runs = discover_runs(args.run, args.runs_root)
+    runs = discover_runs(args.run, args.runs_root, args.prefix, args.seed)
     if not runs:
         raise SystemExit("No runs found (use --run <path> and/or --runs_root <dir>).")
     out_dir = Path(args.out_dir); out_dir.mkdir(parents=True, exist_ok=True)
@@ -230,6 +282,9 @@ def main() -> None:
     for _, path in runs:
         all_files += [str(cf) for _, cf in _iter_gen_files(path, args.max_cycle)]
     all_files = sorted(set(all_files))
+    n_seeded = seed_cache_from_run_logs(runs, args.max_cycle, gate, out_dir / "graph_hash_cache.json")
+    if n_seeded:
+        print(f"[graph] reused {n_seeded} hashes logged by the runs", flush=True)
     graph_hashes = compute_graph_hashes(all_files, gate,
                                         out_dir / "graph_hash_cache.json", args.workers)
 

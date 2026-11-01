@@ -1,0 +1,282 @@
+LEMUR root /a/mm
+2026-09-19 15:40:29,670 - INFO - Note: detected 224 virtual cores but NumExpr set to maximum of 64, check "NUMEXPR_MAX_THREADS" environment variable.
+2026-09-19 15:40:29,670 - INFO - Note: NumExpr detected 224 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-09-19 15:40:29,670 - INFO - NumExpr defaulting to 16 threads.
+2026-09-19 15:40:31,153 - WARNING - Skipping import of cpp extensions due to incompatible torch version 2.7.1+cu126 for torchao version 0.15.0+cu126             Please see https://github.com/pytorch/ao/issues/2919 for more info
+[Config] Loaded model_config.json  (context_length=8192)
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/cifar10_pipeline/ga_history_backup/historic_runs/run_2026-09-19_15-40-32 for fresh start.
+[Meta] Moved LLM LoRA weights to /a/mm/ab/gpt/brute/ga/meta_evolution/cifar10_pipeline/qwen_adapter/historic_runs/run_2026-09-19_15-40-32 for fresh start.
+[Meta] LOAD_PREVIOUS_ADAPTER is FALSE. Starting with fresh LLM weights.
+[Config] Loaded model_config.json  (context_length=8192)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-09-19 15:40:33,497 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:03<00:09,  3.19s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:07<00:07,  3.57s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:10<00:03,  3.48s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:10<00:00,  2.19s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:10<00:00,  2.65s/it]
+[LoRA] No adapter directory found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+[Meta] Loaded Baseline Score: 96.88%
+
+[Meta] Target: 5 evolutions with up to 5 attempts per iteration.
+
+=== Iteration 1/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        else:
+            return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80
+--- [DEBUG] Raw Response ---
+```python
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        else:
+            return parent2_value
+
+        # Additional strategies to maintain genetic diversity and avoid premature convergence
+        if gene_name == 'activation':
+            possible_activations = ['ReLU', 'GELU', 'LeakyReLU', 'SiLU']
+            if parent1_value != parent2_value:
+                if random.random() < 0.2:
+                    return random.choice(possible_activations)
+        
+        if gene_name == 'optimizer_type':
+            possible_optimizers = ['SGD', 'AdamW', 'RMSprop']
+            if parent1_value != parent2_value:
+                if random.random() < 0.2:
+                    return random.choice(possible_optimizers)
+        
+        if gene_name == 'kernel_size':
+            possible_sizes = [1, 3, 5, 7]
+            if parent1_value != parent2_value:
+                if random.random() < 0.2:
+                    return random.choice(possible_sizes)
+        
+        if gene_name == 'base_channels':
+            possible_channels = [16, 32, 64]
+            if parent1_value != parent2_value:
+                if random.random() < 0.2:
+                    return random.choice(possible_channels)
+        
+        if gene_name == 'n_blocks':
+            possible_blocks = [2, 3, 4]
+            if parent1_value != parent2_value:
+                if random.random() < 0.2:
+                    return random.choice(possible_blocks)
+        
+        if gene_name == 'n_columns':
+            possible_columns = [2, 3, 4]
+            if parent1_value != parent2_value:
+                if random.random() < 0.2:
+                    return random.choice(possible_columns)
+        
+        return parent1_value
+```
+--------------------------
+[Meta] Runtime smoke test PASSED (all components validated).
+[Meta] Benchmarking...
+[Meta] Setting STATS_SUBDIR=meta for subprocess → stats/meta/
+
+[Meta] Running Benchmark 1/1...
+Skipping import of cpp extensions due to incompatible torch version 2.7.1+cu126 for torchao version 0.15.0+cu126             Please see https://github.com/pytorch/ao/issues/2919 for more info
+Model instantiation succeeded.
+The training environment is set up successfully, using the following device: cuda.
+Simulated training data created successfully.
+Training step executed successfully.
+LEMUR root /a/mm
+[Config] STATS_SUBDIR=meta → STATS_DIR=/a/mm/ab/gpt/brute/ga/meta_evolution/cifar10_pipeline/stats/meta
+[Run] Continuing evolution from gen 0 to 1
+
+
+ >>> GENERATION 1 <<<
+
+  Evaluating Individual 1/5 ---- Generation: 1/1
+  - Evaluating unique arch (checksum: d284d872...)
+Evaluating /a/mm/out_cifar10_e18bd4c3_nneval_tmp_pid_300/nn/tmp/GenFractalNet-d284d87281d8a846a1c0846026acdcad-df51fa87e4303040de2002cbaecdf337.py...
+epoch 1
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 5/782 [00:00<00:16, 47.69it/s]
+  3%|▎         | 20/782 [00:00<00:07, 104.14it/s]
+  4%|▍         | 35/782 [00:00<00:06, 122.09it/s]
+  6%|▋         | 50/782 [00:00<00:05, 130.39it/s]
+  8%|▊         | 65/782 [00:00<00:05, 134.94it/s]
+ 10%|█         | 80/782 [00:00<00:05, 137.80it/s]
+ 12%|█▏        | 95/782 [00:00<00:04, 139.63it/s]
+ 14%|█▍        | 110/782 [00:00<00:04, 140.84it/s]
+ 16%|█▌        | 125/782 [00:00<00:04, 141.44it/s]
+ 18%|█▊        | 140/782 [00:01<00:04, 140.65it/s]
+ 20%|█▉        | 155/782 [00:01<00:04, 141.22it/s]
+ 22%|██▏       | 170/782 [00:01<00:04, 141.47it/s]
+ 24%|██▎       | 185/782 [00:01<00:04, 141.72it/s]
+ 26%|██▌       | 200/782 [00:01<00:04, 142.06it/s]
+ 27%|██▋       | 215/782 [00:01<00:03, 142.20it/s]
+ 29%|██▉       | 230/782 [00:01<00:03, 141.97it/s]
+ 31%|███▏      | 245/782 [00:01<00:03, 142.26it/s]
+ 33%|███▎      | 260/782 [00:01<00:03, 142.61it/s]
+ 35%|███▌      | 275/782 [00:01<00:03, 142.60it/s]
+ 37%|███▋      | 290/782 [00:02<00:03, 142.79it/s]
+ 39%|███▉      | 305/782 [00:02<00:03, 142.91it/s]
+ 41%|████      | 320/782 [00:02<00:03, 142.81it/s]
+ 43%|████▎     | 335/782 [00:02<00:03, 142.84it/s]
+ 45%|████▍     | 350/782 [00:02<00:03, 142.89it/s]
+ 47%|████▋     | 365/782 [00:02<00:02, 142.37it/s]
+ 49%|████▊     | 380/782 [00:02<00:02, 141.97it/s]
+ 51%|█████     | 395/782 [00:02<00:02, 141.90it/s]
+ 52%|█████▏    | 410/782 [00:02<00:02, 142.39it/s]
+ 54%|█████▍    | 425/782 [00:03<00:02, 141.98it/s]
+ 56%|█████▋    | 440/782 [00:03<00:02, 142.34it/s]
+ 58%|█████▊    | 455/782 [00:03<00:02, 142.42it/s]
+ 60%|██████    | 470/782 [00:03<00:02, 141.96it/s]
+ 62%|██████▏   | 485/782 [00:03<00:02, 141.68it/s]
+ 64%|██████▍   | 500/782 [00:03<00:01, 142.21it/s]
+ 66%|██████▌   | 515/782 [00:03<00:01, 141.54it/s]
+ 68%|██████▊   | 530/782 [00:03<00:01, 142.21it/s]
+ 70%|██████▉   | 545/782 [00:03<00:01, 142.50it/s]
+ 72%|███████▏  | 560/782 [00:03<00:01, 142.91it/s]
+ 74%|███████▎  | 575/782 [00:04<00:01, 143.36it/s]
+ 75%|███████▌  | 590/782 [00:04<00:01, 140.92it/s]
+ 77%|███████▋  | 605/782 [00:04<00:01, 135.82it/s]
+ 79%|███████▉  | 620/782 [00:04<00:01, 138.08it/s]
+ 81%|████████  | 635/782 [00:04<00:01, 139.72it/s]
+ 83%|████████▎ | 650/782 [00:04<00:00, 141.03it/s]
+ 85%|████████▌ | 665/782 [00:04<00:00, 141.96it/s]
+ 87%|████████▋ | 680/782 [00:04<00:00, 142.71it/s]
+ 89%|████████▉ | 695/782 [00:04<00:00, 142.36it/s]
+ 91%|█████████ | 710/782 [00:05<00:00, 142.95it/s]
+ 93%|█████████▎| 725/782 [00:05<00:00, 142.74it/s]
+ 95%|█████████▍| 740/782 [00:05<00:00, 143.33it/s]
+ 97%|█████████▋| 755/782 [00:05<00:00, 142.46it/s]
+ 98%|█████████▊| 770/782 [00:05<00:00, 141.36it/s]
+100%|██████████| 782/782 [00:05<00:00, 139.00it/s]
+  Train Loss: 2.1970, Test Loss: 2.1940
+  Train Acc: 0.1736, Test Acc: 0.1731
+  LR: 0.099427, Grad Norm: 0.3331, Throughput: 2442.4 samples/s
+accuracy_to_time_metric 0.35706866478835747
+Trial (accuracy 0.1731) for (img-classification, cifar-10, acc, GenFractalNet-d284d87281d8a846a1c0846026acdcad-df51fa87e4303040de2002cbaecdf337, 1) saved at /a/mm/ab/gpt/brute/ga/meta_evolution/cifar10_pipeline/stats/meta/img-classification_cifar-10_acc_GenFractalNet-d284d87281d8a846a1c0846026acdcad/1.json
+epoch 2
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  0%|          | 1/782 [00:00<01:34,  8.29it/s]
+  2%|▏         | 16/782 [00:00<00:09, 81.82it/s]
+  4%|▍         | 30/782 [00:00<00:07, 106.03it/s]
+  6%|▌         | 45/782 [00:00<00:06, 120.69it/s]
+  8%|▊         | 60/782 [00:00<00:05, 129.32it/s]
+ 10%|▉         | 75/782 [00:00<00:05, 133.98it/s]
+ 12%|█▏        | 90/782 [00:00<00:05, 137.67it/s]
+ 13%|█▎        | 105/782 [00:00<00:04, 139.67it/s]
+ 15%|█▌        | 120/782 [00:00<00:04, 141.54it/s]
+ 17%|█▋        | 135/782 [00:01<00:04, 142.38it/s]
+ 19%|█▉        | 150/782 [00:01<00:04, 143.30it/s]
+ 21%|██        | 165/782 [00:01<00:04, 143.90it/s]
+ 23%|██▎       | 180/782 [00:01<00:04, 144.32it/s]
+ 25%|██▍       | 195/782 [00:01<00:04, 144.48it/s]
+ 27%|██▋       | 210/782 [00:01<00:03, 144.28it/s]
+ 29%|██▉       | 225/782 [00:01<00:03, 144.61it/s]
+ 31%|███       | 240/782 [00:01<00:03, 143.96it/s]
+ 33%|███▎      | 255/782 [00:01<00:03, 137.93it/s]
+ 35%|███▍      | 270/782 [00:02<00:03, 139.37it/s]
+ 36%|███▋      | 285/782 [00:02<00:03, 140.71it/s]
+ 38%|███▊      | 300/782 [00:02<00:03, 141.42it/s]
+ 40%|████      | 315/782 [00:02<00:03, 142.60it/s]
+ 42%|████▏     | 330/782 [00:02<00:03, 142.83it/s]
+ 44%|████▍     | 345/782 [00:02<00:03, 142.22it/s]
+ 46%|████▌     | 360/782 [00:02<00:02, 142.68it/s]
+ 48%|████▊     | 375/782 [00:02<00:02, 137.01it/s]
+ 50%|████▉     | 389/782 [00:02<00:02, 137.08it/s]
+ 52%|█████▏    | 404/782 [00:02<00:02, 138.25it/s]
+ 53%|█████▎    | 418/782 [00:03<00:02, 138.14it/s]
+ 55%|█████▌    | 432/782 [00:03<00:02, 136.19it/s]
+ 57%|█████▋    | 446/782 [00:03<00:02, 135.54it/s]
+ 59%|█████▉    | 460/782 [00:03<00:02, 129.73it/s]
+ 61%|██████    | 474/782 [00:03<00:02, 127.88it/s]
+ 63%|██████▎   | 489/782 [00:03<00:02, 132.28it/s]
+ 64%|██████▍   | 504/782 [00:03<00:02, 135.97it/s]
+ 66%|██████▋   | 519/782 [00:03<00:01, 138.38it/s]
+ 68%|██████▊   | 534/782 [00:03<00:01, 140.23it/s]
+ 70%|███████   | 549/782 [00:04<00:01, 141.53it/s]
+ 72%|███████▏  | 564/782 [00:04<00:01, 142.50it/s]
+ 74%|███████▍  | 579/782 [00:04<00:01, 143.28it/s]
+ 76%|███████▌  | 594/782 [00:04<00:01, 143.58it/s]
+ 78%|███████▊  | 609/782 [00:04<00:01, 144.02it/s]
+ 80%|███████▉  | 624/782 [00:04<00:01, 143.48it/s]
+ 82%|████████▏ | 639/782 [00:04<00:00, 143.69it/s]
+ 84%|████████▎ | 654/782 [00:04<00:00, 143.37it/s]
+ 86%|████████▌ | 669/782 [00:04<00:00, 144.02it/s]
+ 87%|████████▋ | 684/782 [00:04<00:00, 143.10it/s]
+ 89%|████████▉ | 699/782 [00:05<00:00, 142.95it/s]
+ 91%|█████████▏| 714/782 [00:05<00:00, 143.31it/s]
+ 93%|█████████▎| 729/782 [00:05<00:00, 142.34it/s]
+ 95%|█████████▌| 744/782 [00:05<00:00, 143.32it/s]
+ 97%|█████████▋| 759/782 [00:05<00:00, 143.52it/s]
+ 99%|█████████▉| 774/782 [00:05<00:00, 143.82it/s]
+100%|██████████| 782/782 [00:05<00:00, 137.70it/s]
+  Train Loss: 2.0526, Test Loss: 2.0497
+  Train Acc: 0.1825, Test Acc: 0.1824
+  LR: 0.046168, Grad Norm: 0.2660, Throughput: 2566.6 samples/s
+accuracy_to_time_metric 0.18059492933277416
+Trial (accuracy 0.1824) for (img-classification, cifar-10, acc, GenFractalNet-d284d87281d8a846a1c0846026acdcad-df51fa87e4303040de2002cbaecdf337, 2) saved at /a/mm/ab/gpt/brute/ga/meta_evolution/cifar10_pipeline/stats/meta/img-classification_cifar-10_acc_GenFractalNet-d284d87281d8a846a1c0846026acdcad/2.json
+epoch 3
+
+  0%|          | 0/782 [00:00<?, ?it/s]
+  1%|          | 8/782 [00:00<00:09, 79.08it/s]
+  3%|▎         | 22/782 [00:00<00:06, 112.96it/s]
+  5%|▍         | 37/782 [00:00<00:05, 126.85it/s]
+  7%|▋         | 52/782 [00:00<00:05, 133.07it/s]
+  9%|▊         | 67/782 [00:00<00:05, 136.85it/s]
+ 10%|█         | 82/782 [00:00<00:05, 139.00it/s]
+ 12%|█▏        | 96/782 [00:00<00:04, 138.81it/s]
+ 14%|█▍        | 110/782 [00:00<00:04, 138.94it/s]
+ 16%|█▌        | 125/782 [00:00<00:04, 140.97it/s]
+ 18%|█▊        | 140/782 [00:01<00:04, 142.64it/s]
+ 20%|█▉        | 155/782 [00:01<00:04, 143.20it/s]
+ 22%|██▏       | 170/782 [00:01<00:04, 143.55it/s]
+ 24%|██▎       | 185/782 [00:01<00:04, 143.10it/s]
+ 26%|██▌       | 200/782 [00:01<00:04, 143.52it/s]
+ 27%|██▋       | 215/782 [00:01<00:03, 143.93it/s]
+ 29%|██▉       | 230/782 [00:01<00:03, 144.26it/s]
+ 31%|███▏      | 245/782 [00:01<00:03, 144.31it/s]
+ 33%|███▎      | 260/782 [00:01<00:03, 144.50it/s]
+ 35%|███▌      | 275/782 [00:01<00:03, 144.63it/s]
+ 37%|███▋      | 290/782 [00:02<00:03, 144.38it/s]
+ 39%|███▉      | 305/782 [00:02<00:03, 144.56it/s]
+ 41%|████      | 320/782 [00:02<00:03, 139.07it/s]
+ 43%|████▎     | 334/782 [00:02<00:03, 139.21it/s]
+ 45%|████▍     | 349/782 [00:02<00:03, 140.48it/s]
+ 47%|████▋     | 364/782 [00:02<00:02, 141.54it/s]
+ 48%|████▊     | 379/782 [00:02<00:02, 142.62it/s]
+ 50%|█████     | 394/782 [00:02<00:02, 143.10it/s]
+ 52%|█████▏    | 409/782 [00:02<00:02, 140.98it/s]
+ 54%|█████▍    | 424/782 [00:03<00:02, 141.89it/s]
+ 56%|█████▌    | 439/782 [00:03<00:02, 141.36it/s]
+ 58%|█████▊    | 454/782 [00:03<00:02, 141.78it/s]
+ 60%|█████▉    | 469/782 [00:03<00:02, 141.47it/s]
+ 62%|██████▏   | 484/782 [00:03<00:02, 141.81it/s]
+ 64%|██████▍   | 499/782 [00:03<00:02, 140.41it/s]
+ 66%|██████▌   | 514/782 [00:03<00:01, 139.75it/s]
+ 68%|██████▊   | 529/782 [00:03<00:01, 140.70it/s]
+ 70%|██████▉   | 544/782 [00:03<00:01, 140.81it/s]
+ 71%|███████▏  | 559/782 [00:03<00:01, 141.41it/s]
+ 73%|███████▎  | 574/782 [00:04<00:01, 140.56it/s]
+ 75%|███████▌  | 589/782 [00:04<00:01, 141.47it/s]
+ 77%|███████▋  | 604/782 [00:04<00:01, 141.76it/s]
+ 79%|███████▉  | 619/782 [00:04<00:01, 142.49it/s]
+ 81%|████████  | 634/782 [00:04<00:01, 143.02it/s]
+ 83%|████████▎ | 649/782 [00:04<00:00, 143.28it/s]
+ 85%|████████▍ | 664/782 [00:04<00:00, 143.53it/s]
+ 87%|████████▋ | 679/782 [00:04<00:00, 143.70it/s]
+ 89%|████████▊ | 694/782 [00:04<00:00, 143.79it/s]
+ 91%|█████████ | 709/782 [00:05<00:00, 143.86it/s]
+ 93%|█████████▎| 724/782 [00:05<00:00, 143.88it/s]
+ 95%|█████████▍| 739/782 [00:05<00:00, 144.04it/s]
+ 96%|█████████▋| 754/782 [00:05<00:00, 144.20it/s]
+ 98%|█████████▊| 769/782 [00:05<00:00, 144.06it/s]
+100%|██████████| 782/782 [00:05<00:00, 140.50it/s]
+HTTP Request: POST http://132.187.14.67:30031/v1/chat/completions "HTTP/1.1 200 OK"

@@ -7,9 +7,14 @@ be inspected.
 import json
 from pathlib import Path
 
-import pytest
+from _unittest_bridge import load_tests_from, pytest  # stdlib stand-in without pytest
 
-from ab.gpt.util.data.RunArchive import archive_run_results, next_index
+try:
+    from ab.gpt.util.data.RunArchive import archive_run_results, next_index
+except ImportError as exc:
+    from _unittest_bridge import skip_module
+
+    skip_module(f"test_run_archive needs ab.gpt (and so ab.nn): {exc}")
 
 
 def _run(base: Path, marker="A", plot=True, stats=True):
@@ -119,3 +124,6 @@ def test_run_reset_archives_the_results_before_deleting(tmp_path, monkeypatch):
     assert list(base.iterdir()) == [], "the run directory was not cleared"
     assert (archive / "epoch_statistics_0001.png").is_file()
     assert (archive / "ab_stat" / "epoch_tracker_0001.json").is_file()
+
+
+load_tests = load_tests_from(globals())

@@ -1,0 +1,33 @@
+LEMUR root /a/mm
+2026-09-19 15:36:36,561 - INFO - Note: NumExpr detected 32 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 16.
+2026-09-19 15:36:36,561 - INFO - NumExpr defaulting to 16 threads.
+2026-09-19 15:36:38,536 - WARNING - Skipping import of cpp extensions due to incompatible torch version 2.7.1+cu126 for torchao version 0.15.0+cu126             Please see https://github.com/pytorch/ao/issues/2919 for more info
+[Config] Loaded model_config.json  (context_length=8192)
+[Meta] No checkpoint found. Resetting target GA to pristine baseline.
+[Meta] Moved Hall of Fame to /a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/ga_history_backup/historic_runs/run_2026-09-19_15-36-39 for fresh start.
+[Meta] Moved LLM LoRA weights to /a/mm/ab/gpt/brute/ga/meta_evolution/cifar100_pipeline/qwen_adapter/historic_runs/run_2026-09-19_15-36-39 for fresh start.
+[Meta] LOAD_PREVIOUS_ADAPTER is FALSE. Starting with fresh LLM weights.
+[Config] Loaded model_config.json  (context_length=8192)
+Loading Model: Qwen/Qwen2.5-Coder-7B-Instruct
+Quantization: True
+2026-09-19 15:36:40,920 - INFO - We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:44<02:14, 44.95s/it]Loading checkpoint shards:  50%|█████     | 2/4 [01:32<01:32, 46.27s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [02:12<00:43, 43.62s/it]Loading checkpoint shards: 100%|██████████| 4/4 [02:21<00:00, 30.10s/it]Loading checkpoint shards: 100%|██████████| 4/4 [02:21<00:00, 35.49s/it]
+[LoRA] No adapter directory found. Initializing fresh adapters...
+trainable params: 40,370,176 || all params: 7,655,986,688 || trainable%: 0.5273
+[Meta] Loaded Baseline Score: 75.03%
+
+[Meta] Target: 5 evolutions with up to 5 attempts per iteration.
+
+=== Iteration 1/5 — Evolving: combine_genes ===
+
+[Meta] Evolving: combine_genes
+--- [DEBUG] Input Code ---
+### combine_genes ###
+    def combine_genes(self, gene_name, parent1_value, parent2_value, crossover_point, gene_index, total_genes):
+        if gene_index < crossover_point:
+            return parent1_value
+        else:
+            return parent2_value
+
+-------------------------
+[Meta] Generation Temperature: 0.80

@@ -3,6 +3,8 @@ import gc
 import json
 import os
 import sys
+import tempfile
+import uuid
 from pathlib import Path
 
 import torch
@@ -195,6 +197,98 @@ FORCE_PARK = _env_flag("NNGPT_VLLM_FORCE_PARK", True)
 #: after a bitsandbytes / unsloth upgrade.
 PARK_VERIFY = _env_flag("NNGPT_VLLM_PARK_VERIFY", False)
 
+#: Park the trainer's weights to disk instead of host RAM. The trainer is idle
+#: for the whole generation phase, and holding its 7+ GiB there is what leaves
+#: the host without room for anything else.
+PARK_TO_DISK = _env_flag("NNGPT_VLLM_PARK_TO_DISK", True)
+
+
+def _host_available_gib():
+    try:
+        with open("/proc/meminfo", encoding="ascii") as f:
+            for line in f:
+                if line.startswith("MemAvailable:"):
+                    return int(line.split()[1]) / 2**20
+    except Exception:
+        pass
+    return 0.0
+
+
+def _host_dirty_gib():
+    total = 0
+    try:
+        with open("/proc/meminfo", encoding="ascii") as f:
+            for line in f:
+                if line.startswith(("Dirty:", "Writeback:")):
+                    total += int(line.split()[1])
+    except Exception:
+        return 0.0
+    return total / 2**20
+
+
+def _park_dir():
+    override = os.environ.get("NNGPT_VLLM_PARK_DIR", "").strip()
+    if override:
+        d = Path(override)
+    else:
+        try:
+            from ab.gpt.util.Const import out_dir
+            d = Path(out_dir) / "tmp"
+        except Exception:
+            d = Path(tempfile.gettempdir())
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+class _Spill:
+    """Weights written to disk as raw bytes, in the order they were taken."""
+
+    def __init__(self, path):
+        self.path = Path(path)
+        self.count = 0
+        self.plan = []
+
+    @staticmethod
+    def _byte_view(tensor):
+        flat = tensor.contiguous().reshape(-1)
+        if flat.dtype == torch.bfloat16:
+            flat = flat.view(torch.int16)
+        return memoryview(flat.numpy()).cast("B")
+
+    def write(self, handle, tensor):
+        contiguous = tensor.contiguous()
+        payload = self._byte_view(contiguous)
+        handle.write(payload)
+        self.plan.append((contiguous.dtype, tuple(contiguous.shape),
+                          payload.nbytes))
+        self.count += 1
+
+    def read(self, handle, index):
+        dtype, shape, nbytes = self.plan[index]
+        view = torch.int16 if dtype == torch.bfloat16 else dtype
+        flat = torch.empty(nbytes // torch.empty(0, dtype=view).element_size(),
+                           dtype=view)
+        got = handle.readinto(memoryview(flat.numpy()).cast("B"))
+        if got != nbytes:
+            raise RuntimeError(f"spilled weight {index} is short: "
+                               f"{got} of {nbytes} bytes")
+        if dtype == torch.bfloat16:
+            flat = flat.view(torch.bfloat16)
+        return flat.reshape(shape)
+
+    @property
+    def bytes(self):
+        try:
+            return self.path.stat().st_size
+        except OSError:
+            return 0
+
+    def discard(self):
+        try:
+            self.path.unlink()
+        except OSError:
+            pass
+
 
 def _tensor_bytes(t):
     try:
@@ -327,10 +421,11 @@ class ParkedTrainer:
     hold the weights, instead of discovering it 25 seconds into loading.
     """
 
-    def __init__(self, entries, gpu_bytes, fingerprint=None):
+    def __init__(self, entries, gpu_bytes, fingerprint=None, spill=None):
         self.entries = entries
         self.gpu_bytes = gpu_bytes
         self.fingerprint = fingerprint
+        self.spill = spill
 
     def __bool__(self):
         return bool(self.entries)
@@ -356,32 +451,88 @@ def _force_park(model, fingerprint=None):
     """
     entries = []
     host = torch.device("cpu")
-    for store, key, tensor in _iter_model_tensors(model):
-        if tensor.device.type != "cuda":
-            continue
-        origin = tensor.device
+    spill = None
+    handle = None
+    if PARK_TO_DISK:
         try:
-            tensor.data = tensor.data.to(host)
+            path = _park_dir() / f"trainer_park_{os.getpid()}_{uuid.uuid4().hex[:8]}.pt"
+            handle = open(path, "wb")
+            spill = _Spill(path)
         except Exception as exc:
-            print(f"[vLLM] {key} could not be parked "
-                  f"({type(exc).__name__}: {exc}); rolling back.", flush=True)
-            _force_unpark(ParkedTrainer(entries, 0))
-            return None
-        _move_quant_state(tensor, host)
-        entries.append((tensor, origin))
-    return entries
+            print(f"[vLLM] weights cannot be spilled to disk ({exc}); "
+                  f"parking to host memory instead.", flush=True)
+            spill = handle = None
+
+    try:
+        for store, key, tensor in _iter_model_tensors(model):
+            if tensor.device.type != "cuda":
+                continue
+            origin = tensor.device
+            try:
+                staged = tensor.data.to(host)
+                if handle is not None:
+                    spill.write(handle, staged)
+                    tensor.data = torch.empty(0, dtype=staged.dtype, device=host)
+                    del staged
+                else:
+                    tensor.data = staged
+            except Exception as exc:
+                print(f"[vLLM] {key} could not be parked "
+                      f"({type(exc).__name__}: {exc}); rolling back.", flush=True)
+                if handle is not None:
+                    handle.close()
+                    handle = None
+                _force_unpark(ParkedTrainer(entries, 0, spill=spill))
+                if spill is not None:
+                    spill.discard()
+                return None
+            _move_quant_state(tensor, host)
+            entries.append((tensor, origin))
+    finally:
+        if handle is not None:
+            handle.flush()
+            os.fsync(handle.fileno())
+            handle.close()
+
+    if spill is not None:
+        gc.collect()
+        print(f"[vLLM] {spill.count} weight tensor(s) spilled to disk "
+              f"({spill.bytes / GIB:.2f} GiB); host now has "
+              f"{_host_available_gib():.1f} GiB available, "
+              f"{_host_dirty_gib():.2f} GiB awaiting writeback.", flush=True)
+    return entries, spill
 
 
 def _force_unpark(parked):
     """Put every parked tensor back on the device it came from."""
-    for tensor, origin in parked.entries:
+    spill = getattr(parked, "spill", None)
+    handle = None
+    if spill is not None and spill.count:
         try:
-            tensor.data = tensor.data.to(origin)
+            handle = open(spill.path, "rb")
         except Exception as exc:
-            print(f"[vLLM] a parked tensor could not be restored to {origin} "
+            print(f"[vLLM] the spilled weights cannot be read back "
                   f"({type(exc).__name__}: {exc}).", flush=True)
             raise
-        _move_quant_state(tensor, origin)
+    try:
+        for index, (tensor, origin) in enumerate(parked.entries):
+            try:
+                if handle is not None:
+                    staged = spill.read(handle, index)
+                    tensor.data = staged.to(origin)
+                    del staged
+                else:
+                    tensor.data = tensor.data.to(origin)
+            except Exception as exc:
+                print(f"[vLLM] a parked tensor could not be restored to "
+                      f"{origin} ({type(exc).__name__}: {exc}).", flush=True)
+                raise
+            _move_quant_state(tensor, origin)
+    finally:
+        if handle is not None:
+            handle.close()
+        if spill is not None:
+            spill.discard()
 
 
 def _host_rss_gib():
@@ -453,10 +604,12 @@ def park_trainer(model):
 
     fingerprint = _fingerprint(model) if PARK_VERIFY else None
 
+    spill = None
     if FORCE_PARK:
-        entries = _force_park(model, fingerprint)
-        if entries is None:
+        parked = _force_park(model, fingerprint)
+        if parked is None:
             return None
+        entries, spill = parked
     else:
         # Legacy path. Module.to("cpu") leaves bitsandbytes quant_states on the
         # device and frees little; kept only as an escape hatch.
@@ -484,7 +637,7 @@ def park_trainer(model):
               f"engine needs about {resident / GIB:.1f} GiB of its own, so it "
               f"is not built; generation uses the HuggingFace path.", flush=True)
         if entries:
-            _force_unpark(ParkedTrainer(entries, resident, fingerprint))
+            _force_unpark(ParkedTrainer(entries, resident, fingerprint, spill))
         return None
 
     if freed < MIN_PARK_FREED:
@@ -505,13 +658,13 @@ def park_trainer(model):
               f"return the pages. Restoring the trainer and using the "
               f"HuggingFace path.", flush=True)
         if entries:
-            _force_unpark(ParkedTrainer(entries, resident, fingerprint))
+            _force_unpark(ParkedTrainer(entries, resident, fingerprint, spill))
         return None
 
     print(f"[vLLM] Trainer parked on the host; freed {freed / GIB:.1f} GiB "
           f"({after / GIB:.1f} GiB of {total / GIB:.1f} GiB free, "
           f"{still_resident / GIB:.2f} GiB left on the card).", flush=True)
-    return ParkedTrainer(entries, resident, fingerprint)
+    return ParkedTrainer(entries, resident, fingerprint, spill)
 
 
 def unpark_trainer(model, parked):
@@ -618,6 +771,21 @@ def _flatten_token_ids(obj):
     raise TypeError(f"cannot read token ids from {type(obj).__name__}")
 
 
+def assistant_prefill():
+    """Text the assistant turn is forced to begin with (NNGPT_ASSISTANT_PREFILL).
+
+    A reasoning model expands to fill whatever budget it is given: at 1024
+    tokens every reply was cut off mid-deliberation, and at 3072 all thirty
+    still were. Telling it to be brief does not work, because the instruction
+    is itself something to reason about. Starting the assistant turn mid-token
+    removes the opportunity: there is no position at which prose could go.
+
+    The prefix is prepended back onto the generated text, so everything
+    downstream sees a complete reply and nothing else needs to know.
+    """
+    return os.environ.get("NNGPT_ASSISTANT_PREFILL", "")
+
+
 def _render_messages(tok, messages, suppress_thinking=False):
     """Render a messages list to a prompt string.
 
@@ -656,14 +824,14 @@ def _render_messages(tok, messages, suppress_thinking=False):
                 # Batched processors return a list of strings.
                 rendered = rendered[0] if rendered else ""
             if rendered:
-                return rendered
+                return rendered + assistant_prefill()
         except Exception as exc:
             print(f"[vLLM] apply_chat_template failed "
                   f"({type(exc).__name__}: {exc}); using the plain "
                   f"User/Assistant format.", flush=True)
     body = "\n".join(f"{m['role'].capitalize()}: {m['content']}"
                       for m in messages)
-    return f"{body}\nAssistant:"
+    return f"{body}\nAssistant:" + assistant_prefill()
 
 
 def _encode_prompt(tok, messages, suppress_thinking=False):
@@ -1111,8 +1279,11 @@ class VLLMSleepEngine:
         outputs = self.llm.generate(requests, sampling,
                                     lora_request=self._lora_request())
 
+        prefill = assistant_prefill()
         for pos, out in zip(kept, outputs):
             text = out.outputs[0].text if out.outputs else ""
+            if prefill and text:
+                text = prefill + text
             results[pos] = (*extract_all_to_train(text), text)
         return [results[pos] for pos in range(len(prompts))]
 

@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 import os
 import shutil
 import sys
@@ -25,7 +26,16 @@ METRIC = "acc"
 # Default hyperparameters. The final "epoch" value is always overridden by
 # nn_train_epochs for the current evaluation run.
 LR = 0.01
-BATCH = 64
+#: Evaluation batch size.
+#:
+#: Was 64. The evaluation worker shares the card and the host with a parked 9B
+#: trainer, and one measured cycle logged eight "host MemAvailable below floor"
+#: warnings and nine worker recycles -- each recycle costing a process start
+#: and a dataset load. Halving the batch halves activation memory, and because
+#: every candidate in a cycle is measured at the same value it cannot bias the
+#: comparison between them. The OOM retry at half this value remains the
+#: backstop for an architecture that still does not fit.
+BATCH = 32
 DROPOUT = 0.2
 MOMENTUM = 0.9
 TRANSFORM = "norm_256_flip"
@@ -241,6 +251,71 @@ def _write_success_outputs(spec: Dict[str, Any], result: Dict[str, Any]) -> Dict
         "skipped": False,
         "code_file": spec["code_file"],
     }
+
+
+#: Smallest batch an OOM retry will go down to.
+MIN_RETRY_BATCH = 4
+
+
+def _retry_oom_at_half_batch(requests, results, use_all_visible_gpus):
+    """Re-run the entries that ran out of memory, at half the batch size.
+
+    One retry, not a loop. Returns the results list with the successful
+    retries substituted in; everything else is untouched.
+    """
+    if os.environ.get("NNGPT_OOM_RETRY", "1").strip().lower() in ("0", "false", "no"):
+        return results
+    retry_idx = []
+    for i, (req, res) in enumerate(zip(requests, results)):
+        if res.get("success") or not res.get("is_oom"):
+            continue
+        batch = (req.get("prm") or {}).get("batch")
+        try:
+            batch = int(batch)
+        except (TypeError, ValueError):
+            continue
+        if batch // 2 < MIN_RETRY_BATCH:
+            continue
+        retry_idx.append(i)
+    if not retry_idx:
+        return results
+
+    retries = []
+    for i in retry_idx:
+        req = dict(requests[i])
+        prm = dict(req.get("prm") or {})
+        prm["batch"] = int(prm["batch"]) // 2
+        req["prm"] = prm
+        retries.append(req)
+    print(f"  Retrying {len(retries)} out-of-memory model(s) at half the "
+          f"batch size: "
+          + ", ".join(f"{r['model_id']}->batch {r['prm']['batch']}" for r in retries),
+          flush=True)
+    try:
+        retry_results = NNEvalWorkerPool.evaluate_model_entries(
+            [{"payload": r} for r in retries],
+            use_all_visible_gpus=use_all_visible_gpus,
+        )
+    except Exception as exc:
+        print(f"  OOM retry failed to run: {exc}", flush=True)
+        return results
+
+    out = list(results)
+    recovered = 0
+    for i, req, res in zip(retry_idx, retries, retry_results):
+        if res.get("success"):
+            requests[i]["prm"] = req["prm"]      # record what it actually ran at
+            out[i] = res
+            recovered += 1
+    print(f"  OOM retry recovered {recovered} of {len(retries)}", flush=True)
+    return out
+
+
+def _short_error(worker_result) -> str:
+    """The first line of the worker's error, enough to read at a glance."""
+    text = str(worker_result.get("error") or "unknown").strip()
+    first = text.splitlines()[0] if text else "unknown"
+    return first[:160]
 
 
 def _write_failure_outputs(spec: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any]:
@@ -471,6 +546,28 @@ def _collect_epoch_requests(
             prm.update({"lr": lr, "batch": batch, "momentum": momentum, "transform": fixed_transform})
             prm.setdefault("dropout", dropout)
 
+        # Whatever prm came from, the trainer needs a complete protocol. A
+        # seed row carries whatever its own generator happened to record, and
+        # with a diverse seed set that is not the same set of keys every time:
+        # measured, six of thirty seeds in one cycle had no "batch" at all and
+        # every one of them died on KeyError 'batch' after the worker had been
+        # started and the dataset loaded. The defaults fill only what is
+        # missing, so a value the seed or the model did state still wins.
+        for _k, _v in (("batch", batch), ("lr", lr), ("momentum", momentum),
+                       ("dropout", dropout)):
+            if prm.get(_k) is None:
+                prm[_k] = _v
+                print(f"  prm['{_k}'] was not set by the seed or the model; "
+                      f"using the run default {_v}")
+
+        # Measurements are not hyperparameters. LEMUR rows carry what a past
+        # run observed alongside what it set, and those leak through prm into
+        # the trainer: metric_acc, duration_seconds and epoch_max=50 are
+        # records of an earlier training, not instructions for this one.
+        for _k in ("metric_acc", "accuracy", "duration", "duration_seconds",
+                   "epoch_max", "uid", "nn", "task", "dataset", "metric"):
+            prm.pop(_k, None)
+
         # Always evaluate with nn_train_epochs for this run, regardless of what
         # may have been stored in the original prm payload.
         prm["epoch"] = int(nn_train_epochs)
@@ -502,6 +599,54 @@ def _collect_epoch_requests(
         )
 
     return requests, immediate_results
+
+
+def _predict_taylor(spec):
+    accuracies, table, run_prm = [], ["epoch\ttaylor_imp"], None
+    for epoch in (1, 2, 3):
+        path = Path(spec["model_dir"]) / f"{epoch}.json"
+        rows = json.loads(path.read_text(encoding="utf-8"))
+        rows = rows if isinstance(rows, list) else [rows]
+        if len(rows) != 1 or not isinstance(rows[0], dict):
+            raise ValueError(f"Expected one trial record in {path}")
+        row = rows[0]
+        epoch_prm = {
+            key: value for key, value in row.items()
+            if key not in {"uid", "accuracy", "duration", "duration_seconds", "train_stat", "layer_stat"}
+            and not key.startswith("metric_")
+        }
+        if run_prm is not None and epoch_prm != run_prm:
+            raise ValueError(f"Training configuration changed between epochs in {path}")
+        run_prm = epoch_prm
+        accuracy = float(row["accuracy"])
+        if not math.isfinite(accuracy) or not 0 <= accuracy <= 1:
+            raise ValueError(f"Expected measured accuracy in [0,1] in {path}")
+        accuracies.append(100 * accuracy)
+        values = [float(layer["taylor_imp"]) for layer in row["layer_stat"]["layers"]
+                  if layer.get("taylor_imp") is not None and math.isfinite(float(layer["taylor_imp"]))]
+        if not values:
+            raise ValueError(f"No finite Taylor values in {path}")
+        table.append(f"{epoch}\t{sum(values) / len(values):.6g}")
+
+    from ab.gpt.act.acc_predictor import config, infer
+    settings = dict(USE_LAYER_STATS=True, ACTIVE_LAYER_FEATURES=("taylor_imp",),
+                    USE_THIRD_EARLY_EPOCH=True)
+    previous = {key: getattr(config, key) for key in settings}
+    try:
+        for key, value in settings.items():
+            setattr(config, key, value)
+        accuracy, epoch = infer.predict_best_accuracy(
+            task=spec["task"], dataset=spec["dataset"], metric=spec["metric"],
+            nn_code=read_py_file_as_string(spec["code_file"]), prm=spec["prm"],
+            epoch_1_accuracy=accuracies[0], epoch_2_accuracy=accuracies[1],
+            epoch_3_accuracy=accuracies[2], layer_stats="\n".join(table),
+        )
+    finally:
+        for key, value in previous.items():
+            setattr(config, key, value)
+    return {"status": "complete", "predicted_best_accuracy": accuracy,
+            "predicted_best_epoch": epoch, "accuracy_unit": "percent",
+            "observed_epochs": 3, "prediction_horizon": infer.PREDICTOR_DEFAULT_MAX_EPOCHS}
 
 
 def main(
@@ -539,8 +684,26 @@ def main(
     cycle=CYCLE,
     use_all_visible_gpus: Optional[bool] = None,
     save_eval_checkpoint: bool = False,
+    culling_nn: bool = False,
 ):
+    if culling_nn:
+        if not save_to_db or save_eval_checkpoint:
+            raise ValueError("Culling requires save_to_db=True and no eval checkpoint")
+        nn_train_epochs = 3
     base_nngpt_path = nngpt_dir
+    # NNGPT_EVAL_SAVE_TO_DB overrides the caller. A cycle screens every
+    # candidate with one training run of one epoch, and those numbers used to
+    # be written to LEMUR, where the next rebuild turned them into training
+    # pairs -- so the corpus was built on single measurements whose own noise
+    # (0.9562 vs 0.9621 for the same model) is larger than the gains it
+    # selects on. With the stage-2 ladder on, screening runs set this to 0 and
+    # the re-measured pass sets it to 1, so only re-measured results enter the
+    # database. Models are still written to the submission directory either
+    # way.
+    _save_env = os.environ.get("NNGPT_EVAL_SAVE_TO_DB", "").strip().lower()
+    if _save_env:
+        save_to_db = _save_env in ("1", "true", "yes", "on")
+        print(f"[eval] save_to_db={save_to_db} (NNGPT_EVAL_SAVE_TO_DB)")
     custom_synth_path = Path(custom_synth_dir) if custom_synth_dir else None
     if nn_alter_epochs is None:
         if custom_synth_path is not None:
@@ -582,6 +745,15 @@ def main(
 
                 # Build eval requests first so already successful models can be
                 # skipped without waking workers unnecessarily.
+                if culling_nn:
+                    for folder in models_base_dir.iterdir():
+                        if (folder / new_nn_file).is_file() and (
+                            any(folder.glob("[0-9]*.json")) or any(
+                                (folder / name).exists() for name in
+                                ("eval_info.json", "eval_summary.json", "error.txt", "prediction.json")
+                            )
+                        ):
+                            raise FileExistsError(f"Culling requires fresh output files: {folder}")
                 requests, epoch_results = _collect_epoch_requests(
                     models_base_dir=models_base_dir,
                     nn_name_prefix=nn_name_prefix,
@@ -615,6 +787,12 @@ def main(
                     save_eval_checkpoint=save_eval_checkpoint,
                 )
 
+                if culling_nn:
+                    for request in requests:
+                        if request["task"] != "img-classification" or request["metric"] != "acc":
+                            raise ValueError("Taylor prediction currently supports img-classification/acc")
+                        request["layer_analysis"] = True
+
                 if requests:
                     NNEvalWorkerPool.prewarm_nneval_workers(
                         use_all_visible_gpus=resolved_use_all_visible_gpus,
@@ -625,15 +803,58 @@ def main(
                         entries,
                         use_all_visible_gpus=resolved_use_all_visible_gpus,
                     )
+                    # An OOM is a property of the batch size, not of the
+                    # model: the card is shared with a parked 9B trainer, and a
+                    # candidate that does not fit at batch 32 usually fits at
+                    # 16. There was no retry, so each one cost the cycle a
+                    # paired observation it could have had.
+                    worker_results = _retry_oom_at_half_batch(
+                        requests, worker_results, resolved_use_all_visible_gpus)
+                    trained, refused = [], []
                     for request, worker_result in zip(requests, worker_results):
                         model_id = request["model_id"]
                         if worker_result.get("success"):
                             print(f"  Evaluation results for {model_id}: {worker_result}")
+                            trained.append((model_id, worker_result.get("accuracy")))
                             epoch_results.append(_write_success_outputs(request, worker_result))
                         else:
                             print(f"  Error evaluating model {model_id}: {worker_result.get('error')}")
+                            refused.append((model_id, _short_error(worker_result)))
                             epoch_results.append(_write_failure_outputs(request, worker_result))
                         release_memory()
+
+                    # The verdict of the only build that matters, printed before
+                    # the fine-tuner is handed the GPU, so one cycle's log says
+                    # whether every candidate was judged and how.
+                    print(f"[eval] epoch {current_epoch}: {len(trained)} trained, "
+                          f"{len(refused)} refused by the worker "
+                          f"(of {len(requests)} sent)", flush=True)
+                    for model_id, acc in sorted(trained, key=lambda t: -(t[1] or 0)):
+                        print(f"[eval]   trained {model_id}: "
+                              f"{'n/a' if acc is None else f'{float(acc):.4f}'}",
+                              flush=True)
+                    for model_id, why in refused:
+                        print(f"[eval]   refused {model_id}: {why}", flush=True)
+
+                    if culling_nn:
+                        NNEvalWorkerPool.shutdown_nneval_workers()
+                        from ab.gpt.act.acc_predictor import model as predictor_model
+                        cached = predictor_model._predictor_model, predictor_model._predictor_tokenizer
+                        try:
+                            for request, result in zip(requests, worker_results):
+                                if not result.get("success"):
+                                    continue
+                                try:
+                                    prediction = _predict_taylor(request)
+                                except Exception as exc:
+                                    prediction = {"status": "failed", "error": str(exc)}
+                                path = Path(request["model_dir"]) / "prediction.json"
+                                with path.open("x", encoding="utf-8") as stream:
+                                    json.dump(prediction, stream, indent=2, allow_nan=False)
+                                print(f"Prediction for {request['model_id']}: {prediction}")
+                        finally:
+                            predictor_model._predictor_model, predictor_model._predictor_tokenizer = cached
+                            release_memory()
 
                 # Rebuild cycle_results.json from the artifacts produced in this
                 # epoch directory after all worker results have been written.
@@ -666,7 +887,13 @@ def main(
 
                 try:
                     from ab.gpt.util.data.EpochStats import update_epoch_report
-                    update_epoch_report(models_base_dir, current_epoch, base_nngpt_path)
+                    # Tune calls this again once evaluation has finished, and
+                    # the two wrote the same record twice -- which is how one
+                    # run recorded epoch 0 with n_above_ceiling 1 in the
+                    # tracker and 0 in cycle_results_0.json. The later call
+                    # sees every result, so this one defers to it.
+                    if os.environ.get("NNGPT_EPOCH_REPORT_FROM_EVAL", "").strip() in ("1", "true", "yes"):
+                        update_epoch_report(models_base_dir, current_epoch, base_nngpt_path)
                 except Exception as exc:
                     print(f"[EPOCH STATS] Could not update the epoch report: {exc}")
 
@@ -891,6 +1118,8 @@ if __name__ == "__main__":
         help="Cycle number (finetuning iteration, separate from epoch).",
     )
 
+    parser.add_argument("--culling_nn", action="store_true",
+                        help="Train three epochs with Taylor statistics and save predicted best accuracy.")
     args = parser.parse_args()
     prm_json_dict = None
     if args.prm_json:
@@ -901,7 +1130,7 @@ if __name__ == "__main__":
             sys.exit(1)
     print("Starting evaluation of altered NNs...")
     print(f"NNAlter run epochs to scan: {args.nn_alter_epochs}")
-    print(f"Each altered NN will be trained for: {args.nn_train_epochs} epochs for evaluation.")
+    print(f"Each altered NN will be trained for: {3 if args.culling_nn else args.nn_train_epochs} epochs for evaluation.")
     print(f"Base task: {args.task}, Base dataset: {args.dataset}, Base metric: {args.metric}")
     print("Base Hyperparameters for NNEval (before df override):")
     print(
@@ -944,4 +1173,5 @@ if __name__ == "__main__":
         epoch_limit_minutes=args.epoch_limit_minutes,
         custom_synth_dir=args.custom_synth_dir,
         cycle=args.cycle,
+        culling_nn=args.culling_nn,
     )

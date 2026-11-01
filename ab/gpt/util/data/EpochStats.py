@@ -22,6 +22,7 @@ from this epoch's own directory removes the lag entirely.
 
 import json
 import math
+import collections
 import os
 import random
 from datetime import datetime
@@ -137,6 +138,144 @@ def _label(name, dataset):
     return f"{name} ({dataset})" if dataset else str(name)
 
 
+#: Accuracy of the best design point in the LEMUR corpus the run started from.
+#: The objective is the best model a cycle produces, so the number that matters
+#: is how often a cycle clears this, not how far the mean moved.
+def _corpus_ceiling(group=None):
+    """The best accuracy the corpus holds, for the group a seed belongs to.
+
+    One number for every seed was wrong once the test set stopped being a
+    single family: pretrained-backbone models reach 0.9717 after one epoch and
+    from-scratch ones reach 0.8645, so comparing a scratch seed's result
+    against the pretrained maximum reports "0 above the ceiling" for a cycle
+    that may have done well. prepare() already exports both.
+    """
+    keys = {"scratch": "NNGPT_DESIGN_CEILING_SCRATCH",
+            "pretrained": "NNGPT_DESIGN_CEILING_PRETRAINED"}
+    for name in ([keys[group]] if group in keys else []) + ["NNGPT_DESIGN_CEILING"]:
+        raw = os.environ.get(name, "").strip()
+        if raw:
+            try:
+                return float(raw)
+            except ValueError:
+                continue
+    return None
+
+
+def _model_group(model_dir):
+    """"pretrained" or "scratch" for one generation, from its own code."""
+    try:
+        from ab.gpt.util.data.code_edit import uses_pretrained_weights
+        code = (Path(model_dir) / "new_nn.py").read_text(
+            encoding="utf-8", errors="replace")
+    except Exception:
+        return None
+    return "pretrained" if uses_pretrained_weights(code) else "scratch"
+
+
+def quantiles(values):
+    """min / median / p90 of a sample, or None for each when it is empty."""
+    xs = sorted(v for v in values if v is not None)
+    if not xs:
+        return {"min": None, "p50": None, "p90": None}
+
+    def q(frac):
+        return xs[min(len(xs) - 1, int(round(frac * (len(xs) - 1))))]
+
+    return {"min": xs[0], "p50": q(0.5), "p90": q(0.9)}
+
+
+#: Below this many valid models a cycle is recorded but marked not comparable.
+MIN_COMPARABLE_N = int(os.environ.get("NNGPT_MIN_COMPARABLE_N", "5") or 5)
+
+FAILURE_CLASSES = ("no_code", "truncated", "no_delta", "rejected_delta",
+                   "duplicate", "verification", "oom", "runtime", "unknown")
+
+
+def classify_failures(models_dir):
+    """Why each generation produced no usable model.
+
+    `valid_rate` alone cannot be acted on: a cycle losing models to truncation
+    needs a bigger budget, one losing them to duplicates needs a different
+    sampler, and one losing them to OOM needs the trainer off the card. Those
+    are three different bugs behind one number.
+    """
+    counts = {k: 0 for k in FAILURE_CLASSES}
+    models_dir = Path(models_dir)
+    if not models_dir.is_dir():
+        return counts
+    for d in sorted(models_dir.iterdir()):
+        if not d.is_dir():
+            continue
+        # The validity gate parks rejects under _rejected/ when asked to keep
+        # them; they are already counted in validity_report.json and counting
+        # them again here doubles the cycle's losses.
+        if d.name.startswith("_"):
+            continue
+        if (d / "eval_info.json").is_file():
+            continue
+        out = ""
+        out_path = d / "full_output.txt"
+        if out_path.is_file():
+            try:
+                out = out_path.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                out = ""
+        err = ""
+        err_path = d / "error.txt"
+        if err_path.is_file():
+            try:
+                err = err_path.read_text(encoding="utf-8", errors="replace").lower()
+            except Exception:
+                err = ""
+        if err:
+            if "already exists" in err or "checksum" in err:
+                counts["duplicate"] += 1
+            # "cuda" alone matched every CUDA-side error there is -- a shape
+            # mismatch raised inside a kernel was reported as an OOM, and three
+            # cycles were read as memory-bound when they were not. Only the
+            # allocator's own wording counts.
+            elif ("out of memory" in err or "outofmemoryerror" in err
+                  or "cuda_error_out_of_memory" in err):
+                counts["oom"] += 1
+            else:
+                counts["runtime"] += 1
+        elif (d / "eval_verification_failed.txt").is_file():
+            counts["verification"] += 1
+        elif (d / "duplicate.txt").is_file():
+            # The generator rejected the candidate as an architecture it has
+            # already produced. It leaves no error.txt, so this used to fall
+            # through to "truncated" and a sampler problem was read as a token
+            # budget problem.
+            counts["duplicate"] += 1
+        elif not (d / "new_nn.py").is_file():
+            truncated = (d / "truncated.txt").is_file()
+            # Edit mode answers in <edit>/<nn>/<hp>/<tr> blocks and never in
+            # <delta>, so the delta-only tests below put every failed edit into
+            # "truncated" whatever went wrong with it. A reply that produced
+            # blocks but no file is a reply whose edits did not apply.
+            has_edit = bool(out) and "<edit>" in out
+            has_block = bool(out) and any(
+                t in out for t in ("<nn>", "<hp>", "<tr>", "<delta>"))
+            if truncated:
+                counts["truncated"] += 1
+            elif out and "<delta>" in out and "</delta>" in out:
+                counts["rejected_delta"] += 1
+            elif has_edit and "</edit>" in out:
+                # Complete edit blocks that no <find> matched, or that produced
+                # code the interface check refused.
+                counts["rejected_delta"] += 1
+            elif has_edit or has_block:
+                counts["no_delta"] += 1
+            elif out:
+                counts["truncated"] += 1
+            else:
+                counts["no_code"] += 1
+        else:
+            counts["unknown"] += 1
+    return counts
+
+
 def collect_epoch_stats(models_dir, epoch):
     """Build the statistics record for one epoch from its model directories.
 
@@ -187,9 +326,38 @@ def collect_epoch_stats(models_dir, epoch):
     # treating the two means as independent samples.
     delta = mean_ci(deltas)
 
+    # Each model against its own group's ceiling, and the headline ceiling is
+    # the one most of this cycle's models were measured against.
+    groups = [_model_group(r["model_dir"]) for r in eval_results
+              if r.get("accuracy") is not None]
+    above = 0
+    for acc, group in zip(accuracies, groups):
+        limit = _corpus_ceiling(group)
+        if limit is not None and acc > limit:
+            above += 1
+    main_group = collections.Counter(g for g in groups if g).most_common(1)
+    ceiling = _corpus_ceiling(main_group[0][0] if main_group else None)
+    above = [None] * above
+    failures = classify_failures(models_dir)
+    # Order statistics, because the mean of this quantity is not interpretable.
+    # Measured: a cycle whose nine valid models scored 0.95-0.97 except two that
+    # diverged to 0.13 and 0.16 reported a mean of 0.779, and the run's
+    # mean/max correlation then looked negative -- an artifact of two failed
+    # training runs, not a trade-off between the two. The median and p90 say
+    # what the body of the distribution did; cycle_max says what the objective
+    # did; the mean says neither.
+    quant = quantiles(accuracies)
+
     return {
         "epoch": epoch,
         "timestamp": datetime.now().isoformat(),
+        # The objective is the tail, not the mean: one model above the corpus
+        # ceiling is the whole point of a cycle, and a mean that moved while
+        # the max did not is not progress toward it.
+        "cycle_max": gen["max"],
+        "corpus_ceiling": ceiling,
+        "n_above_ceiling": len(above),
+        "failures": failures,
         "models_generated": generated,
         "models_valid": valid,
         "models_failed": failed,
@@ -207,6 +375,18 @@ def collect_epoch_stats(models_dir, epoch):
         "accuracy_ci_high": gen["ci_high"],
         "accuracy_std": gen["std"],
         "accuracy_n": gen["n"],
+        "accuracy_median": quant["p50"],
+        "accuracy_p90": quant["p90"],
+        "accuracy_min": quant["min"],
+        # How many valid models collapsed outright (a diverged training run,
+        # not a weak architecture). These are what destroy the mean, and they
+        # are a hyperparameter symptom: one fixed lr for every architecture.
+        "accuracy_collapsed": sum(1 for a in accuracies if a < 0.5),
+        # A cycle whose valid models can be counted on one hand says nothing
+        # about a trend: one run reported a cycle on n=2. Flagged rather than
+        # hidden, so a reader does not compare it with a cycle of 14.
+        "comparable": gen["n"] is not None and gen["n"] >= MIN_COMPARABLE_N,
+        "min_comparable_n": MIN_COMPARABLE_N,
         # accuracy the SAME models had before the LLM modified them (LEMUR),
         # restricted to the valid ones so the two means are comparable
         "baseline_accuracy_mean": base["mean"],
@@ -225,6 +405,11 @@ def collect_epoch_stats(models_dir, epoch):
         "datasets": sorted(set(datasets)),
         # paired generated-minus-seed difference
         "paired_n": delta["n"],
+        # The quantity to judge a cycle on now that the seeds are unique
+        # architectures: cycle_max partly reflects which seeds were drawn,
+        # while this is what the model did to the ones it was given.
+        "median_improvement": quantiles(deltas)["p50"],
+        "improved_seeds": sum(1 for d in deltas if d > 0),
         "mean_improvement": delta["mean"],
         "improvement_ci_low": delta["ci_low"],
         "improvement_ci_high": delta["ci_high"],
@@ -340,9 +525,12 @@ PARAM_SKIP = ("test_nn", "unsloth", "vllm_sleep")
 PARAM_FLAGS = ("load_in_4bit",)
 
 #: Width budget for the configuration line, in characters, paired with the
-#: point size it is drawn at: at 5.8pt monospace, 194 characters span ~94% of
-#: the 10in figure, which clears the panels on both sides. Changing one without
-#: the other either wraps the line or lets it run past the axes.
+#: point size it is drawn at: at 5.8pt in PARAM_FONTFAMILY, 194 characters span
+#: 94% of the 10in figure, or 97% once the glyphs are hinted, which is what
+#: most installs draw. Both clear the panels, which end well inside that.
+#: Changing one without the other either wraps the line or lets it run past the
+#: figure. Point size is no longer a dial here: hinting rounds the advance to
+#: whole pixels, so 5.8 and 5.4 come out at the same width.
 #:
 #: Every setting added to the line has been paid for in point size, and this is
 #: close to the floor: below ~5.5pt the figures stop resolving in print. The
@@ -350,6 +538,11 @@ PARAM_FLAGS = ("load_in_4bit",)
 #: lines, rather than shrink this again.
 PARAM_MAX_CHARS = 194
 PARAM_FONTSIZE = 5.8
+
+#: The face that budget is measured in. "monospace" resolves to whatever the
+#: host has installed, and the wider ones push a full line past the panels.
+#: DejaVu ships with matplotlib, so the budget holds on every machine.
+PARAM_FONTFAMILY = "DejaVu Sans Mono"
 
 #: Near-black rather than a grey: the line is the only record of what produced
 #: the curves, and at this size a lightened grey stops being legible in print.
@@ -463,15 +656,24 @@ def _fit_fontsize(fig, text, sizes=STUDY_FONTSIZES, max_width=STUDY_MAX_WIDTH,
     w's of equal length are nowhere near equal width.
     """
     renderer = fig.canvas.get_renderer()
-    chosen = sizes[-1]
-    for size in sizes:
+
+    def measure(size):
         probe = fig.text(0.5, 0.5, text, ha="center", fontsize=size, **kwargs)
         width = probe.get_window_extent(renderer=renderer).width / fig.bbox.width
         probe.remove()
-        if width <= max_width:
-            chosen = size
-            break
-    return chosen
+        return width
+
+    for size in sizes:
+        if measure(size) <= max_width:
+            return size
+
+    # Nothing in the ladder fits -- a wider face than the one the sizes were
+    # chosen against. Width is linear in point size, so the smallest is scaled
+    # to the budget rather than left to run past the axes.
+    width = measure(sizes[-1])
+    if not width:
+        return sizes[-1]
+    return max(0.1, math.floor(sizes[-1] * max_width / width * 10) / 10)
 
 
 #: Separator between the statement of the study and the prompts it was run
@@ -547,9 +749,22 @@ def _run_caption(config, rows):
     different curve, and nothing else on the figure records which one this is.
     Every setting recorded in run_config.json is shown rather than a chosen few,
     so two runs can be told apart by looking at them.
+
+    The entry point is named beside the model. The repository carries a script
+    per model and per experiment, and two of them can write the same settings
+    while differing in everything the config does not record -- which prompts
+    were edited, which corpus was curated -- so the model name alone does not
+    identify what produced the curves.
     """
     model = config.get("base_model_name") or config.get("llm_conf") or ""
     model = str(model).rstrip("/").split("/")[-1].replace(".json", "")
+    script = str(config.get("script") or "").strip()
+    if script:
+        script = Path(script).stem                 # a path or a .py, if either
+    if model and script:
+        model = f"{model} ({script})"
+    elif script:
+        model = f"({script})"
     return (model, _study_sentence(config, rows),
             _param_block(config.get("training") or {}))
 
@@ -730,7 +945,18 @@ AXIS_LABEL = "cycle"
 
 #: Label on the run time, so the figure says what the number measures. Without
 #: it a duration in the corner reads as a deadline, a budget or an age.
-RUNTIME_LABEL = "run time"
+RUNTIME_LABEL = "Run time"
+
+#: Label and format of the moment the figure itself was written. A run is
+#: re-plotted after every cycle and the file keeps its name, so two copies of
+#: epoch_statistics.png -- one in a message, one on disk -- are otherwise
+#: indistinguishable. To the minute: nothing here is decided by seconds.
+SAVED_LABEL = "saved"
+SAVED_FORMAT = "%Y-%m-%d %H:%M"
+
+
+def _saved_stamp(when=None):
+    return (when or datetime.now()).strftime(SAVED_FORMAT)
 
 
 #: The run time is set darker than the project mark beside it. The mark is an
@@ -740,17 +966,65 @@ RUNTIME_LABEL = "run time"
 RUNTIME_COLOR = "#53585e"
 
 
-def _draw_runtime(fig, text):
-    """The run's wall-clock duration, top-left, mirroring the project mark.
+def _runtime_parts(duration, saved=None):
+    """The corner's two facts: what the run cost, and when this copy was drawn.
 
-    Set in the same quiet grey and on the same band: it identifies the run
-    rather than reporting a result, and drawn any heavier it would compete
-    with the accuracies for attention.
+    The save time is given whether or not a duration could be measured -- an
+    older tracker has no timestamps to measure one from, and the question
+    "which copy of this file am I looking at" is still worth answering.
     """
-    if not text:
+    parts = []
+    if duration:
+        parts.append(f"{RUNTIME_LABEL}  {duration}")
+    parts.append(f"{SAVED_LABEL} {_saved_stamp(saved)}")
+    return parts
+
+
+def _runtime_line(duration, saved=None):
+    return "   ".join(_runtime_parts(duration, saved))
+
+
+#: Size of the corner line, and the clear space kept between it and the title.
+RUNTIME_FONTSIZE = 7.5
+RUNTIME_TITLE_GAP = 0.012
+
+
+def _draw_runtime(fig, parts, title_left=1.0):
+    """The run's cost and this copy's date, top-left, opposite the mark.
+
+    Set in the same quiet grey and on the same band: they identify the run
+    rather than reporting a result, and drawn any heavier they would compete
+    with the accuracies for attention.
+
+    Side by side when they fit, stacked when they do not. The title is centred
+    and grows with the model and script names, so on a long one the single
+    line ran under it -- measured against where the title actually starts, the
+    two never meet whatever either of them is called.
+    """
+    if not parts:
         return
-    fig.text(0.0115, 0.9955, f"{RUNTIME_LABEL}  {text}", ha="left", va="top",
-             fontsize=7.5, color=RUNTIME_COLOR, family="monospace", zorder=0)
+    x, top = 0.0115, 0.9955
+    step = RUNTIME_FONTSIZE * 1.45 / 72.0 / fig.get_size_inches()[1]
+
+    def _draw(lines):
+        drawn = []
+        for i, line in enumerate(lines):
+            drawn.append(fig.text(x, top - i * step, line, ha="left", va="top",
+                                  fontsize=RUNTIME_FONTSIZE,
+                                  color=RUNTIME_COLOR, family="monospace",
+                                  zorder=0))
+        return drawn
+
+    drawn = _draw(["   ".join(parts)])
+    if len(parts) < 2:
+        return
+    renderer = fig.canvas.get_renderer()
+    right = drawn[0].get_window_extent(renderer=renderer).x1 / fig.bbox.width
+    if right <= title_left - RUNTIME_TITLE_GAP:
+        return
+    for artist in drawn:
+        artist.remove()
+    _draw(parts)
 
 
 #: Project mark set in the top-right corner, on the band occupied by the title
@@ -1314,14 +1588,17 @@ def plot_epoch_stats(rows, out_path, base_dir=None):
     # Which model and which fine-tuning settings produced these numbers, and on
     # which dataset. Without them the curves cannot be compared between runs.
     head, tail, params = _run_caption(_run_config(base_dir) if base_dir else {}, rows)
-    y = 1.0 - 0.005 * band          # scaled with the rest of the band
+    y = 1.0 - 0.005 * band
+    title_left = 1.0          # scaled with the rest of the band
     if head:
         # Drawn as figure text rather than through suptitle: tight_layout
         # reserves a band of its own for a suptitle, which reappeared as a gap
         # between the caption and the first panel that no spacing value here
         # could close.
-        fig.text(0.5, y, head, ha="center", va="top", fontsize=11,
-                 fontweight="bold")
+        head_text = fig.text(0.5, y, head, ha="center", va="top", fontsize=11,
+                             fontweight="bold")
+        fig.canvas.draw()
+        title_left = (head_text.get_window_extent().x0 / fig.bbox.width)
         y -= 0.026 * band
     if tail:
         # The band below keeps its height whatever size this lands at, so a
@@ -1332,7 +1609,7 @@ def plot_epoch_stats(rows, out_path, base_dir=None):
         y -= 0.0275 * band
     if params:
         fig.text(0.5, y, "\n".join(params), ha="center", va="top",
-                 fontsize=PARAM_FONTSIZE, family="monospace",
+                 fontsize=PARAM_FONTSIZE, family=PARAM_FONTFAMILY,
                  color=PARAM_COLOR, linespacing=1.5)
         y -= 0.013 * band * len(params)
     header_bottom = y - HEADER_GAP * band
@@ -1598,8 +1875,8 @@ def plot_epoch_stats(rows, out_path, base_dir=None):
             only = ep[0]
             bottom_ax.set_xlim(only - 0.5, only + 0.5)
     _draw_brand(fig)
-    _draw_runtime(fig, _fmt_duration(_run_duration(
-        _run_config(base_dir) if base_dir else {}, rows)))
+    _draw_runtime(fig, _runtime_parts(_fmt_duration(_run_duration(
+        _run_config(base_dir) if base_dir else {}, rows))), title_left)
     note = _wrap_note(fig, _figure_note(
         bool(improved), _common_k(rows) if improved else None))
     # The note is given a strip of its own at the foot of the figure, so it
@@ -1711,12 +1988,7 @@ def _cycle_results_from_stats(stats):
     return {
         "cycle": stats.get("epoch"),
         "success": bool(valid),
-        "training": {
-            "data_dir": None,
-            "total_examples": None,
-            "new_examples_added": None,
-            "training_time_minutes": None,
-        },
+        "training": _training_block(),
         "generation": {
             "total_generated": total,
             "successful": valid,
@@ -1784,6 +2056,61 @@ def finalize_epoch_results(base_dir, epoch, stats):
     return per_epoch
 
 
+def _training_block() -> dict:
+    """What the fine-tune of this cycle actually did.
+
+    These four fields were hard-coded to None, so every cycle_results file
+    reported the training half of the cycle as unknown -- including
+    training_time_minutes, which is most of the wall clock. The corpus writes
+    its own counts to corpus_stats.json and the trainer writes its runtime to
+    outputs/train_results.json; both are on disk, so neither has to be guessed.
+    """
+    out = {"data_dir": None, "total_examples": None,
+           "new_examples_added": None, "training_time_minutes": None}
+    try:
+        from ab.gpt.util.Const import nngpt_dir
+        root = Path(nngpt_dir)
+    except Exception:
+        return out
+    corpus = root.parent / "edit_improve" / "corpus_stats.json"
+    if corpus.is_file():
+        try:
+            payload = json.loads(corpus.read_text(encoding="utf-8"))
+            out["data_dir"] = str(corpus.parent)
+            out["total_examples"] = payload.get("train_rows_total") or payload.get("train_examples")
+            out["corpus_pairs"] = payload.get("pairs")
+            out["corpus_records"] = payload.get("records")
+            out["aux_rows"] = payload.get("aux_rows")
+        except Exception:
+            pass
+    results = root / "outputs" / "train_results.json"
+    if results.is_file():
+        try:
+            payload = json.loads(results.read_text(encoding="utf-8"))
+            runtime = payload.get("train_runtime")
+            if isinstance(runtime, (int, float)):
+                out["training_time_minutes"] = round(runtime / 60.0, 2)
+            out["train_loss"] = payload.get("train_loss")
+        except Exception:
+            pass
+    return out
+
+
+def _recorded_stats(tracker_path, epoch):
+    """The statistics already recorded for this epoch, if any."""
+    try:
+        with open(tracker_path) as f:
+            rows = json.load(f)
+    except Exception:
+        return None
+    if not isinstance(rows, list):
+        return None
+    for row in rows:
+        if isinstance(row, dict) and row.get("epoch") == epoch:
+            return row
+    return None
+
+
 def update_epoch_report(models_dir, epoch, base_dir):
     """Collect, persist and plot this epoch's statistics.
 
@@ -1791,6 +2118,11 @@ def update_epoch_report(models_dir, epoch, base_dir):
     stats dict, or None if collection itself failed.
     """
     base_dir = Path(base_dir)
+    if os.environ.get("NNGPT_SUPPRESS_EPOCH_REPORT", "").strip() in ("1", "true", "yes"):
+        # A re-measurement pass (ab/gpt/util/eval/stage2.py) evaluates copies of
+        # a few candidates in their own directory. Reporting from there would
+        # replace the cycle's record with one computed over those copies.
+        return None
     try:
         stats = collect_epoch_stats(models_dir, epoch)
     except Exception as exc:
@@ -1798,6 +2130,17 @@ def update_epoch_report(models_dir, epoch, base_dir):
         return None
 
     tracker_path = base_dir / "epoch_tracker.json"
+    # This runs twice per cycle -- once from Eval while models are still being
+    # evaluated, once from Tune afterwards -- and each run overwrote the other.
+    # Measured consequence: epoch 0 is recorded with n_above_ceiling=1 in
+    # epoch_tracker.json and 0 in cycle_results_0.json, from the same models.
+    # A record is never replaced by one that saw fewer evaluated models.
+    previous = _recorded_stats(tracker_path, epoch)
+    if previous and (previous.get("models_valid") or 0) > (stats.get("models_valid") or 0):
+        print(f"[EPOCH STATS] epoch {epoch}: keeping the recorded run "
+              f"({previous.get('models_valid')} evaluated) over this partial "
+              f"one ({stats.get('models_valid')} evaluated)")
+        return previous
     try:
         rows = append_epoch_stats(tracker_path, stats)
     except Exception as exc:
@@ -1815,15 +2158,37 @@ def update_epoch_report(models_dir, epoch, base_dir):
         f"({fmt(stats['valid_rate'], pct=True)}, "
         f"95% CI {fmt(stats['valid_rate_ci_low'], pct=True)}"
         f"-{fmt(stats['valid_rate_ci_high'], pct=True)}) | "
-        f"accuracy mean {fmt(stats['accuracy_mean'])} "
-        f"[{fmt(stats['accuracy_ci_low'])}, {fmt(stats['accuracy_ci_high'])}] "
-        f"max {fmt(stats['accuracy_max'])} | "
+        f"accuracy median {fmt(stats.get('accuracy_median'))} "
+        f"p90 {fmt(stats.get('accuracy_p90'))} "
+        f"max {fmt(stats['accuracy_max'])} "
+        f"(mean {fmt(stats['accuracy_mean'])}, "
+        f"{stats.get('accuracy_collapsed') or 0} collapsed) | "
+        f"median improvement {fmt(stats.get('median_improvement'))} "
+        f"({stats.get('improved_seeds')} of {stats.get('paired_n')} seeds up) | "
         f"before modification mean {fmt(stats['baseline_accuracy_mean'])} "
         f"[{fmt(stats['baseline_accuracy_ci_low'])}, {fmt(stats['baseline_accuracy_ci_high'])}] "
         f"(n={stats['baseline_accuracy_n']})"
         + (f" | datasets {', '.join(stats.get('datasets') or [])}"
            if stats.get("datasets") else "")
     )
+
+    if not stats.get("comparable", True):
+        print(f"[EPOCH STATS] epoch {epoch}: only "
+              f"{stats.get('accuracy_n')} valid model(s) -- recorded but NOT "
+              f"comparable with a full cycle (min {stats.get('min_comparable_n')})")
+    cycle_max = stats.get("cycle_max")
+    ceiling = stats.get("corpus_ceiling")
+    best_ever = max((r.get("cycle_max") for r in rows
+                     if r.get("cycle_max") is not None), default=None)
+    print(
+        f"[EPOCH STATS] epoch {epoch}: cycle_max {fmt(cycle_max)} | "
+        f"best_ever {fmt(best_ever)} | "
+        f"above corpus ceiling {fmt(ceiling)}: {stats.get('n_above_ceiling')}"
+    )
+    losses = stats.get("failures") or {}
+    if any(losses.values()):
+        print("[EPOCH STATS] epoch %d losses: %s" % (
+            epoch, ", ".join(f"{k}={v}" for k, v in losses.items() if v)))
 
     seeds = stats.get("baseline_models_with_dataset") or []
     if seeds:

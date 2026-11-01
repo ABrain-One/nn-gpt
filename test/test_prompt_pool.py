@@ -8,7 +8,7 @@ the length filter runs before anything is sent, so a dropped prompt is replaced
 rather than lost.
 """
 
-import pytest
+from _unittest_bridge import load_tests_from, pytest  # stdlib stand-in without pytest
 
 pytest.importorskip("torch")
 
@@ -79,3 +79,6 @@ def test_the_unsloth_input_cap_is_still_honoured():
 
     assert accepted == []
     assert dropped == 5
+
+
+load_tests = load_tests_from(globals())

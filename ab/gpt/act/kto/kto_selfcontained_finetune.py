@@ -510,7 +510,6 @@ class SelfContainedKTOPipeline:
                 cycle=cycle,
                 # Multi-GPU: distribute eval across all visible GPUs via NNEval's
                 # worker pool (dynamic, one worker per GPU). Off → old single-GPU path.
-                use_sequential=not self.eval_multi_gpu,
                 use_all_visible_gpus=self.eval_multi_gpu,
             )
         except Exception as e:  # noqa: BLE001

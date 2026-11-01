@@ -322,7 +322,7 @@ def run_single_mutation(worker_args):
                 if missing:
                     raise ValueError(f"Missing required DB training params: {missing}. Set config.DB_TRAIN_PRM.")
                 # Call nn-dataset to train-eval and save
-                model_name_db, acc, a2t, code_score = nn_dataset.check_nn(
+                model_name_db, acc, a2t = nn_dataset.check_nn(
                     modified_code,
                     task=getattr(config, 'DB_TASK', None),
                     dataset=getattr(config, 'DB_DATASET', None),

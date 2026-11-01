@@ -42,7 +42,9 @@ class Eval:
         else:
             self.use_ast_validation = use_ast_validation
 
-    def evaluate(self, nn_file, checkpoint_path=None):
+    def evaluate(self, nn_file, checkpoint_path=None, layer_analysis=False):
+        if layer_analysis and (checkpoint_path or not self.save_to_db):
+            raise ValueError("Layer analysis requires save_to_db=True and no eval checkpoint")
         os.listdir(self.model_package)
         code = read_py_file_as_string(nn_file)
         if not code or not code.strip():
@@ -96,6 +98,20 @@ class Eval:
         allow_retrain = bool(checkpoint_path) or not self.save_to_db
         if new_checksum not in ids_list or allow_retrain:
             with _isolated_eval_tmp_modules():
+                if layer_analysis:
+                    from ab.nn.util import LayerAnalysis, Train
+                    previous = LayerAnalysis.ACTIVE_LAYER_FEATURES
+                    LayerAnalysis.ACTIVE_LAYER_FEATURES = ("taylor_imp",)
+                    try:
+                        return Train.train_new(
+                            code, self.task, self.dataset, self.metric, self.prm,
+                            save_to_db=self.save_to_db, prefix=self.prefix,
+                            save_path=self.save_path, layer_analysis=True,
+                            **({"epoch_limit_minutes": self.epoch_limit_minutes}
+                               if getattr(self, "epoch_limit_minutes", None) is not None else {}),
+                        )
+                    finally:
+                        LayerAnalysis.ACTIVE_LAYER_FEATURES = previous
                 if checkpoint_path:
                     from ab.gpt.util.eval.eval_checkpoint import train_and_eval_with_checkpoint
 
@@ -133,6 +149,43 @@ class Eval:
         }
 
 
+#: How old a leftover scratch directory must be before it is swept, in
+#: seconds. A live worker's directory is minutes old at most while it trains,
+#: so an hour is far beyond anything in use.
+STALE_EVAL_TMP_SECONDS = 3600
+
+
+def _sweep_stale_eval_tmp(ab_root_path, original_out) -> int:
+    """Delete scratch directories left behind by workers that were killed.
+
+    The context manager below removes its own directory, but an evaluation
+    worker is the kernel's preferred OOM victim by design (oom_score_adj 800),
+    and a killed process runs no finally block. So they accumulate -- which is
+    how the repository root came to hold a pile of
+    out_nneval_tmp_pid_*. Swept here rather than at startup because this is the
+    one place that knows what they are called.
+    """
+    import time
+    root = Path(ab_root_path)
+    cutoff = time.time() - STALE_EVAL_TMP_SECONDS
+    removed = 0
+    candidates = list(root.glob(f"{original_out}_nneval_tmp_pid_*"))
+    for parent in (os.environ.get("NNGPT_EVAL_TMP_PARENT", "tmp").strip() or "tmp",):
+        candidates += list((root / original_out / parent).glob("nneval_*"))
+    for d in candidates:
+        try:
+            if not d.is_dir() or d.stat().st_mtime > cutoff:
+                continue
+            shutil.rmtree(d, ignore_errors=True)
+            removed += 1
+        except Exception:
+            continue
+    if removed:
+        print(f"  Swept {removed} stale evaluation scratch "
+              f"director{'y' if removed == 1 else 'ies'}", flush=True)
+    return removed
+
+
 @contextmanager
 def _isolated_eval_tmp_modules():
     """
@@ -155,8 +208,27 @@ def _isolated_eval_tmp_modules():
         yield
         return
 
-    isolated_out = f"{original_out}_nneval_tmp_pid_{os.getpid()}_{uuid.uuid4().hex[:8]}"
-    isolated_root = Path(ab_root_path) / isolated_out
+    # ``out`` is both a directory and the head of a Python module path -- the
+    # trainer turns it into a path by replacing "." with "/" -- so appending a
+    # suffix to it put every worker's scratch directory in the repository root
+    # as out_nneval_tmp_pid_1709510_6982062d. Extending it with dotted
+    # components instead keeps the module path valid and puts the directory
+    # where it belongs: out/tmp/nneval_<pid>_<hex>.
+    #
+    # Set NNGPT_EVAL_TMP_LEGACY=1 to go back to the root-level name. The dotted
+    # form depends on how the installed nn-dataset resolves this string, and a
+    # pipeline that cannot evaluate is worse than one with untidy directories.
+    legacy = os.environ.get("NNGPT_EVAL_TMP_LEGACY", "").strip().lower() in (
+        "1", "true", "yes", "on")
+    tag = f"nneval_{os.getpid()}_{uuid.uuid4().hex[:8]}"
+    if legacy:
+        isolated_out = f"{original_out}_nneval_tmp_pid_{os.getpid()}_{uuid.uuid4().hex[:8]}"
+        isolated_root = Path(ab_root_path) / isolated_out
+    else:
+        parent = os.environ.get("NNGPT_EVAL_TMP_PARENT", "tmp").strip() or "tmp"
+        isolated_out = f"{original_out}.{parent}.{tag}"
+        isolated_root = Path(ab_root_path) / isolated_out.replace(".", os.sep)
+    _sweep_stale_eval_tmp(ab_root_path, original_out)
     train_runtime.out = isolated_out
     try:
         yield

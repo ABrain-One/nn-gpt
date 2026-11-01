@@ -10,7 +10,7 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import pytest
+from _unittest_bridge import load_tests_from, pytest  # stdlib stand-in without pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -29,6 +29,10 @@ def _load():
 
 
 ES = _load()
+
+# Fonts matplotlib always ships, so a measured width means the same everywhere.
+DEJAVU = {"font.sans-serif": ["DejaVu Sans"],
+          "font.monospace": ["DejaVu Sans Mono"]}
 
 
 @pytest.mark.parametrize("k, n, lo, hi", [
@@ -618,15 +622,19 @@ def test_the_configuration_line_clears_the_panels():
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    fig = plt.figure(figsize=(10, 9))
-    try:
-        text = fig.text(0.5, 0.5, "x" * ES.PARAM_MAX_CHARS, ha="center",
-                        family="monospace", fontsize=ES.PARAM_FONTSIZE)
-        width = text.get_window_extent(
-            renderer=fig.canvas.get_renderer()).width / fig.bbox.width
-    finally:
-        plt.close(fig)
-    assert width <= 0.96, f"a full line spans {width:.0%} of the figure"
+    # Hinted: glyph advances are rounded up to whole pixels at this size, which
+    # is ~3% wider than the unhinted metrics and is what most installs draw.
+    with plt.rc_context({"text.hinting": "force_autohint"}):
+        fig = plt.figure(figsize=(10, 9))
+        try:
+            text = fig.text(0.5, 0.5, "x" * ES.PARAM_MAX_CHARS, ha="center",
+                            family=ES.PARAM_FONTFAMILY,
+                            fontsize=ES.PARAM_FONTSIZE)
+            width = text.get_window_extent(
+                renderer=fig.canvas.get_renderer()).width / fig.bbox.width
+        finally:
+            plt.close(fig)
+    assert width <= 0.98, f"a full line spans {width:.0%} of the figure"
 
 
 def test_param_block_omits_what_the_figure_already_shows():
@@ -1125,6 +1133,112 @@ def test_the_cycle_axis_stays_on_the_bottom_panel(tmp_path, monkeypatch):
     assert out["xlabel"][1] == "", "panel 2 kept the axis label"
 
 
+# --- the corner line and the entry point ---------------------------------
+
+def test_the_corner_line_gives_the_run_time_and_the_save_time():
+    """A run is re-plotted after every cycle and the file keeps its name, so
+    two copies of epoch_statistics.png are otherwise indistinguishable."""
+    line = ES._runtime_line("2d.04h.00m", datetime(2026, 10, 25, 14, 17))
+    assert line.startswith("Run time  2d.04h.00m")
+    assert line.endswith("saved 2026-10-25 14:17")
+
+
+def test_the_save_time_is_given_even_without_a_duration():
+    """An older tracker has no timestamps to measure a run time from, and
+    "which copy is this" is still worth answering."""
+    line = ES._runtime_line("", datetime(2026, 10, 25, 14, 17))
+    assert line == "saved 2026-10-25 14:17"
+    assert ES.RUNTIME_LABEL not in line
+
+
+def test_the_entry_point_is_named_beside_the_model():
+    """Two scripts can write the same run_config.json while differing in
+    everything it does not record, so the model name alone does not say what
+    produced the curves."""
+    config = {"base_model_name": "deepseek-ai/deepseek-coder-7b-instruct-v1.5",
+              "script": "qwen3_6_27B_channel_alter"}
+    head, _, _ = ES._run_caption(config, [])
+    assert head == "deepseek-coder-7b-instruct-v1.5 (qwen3_6_27B_channel_alter)"
+
+
+@pytest.mark.parametrize("script, shown", [
+    ("ab/gpt/act/tune/Tune.py", "(Tune)"),     # a path, and the extension
+    ("oss_20B.py", "(oss_20B)"),
+    ("oss_20B", "(oss_20B)"),
+])
+def test_the_entry_point_is_named_without_its_path_or_extension(script, shown):
+    head, _, _ = ES._run_caption({"base_model_name": "m", "script": script}, [])
+    assert head == f"m {shown}"
+
+
+def test_a_run_config_without_a_script_is_unchanged():
+    """An older run_config.json records none; the title is as it was."""
+    head, _, _ = ES._run_caption({"base_model_name": "model-7b"}, [])
+    assert head == "model-7b"
+
+
+def test_the_corner_line_is_drawn_once(tmp_path, monkeypatch):
+    plt = pytest.importorskip("matplotlib.pyplot")
+    captured, real_close = {}, plt.close
+
+    def _capture(fig=None):
+        if fig is not None:
+            captured["corner"] = [t.get_text() for t in fig.texts
+                                  if t.get_color() == ES.RUNTIME_COLOR]
+        return real_close(fig)
+
+    monkeypatch.setattr(plt, "close", _capture)
+    ES.plot_epoch_stats(_plot_rows(), tmp_path / "corner.png")
+    corner = captured["corner"]
+    assert corner and any(ES.SAVED_LABEL in c for c in corner), corner
+
+
+def _corner_and_title(tmp_path, monkeypatch, config, name):
+    plt = pytest.importorskip("matplotlib.pyplot")
+    base = tmp_path / name
+    base.mkdir(parents=True, exist_ok=True)
+    (base / "run_config.json").write_text(json.dumps(config))
+    captured, real_close = {}, plt.close
+
+    def _capture(fig=None):
+        if fig is not None:
+            fig.canvas.draw()
+            captured["corner"] = [
+                (t.get_text(), t.get_window_extent()) for t in fig.texts
+                if t.get_color() == ES.RUNTIME_COLOR]
+            titles = [t for t in fig.texts
+                      if t.get_fontweight() == "bold" and t.get_fontsize() == 11]
+            captured["title"] = titles[0].get_window_extent() if titles else None
+        return real_close(fig)
+
+    monkeypatch.setattr(plt, "close", _capture)
+    ES.plot_epoch_stats(_timed_rows(5, 11), base / "p.png", base_dir=base)
+    return captured
+
+
+def test_the_corner_stays_on_one_line_when_the_title_leaves_room(
+        tmp_path, monkeypatch):
+    out = _corner_and_title(tmp_path, monkeypatch,
+                            {"base_model_name": "m7b"}, "short")
+    assert len(out["corner"]) == 1, out["corner"]
+    assert ES.RUNTIME_LABEL in out["corner"][0][0]
+    assert ES.SAVED_LABEL in out["corner"][0][0]
+
+
+def test_the_corner_stacks_rather_than_running_under_a_long_title(
+        tmp_path, monkeypatch):
+    """The title is centred and grows with the model and script names, so a
+    single corner line ran beneath it on a long one."""
+    out = _corner_and_title(tmp_path, monkeypatch, {
+        "base_model_name": "deepseek-ai/deepseek-coder-7b-instruct-v1.5",
+        "script": "qwen3_6_27B_channel_alter_experiment_v2"}, "long")
+    corner, title = out["corner"], out["title"]
+    assert len(corner) == 2, f"expected the corner to stack: {corner}"
+    assert title is not None
+    for _, box in corner:
+        assert box.x1 <= title.x0, f"the corner runs under the title: {box}"
+
+
 # --- the prompts: which configs produced these curves --------------------
 
 _STUDY = {"task": "img-classification", "dataset": ["cifar-10"]}
@@ -1167,6 +1281,11 @@ def test_a_long_study_line_loses_point_size_not_a_second_row(tmp_path):
     """The header band is a fixed height and the configuration line below is
     already at the floor of its own size, so width is bought with points."""
     plt = pytest.importorskip("matplotlib.pyplot")
+    with plt.rc_context(DEJAVU):
+        _long_study_line_fits(plt)
+
+
+def _long_study_line_fits(plt):
     fig = plt.figure(figsize=(10, 9))
     try:
         short = ES._study_sentence(_STUDY, [])
@@ -1567,3 +1686,6 @@ def test_the_legend_still_reads_original_before_generated():
     """Stacking is settled by zorder, so the listed order is free to stay."""
     assert ES.MEAN_MARKER[0][0] < ES.MEAN_MARKER[1][0]
     assert ES.BEST_MARKER[0][0] < ES.BEST_MARKER[1][0]
+
+
+load_tests = load_tests_from(globals())

@@ -9,6 +9,7 @@ ab/gpt/util/Tune.py — Central tuning pipeline for NNGPT.
 
 import os
 import random
+import re
 import shutil
 import json
 import subprocess
@@ -62,8 +63,16 @@ TRANSFORM_RES_DIR = trans_dir / 'test'
 AUG_CONFIG_DIR = trans_dir / 'augment/config'
 
 
-def _env_on(name) -> bool:
-    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+def _env_on(name, default: bool = False) -> bool:
+    """Is this switch on? ``default`` applies when the variable is unset.
+
+    Needed for switches that are on unless turned off; the original form could
+    only express opt-in, so an unset variable always meant "off".
+    """
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _carry_probe(model, tokenizer, max_len, out_dir):
@@ -204,9 +213,20 @@ def warn_if_truncated(full_out, max_new_tokens, idx, tokenizer=None):
                 reasons.append(f"hit the {max_new_tokens}-token generation budget")
         except Exception:
             pass
+    # An unclosed block is only evidence of truncation when the reply stops
+    # inside it. The model also just forgets the closing tag and carries on:
+    # measured on one cycle, three replies held a finished file, a closed <tr>
+    # and a closed <reason> and were reported as cut off over one absent
+    # </nn>. If any block closes after this one opened, the reply reached the
+    # end of its answer and the tag was merely omitted -- code_edit's
+    # block_bodies reads it anyway, so there is nothing to report.
     for tag in ("nn", "tr", "hp"):
-        if f"<{tag}>" in full_out and f"</{tag}>" not in full_out:
-            reasons.append(f"<{tag}> was opened and never closed")
+        opened = [m.end() for m in re.finditer(rf"<\s*{tag}\b[^>]*>", full_out)]
+        if not opened or re.search(rf"<\s*/\s*{tag}\s*>", full_out):
+            continue
+        if re.search(r"<\s*/\s*(?:nn|tr|hp|edit|reason)\s*>", full_out[opened[-1]:]):
+            continue
+        reasons.append(f"<{tag}> was opened and never closed")
     if full_out.count("```") % 2:
         reasons.append("an unterminated code fence")
 
@@ -216,6 +236,439 @@ def warn_if_truncated(full_out, max_new_tokens, idx, tokenizer=None):
               f"or raise max_seq_length so the answer has room.", flush=True)
         return True
     return False
+
+
+#: Set to 0 to skip the repair pass.
+#: Off by default. The repair turn is the only thing that smoke-tests a
+#: candidate *during generation*, and generation is the one moment the host
+#: cannot afford it: the vLLM engine is resident and the trainer is parked in
+#: RAM, which left 6 to 7 GiB free on a 31 GiB machine. Every candidate was
+#: already being tested a second time at the validity gate, which runs after
+#: the engine is torn down and has the memory for it, so the work was
+#: duplicated and only the duplicate was dangerous. Removing it makes every
+#: cycle behave identically -- the first one included, so a single cycle's log
+#: shows whether the problem is gone.
+#:
+#: Set NNGPT_REPAIR_TURN=1 to have it back. It is cheap now (a build check, no
+#: backward pass) and bounded by the host-headroom guard, but it still runs in
+#: the tight window, and a cycle that skips it loses one retry, not a model.
+REPAIR_ENV = "NNGPT_REPAIR_TURN"
+
+
+def _repair_targets(models_dir, queue):
+    """Written candidates that cannot be built, with the reason.
+
+    The smoke test exists and runs -- but in the validity gate, after
+    generation, when the model is parked and nothing can be asked. Running it
+    here, while the engine is still up, is what makes a repair turn possible at
+    all. In one measured run 218 evaluation failures were a single generated
+    helper unpacking a 4-tuple in_shape into five names, regenerated every
+    cycle because the model was never shown the traceback.
+    """
+    from ab.gpt.util.eval.smoke import smoke_check_dir
+    out = []
+    for idx, origdf, prompt_text in queue:
+        for d in sorted(Path(models_dir).glob(f"B{idx}") ) + sorted(
+                Path(models_dir).glob(f"B{idx}_*")):
+            if not (d / new_nn_file).is_file():
+                continue
+            verdict, reason = smoke_check_dir(d, light=True)
+            if verdict is False:
+                out.append((d, origdf, prompt_text, reason))
+    return out
+
+
+REPAIR_PROMPT = """\
+The edits you returned were applied, and the resulting file does not run. It \
+was built exactly as the evaluation builds it -- Net(in_shape, out_shape, prm, \
+device) with a 4-tuple in_shape, then train_setup, then one batch through \
+forward and learn -- and it raised:
+
+{reason}
+
+Return the same design again, corrected, as <edit> blocks against the ORIGINAL \
+baseline file you were given (not against your previous answer). Keep the \
+improvement you intended; change only what is needed to make it run."""
+
+
+def _run_repair_pass(models_dir, queue, chat_bot, seen, max_new_tokens,
+                     save_llm_output):
+    """One more turn for candidates that do not build, with their traceback.
+
+    A second chance, not a loop: if the repair also fails to build, the
+    validity gate discards it as before. Costs one generation round per cycle
+    against the ten minutes of GPU time each broken candidate would otherwise
+    take to fail in exactly the way already known here.
+    """
+    if not queue:
+        return 0
+    if not _env_on(REPAIR_ENV, default=False):
+        print(f"[repair] off; candidates go straight to the validity gate, "
+              f"which smoke-tests them once the engine is down "
+              f"({REPAIR_ENV}=1 to re-enable)", flush=True)
+        return 0
+    try:
+        targets = _repair_targets(models_dir, queue)
+    except Exception as exc:
+        print(f"[repair] skipped: {type(exc).__name__}: {exc}", flush=True)
+        return 0
+    if not targets:
+        print("[repair] every generated candidate builds; nothing to repair",
+              flush=True)
+        return 0
+
+    try:
+        from ab.gpt.util.eval.smoke import _host_available_gib, HOST_FLOOR_GIB
+        print(f"[repair] host has {_host_available_gib():.1f} GiB available "
+              f"(floor {HOST_FLOOR_GIB:.0f} GiB)", flush=True)
+    except Exception:
+        pass
+    print(f"[repair] {len(targets)} candidate(s) do not build (build check "
+          f"only: construct, train_setup and one forward without gradients); "
+          f"asking once more with the traceback", flush=True)
+    prompts, meta = [], []
+    for d, origdf, prompt_text, reason in targets:
+        prompts.append(prompt_text + "\n\n"
+                       + REPAIR_PROMPT.format(reason=reason))
+        meta.append((d, origdf))
+    try:
+        if hasattr(chat_bot, "chat_batch"):
+            outputs = chat_bot.chat_batch(
+                prompts, engineer_prompt=False, max_new_tokens=max_new_tokens)
+        else:
+            outputs = [chat_bot.chat(p, engineer_prompt=False,
+                                     max_new_tokens=max_new_tokens)
+                       for p in prompts]
+    except Exception as exc:
+        print(f"[repair] generation failed: {type(exc).__name__}: {exc}",
+              flush=True)
+        return 0
+
+    fixed = 0
+    for (d, origdf), output in zip(meta, outputs):
+        full_out = output[3] if isinstance(output, (list, tuple)) else output
+        if not isinstance(full_out, str) or not full_out.strip():
+            continue
+        # Replaces the broken candidate in place, under its own name, so the
+        # cycle's slot count and its seed pairing are unchanged.
+        try:
+            shutil.rmtree(d, ignore_errors=True)
+        except Exception:
+            pass
+        idx = d.name[1:]
+        written = _write_edit_candidates(Path(models_dir), idx, origdf,
+                                        full_out, seen, save_llm_output)
+        if written:
+            fixed += 1
+            try:
+                create_file(Path(models_dir) / f"B{idx}", "repaired.txt",
+                            "rewritten after a failed build\n")
+            except Exception:
+                pass
+    print(f"[repair] {fixed} of {len(targets)} rewritten", flush=True)
+    return fixed
+
+
+def _best_of_n() -> int:
+    """How many samples to draw per seed."""
+    try:
+        return max(1, int(os.environ.get("NNGPT_BEST_OF_N", "1") or 1))
+    except ValueError:
+        return 1
+
+
+def _elite_block() -> str:
+    """The run's best-so-far, as prompt context. Empty before the first one."""
+    if not _env_on("NNGPT_ELITE_IN_PROMPT", default=True):
+        return ""
+    try:
+        from ab.gpt.util.data import elite
+        return elite.prompt_block(nngpt_dir)
+    except Exception as exc:
+        print(f"[elite] not shown in the prompt: {exc}", flush=True)
+        return ""
+
+
+def _edit_seen_path():
+    return nngpt_dir / "edit_seen.json"
+
+
+def _load_seen_code():
+    seen = set()
+    init = os.environ.get("NNGPT_EDIT_KNOWN_UIDS", "").strip()
+    if init and Path(init).is_file():
+        try:
+            seen.update(json.loads(Path(init).read_text(encoding="utf-8")))
+        except Exception as exc:
+            print(f"[edit] could not read {init}: {exc}", flush=True)
+    path = _edit_seen_path()
+    if path.is_file():
+        try:
+            seen.update(json.loads(path.read_text()))
+        except Exception as exc:
+            print(f"[edit] could not read {path}: {exc}", flush=True)
+    return seen
+
+
+def _save_seen_code(seen):
+    try:
+        _edit_seen_path().parent.mkdir(parents=True, exist_ok=True)
+        _edit_seen_path().write_text(json.dumps(sorted(seen)))
+    except Exception as exc:
+        print(f"[edit] could not persist seen code: {exc}", flush=True)
+
+
+#: Transform names this cycle reused from the dataset, and minted itself.
+_transform_counts = {"reused": set(), "new": set()}
+
+
+def reset_transform_counts():
+    _transform_counts["reused"].clear()
+    _transform_counts["new"].clear()
+
+
+#: Set to 1 to make a generated <tr> module usable by evaluation.
+#:
+#: ``prm["transform"]`` is resolved by NAME out of the installed ab/nn/transform
+#: package, so a module that exists only as tr.py in the generation directory is
+#: written, submitted -- and never trained with. Installing it under its
+#: content-addressed name is what closes that gap. Off by default because it
+#: writes a file into the installed dataset package; with it off the transform is
+#: still saved and still shipped in the submission, and evaluation uses the
+#: baseline's pipeline.
+INSTALL_TRANSFORMS_ENV = "NNGPT_INSTALL_GENERATED_TRANSFORMS"
+
+
+def _ab_nn_transform_dir():
+    """Where the installed LEMUR package keeps its transform modules."""
+    import importlib.util
+    spec = importlib.util.find_spec("ab.nn")
+    if not spec or not spec.origin:
+        return None
+    d = Path(spec.origin).parent / "transform"
+    return d if d.is_dir() else None
+
+
+def _check_transform(code):
+    """``(ok, reason)``; None when the check could not run, so the block stays."""
+    if not _env_on("NNGPT_TRANSFORM_SMOKE", default=True):
+        return None, "transform check disabled"
+    try:
+        from ab.gpt.util.eval.smoke import transform_check
+        return transform_check(code)
+    except Exception as exc:
+        return None, f"transform check unavailable: {type(exc).__name__}: {exc}"
+
+
+def _install_generated_transform(code):
+    """Make a generated transform resolvable by name. Returns the name or None.
+
+    Checks the uid against what already exists first. A model very often
+    proposes a pipeline the dataset already has -- crop, flip, ToTensor,
+    Normalize is the obvious CIFAR answer -- and installing it again under a
+    generated name produced several files for one transform, none of them
+    connected to the dataset's own name for it.
+    """
+    if not _env_on(INSTALL_TRANSFORMS_ENV):
+        return None
+    from ab.gpt.util.Util import resolve_transform_name
+    name, is_new = resolve_transform_name(code)
+    if not is_new:
+        print(f"[edit] transform already in the dataset as {name}; reusing it",
+              flush=True)
+        return name
+    target_dir = _ab_nn_transform_dir()
+    if target_dir is None:
+        print("[edit] cannot install the generated transform: ab/nn/transform "
+              "not found; evaluation will use the baseline pipeline", flush=True)
+        return None
+    path = target_dir / f"{name}.py"
+    try:
+        if not path.exists():
+            path.write_text(code, encoding="utf-8")
+        return name
+    except Exception as exc:
+        print(f"[edit] could not install transform {name}: {exc}", flush=True)
+        return None
+
+
+#: Estimated Jaccard above which a new candidate counts as a restatement of
+#: one already accepted this cycle.
+#:
+#: model_identity is a graph hash plus lr/momentum, so a candidate that swaps
+#: one backbone name is a different architecture by that measure and passes.
+#: Measured: all 60 valid generations of one run shared a class skeleton and
+#: differed by about twelve lines, and every one of them passed. 0.95 rejects a
+#: token swap (measured 0.953 on a one-token change) while leaving a genuine
+#: edit (0.0-0.8) alone.
+NEAR_DUPLICATE_JACCARD = float(
+    os.environ.get("NNGPT_NEAR_DUPLICATE_JACCARD", "0.95") or 0.95)
+
+#: Signatures accepted in this cycle, so the check is intra-cycle only; across
+#: cycles the graph-identity check and known_uids already apply.
+_cycle_signatures: list = []
+
+
+def reset_cycle_signatures():
+    _cycle_signatures.clear()
+
+
+def _too_similar(code, idx, n):
+    """Why this candidate is a restatement of an accepted one, or None."""
+    if NEAR_DUPLICATE_JACCARD >= 1.0:
+        return None
+    try:
+        from ab.gpt.util.data.minhash_clusters import estimate_jaccard, signature
+        sig = signature(code)
+    except Exception:
+        return None
+    if sig is None:
+        return None
+    for other_name, other in _cycle_signatures:
+        j = estimate_jaccard(sig, other)
+        if j >= NEAR_DUPLICATE_JACCARD:
+            return (f"a restatement of {other_name} (estimated Jaccard "
+                    f"{j:.3f} >= {NEAR_DUPLICATE_JACCARD:.2f})")
+    _cycle_signatures.append((f"B{idx}" + (f"_{n}" if n else ""), sig))
+    return None
+
+
+def _write_edit_candidates(models_dir, idx, origdf, full_out, seen,
+                           save_llm_output):
+    """Apply the reply's <edit> blocks to the baseline and save the result.
+
+    Unlike the design path there is no closed set to validate against, so the
+    guards are the ones that work for any architecture: the edit has to match
+    exactly one place in the file, the result has to parse, it has to keep the
+    LEMUR interface, and it has to be a file nothing has produced before.
+    """
+    from ab.gpt.util.data.code_edit import (
+        apply_edit_sets, derive_prm, drop_noop_edits, hp_text, model_identity,
+        uses_pretrained_weights,
+        parse_edits, parse_full, parse_hp, parse_tr, validate_model)
+    import hashlib
+
+    base_dir = models_dir / f"B{idx}"
+    makedirs(base_dir, exist_ok=True)
+    create_file(base_dir, new_out_file, full_out or "")
+    if origdf is not None:
+        try:
+            origdf.to_pickle(base_dir / "dataframe.df")
+        except Exception as exc:
+            print(f"[edit] B{idx}: could not save the baseline row: {exc}", flush=True)
+    if origdf is None:
+        print(f"[edit] B{idx}: no baseline row", flush=True)
+        return 0
+
+    baseline_code = origdf.get("nn_code", "") or ""
+    hp = parse_hp(full_out)
+    # The reply's input pipeline, if it offered one. Extracted here because the
+    # edit path never looked for it: of 210 generations in one run the transform
+    # slot was read 0 times, so the data-augmentation axis -- the cheapest
+    # accuracy on a one-epoch CIFAR budget -- was never searched at all.
+    tr_code = parse_tr(full_out)
+    if tr_code:
+        # Built and applied to one image before it is installed anywhere. A
+        # broken pipeline used to reach the trainer and kill every evaluation
+        # that used it; refusing it here costs the transform and keeps the
+        # architecture edit, which is the part worth measuring.
+        ok, why = _check_transform(tr_code)
+        if ok is False:
+            print(f"[edit] B{idx}: transform rejected ({why}); keeping the "
+                  f"baseline pipeline", flush=True)
+            tr_code = None
+    tr_name = _install_generated_transform(tr_code) if tr_code else None
+    if tr_code:
+        print(f"[edit] B{idx}: transform offered"
+              + (f", installed as {tr_name}" if tr_name
+                 else " (saved and submitted; evaluation keeps the baseline "
+                      "pipeline -- set NNGPT_INSTALL_GENERATED_TRANSFORMS=1 to "
+                      "train with it)"), flush=True)
+    raw_edits = parse_edits(full_out)
+    edits = drop_noop_edits(raw_edits)
+    if raw_edits and not edits:
+        print(f"[edit] B{idx}: all {len(raw_edits)} edit(s) return the text "
+              f"unchanged", flush=True)
+    elif len(raw_edits) != len(edits):
+        print(f"[edit] B{idx}: {len(raw_edits) - len(edits)} of {len(raw_edits)} "
+              f"edit(s) change nothing and were dropped", flush=True)
+
+    # Candidates come from the edit sets *and* from any whole file in the same
+    # reply. A reply that opens with edits and then thinks better of it and
+    # rewrites the file is common, and taking the edits merely because they
+    # came first threw the rewrite away.
+    candidates = [(code, f"{applied} edit(s)"
+                   + (f", {skipped} skipped" if skipped else ""))
+                  for code, applied, skipped in apply_edit_sets(baseline_code, edits)]
+    whole = parse_full(full_out)
+    if whole:
+        candidates.append((whole, "whole file"))
+    if not candidates:
+        head = " ".join((full_out or "").split())[:160]
+        print(f"[edit] B{idx}: nothing applied; reply starts: {head!r}", flush=True)
+        return 0
+
+    written = 0
+    for n, (code, how) in enumerate(candidates):
+        bad = validate_model(code)
+        if bad:
+            print(f"[edit] B{idx} candidate {n}: rejected ({bad})", flush=True)
+            continue
+        # LEMUR's own identity, which ignores comments, whitespace and local
+        # names. Checking it here rejects a duplicate before it costs an hour
+        # of training instead of after, when copy_to_lemur refuses the insert.
+        prm = derive_prm(code, origdf.get("prm") or {}, hp)
+        key = model_identity(code, prm)
+        if key == model_identity(baseline_code, origdf.get("prm") or {}):
+            print(f"[edit] B{idx} candidate {n}: same architecture as the "
+                  f"baseline", flush=True)
+            continue
+        near = _too_similar(code, idx, n)
+        if near is not None:
+            print(f"[edit] B{idx} candidate {n}: {near}", flush=True)
+            try:
+                create_file(base_dir, "duplicate.txt", f"{near}\n")
+            except Exception:
+                pass
+            continue
+        if key in seen:
+            print(f"[edit] B{idx} candidate {n}: architecture already produced",
+                  flush=True)
+            # Leave a reason behind. classify_failures() reads error.txt and
+            # falls through to "truncated" when there is nothing to read, so a
+            # cycle that lost 76 candidates to the duplicate check reported
+            # them as truncated replies and the budget was raised instead of
+            # the sampler being fixed.
+            try:
+                create_file(base_dir, "duplicate.txt",
+                            f"architecture already produced: {key}\n")
+            except Exception:
+                pass
+            continue
+        seen.add(key)
+        model_dir = base_dir if written == 0 else models_dir / f"B{idx}_{written}"
+        makedirs(model_dir, exist_ok=True)
+        if save_llm_output and model_dir is not base_dir:
+            create_file(model_dir, new_out_file, full_out)
+            origdf.to_pickle(model_dir / "dataframe.df")
+        create_file(model_dir, new_nn_file, code)
+        if tr_code:
+            create_file(model_dir, transformer_file, tr_code)
+            if tr_name:
+                prm["transform"] = tr_name
+                _transform_counts["reused" if not tr_name.startswith("tr-")
+                                  else "new"].add(tr_name)
+        with open(model_dir / hp_file, "w+") as f:
+            json.dump(prm, f)
+        create_file(model_dir, f"original_{origdf['nn']}.py", baseline_code)
+        print(f"[edit] {model_dir.name}: {how}"
+              + (f", hp {hp}" if hp else "")
+              + f", {len(code.splitlines())} lines",
+              flush=True)
+        written += 1
+    if not written:
+        print(f"[ERROR] No code generated for model B{idx}", flush=True)
+    return written
 
 
 def _seed_pool_size(test_nn):
@@ -317,6 +770,21 @@ def nn_gen(
     sft_dataset=None,
 ):
     print("Preparing prompts for generation, this might take a while...")
+
+    from ab.gpt.util.data.code_edit import hp_text, uses_pretrained_weights
+
+    edit_mode = _env_on("NNGPT_EDIT_MODE")
+    seen_code = _load_seen_code() if edit_mode else None
+    seed_context = {}
+    _ctx_path = os.environ.get("NNGPT_EDIT_SEED_CONTEXT", "").strip()
+    if edit_mode and _ctx_path and Path(_ctx_path).is_file():
+        try:
+            seed_context = json.loads(Path(_ctx_path).read_text(encoding="utf-8"))
+        except Exception as exc:
+            print(f"[edit] could not read {_ctx_path}: {exc}", flush=True)
+    if edit_mode:
+        print(f"[edit] edit mode on; {len(seen_code)} files already produced",
+              flush=True)
 
     use_delta = nn_name_prefix == "delta"
     if not use_delta and isinstance(prompt_dict, dict) and conf_keys:
@@ -445,15 +913,69 @@ def nn_gen(
 
             # LLMatic crossover supplies a fully-rendered two-parent prompt that
             # the single-row template cannot express; use it verbatim when present.
+            if edit_mode:
+                # The edit prompt names the accuracy to beat. It is not a
+                # column on the row, so it is injected here the way the design
+                # path injects its own facts.
+                # Pretrained and from-scratch baselines are scored against
+                # their own group's ceiling, the same split the corpus used; a
+                # scratch model asked to beat a pretrained one has no reachable
+                # target. Falls back to the shared ceiling when only one is set.
+                _shared = os.environ.get("NNGPT_DESIGN_CEILING", "")
+                _grouped = os.environ.get(
+                    "NNGPT_DESIGN_CEILING_PRETRAINED"
+                    if uses_pretrained_weights(str(para_dict.get("nn_code") or ""))
+                    else "NNGPT_DESIGN_CEILING_SCRATCH", "")
+                try:
+                    _ceiling = float(_grouped or _shared or 0.0)
+                except ValueError:
+                    _ceiling = 0.0
+                para_dict.setdefault("target", max(
+                    _ceiling, float(para_dict.get("accuracy") or 0.0)))
+                # The same neighbour examples the corpus was rendered with. An
+                # empty string keeps the prompt valid when a baseline has none.
+                # The neighbour examples, plus the best result this run has
+                # produced so far. Without the latter the prompt names a
+                # ceiling computed once at cycle 0 and never tells the model
+                # what is actually reachable -- and the run's own best was
+                # never beaten after cycle 0.
+                para_dict.setdefault(
+                    "examples", seed_context.get(str(row.get("nn", "")), "")
+                    + _elite_block())
+                # The baseline's own hyperparameters. The corpus prompt states
+                # them, and without them here the model cannot tell an
+                # architectural gain from a tuning one, nor aim an <hp> block.
+                para_dict.setdefault("hyper", hp_text(row.get("prm")))
+                # ...and its input pipeline, for the same reason: the corpus
+                # prompt shows it, and a <tr> block cannot keep an entry point
+                # the model was never shown.
+                from ab.gpt.util.data.edit_pairs import transform_prompt_block
+                from ab.gpt.util.data.edit_pairs import Record as _Rec
+                para_dict.setdefault("transform", transform_prompt_block(_Rec(
+                    str(row.get("nn", "")), "", 0.0, 1, {},
+                    str(row.get("transform") or ""),
+                    str(row.get("transform_code") or ""))))
+
             llmatic_prompt = row.get("__llmatic_prompt__") if hasattr(row, "get") else None
             if isinstance(llmatic_prompt, str) and llmatic_prompt:
                 prompt_text = llmatic_prompt
             else:
-                prompt_text = (
-                    para_dict["backbone_prompt"]
-                    if use_backbone
-                    else prompt.format(**para_dict)
-                )
+                try:
+                    prompt_text = (
+                        para_dict["backbone_prompt"]
+                        if use_backbone
+                        else prompt.format(**para_dict)
+                    )
+                except KeyError as exc:
+                    # A placeholder the prompt config asks for that nothing
+                    # supplies. Raised from deep inside the generator this was
+                    # a bare KeyError naming only the key; say which prompt and
+                    # what *is* available, and drop the seed rather than
+                    # killing the run.
+                    print(f"[gen] prompt key {exc} is not available for seed "
+                          f"{row.get('nn', '?')}; have "
+                          f"{sorted(para_dict)}. Skipping this seed.", flush=True)
+                    continue
             prompts.append((system_text, prompt_text, row, output_type))
 
     # Length filter runs once, over the whole over-provisioned pool, so the
@@ -461,6 +983,23 @@ def nn_gen(
     prompts, _ = _select_fitting_prompts(
         prompts, chat_bot, test_nn, max_new_tokens, unsloth_max_input_length)
 
+    # Best-of-N: ask each seed N times and keep whichever answer measures
+    # best. The objective is the maximum of a cycle, and the maximum of N
+    # samples from one prompt beats the maximum of one sample from N prompts
+    # when the variance is in the sampling rather than in the seed. Off by
+    # default because it multiplies the EVALUATION budget, not just the
+    # generation budget: at N=2 a cycle trains twice as many models, so raise
+    # NNGPT_VALIDITY_KEEP with it or the gate throws the extra ones away.
+    best_of = _best_of_n()
+    if best_of > 1 and prompts:
+        prompts = [p for p in prompts for _ in range(best_of)]
+        print(f"[gen] best-of-{best_of}: {len(prompts)} prompt(s) from "
+              f"{len(prompts) // best_of} seed(s). Evaluation budget scales "
+              f"with this; NNGPT_VALIDITY_KEEP is "
+              f"{os.environ.get('NNGPT_VALIDITY_KEEP', 'unset')}", flush=True)
+
+    reset_cycle_signatures()
+    reset_transform_counts()
     models_dir = synth_dir(out_path)
 
     if use_delta:
@@ -644,6 +1183,7 @@ def nn_gen(
             print(
                 f'[INFO] Batch generation enabled: prompt_batch={prompt_batch}')
 
+        repair_queue = []
         for start in range(0, len(pending), prompt_batch):
             batch = pending[start: start + prompt_batch]
             chat_bot.system_prompt = batch[0][1] or None
@@ -659,6 +1199,26 @@ def nn_gen(
             for (idx, system_text, prompt_text, origdf, output_type), output in zip(batch, batch_outputs):
                 model_dir = models_dir / f"B{idx}"
                 code, hp, tr, full_out = output
+                if edit_mode:
+                    cut = warn_if_truncated(full_out, max_new_tokens, idx,
+                                            getattr(chat_bot, "tokenizer", None))
+                    written = _write_edit_candidates(
+                        models_dir, idx, origdf, full_out, seen_code,
+                        save_llm_output)
+                    # Record the verdict instead of leaving the statistics to
+                    # re-derive it from the reply text. classify_failures()
+                    # could not tell a truncated reply from edits that did not
+                    # apply, so one run reported 71 truncations and the token
+                    # budget was blamed for a matching problem.
+                    if cut and not written:
+                        try:
+                            create_file(models_dir / f"B{idx}", "truncated.txt",
+                                        f"hit the {max_new_tokens}-token budget\n")
+                        except Exception:
+                            pass
+                    if written:
+                        repair_queue.append((idx, origdf, prompt_text))
+                    continue
                 if use_backbone:
                     code = SFTUtil.assemble_backbone_xml_completion(full_out)
                     if code is None:
@@ -717,6 +1277,15 @@ def nn_gen(
                     create_file(
                         model_dir, f"original_{origdf['nn']}.py", origdf['nn_code'])
                     origdf.to_pickle(df_file)
+
+    if edit_mode:
+        _run_repair_pass(models_dir, repair_queue, chat_bot, seen_code,
+                         max_new_tokens, save_llm_output)
+        _save_seen_code(seen_code)
+        print(f"[edit] transforms: {len(_transform_counts['reused'])} reused "
+              f"from the dataset, {len(_transform_counts['new'])} new "
+              f"({', '.join(sorted(_transform_counts['new'])) or 'none'})",
+              flush=True)
 
     # NOTE: epoch statistics used to be written here. nn_gen() runs BEFORE the
     # models are evaluated, so the accuracy it read out of cycle_results.json
@@ -1060,6 +1629,69 @@ def generate_step(state: AgentState) -> dict:
     return {"next_action": "evaluate"}
 
 
+def _rebuild_design_corpus():
+    """Re-render the SFT corpus from LEMUR, including this run's own results.
+
+    Without this the trainer sees the same rows every cycle: training loss goes
+    to ~0.02, the model memorises its own corpus and every cycle regenerates
+    the designs it has already produced. Evaluated models are written back to
+    LEMUR under the corpus prefix, so rebuilding here is what turns the loop
+    into a loop instead of eight passes over one dataset.
+
+    The pinned test baselines are held out by name inside build(), so growth
+    cannot leak the test set into training. Never raises: a rebuild failure
+    leaves the previous corpus in place and the cycle continues on it.
+    """
+    edit_path = os.environ.get("NNGPT_EDIT_REBUILD", "").strip()
+    args_path = edit_path or os.environ.get("NNGPT_DESIGN_REBUILD", "").strip()
+    if not args_path or not Path(args_path).is_file():
+        return None
+    try:
+        if edit_path:
+            from ab.gpt.util.data import edit_pairs as builder
+        else:
+            from ab.gpt.util.data import design_pairs as builder
+        args = json.loads(Path(args_path).read_text(encoding="utf-8"))
+        lemur.data.cache_clear()
+        stats = builder.build(**args)
+        print(f"[corpus] rebuilt: records={stats['records']} "
+              f"pairs={stats['pairs']} train={stats['train_examples']} "
+              f"observed_max={stats['observed_max']}", flush=True)
+        return stats
+    except Exception as exc:
+        print(f"[design-corpus] rebuild skipped ({type(exc).__name__}: {exc}); "
+              f"continuing on the previous corpus", flush=True)
+        return None
+
+
+def _park_trainer_for_eval(model):
+    """Take the trainer off the card for the duration of evaluation.
+
+    Generation parks it and then restores it before _evaluate_epoch runs, so
+    the evaluator started with ~7.3 GiB already resident and lost candidates to
+    CUDA OOM -- silently, because an OOM looks like any other failed model.
+    """
+    if model is None or not _env_on("NNGPT_PARK_TRAINER_FOR_EVAL"):
+        return None
+    try:
+        from ab.gpt.util.llm.VLLMSleep import park_trainer
+        return park_trainer(model)
+    except Exception as exc:
+        print(f"[eval] could not park the trainer ({type(exc).__name__}: {exc}); "
+              f"evaluating with it resident", flush=True)
+        return None
+
+
+def _unpark_trainer_after_eval(model, parked):
+    if not parked:
+        return
+    try:
+        from ab.gpt.util.llm.VLLMSleep import unpark_trainer
+        unpark_trainer(model, parked)
+    except Exception as exc:
+        print(f"[eval] could not restore the trainer: {exc}", flush=True)
+
+
 def _evaluate_epoch(
     epoch,
     out_path,
@@ -1069,6 +1701,7 @@ def _evaluate_epoch(
     classification_mode=False,
     custom_synth_dir=None,
     aug_mode=False,
+    trainer_model=None,
 ):
     """
     Single source of truth for one evaluation epoch.
@@ -1078,7 +1711,19 @@ def _evaluate_epoch(
     """
     models_dir = synth_dir(out_path)
     results = {"epoch": epoch}
+    parked = _park_trainer_for_eval(trainer_model)
 
+    try:
+        return _evaluate_epoch_inner(
+            epoch, out_path, nn_name_prefix, nn_train_epochs, trans_mode,
+            classification_mode, custom_synth_dir, models_dir, results)
+    finally:
+        _unpark_trainer_after_eval(trainer_model, parked)
+
+
+def _evaluate_epoch_inner(epoch, out_path, nn_name_prefix, nn_train_epochs,
+                          trans_mode, classification_mode, custom_synth_dir,
+                          models_dir, results):
     if exists(models_dir):
         release_memory()
         # Repair generated models that almost follow the LEMUR interface (class
@@ -1090,6 +1735,22 @@ def _evaluate_epoch(
                 postprocess_directory(models_dir)
             except Exception as exc:
                 print(f'[WARN] postprocess_nn skipped: {exc}', flush=True)
+
+        # Static validity gate, after the repair pass so near-misses already
+        # fixed are not discarded. Eval.evaluate() rejects broken code before
+        # training anyway, so this is not about saving GPU time -- it is about
+        # sample size: an invalid generation produces no paired observation,
+        # and without a cap on the valid ones an oversampled cycle would train
+        # two to three times the intended number of models.
+        # check_static_validity already existed; nothing called it here.
+        if not trans_mode and os.environ.get(
+                "NNGPT_VALIDITY_GATE", "").strip().lower() not in ("", "0", "false", "no"):
+            try:
+                from ab.gpt.util.eval.validity_gate import gate_directory
+                _keep = os.environ.get("NNGPT_VALIDITY_KEEP", "").strip()
+                gate_directory(models_dir, keep=int(_keep) if _keep else None)
+            except Exception as exc:
+                print(f'[WARN] validity gate skipped: {exc}', flush=True)
 
         if classification_mode:
             from ab.gpt.act.tune.classification.Eval import evaluate_epoch as cls_eval
@@ -1230,6 +1891,29 @@ def _evaluate_epoch(
             except Exception:
                 continue
 
+    # Stage 2: re-measure the best few candidates before the cycle's headline
+    # number is taken from a single training run. Does nothing unless
+    # NNGPT_STAGE2_TOPK is set. Runs before the statistics so the summary can be
+    # carried in them.
+    # The run's own champions, recorded before the statistics so the next
+    # cycle's prompts can name the number to beat.
+    if exists(models_dir) and not trans_mode:
+        try:
+            from ab.gpt.util.data import elite
+            elite.update(models_dir, nngpt_dir, epoch=epoch)
+        except Exception as exc:
+            print(f'[elite] archive not updated: {exc}', flush=True)
+
+    stage2_summary = None
+    if exists(models_dir) and not trans_mode:
+        try:
+            from ab.gpt.util.eval import stage2
+            stage2_summary = stage2.run(
+                models_dir, epoch, nn_name_prefix=nn_name_prefix,
+                nn_train_epochs=nn_train_epochs)
+        except Exception as exc:
+            print(f'[WARN] stage 2 re-measurement skipped: {exc}', flush=True)
+
     # Epoch statistics: valid-generation rate with a Wilson interval, accuracy
     # of the generated models (mean with 95% CI, and max) and the accuracy the
     # seed models had before modification. Written after evaluation so the row
@@ -1238,7 +1922,11 @@ def _evaluate_epoch(
         from ab.gpt.util.data.EpochStats import update_epoch_report
         epoch_stats = update_epoch_report(models_dir, epoch, nngpt_dir)
         if epoch_stats:
+            if stage2_summary:
+                epoch_stats["stage2"] = stage2_summary
             results["epoch_stats"] = epoch_stats
+        if stage2_summary:
+            results["stage2"] = stage2_summary
 
     return results
 
@@ -1257,7 +1945,8 @@ def evaluate_step(state: AgentState) -> dict:
         state.get("trans_mode", False),
         state.get("classification_mode", False),
         aug_mode=state.get("aug_mode", False),
-    ) 
+        trainer_model=state.get("model"),
+    )
 
     updates = {}
 
@@ -1303,6 +1992,22 @@ def evaluate_step(state: AgentState) -> dict:
     return updates
 
 
+def _completions_only_default(use_backbone):
+    """Whether SFT masks the prompt, from NNGPT_TRAIN_ON_COMPLETIONS_ONLY.
+
+    Unset keeps the historical behaviour (``use_backbone``). Routed through the
+    environment rather than a tune() keyword because ab/gpt/act/tune/Tune.py
+    dispatches to tune() implementations in Tune, Tune_Onnx and Tune_prun that
+    do not share a signature, so a new keyword would raise TypeError for
+    whichever backend was not updated. That module already routes seed pinning
+    this way and documents the reason.
+    """
+    raw = os.environ.get("NNGPT_TRAIN_ON_COMPLETIONS_ONLY", "").strip().lower()
+    if raw in ("", "auto"):
+        return use_backbone
+    return raw not in ("0", "false", "no", "off")
+
+
 def _finetune_epoch(
     epoch, out_path, model, tokenizer, model_loader, lora_tuner,
     context_length, use_unsloth, unsloth_max_input_length,
@@ -1324,6 +2029,10 @@ def _finetune_epoch(
     Called by both the classic for-loop and the agent finetuner node.
     Returns (model, chat_bot) with the newly fine-tuned model.
     """
+    # Which rows this cycle trains on. Without it every cycle samples the same
+    # subset and a corpus larger than max_prompts is mostly unused.
+    os.environ["NNGPT_SFT_SAMPLE_SEED"] = str(epoch)
+
     if trans_mode:
         data_processor = TransformGenPrompt(
             context_length if context_length else model_loader.get_max_length(),
@@ -1372,13 +2081,20 @@ def _finetune_epoch(
         dataset,
         tokenizer,
         out_path / base_model_name,
-        train_on_completions_only=use_backbone,
+        # Loss over the prompt as well as the completion is the historical
+        # default, and for an improvement task it is actively harmful: the
+        # baseline file appears verbatim in the prompt and again, nearly
+        # unchanged, in the target, so most of the gradient goes into
+        # reproducing text the model was handed rather than into the few
+        # decisions that differ.
+        train_on_completions_only=_completions_only_default(use_backbone),
         resume_from_checkpoint=resume_trainer_checkpoint,
         checkpoint_label="trainer",
     )
 
     del dataset
     release_memory()
+    _report_host_memory("after fine-tuning")
 
     chat_bot = ChatBot(
         model, tokenizer, temperature=temperature, top_k=top_k, top_p=top_p,
@@ -1386,13 +2102,36 @@ def _finetune_epoch(
     return model, chat_bot
 
 
+def _report_host_memory(when):
+    try:
+        import resource
+        from ab.gpt.util.eval.smoke import _host_available_gib
+        fields = {}
+        with open("/proc/meminfo", encoding="ascii") as f:
+            for line in f:
+                name = line.split(":")[0]
+                if name in ("Dirty", "Writeback", "Cached", "MemFree"):
+                    fields[name] = int(line.split()[1]) / 2**20
+        rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 / 1024
+        print(f"[mem] {when}: this process peak RSS {rss:.1f} GiB, host "
+              f"available {_host_available_gib():.1f} GiB, free "
+              f"{fields.get('MemFree', 0):.1f} GiB, cached "
+              f"{fields.get('Cached', 0):.1f} GiB, dirty "
+              f"{fields.get('Dirty', 0):.2f} GiB, writeback "
+              f"{fields.get('Writeback', 0):.2f} GiB", flush=True)
+    except Exception as exc:
+        print(f"[mem] {when}: unavailable ({exc})", flush=True)
+
+
 def finetune_step(state: AgentState) -> dict:
     """Thin agent wrapper — all logic lives in _finetune_epoch()."""
     epoch = state["current_epoch"]
     out_path = epoch_dir(epoch)
     print(f"[DEBUG] Perform finetune at epoch {epoch}")
+    _report_host_memory("before fine-tuning")
 
     _prev_bot = state.get("chat_bot")
+    _rebuild_design_corpus()
     vllm_engine = state.get("vllm_engine")
     if vllm_engine is not None:
         vllm_engine.ensure_asleep()
@@ -1410,6 +2149,7 @@ def finetune_step(state: AgentState) -> dict:
         state.get("use_backbone", False),
         state.get("sft_nn_prefixes"),
         state.get("sft_dataset"),
+        state.get("data_dir"),
         budget_tokens=getattr(_prev_bot, "budget_tokens", None),
         suppress_thinking=getattr(_prev_bot, "suppress_thinking", False),
         aug_mode=state.get("aug_mode", False)
@@ -1691,6 +2431,13 @@ def tune(
         use_backbone=use_backbone,
         sft_nn_prefixes=sft_nn_prefixes,
         sft_dataset=sft_dataset,
+        # Without this the agent path silently ignores an on-disk SFT corpus.
+        # finetune_step() rebuilds the _finetune_epoch() call from the state,
+        # and anything missing there falls back to the parameter default. The
+        # classic loop passes data_dir explicitly, so the two paths disagreed
+        # and only the agent one -- which is the default -- dropped it, falling
+        # back to a LEMUR query against the train prompt config.
+        data_dir=data_dir,
         trainer_resume_checkpoint=trainer_resume_checkpoint,
         enable_merge=enable_merge,
         classification_mode=classification_mode,
@@ -1740,12 +2487,14 @@ def tune(
                 classification_mode,
                 aug_mode=aug_mode,
                 custom_synth_dir=synth_dir(out_path),
+                trainer_model=model,
             )
 
         if skip_lm_finetune:
             print(f'[INFO] skip_lm_finetune=True — skipping LLM LoRA update at epoch {epoch}.')
         else:
             print(f'[DEBUG]Perform finetune at epoch {epoch}.')
+            _rebuild_design_corpus()
             if vllm_engine is not None:
                 vllm_engine.ensure_asleep()
             model, chat_bot = _finetune_epoch(
@@ -1817,6 +2566,7 @@ def tune(
             classification_mode,
             custom_synth_dir=synth_dir(out_path),
             aug_mode=aug_mode,
+            trainer_model=model,
         )
 
     if vllm_engine is not None:

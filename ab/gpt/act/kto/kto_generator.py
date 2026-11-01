@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import multiprocessing as mp
 import os
 import random
 from pathlib import Path
@@ -53,9 +54,13 @@ SYSTEM_PERSONA = (
     "UNIQUE, high-performing neural networks optimized for first-epoch accuracy."
 )
 
-# Fallback execution rules (used only if the conf file cannot be read).  Kept
-# deliberately short; the real rules live in
-# conf/prompt/test/unique_rag_test_rules.json and are loaded when present.
+# Execution rules and teacher-forcing prefix: the copy of
+# conf/prompt/test/unique_rag_test_rules.json the KTO/DPO experiments ran with,
+# kept as its own file so their prompt stays reproducible.
+RULES_FILE = conf_test_dir / "kto_unique_rag_test_rules.json"
+
+# Fallback execution rules (used only if RULES_FILE cannot be read).  Kept
+# deliberately short.
 _FALLBACK_RULES = (
     "\nThe code MUST be directly executable by the evaluation tool.\n"
     "1. Start with `import torch` and `import torch.nn as nn`.\n"
@@ -110,7 +115,7 @@ DIVERSITY_HINTS = [
 
 def load_execution_rules() -> str:
     """Load the system_prompt_template execution rules the model was SFT'd on."""
-    rules_path = conf_test_dir / "unique_rag_test_rules.json"
+    rules_path = RULES_FILE
     try:
         with open(rules_path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -137,7 +142,7 @@ _FALLBACK_PREFIX = (
 
 def load_prefix_code() -> str:
     """Load the prefix_code the model is teacher-forced to start its answer with."""
-    rules_path = conf_test_dir / "unique_rag_test_rules.json"
+    rules_path = RULES_FILE
     try:
         with open(rules_path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -183,6 +188,9 @@ def _quick_structural_check(code: str, channels: int = 3, hw: int = 32, num_clas
     prm = {"lr": 0.01, "momentum": 0.9, "dropout": 0.2}
     # nn-dataset passes in_shape as (batch, channels, H, W); out_shape as (num_classes,).
     eval_in_shape = (1, channels, hw, hw)
+    n_params = _meta_param_count(Net, eval_in_shape, (num_classes,), prm)
+    if n_params is not None and n_params > MAX_CHECK_PARAMS:
+        return False, f"too_large: {n_params:,} parameters (limit {MAX_CHECK_PARAMS:,})"
     try:
         model = Net(eval_in_shape, (num_classes,), prm, device)
     except Exception as e:  # noqa: BLE001
@@ -200,6 +208,102 @@ def _quick_structural_check(code: str, channels: int = 3, hw: int = 32, num_clas
     if shape != (2, num_classes):
         return False, f"bad_output_shape: got {shape}, want (2, {num_classes})"
     return True, "ok"
+
+
+# A generated network can be too large to build (the job is killed for memory) or
+# never finish its check, which stopped whole runs. The check therefore runs in a
+# worker process with a time limit and a memory ceiling, and networks above
+# MAX_CHECK_PARAMS are rejected unbuilt. Either way the candidate counts as a
+# failed check and is resampled like any other.
+MAX_CHECK_PARAMS = 4_000_000_000   # more than trains on a 48 GB GPU
+CHECK_TIMEOUT_S = 600
+CHECK_MEMORY_BYTES = 64 * 1024 ** 3
+# A known-good network the worker must pass before it takes candidates, so a broken
+# worker stops the run instead of silently rejecting every candidate.
+_SELF_TEST_CODE = (
+    "import torch\nimport torch.nn as nn\n\ndef supported_hyperparameters():\n    return {'lr', 'momentum'}\n\n"
+    "class Net(nn.Module):\n    def __init__(self, in_shape, out_shape, prm, device):\n        super().__init__()\n"
+    "        self.f = nn.Sequential(nn.Conv2d(in_shape[1], 8, 3, padding=1), nn.AdaptiveAvgPool2d(1))\n"
+    "        self.fc = nn.Linear(8, int(out_shape[0]))\n"
+    "    def forward(self, x):\n        return self.fc(torch.flatten(self.f(x), 1))\n"
+)
+
+
+def _meta_param_count(Net, in_shape, out_shape, prm) -> Optional[int]:
+    """Parameter count of Net built on the meta device (nothing allocated); None if it can't be."""
+    try:
+        with torch.device("meta"):
+            model = Net(in_shape, out_shape, prm, torch.device("meta"))
+        return sum(p.numel() for p in model.parameters())
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _check_worker(conn, memory_bytes: int) -> None:
+    try:
+        import resource
+        resource.setrlimit(resource.RLIMIT_AS, (memory_bytes, memory_bytes))
+    except Exception:  # noqa: BLE001 — no resource module on Windows
+        pass
+    try:
+        conn.send(_quick_structural_check(_SELF_TEST_CODE))
+    except BaseException as e:  # noqa: BLE001
+        conn.send((False, f"self-test raised {type(e).__name__}: {e}"))
+    while True:
+        try:
+            job = conn.recv()
+        except EOFError:
+            return
+        try:
+            result = _quick_structural_check(*job)
+        except BaseException as e:  # noqa: BLE001 — generated code may raise anything
+            result = (False, f"check_error: {type(e).__name__}: {e}")
+        conn.send(result)
+
+
+class StructuralChecker:
+    """_quick_structural_check in a spawned worker; restarted after a timeout or crash."""
+
+    def __init__(self, timeout_s: float = CHECK_TIMEOUT_S, memory_bytes: int = CHECK_MEMORY_BYTES):
+        self.timeout_s, self.memory_bytes = timeout_s, memory_bytes
+        self._proc = self._conn = None
+
+    def _start(self) -> None:
+        ctx = mp.get_context("spawn")
+        self._conn, child = ctx.Pipe()
+        self._proc = ctx.Process(target=_check_worker, args=(child, self.memory_bytes), daemon=True)
+        self._proc.start()
+        child.close()
+        try:
+            ready = self._conn.recv() if self._conn.poll(self.timeout_s) else (False, "no answer")
+        except (EOFError, OSError) as e:
+            ready = (False, f"worker died ({type(e).__name__})")
+        if not ready[0]:
+            self.close()
+            raise RuntimeError(f"structural-check worker failed its self-test: {ready[1]}")
+
+    def close(self) -> None:
+        if self._proc is not None:
+            self._proc.kill()
+            self._proc.join()
+            self._conn.close()
+        self._proc = self._conn = None
+
+    def check(self, code: str, channels: int = 3, hw: int = 32, num_classes: int = 10):
+        if self._proc is None or not self._proc.is_alive():
+            self.close()
+            self._start()
+        try:
+            self._conn.send((code, channels, hw, num_classes))
+            if not self._conn.poll(self.timeout_s):
+                self.close()
+                return False, f"check_timeout: no result within {self.timeout_s:.0f}s"
+            return self._conn.recv()
+        except (EOFError, OSError):
+            self._proc.join(10)
+            exitcode = self._proc.exitcode
+            self.close()
+            return False, f"check_crashed: worker exited with {exitcode}"
 
 
 # Used by KTO_PROMPT_MODE=minimal: the ONLY correctness fix (channel index),
@@ -379,6 +483,7 @@ def generate_models(
     except Exception:  # noqa: BLE001
         pass
 
+    checker = StructuralChecker()
     records: List[Dict] = []
     n_ok = 0
     for i in range(num_models):
@@ -449,7 +554,7 @@ def generate_models(
             if "import torch" not in code:
                 code = "import torch\nimport torch.nn as nn\n\n" + code
 
-            ok_struct, check_msg = _quick_structural_check(
+            ok_struct, check_msg = checker.check(
                 code, channels=3, hw=32, num_classes=num_classes
             )
             if not ok_struct:
@@ -486,6 +591,7 @@ def generate_models(
 
         torch.cuda.empty_cache()
 
+    checker.close()
     records_file.parent.mkdir(parents=True, exist_ok=True)
     with open(records_file, "w", encoding="utf-8") as f:
         for r in records:
