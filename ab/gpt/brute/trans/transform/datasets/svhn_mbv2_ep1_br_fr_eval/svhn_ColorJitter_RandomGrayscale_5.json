@@ -1,0 +1,11 @@
+{
+  "accuracy": 0.5984941610325752,
+  "batch": 64,
+  "duration": 142741572880,
+  "lr": 0.01,
+  "momentum": 0.9,
+  "transform": "ColorJitter_RandomGrayscale_5",
+  "uid": "6c68c321c126a84218578555c10611b2",
+  "dataset": "svhn",
+  "model": "MobileNetV2"
+}

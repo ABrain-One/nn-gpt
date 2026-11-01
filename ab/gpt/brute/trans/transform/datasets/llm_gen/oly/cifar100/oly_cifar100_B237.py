@@ -1,0 +1,5 @@
+import torch
+import torchvision.transforms as transforms
+
+def transform(norm):
+    return transforms.Compose([transforms.RandomResizedCrop(64, scale=(0.5, 1.0), ratio=(0.8, 1.2)), transforms.RandomHorizontalFlip(p=0.5), transforms.RandomVerticalFlip(p=0.1), transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1), transforms.RandomApply([transforms.GaussianBlur(kernel_size=3, sigma=1.0)], p=0.2), transforms.RandomAffine(degrees=5, translate=(0.2, 0.2), scale=(0.8, 1.2), shear=5), transforms.RandomSolarize(threshold=200, p=0.3), transforms.ToTensor(), transforms.Normalize(*norm)])

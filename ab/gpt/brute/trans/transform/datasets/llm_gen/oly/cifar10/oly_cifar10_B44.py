@@ -1,0 +1,3 @@
+import torch<br/>
+import torchvision.transforms as transforms<br/><br/>
+def transform(norm):<br/>&nbsp; return transforms.Compose([<br/>&nbsp;&nbsp; transforms.Pad(padding=4, mode='constant', fill=(167, 167, 241)),<br/>&nbsp;&nbsp; transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),<br/>&nbsp;&nbsp; transforms.RandomRotation(degrees=13),<br/>&nbsp;&nbsp; transforms.RandomHorizontalFlip(p=0.5),<br/>&nbsp;&nbsp; transforms.GaussianBlur(kernel_size=3, sigma=1.5),<br/>&nbsp;&nbsp; transforms.Resize((64, 64)),<br/>&nbsp;&nbsp; transforms.ToTensor(),<br/>&nbsp;&nbsp; transforms.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2023, 0.1994, 0.2010])<br/>&nbsp; ])

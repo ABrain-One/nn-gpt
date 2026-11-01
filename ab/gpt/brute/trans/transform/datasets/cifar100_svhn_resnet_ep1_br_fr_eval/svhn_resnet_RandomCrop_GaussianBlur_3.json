@@ -1,0 +1,11 @@
+{
+  "accuracy": 0.7753534111862324,
+  "batch": 64,
+  "duration": 150638578563,
+  "lr": 0.01,
+  "momentum": 0.9,
+  "transform": "RandomCrop_GaussianBlur_3",
+  "uid": "87a84ed34e5a93e80301df046d308aab",
+  "dataset": "svhn",
+  "model": "ResNet"
+}

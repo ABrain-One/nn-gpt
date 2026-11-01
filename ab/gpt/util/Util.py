@@ -176,6 +176,18 @@ def _extract_code_strict(txt):
     return extract_by_pattern('NN code', txt, (('<nn>', '</nn>'), ('```python', '```'), ('```', '```')))
 
 
+def extract_schedule(txt):
+    
+    txt = txt.replace('< sched >', '<sched>').replace('<.sched>', '<sched>').replace('</ sched >', '</sched>')
+    res = next(filter(None, map(lambda l: extract_str(txt, *l),
+                                (('<sched>', '</sched>'), ('```json', '```')))), None)
+    if res:
+        print(f'Found augmentation schedule: {len(res)} chars')
+    else:
+        print('No augmentation schedule found')
+    return res
+
+
 def extract_code(txt):
     """Tolerant, junk-rejecting NN-code extraction. Returns the extracted code
     string, or None when nothing valid is found."""

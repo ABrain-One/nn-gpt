@@ -1,0 +1,12 @@
+{
+  "accuracy": 0.0,
+  "duration": 0,
+  "time metric": 0.0,
+  "batch": 64,
+  "lr": 0.01,
+  "momentum": 0.9,
+  "transform": "B3",
+  "prm": "{\"lr\": 0.01, \"batch\": 64, \"dropout\": 0.2, \"momentum\": 0.9, \"transform\": \"tr\", \"epoch\": 1}",
+  "uid": "",
+  "error": "invalid syntax (tr.py, line 12)"
+}

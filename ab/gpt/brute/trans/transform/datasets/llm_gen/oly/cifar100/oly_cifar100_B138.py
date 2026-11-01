@@ -1,0 +1,12 @@
+import&nbsp;torch<br/>
+import&nbsp;torchvision.transforms&nbsp;as&nbsp;transforms<br/><br/>
+def&nbsp;transform(norm):<br/>
+&nbsp;&nbsp;return&nbsp;transforms.Compose([<br/>
+&nbsp;&nbsp;&nbsp;transforms.RandomHorizontalFlip(p=0.55),<br/>
+&nbsp;&nbsp;&nbsp;transforms.Pad(padding=1,&nbsp;fill=(126,&nbsp;123,&nbsp;113),&nbsp;padding_mode='constant'),<br/>
+&nbsp;&nbsp;&nbsp;transforms.RandomCrop(32),<br/>
+&nbsp;&nbsp;&nbsp;transforms.ColorJitter(brightness=0.2,&nbsp;contrast=0.2,&nbsp;saturation=0.2,&nbsp;hue=0.1),<br/>
+&nbsp;&nbsp;&nbsp;transforms.RandomGrayscale(p=0.67),<br/>
+&nbsp;&nbsp;&nbsp;transforms.ToTensor(),<br/>
+&nbsp;&nbsp;&nbsp;transforms.Normalize(mean=[0.4914,&nbsp;0.4822,&nbsp;0.4465],&nbsp;std=[0.2470,&nbsp;0.224,&nbsp;0.2616])<br/>
+&nbsp;&nbsp;])<br/>
