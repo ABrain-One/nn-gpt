@@ -492,7 +492,7 @@ def copy_generated_transform(gen_nn_dir, name=None):
     return name
 
 
-def copy_to_lemur(gen_nn_dir, name, task, dataset, metric):
+def copy_to_lemur(gen_nn_dir, name, task, dataset, metric, stat_dir=None):
     """Stage one trained network and its statistics for submission.
 
     A submission is a network *and* the measurements behind it. This used to
@@ -503,16 +503,20 @@ def copy_to_lemur(gen_nn_dir, name, task, dataset, metric):
     record, and the submission claimed a measurement it did not have.
 
     So the statistics decide. No numbered JSON, nothing staged.
+
+    ``stat_dir`` holds the statistics when they were not written next to the code,
+    e.g. one folder per dataset when the same network is trained on several.
     """
+    stat_dir = Path(stat_dir) if stat_dir else gen_nn_dir
     try:
-        stats = sorted(f for f in os.listdir(gen_nn_dir)
+        stats = sorted(f for f in os.listdir(stat_dir)
                        if re.match(r'[0-9]+\.json$', f))
     except OSError as exc:
-        print(f'[submission] {name} skipped: cannot read {gen_nn_dir} ({exc})',
+        print(f'[submission] {name} skipped: cannot read {stat_dir} ({exc})',
               flush=True)
         return
     if not stats:
-        print(f'[submission] {name} skipped: no statistics in {gen_nn_dir}; '
+        print(f'[submission] {name} skipped: no statistics in {stat_dir}; '
               f'a network is not submitted without the measurement behind it',
               flush=True)
         return
@@ -521,7 +525,7 @@ def copy_to_lemur(gen_nn_dir, name, task, dataset, metric):
     dr_nm = new_lemur_stat_dir / f"{task}_{dataset}_{metric}_{name}"
     Path(dr_nm).mkdir(parents=True, exist_ok=True)
     for f_nm in stats:
-        shutil.copyfile(gen_nn_dir / f_nm, dr_nm / f_nm)
+        shutil.copyfile(stat_dir / f_nm, dr_nm / f_nm)
     try:
         written = copy_generated_transform(gen_nn_dir)
         if written:
