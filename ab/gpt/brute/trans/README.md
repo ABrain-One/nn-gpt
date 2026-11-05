@@ -68,10 +68,6 @@ Trials are scored on the validation split. After the study ends, the best trial 
 split. `--n_trials` counts *additional* trials; `--n_trials 0` just re-judges an existing study.
 
 ### 2.5 LLM loop
-```bash
-python -m ab.gpt.act.tune.code_7B_olympic_trans_ft
-```
-### 2.5 LLM loop
 
 Both tracks share one entry point:
 

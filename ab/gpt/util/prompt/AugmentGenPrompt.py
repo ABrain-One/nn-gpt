@@ -15,10 +15,9 @@ def shuffle_data(df: DataFrame):
 
 def load_schedule_pool(only_best_accuracy=True, fidelity=None) -> DataFrame:
     """
-    Load evaluated augmentation schedules from the AugEval result pool.
+    Load evaluated augmentation schedules from the AugEval result pool
 
-    Returns columns: id_name (config_id), schedule_json (compact JSON string),
-    accuracy (final accuracy).
+    Returns columns: id_name (config_id), schedule_json (compact JSON string),accuracy.
     """
     from ab.gpt.brute.trans.augment.stat_utils import load_results
 
@@ -31,7 +30,8 @@ def load_schedule_pool(only_best_accuracy=True, fidelity=None) -> DataFrame:
     if fidelity is not None:
         df = df[df['fidelity'] == fidelity]
     elif df['fidelity'].nunique() > 1:
-        print(f"[WARN] Schedule pool mixes fidelities {sorted(df['fidelity'].unique())}; ")
+        print(f"[WARN] Schedule pool mixes fidelities {sorted(df['fidelity'].unique())}; "
+              f"accuracies are not comparable across them — consider fidelity=...")
     df['accuracy'] = df['final_accuracy'].fillna(df['accuracy'])
     df = df.dropna(subset=['accuracy', 'config_id', 'augment'])
     df['schedule_json'] = df['augment'].apply(lambda s: json.dumps(s))
@@ -47,8 +47,7 @@ def load_schedule_pool(only_best_accuracy=True, fidelity=None) -> DataFrame:
 
 class ScheduleGenPrompt(Prompt):
     """
-    Builds instruction-tuning pairs from evaluated augmentation schedules:
-    input = a baseline schedule with its accuracy, target = a different schedule with strictly higher accuracy
+    Builds instruction-tuning pairs from evaluated augmentation schedules
     """
 
     def __init__(self, max_len: int, tokenizer: PreTrainedTokenizerBase, prompts_path):
@@ -92,7 +91,7 @@ class ScheduleGenPrompt(Prompt):
                     if col in data.columns:
                         addon = addon[addon[col] != row[col]]
                 if addon.empty:
-                    continue  
+                    continue  # no strictly better partner exists
                 addon_row = addon.sample(n=1).iloc[0]
 
                 para_dict = {}

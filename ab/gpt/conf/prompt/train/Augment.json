@@ -45,7 +45,7 @@
             "resizemix: alpha in [0.1, 0.8] (minimum resize scale of the pasted source image)",
             "Baseline schedule (Accuracy: {accuracy}):",
             "<sched>{schedule}</sched>",
-            "Generate an improved schedule that achieves a higher accuracy training a ResNet-18 with batch 64, lr 0.01, momentum 0.9, and dropout 0.2 on the 'imagenette' dataset (task: 'img-classification').",
+            "Generate an improved schedule that achieves a higher accuracy training a ResNet-18 with batch 64, cosine schedule, momentum 0.9, and dropout 0.2 on the 'imagenette' dataset (task: 'img-classification').",
             "Your response MUST contain exactly one set of the XML tags <sched>...</sched> holding ONLY the JSON list.",
             "Use null (not None) for the alpha of 'none' segments. DO NOT include any leading or trailing text, markdown fences (```), comments, or any other XML tags."
         ],

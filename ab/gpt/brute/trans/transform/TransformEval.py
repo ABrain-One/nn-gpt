@@ -247,7 +247,9 @@ if __name__ == "__main__":
     ap.add_argument('--final_score', action='store_true', default=False,
                     help="score against the REAL test set instead of the validation split.")
     args = ap.parse_args()
+    
     run_eval(ft_mode=args.ft_mode, epoch_num=args.epoch_num,
              num_epochs=args.num_epochs, seed=args.seed,
              start_from=args.start_from, nn_file=args.nn_file,
              use_val_split=not args.final_score)
+            

@@ -1406,16 +1406,22 @@ def sched_gen(epoch, out_path, chat_bot, conf_keys, prompt_dict_global, test_nn,
         data_sample = all_data.sample(n=min(test_nn, len(all_data)))
         for _, row in data_sample.iterrows():
             addon = all_data[all_data.id_name != row['id_name']]
-            if addon.empty:
-                print(f"Warning: Could not find addon data for {row['id_name']}. Skipping prompt.", flush=True)
+            if len(addon) < 2:
+                print(f"Warning: Need 2 other schedules as references for {row['id_name']}. Skipping prompt.", flush=True)
                 continue
-            addon_row = addon.sample(n=1).iloc[0]
+            refs = addon.sample(n=2)
+            addon_row, addon2_row = refs.iloc[0], refs.iloc[1]
             para_dict = {}
             for it in prompt_config['input_list']:
                 para_dict[it['para']] = row[it['value']]
             for it in prompt_config.get('addon_list', []):
                 para_dict[it['para']] = addon_row[it['value']]
+            for it in prompt_config['addon2_list']:
+                para_dict[it['para']] = addon2_row[it['value']]
             prompts.append((prompt.format(**para_dict), row))
+
+    if prompts:
+        print(f'[PROMPT SAMPLE]\n{prompts[0][0]}\n[/PROMPT SAMPLE]', flush=True)
 
     models_dir = synth_dir(out_path)
     makedirs(models_dir, exist_ok=True)
@@ -1750,7 +1756,7 @@ def _evaluate_epoch_inner(epoch, out_path, nn_name_prefix, nn_train_epochs,
             results[f"epoch_{epoch + 1}_accuracy"] = cls_result["accuracy"]
         elif trans_mode:
             try:
-                run_eval(epoch_num=epoch, ft_mode=True)
+                run_eval(ft_mode=True, epoch_num=epoch)
                 print('[DEBUG] Release_memory.')
             except Exception as e:
                 print(f"Error running evaluation main(): {e}", flush=True)
