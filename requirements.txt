@@ -31,6 +31,7 @@ langgraph>=1.2.16
 # nn-dataset>=2.2.11
 nn-dataset @ git+https://github.com/ABrain-One/nn-dataset@main
 
+nn-rank
 nn-rag>=2.2.4
 nn-dup>=2.2.4
 
