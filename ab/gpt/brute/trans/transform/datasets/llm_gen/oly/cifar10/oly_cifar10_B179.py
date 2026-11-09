@@ -1,0 +1,2 @@
+def transform(norm):
+    return transforms.Compose([transforms.GaussianBlur(3, sigma=0.5), transforms.RandomResizedCrop(32, scale=(0.8, 1.0), ratio=(0.5, 1.5)), transforms.RandomHorizontalFlip(), transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1), transforms.RandomApply([transforms.Solarize(threshold=152)], p=0.45), transforms.Resize(64), transforms.ToTensor(), transforms.Normalize(**norm)])
