@@ -1,0 +1,12 @@
+import torch
+import torchvision.transforms as transforms
+
+def transform(norm):
+    return transforms.Compose([
+    transforms.RandomVerticalFlip(p=0.72),
+    transforms.RandomPosterize(bits=6, p=0.76),
+    transforms.RandomCrop(size=29),
+    transforms.Resize((256,256)),
+    transforms.ToTensor(),
+    transforms.Normalize(*norm)
+])

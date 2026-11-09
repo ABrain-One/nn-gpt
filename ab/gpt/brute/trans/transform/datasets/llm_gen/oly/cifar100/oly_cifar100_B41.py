@@ -1,1 +1,0 @@
-tag, which is closed properly. The <td> contains the <pre> tag with the code, which is the desired output.

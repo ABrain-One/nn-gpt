@@ -1,7 +1,6 @@
 import json
 import os
 import glob
-import re
 import pandas as pd
 from pandas import DataFrame
 from transformers import PreTrainedTokenizerBase
@@ -12,43 +11,8 @@ from tqdm import tqdm
 from ab.gpt.util.Const import trans_dir 
 
 
-# [e{num_epochs}_]{cand_name}[_seed{seed}_{split_tag}]
-RES_NAME_RE = re.compile(
-    r'^(?:e(?P<epochs>\d+)_)?(?P<name>.+?)(?:_seed(?P<seed>\d+)_(?P<split>.+))?$'
-)
-
-
 def shuffle_data(df: DataFrame):
     return df.sample(frac=1).reset_index(drop=True)
-
-
-def resolve_code_file(out_gen_dir: str, base_name: str):
-    """
-    Resolve the code file corresponding to a result name. The result name may have
-    Accepted layouts:
-        <py_file>.py                      -> exact match
-        <dataset>_<py_file>.py            -> extra prefix in the result name
-        <dataset>_<model>_<py_file>.py    -> two extra prefixes in the result name
-    
-    Returns the path of the first existing candidate, or None.
-    """
-    parts = base_name.split('_')
-
-    # exact name, then drop 1 and 2 leading tokens
-    for i in range(min(3, len(parts))):
-        cand = os.path.join(out_gen_dir, '_'.join(parts[i:]) + '.py')
-        if os.path.exists(cand):
-            return cand
-
-    # prefix lives on the file instead
-    matches = sorted(glob.glob(os.path.join(out_gen_dir, f"*_{base_name}.py")))
-    if matches:
-        if len(matches) > 1:
-            print(f"Warning: {len(matches)} files match '*_{base_name}.py'. "
-                  f"Using {os.path.basename(matches[0])}.", flush=True)
-        return matches[0]
-
-    return None
 
 
 def load_data_from_folders(out_gen_dir: str, result_gen_dir: str, only_best_accuracy=True) -> DataFrame:
@@ -60,36 +24,30 @@ def load_data_from_folders(out_gen_dir: str, result_gen_dir: str, only_best_accu
     json_files = glob.glob(os.path.join(result_gen_dir, "*.json"))
     
     for res_file in tqdm(json_files, desc="Reading data files"):
-        stem = os.path.splitext(os.path.basename(res_file))[0]
-        m = RES_NAME_RE.match(stem)
-        if m is None:
-            print(f"Warning: '{stem}' is not a usable result name. Skipping.", flush=True)
-            continue
-
-        base_name = m.group('name')                       # = cand['name'] = the .py file name
-        code_file = resolve_code_file(out_gen_dir, base_name)
-
-        if code_file is not None:
+        base_name = os.path.basename(res_file).replace('.json', '')
+        code_file = os.path.join(out_gen_dir, f"{base_name}.py") 
+        
+        if os.path.exists(code_file):
             try:
                 with open(res_file, 'r') as f:
                     res_data = json.load(f)
+                
                 with open(code_file, 'r') as f:
                     code_content = f.read()
-
+                
+                # Combine data
                 res_data['transform_code'] = code_content
-                res_data['id_name'] = base_name           # the transform, shared by all seeds
-                res_data['run_name'] = stem               # the full result name,
-                # epochs / seed / split are absent in the short name formats
-                res_data.setdefault('num_epochs', int(m.group('epochs')) if m.group('epochs') else None)
-                res_data.setdefault('seed', int(m.group('seed')) if m.group('seed') else None)
-                res_data.setdefault('split_tag', m.group('split') or '')
-                res_data.setdefault('prm', '{}')
+                # For filtering duplicates
+                res_data['id_name'] = base_name  
+                
+                # Add default prm if missing
+                res_data.setdefault('prm', '{}') 
+                
                 all_data.append(res_data)
             except Exception as e:
-                print(f"Warning: Could not load data for {stem}. Error: {e}", flush=True)
+                print(f"Warning: Could not load data for {base_name}. Error: {e}", flush=True)
         else:
-            print(f"Warning: No code file found for result {res_file} "
-                  f"(tried '{base_name}.py', prefix-stripped variants and '*_{base_name}.py')", flush=True)
+            print(f"Warning: Missing code file {code_file} for result {res_file}", flush=True)
 
     if not all_data:
         # Return an empty DataFrame instead of raising ValueError
