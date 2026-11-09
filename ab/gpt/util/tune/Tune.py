@@ -1756,7 +1756,7 @@ def _evaluate_epoch_inner(epoch, out_path, nn_name_prefix, nn_train_epochs,
             results[f"epoch_{epoch + 1}_accuracy"] = cls_result["accuracy"]
         elif trans_mode:
             try:
-                run_eval(epoch_num=epoch, FT_MODE=True)
+                run_eval(ft_mode=True, epoch_num=epoch)
                 print('[DEBUG] Release_memory.')
             except Exception as e:
                 print(f"Error running evaluation main(): {e}", flush=True)
