@@ -1,0 +1,277 @@
+{
+  "bar": 33.0,
+  "pareto": true,
+  "sig_max": 0.85,
+  "promoted": [
+    "DenoisePoolDeconvXDenoiseSelfAttnXDenois~715b67+m",
+    "DenoiseELUCtxXDenoiseUnet9F+sXDenoiseLin~c77e5b+m",
+    "DenoisePoolDeconvXDenoiseSelfAttnXDenois~bdc3cf",
+    "DenoiseLapPyrXDenoiseLPPool"
+  ],
+  "report": [
+    {
+      "name": "DenoisePoolDeconvXDenoiseSelfAttnXDenois~715b67+m",
+      "checksum": "73506d1871e8f17d",
+      "psnr50": 36.49800438426403,
+      "macs_mmac": 6812.1,
+      "deployable": true,
+      "wl_hash": "d5993ee96bdf",
+      "max_sig_cos": 0.203,
+      "max_struct_cos": 0.997,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "PROMOTE",
+      "reasons": []
+    },
+    {
+      "name": "DenoiseELUCtxXDenoiseUnet9F+sXDenoiseLin~c77e5b+m",
+      "checksum": "3fb2f2e558e6ef1e",
+      "psnr50": 36.01390926807786,
+      "macs_mmac": 3331.0,
+      "deployable": true,
+      "wl_hash": "b460c5e573a1",
+      "max_sig_cos": 0.628,
+      "max_struct_cos": 0.996,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "PROMOTE",
+      "reasons": []
+    },
+    {
+      "name": "DenoiseLPPoolXDenoiseDilatedFlat+s",
+      "checksum": "e11d622b58e7cbe7",
+      "psnr50": 35.877765689906845,
+      "macs_mmac": 5492.4,
+      "deployable": true,
+      "wl_hash": "17c226689de2",
+      "max_sig_cos": 0.872,
+      "max_struct_cos": 0.998,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "reject",
+      "reasons": [
+        "pareto-dominated"
+      ]
+    },
+    {
+      "name": "DenoiseELUCtxXDenoiseUnet9F+s",
+      "checksum": "2601f64bc630d6f7",
+      "psnr50": 35.79252941291263,
+      "macs_mmac": 2934.6,
+      "deployable": true,
+      "wl_hash": "874cf160411e",
+      "max_sig_cos": 0.941,
+      "max_struct_cos": 0.999,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "reject",
+      "reasons": [
+        "near-dup(cos 0.96)"
+      ]
+    },
+    {
+      "name": "DenoiseLPPoolXDenoiseUnet9F+sXDenoisePoo~983cf3+m",
+      "checksum": "043a30e4f02c083c",
+      "psnr50": 35.78263111100722,
+      "macs_mmac": 5742.5,
+      "deployable": true,
+      "wl_hash": "38d2c86635c0",
+      "max_sig_cos": 0.719,
+      "max_struct_cos": 0.997,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "reject",
+      "reasons": [
+        "pareto-dominated"
+      ]
+    },
+    {
+      "name": "DenoiseLinearMixXDenoiseUnet8FXDenoiseLP~888424+m",
+      "checksum": "d3c30e8cb532e4fe",
+      "psnr50": 35.71669338317064,
+      "macs_mmac": 7416.1,
+      "deployable": true,
+      "wl_hash": "5661a5deb6bd",
+      "max_sig_cos": 0.909,
+      "max_struct_cos": 0.999,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "reject",
+      "reasons": [
+        "pareto-dominated"
+      ]
+    },
+    {
+      "name": "DenoisePoolDeconvXDenoiseSelfAttnXDenois~c1efae+m",
+      "checksum": "8901067b4e1ec298",
+      "psnr50": 35.414725338715755,
+      "macs_mmac": 5014.3,
+      "deployable": true,
+      "wl_hash": "e0499de36a49",
+      "max_sig_cos": 0.861,
+      "max_struct_cos": 1.0,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "reject",
+      "reasons": [
+        "pareto-dominated"
+      ]
+    },
+    {
+      "name": "DenoiseLPPoolXDenoiseUnet9F+sXDenoiseLin~c545d1+m",
+      "checksum": "7d560825360773a1",
+      "psnr50": 35.03670493938694,
+      "macs_mmac": 6549.4,
+      "deployable": true,
+      "wl_hash": "3b7a2b5b96e0",
+      "max_sig_cos": 0.842,
+      "max_struct_cos": 0.999,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "reject",
+      "reasons": [
+        "pareto-dominated"
+      ]
+    },
+    {
+      "name": "DenoisePoolDeconvXDenoiseSelfAttnXDenois~1e1760+m",
+      "checksum": "520ffea350dcde86",
+      "psnr50": 35.009072267626216,
+      "macs_mmac": 6447.7,
+      "deployable": true,
+      "wl_hash": "6beb3b3cf15d",
+      "max_sig_cos": 0.855,
+      "max_struct_cos": 0.999,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "reject",
+      "reasons": [
+        "pareto-dominated"
+      ]
+    },
+    {
+      "name": "DenoiseELUCtxXDenoiseUnet9F+sXDenoisePoo~4da2fc+m",
+      "checksum": "ee08e4973d68754a",
+      "psnr50": 34.96260319049382,
+      "macs_mmac": 6784.8,
+      "deployable": true,
+      "wl_hash": "fc115fe1f461",
+      "max_sig_cos": 0.577,
+      "max_struct_cos": 0.999,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "reject",
+      "reasons": [
+        "pareto-dominated"
+      ]
+    },
+    {
+      "name": "DenoiseSelfAttnXDenoiseParallelMR+sXDeno~288233+m",
+      "checksum": "734b25f10d2791f2",
+      "psnr50": 34.82550404723726,
+      "macs_mmac": 5374.0,
+      "deployable": true,
+      "wl_hash": "476a2038cf86",
+      "max_sig_cos": 0.947,
+      "max_struct_cos": 0.999,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "reject",
+      "reasons": [
+        "pareto-dominated"
+      ]
+    },
+    {
+      "name": "DenoisePoolDeconvXDenoiseSelfAttnXDenois~bdc3cf",
+      "checksum": "beae6349fce5da0c",
+      "psnr50": 34.73060250957883,
+      "macs_mmac": 2917.1,
+      "deployable": true,
+      "wl_hash": "328c9ea9cd7b",
+      "max_sig_cos": 0.971,
+      "max_struct_cos": 0.998,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "PROMOTE",
+      "reasons": []
+    },
+    {
+      "name": "DenoiseLinearMixXDenoiseUnet8FXDenoiseLP~90a583+m",
+      "checksum": "4d4bbf3bebbc87d4",
+      "psnr50": 34.62255126319284,
+      "macs_mmac": 6692.0,
+      "deployable": true,
+      "wl_hash": "96361fe3beea",
+      "max_sig_cos": 0.797,
+      "max_struct_cos": 0.999,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "reject",
+      "reasons": [
+        "pareto-dominated"
+      ]
+    },
+    {
+      "name": "DenoiseSubPixelXDenoiseSelfAttn+mXDenois~a57054+m",
+      "checksum": "f87d377e7306380b",
+      "psnr50": 34.56466113083692,
+      "macs_mmac": 2963.3,
+      "deployable": true,
+      "wl_hash": "b37eb3e95cdc",
+      "max_sig_cos": 0.266,
+      "max_struct_cos": 0.995,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "reject",
+      "reasons": [
+        "pareto-dominated"
+      ]
+    },
+    {
+      "name": "DenoiseELUCtxXDenoisePoolDeconvXDenoiseS~cd382b+m",
+      "checksum": "240d63d38230b41c",
+      "psnr50": 34.526810977385985,
+      "macs_mmac": 5349.8,
+      "deployable": true,
+      "wl_hash": "6265eb728c6e",
+      "max_sig_cos": 0.864,
+      "max_struct_cos": 0.999,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "reject",
+      "reasons": [
+        "pareto-dominated"
+      ]
+    },
+    {
+      "name": "DenoiseLapPyrXDenoiseLPPool",
+      "checksum": "dad0218709203ada",
+      "psnr50": 34.31013717284791,
+      "macs_mmac": 916.0,
+      "deployable": true,
+      "wl_hash": "b309716c81b9",
+      "max_sig_cos": 0.587,
+      "max_struct_cos": 0.998,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "PROMOTE",
+      "reasons": []
+    },
+    {
+      "name": "DenoiseSubPixelXDenoiseSelfAttn+mXDenois~18f9e9",
+      "checksum": "a4e38d1fac5ee945",
+      "psnr50": 33.65324390865077,
+      "macs_mmac": 1151.3,
+      "deployable": true,
+      "wl_hash": "b42552acc4ae",
+      "max_sig_cos": 0.189,
+      "max_struct_cos": 0.994,
+      "max_residual_cka": null,
+      "max_agree_db": null,
+      "verdict": "reject",
+      "reasons": [
+        "pareto-dominated"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "objective": {
+    "cost_metric": "macs",
+    "cost_mode": "log",
+    "cost_weight": 0.3,
+    "budget": 3755999232
+  },
+  "best_name": "DenoiseELUCtxXDenoiseUnet9F+sXDenoisePoo~4da2fc+m",
+  "best_eff_db": 34.24208601559203,
+  "best_psnr_db": 34.419485640084346,
+  "best_macs": 6784811008,
+  "best_params": 788073,
+  "best_parent": "DenoiseELUCtxXDenoiseUnet9F+sXDenoisePoo~4da2fc",
+  "seeds": [
+    "DenoiseLPPool",
+    "DenoiseELUCtx",
+    "DenoiseSubPixel",
+    "DenoiseLinearMix",
+    "DenoiseSelfAttn",
+    "DenoiseParallelMR",
+    "DenoiseInstNorm",
+    "DenoiseDilatedFlat",
+    "DenoiseMBConv",
+    "DenoiseLapPyr",
+    "DenoisePoolDeconv",
+    "DenoiseChanShuffle",
+    "LiteDenoiseNet",
+    "DenoiseStatNorm",
+    "DenoiseReflectPad",
+    "DenoiseUnet3F",
+    "DenoiseUnet6F",
+    "DenoiseUnet8F",
+    "DenoiseUnet9F"
+  ],
+  "gens": 30,
+  "epoch": 5,
+  "elapsed_sec": 15098.6
+}

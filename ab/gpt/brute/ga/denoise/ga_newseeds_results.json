@@ -1,0 +1,38 @@
+{
+  "objective": {
+    "cost_metric": "macs",
+    "cost_mode": "log",
+    "cost_weight": 0.3,
+    "budget": 2217738240
+  },
+  "best_name": "DenoiseFourierXDenoiseHalfInstNormXDenoi~1e1eb4+m",
+  "best_eff_db": 34.72212926880281,
+  "best_psnr_db": 34.934508561826064,
+  "best_macs": 4501536768,
+  "best_params": 68907,
+  "best_parent": "DenoiseFourierXDenoiseHalfInstNormXDenoi~1e1eb4",
+  "seeds": [
+    "DenoiseHalfInstNorm",
+    "DenoiseUnfold",
+    "DenoiseKernelMix",
+    "DenoiseAxial",
+    "DenoiseFourier",
+    "DenoiseScaleRec",
+    "DenoiseNonLocal",
+    "DenoiseCoupling",
+    "DenoiseNoiseEst",
+    "DenoiseLowRank",
+    "DenoiseResDense",
+    "DenoiseRecMem",
+    "DenoiseMultiStage",
+    "DenoiseWaveletMS",
+    "DenoiseFourDir",
+    "DenoiseMoE",
+    "DenoiseUnshuffle",
+    "DenoiseDualBranch",
+    "DenoiseKPN"
+  ],
+  "gens": 30,
+  "epoch": 5,
+  "elapsed_sec": 57640.7
+}

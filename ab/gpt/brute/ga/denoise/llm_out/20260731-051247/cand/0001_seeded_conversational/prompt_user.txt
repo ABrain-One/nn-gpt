@@ -1,0 +1,505 @@
+Hey there! I have these denoising networks and I'd like your help designing a better one.
+PRIMARY REFERENCE - measured 35.25 dB PSNR at epoch 50, hyperparameters {'lr': 0.0001, 'batch': 16, 'epoch_max': 50, 'transform': 'denoise'}:
+```python
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+
+def supported_hyperparameters():
+    return {"lr"}
+
+
+class SPBlock(nn.Module):
+    """Channel-preserving residual block (crossover contract)."""
+
+    def __init__(self, channels):
+        super().__init__()
+        self.c1 = nn.Conv2d(channels, channels, 3, padding=1)
+        self.c2 = nn.Conv2d(channels, channels, 3, padding=1)
+        self.act = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        return self.act(self.c2(self.act(self.c1(x))) + x)
+
+
+class Net(nn.Module):
+    """SUB-PIXEL (FFDNet-style) denoiser — NOT a U-Net. The only resolution change is a
+    single PixelUnshuffle at the input and PixelShuffle at the output; the body is a FLAT
+    stack of residual blocks at reduced resolution. No encoder/decoder, no cross-scale skips."""
+
+    def __init__(self, in_shape=(1, 3, 512, 512), out_shape=None, prm={}, device="cuda"):
+        super().__init__()
+        self.device = device
+        f = 48
+        self.unshuffle = nn.PixelUnshuffle(2)
+        self.in_conv = nn.Conv2d(3 * 4, f, 3, padding=1)
+        self.b0 = SPBlock(f)
+        self.b1 = SPBlock(f)
+        self.b2 = SPBlock(f)
+        self.b3 = SPBlock(f)
+        self.b4 = SPBlock(f)
+        self.b5 = SPBlock(f)
+        self.out_conv = nn.Conv2d(f, 3 * 4, 3, padding=1)
+        self.shuffle = nn.PixelShuffle(2)
+        self.criterion_mse = nn.MSELoss()
+        self.criterion_l1 = nn.L1Loss()
+        self.train_setup(prm)
+        self.to(device)
+
+    def forward(self, x):
+        identity = x
+        h = self.in_conv(self.unshuffle(x))
+        h = self.b0(h)
+        h = self.b1(h)
+        h = self.b2(h)
+        h = self.b3(h)
+        h = self.b4(h)
+        h = self.b5(h)
+        return torch.clamp(self.shuffle(self.out_conv(h)) + identity, 0.0, 1.0)
+
+    def train_setup(self, prm):
+        lr = prm.get("lr", 1e-4)
+        self.optimizer = optim.Adam(self.parameters(), lr=lr)
+        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            self.optimizer, T_max=200, eta_min=1e-5
+        )
+
+    def learn(self, train_data):
+        self.train()
+        total_loss = 0.0
+        count = 0
+        bn_layers = [m for m in self.modules() if isinstance(
+            m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.SyncBatchNorm))]
+        for noisy, clean in train_data:
+            noisy, clean = noisy.to(self.device), clean.to(self.device)
+            self.optimizer.zero_grad()
+            bn_state = [(m.running_mean.clone(), m.running_var.clone(),
+                         m.num_batches_tracked.clone()) for m in bn_layers]
+            preds = self(noisy)
+            loss_gt = self.criterion_mse(preds, clean)
+            loss = loss_gt * 1000 + self.criterion_l1(preds, clean) * 50
+            bad = not torch.isfinite(loss)
+            if not bad and bn_layers:
+                bad = not all(torch.isfinite(m.running_mean).all()
+                              and torch.isfinite(m.running_var).all() for m in bn_layers)
+            if bad:
+                # BN buffers were updated by this batch's forward BEFORE the
+                # check — restore them or eval is poisoned while train stays ok
+                for m, (rm, rv, nb) in zip(bn_layers, bn_state):
+                    m.running_mean.copy_(rm)
+                    m.running_var.copy_(rv)
+                    m.num_batches_tracked.copy_(nb)
+                continue
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=0.1)
+            self.optimizer.step()
+            total_loss += loss_gt.item()
+            count += 1
+        self.scheduler.step()
+        return total_loss / max(count, 1)
+
+```
+SUPPORTING REFERENCE 1 - measured 35.15 dB PSNR:
+```python
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+
+def supported_hyperparameters():
+    return {"lr"}
+
+
+class DilBlock(nn.Module):
+    """Multi-dilation channel-preserving residual block (crossover contract)."""
+
+    def __init__(self, channels):
+        super().__init__()
+        self.d1 = nn.Conv2d(channels, channels, 3, padding=1, dilation=1)
+        self.d2 = nn.Conv2d(channels, channels, 3, padding=2, dilation=2)
+        self.d4 = nn.Conv2d(channels, channels, 3, padding=4, dilation=4)
+        self.act = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        h = self.act(self.d1(x))
+        h = self.act(self.d2(h))
+        return self.act(self.d4(h) + x)
+
+
+class Net(nn.Module):
+    """DILATED FULL-RESOLUTION denoiser — NOT a U-Net. Resolution NEVER changes; the
+    receptive field grows purely through dilation. No downsampling, no upsampling, no
+    encoder/decoder, no cross-scale skips."""
+
+    def __init__(self, in_shape=(1, 3, 512, 512), out_shape=None, prm={}, device="cuda"):
+        super().__init__()
+        self.device = device
+        f = 24
+        self.in_conv = nn.Conv2d(3, f, 3, padding=1)
+        self.b0 = DilBlock(f)
+        self.b1 = DilBlock(f)
+        self.b2 = DilBlock(f)
+        self.b3 = DilBlock(f)
+        self.out_conv = nn.Conv2d(f, 3, 3, padding=1)
+        self.criterion_mse = nn.MSELoss()
+        self.criterion_l1 = nn.L1Loss()
+        self.train_setup(prm)
+        self.to(device)
+
+    def forward(self, x):
+        identity = x
+        h = self.in_conv(x)
+        h = self.b0(h)
+        h = self.b1(h)
+        h = self.b2(h)
+        h = self.b3(h)
+        return torch.clamp(self.out_conv(h) + identity, 0.0, 1.0)
+
+    def train_setup(self, prm):
+        lr = prm.get("lr", 1e-4)
+        self.optimizer = optim.Adam(self.parameters(), lr=lr)
+        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            self.optimizer, T_max=200, eta_min=1e-5
+        )
+
+    def learn(self, train_data):
+        self.train()
+        total_loss = 0.0
+        count = 0
+        bn_layers = [m for m in self.modules() if isinstance(
+            m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.SyncBatchNorm))]
+        for noisy, clean in train_data:
+            noisy, clean = noisy.to(self.device), clean.to(self.device)
+            self.optimizer.zero_grad()
+            bn_state = [(m.running_mean.clone(), m.running_var.clone(),
+                         m.num_batches_tracked.clone()) for m in bn_layers]
+            preds = self(noisy)
+            loss_gt = self.criterion_mse(preds, clean)
+            loss = loss_gt * 1000 + self.criterion_l1(preds, clean) * 50
+            bad = not torch.isfinite(loss)
+            if not bad and bn_layers:
+                bad = not all(torch.isfinite(m.running_mean).all()
+                              and torch.isfinite(m.running_var).all() for m in bn_layers)
+            if bad:
+                # BN buffers were updated by this batch's forward BEFORE the
+                # check — restore them or eval is poisoned while train stays ok
+                for m, (rm, rv, nb) in zip(bn_layers, bn_state):
+                    m.running_mean.copy_(rm)
+                    m.running_var.copy_(rv)
+                    m.num_batches_tracked.copy_(nb)
+                continue
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=0.1)
+            self.optimizer.step()
+            total_loss += loss_gt.item()
+            count += 1
+        self.scheduler.step()
+        return total_loss / max(count, 1)
+
+```
+SUPPORTING REFERENCE 2 - measured 35.12 dB PSNR:
+```python
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+
+def supported_hyperparameters():
+    return {"lr"}
+
+
+class LPPoolBlock(nn.Module):
+    """LPPool2d context branch + Hardsigmoid gate."""
+
+    def __init__(self, channels):
+        super().__init__()
+        self.conv1 = nn.Conv2d(channels, channels, 3, padding=1)
+        self.pool = nn.LPPool2d(2, 4)
+        self.ctx = nn.Conv2d(channels, channels, 1)
+        self.gate = nn.Hardsigmoid(inplace=True)
+        self.conv2 = nn.Conv2d(channels, channels, 3, padding=1)
+
+    def forward(self, x):
+        h = self.conv1(x)
+        c = self.ctx(self.pool(h))
+        c = nn.functional.interpolate(c, size=h.shape[-2:], mode="nearest")
+        return self.conv2(h * self.gate(c)) + x
+
+
+class Net(nn.Module):
+    """LPPool — introduces op types absent from the pool; crossover-capable channel-preserving block."""
+
+    def __init__(self, in_shape=(1, 3, 512, 512), out_shape=None, prm={}, device="cuda"):
+        super().__init__()
+        self.device = device
+        Block = LPPoolBlock
+        self.in_conv = nn.Conv2d(3, 16, 3, padding=1)
+        self.eb0 = Block(16)
+        self.unshuf0 = nn.PixelUnshuffle(2)
+        self.down0 = nn.Conv2d(64, 32, 3, padding=1)
+        self.eb1 = Block(32)
+        self.unshuf1 = nn.PixelUnshuffle(2)
+        self.down1 = nn.Conv2d(128, 64, 3, padding=1)
+        self.eb2 = Block(64)
+        self.unshuf2 = nn.PixelUnshuffle(2)
+        self.down2 = nn.Conv2d(256, 128, 3, padding=1)
+        self.bottleneck = Block(128)
+        self.upsample = nn.Upsample(scale_factor=2, mode='nearest')
+        self.up2 = nn.Conv2d(192, 64, 3, padding=1)
+        self.db2 = Block(64)
+        self.up1 = nn.Conv2d(96, 32, 3, padding=1)
+        self.db1 = Block(32)
+        self.up0 = nn.Conv2d(48, 16, 3, padding=1)
+        self.db0 = Block(16)
+        self.out_conv = nn.Conv2d(16, 3, 3, padding=1)
+        self.criterion_mse = nn.MSELoss()
+        self.criterion_l1 = nn.L1Loss()
+        self.train_setup(prm)
+        self.to(device)
+
+    def forward(self, x):
+        identity = x
+        e0 = self.in_conv(x)
+        e0 = self.eb0(e0)
+        e1 = self.down0(self.unshuf0(e0))
+        e1 = self.eb1(e1)
+        e2 = self.down1(self.unshuf1(e1))
+        e2 = self.eb2(e2)
+        bt = self.down2(self.unshuf2(e2))
+        bt = self.bottleneck(bt)
+        d2 = self.db2(self.up2(torch.cat([self.upsample(bt), e2], 1)))
+        d1 = self.db1(self.up1(torch.cat([self.upsample(d2), e1], 1)))
+        d0 = self.db0(self.up0(torch.cat([self.upsample(d1), e0], 1)))
+        return torch.clamp(self.out_conv(d0) + identity, 0.0, 1.0)
+
+    def train_setup(self, prm):
+        lr = prm.get("lr", 1e-4)
+        self.optimizer = optim.Adam(self.parameters(), lr=lr)
+        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            self.optimizer, T_max=200, eta_min=1e-5
+        )
+
+    def learn(self, train_data):
+        self.train()
+        total_loss = 0.0
+        count = 0
+        bn_layers = [m for m in self.modules() if isinstance(
+            m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.SyncBatchNorm))]
+        for noisy, clean in train_data:
+            noisy, clean = noisy.to(self.device), clean.to(self.device)
+            self.optimizer.zero_grad()
+            bn_state = [(m.running_mean.clone(), m.running_var.clone(),
+                         m.num_batches_tracked.clone()) for m in bn_layers]
+            preds = self(noisy)
+            loss_gt = self.criterion_mse(preds, clean)
+            loss = loss_gt * 1000 + self.criterion_l1(preds, clean) * 50
+            bad = not torch.isfinite(loss)
+            if not bad and bn_layers:
+                bad = not all(torch.isfinite(m.running_mean).all()
+                              and torch.isfinite(m.running_var).all() for m in bn_layers)
+            if bad:
+                # BN buffers were updated by this batch's forward BEFORE the
+                # check — restore them or eval is poisoned while train stays ok
+                for m, (rm, rv, nb) in zip(bn_layers, bn_state):
+                    m.running_mean.copy_(rm)
+                    m.running_var.copy_(rv)
+                    m.num_batches_tracked.copy_(nb)
+                continue
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=0.1)
+            self.optimizer.step()
+            total_loss += loss_gt.item()
+            count += 1
+        self.scheduler.step()
+        return total_loss / max(count, 1)
+
+```
+SUPPORTING REFERENCE 3 - measured 35.11 dB PSNR:
+```python
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+
+def supported_hyperparameters():
+    return {"lr"}
+
+
+class ELUAvgBlock(nn.Module):
+    """ELU block with an AvgPool2d context branch."""
+
+    def __init__(self, channels):
+        super().__init__()
+        self.conv1 = nn.Conv2d(channels, channels, 3, padding=1)
+        self.conv2 = nn.Conv2d(channels, channels, 3, padding=1)
+        self.ctx_pool = nn.AvgPool2d(4)
+        self.ctx = nn.Conv2d(channels, channels, 1)
+        self.act = nn.ELU(inplace=True)
+
+    def forward(self, x):
+        out = self.act(self.conv1(x))
+        c = self.ctx(self.ctx_pool(out))
+        c = nn.functional.interpolate(c, size=out.shape[-2:], mode="nearest")
+        return self.conv2(out + c) + x
+
+
+class Net(nn.Module):
+    """ELUCtx — introduces op types absent from the seed pool; crossover-capable channel-preserving block."""
+
+    def __init__(self, in_shape=(1, 3, 512, 512), out_shape=None, prm={}, device="cuda"):
+        super().__init__()
+        self.device = device
+        Block = ELUAvgBlock
+        self.in_conv = nn.Conv2d(3, 16, 3, padding=1)
+        self.eb0 = Block(16)
+        self.down0 = nn.Conv2d(16, 32, 3, stride=2, padding=1)
+        self.eb1 = Block(32)
+        self.down1 = nn.Conv2d(32, 64, 3, stride=2, padding=1)
+        self.eb2 = Block(64)
+        self.down2 = nn.Conv2d(64, 128, 3, stride=2, padding=1)
+        self.bottleneck = Block(128)
+        self.pre2 = nn.Conv2d(128, 512, 1)
+        self.shuf2 = nn.PixelShuffle(2)
+        self.up2 = nn.Conv2d(192, 64, 3, padding=1)
+        self.db2 = Block(64)
+        self.pre1 = nn.Conv2d(64, 256, 1)
+        self.shuf1 = nn.PixelShuffle(2)
+        self.up1 = nn.Conv2d(96, 32, 3, padding=1)
+        self.db1 = Block(32)
+        self.pre0 = nn.Conv2d(32, 128, 1)
+        self.shuf0 = nn.PixelShuffle(2)
+        self.up0 = nn.Conv2d(48, 16, 3, padding=1)
+        self.db0 = Block(16)
+        self.out_conv = nn.Conv2d(16, 3, 3, padding=1)
+        self.criterion_mse = nn.MSELoss()
+        self.criterion_l1 = nn.L1Loss()
+        self.train_setup(prm)
+        self.to(device)
+
+    def forward(self, x):
+        identity = x
+        e0 = self.in_conv(x)
+        e0 = self.eb0(e0)
+        e1 = self.down0(e0)
+        e1 = self.eb1(e1)
+        e2 = self.down1(e1)
+        e2 = self.eb2(e2)
+        bt = self.down2(e2)
+        bt = self.bottleneck(bt)
+        d2 = self.db2(self.up2(torch.cat([self.shuf2(self.pre2(bt)), e2], 1)))
+        d1 = self.db1(self.up1(torch.cat([self.shuf1(self.pre1(d2)), e1], 1)))
+        d0 = self.db0(self.up0(torch.cat([self.shuf0(self.pre0(d1)), e0], 1)))
+        return torch.clamp(self.out_conv(d0) + identity, 0.0, 1.0)
+
+    def train_setup(self, prm):
+        lr = prm.get("lr", 1e-4)
+        self.optimizer = optim.Adam(self.parameters(), lr=lr)
+        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            self.optimizer, T_max=200, eta_min=1e-5
+        )
+
+    def learn(self, train_data):
+        self.train()
+        total_loss = 0.0
+        count = 0
+        bn_layers = [m for m in self.modules() if isinstance(
+            m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.SyncBatchNorm))]
+        for noisy, clean in train_data:
+            noisy, clean = noisy.to(self.device), clean.to(self.device)
+            self.optimizer.zero_grad()
+            bn_state = [(m.running_mean.clone(), m.running_var.clone(),
+                         m.num_batches_tracked.clone()) for m in bn_layers]
+            preds = self(noisy)
+            loss_gt = self.criterion_mse(preds, clean)
+            loss = loss_gt * 1000 + self.criterion_l1(preds, clean) * 50
+            bad = not torch.isfinite(loss)
+            if not bad and bn_layers:
+                bad = not all(torch.isfinite(m.running_mean).all()
+                              and torch.isfinite(m.running_var).all() for m in bn_layers)
+            if bad:
+                # BN buffers were updated by this batch's forward BEFORE the
+                # check — restore them or eval is poisoned while train stays ok
+                for m, (rm, rv, nb) in zip(bn_layers, bn_state):
+                    m.running_mean.copy_(rm)
+                    m.running_var.copy_(rv)
+                    m.num_batches_tracked.copy_(nb)
+                continue
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=0.1)
+            self.optimizer.step()
+            total_loss += loss_gt.item()
+            count += 1
+        self.scheduler.step()
+        return total_loss / max(count, 1)
+
+```
+They all score within a fraction of a dB of each other, so their ranking does not tell us much -- please treat them as a parts catalogue rather than a leaderboard.
+Could you pick out the interesting structural ideas across them and combine them into something genuinely new? It should not be any one of them with different channel widths, since we reject those as duplicates automatically.
+Could you provide the complete code? I'd really appreciate it!
+
+TASK
+  Input : noisy RGB tensor of shape [B, 3, 256, 256], float32 already scaled to [0, 1].
+  Output: denoised RGB tensor of the SAME shape, values in [0, 1].
+  Data  : real smartphone photographs (noisy/clean pairs), NOT synthetic additive Gaussian noise.
+          The noise is signal-dependent, spatially correlated and stronger in dark regions.
+  Scored by PSNR on the Y (luminance) channel, BT.601, higher is better.
+
+
+CONSTRAINTS - a model violating any of these is discarded automatically:
+  1. Multiply-accumulate cost at 3x256x256 input MUST be <= 9053 MMac. This is an edge
+     deployment budget, not a suggestion. Prefer depthwise-separable convolutions,
+     downsampled processing and modest channel widths over deep full-rank stacks.
+  2. Use ONLY standard torch / torch.nn / torch.nn.functional operators.
+     Do NOT use torchvision, timm, or any pre-built or pre-trained model.
+  3. The network must be fully convolutional and must accept arbitrary spatial sizes
+     divisible by its downsampling factor. Do not hardcode 256 anywhere.
+  4. Numerical stability is mandatory. The forward pass must never emit NaN or Inf.
+     If you use normalisation, division or sqrt, include an epsilon. Clamp the output.
+     A single non-finite value scores the entire run 0.0.
+
+
+NORMALISATION - vary it deliberately, but only within the mobile-safe set:
+  SAFE (use freely):
+    * nn.BatchNorm2d      folds into the preceding conv at inference -> zero runtime cost,
+                          fully supported by the TFLite GPU delegate.
+    * no normalisation    trivially safe; many strong denoisers omit it entirely.
+    * learned channel affine / LayerScale: a per-channel nn.Parameter scale (and optional
+                          bias) applied elementwise. Pure elementwise -> delegate-clean.
+    * weight standardisation applied to conv WEIGHTS (not activations): costs nothing at
+                          inference because it is folded into the stored weights.
+  AVOID (they convert, but force a CPU fallback and defeat the GPU delegate):
+    * nn.LayerNorm, nn.GroupNorm, nn.InstanceNorm2d -- these need a runtime reduction over
+      spatial/channel axes, and LayerNorm additionally needs a permute round-trip.
+  Pick whichever of the SAFE options suits your design. Do not default to the same choice
+  every time: normalisation is a real architectural axis and we want it varied.
+
+INTERFACE CONTRACT - reproduce these signatures EXACTLY:
+
+  def supported_hyperparameters():
+      return {'lr'}
+
+  class Net(nn.Module):
+      def __init__(self, in_shape=(1, 3, 256, 256), out_shape=None, prm={}, device='cuda'):
+          # build submodules, then:  self.train_setup(prm) ;  self.to(self.device)
+          # in_shape/out_shape are supplied by the harness and their SPATIAL dims are
+          # NOT the training resolution -- do not size any layer from in_shape[2:].
+          # Take channels from in_shape[1] if you wish; otherwise assume 3.
+          # out_shape may be a 1-element tuple: NEVER index out_shape[1].
+
+      def train_setup(self, prm):
+          # read lr via prm.get('lr', 1e-4) and epoch_max via prm.get('epoch_max', 50)
+          # assign self.optimizer and (optionally) self.scheduler
+
+      def forward(self, x):
+          # returns the denoised image, clamped to [0, 1]
+
+      def learn(self, train_data):
+          # iterate 'for noisy, clean in train_data:', move both to self.device,
+          # zero_grad, forward, compute loss, backward, step; call self.scheduler.step()
+          # once at the END of the epoch (not per batch); return the mean batch loss.
+          # Skip any batch whose loss is not finite instead of propagating it.
+
+
+OUTPUT
+  Emit exactly one block: <nn> ...complete runnable module, including imports... </nn>

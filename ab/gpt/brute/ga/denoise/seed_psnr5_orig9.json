@@ -1,0 +1,34 @@
+{
+ "DenoiseUnet1F": {
+  "psnr5": 28.57,
+  "mmac": 3944
+ },
+ "DenoiseUnet3F": {
+  "psnr5": 32.96,
+  "mmac": 4958
+ },
+ "DenoiseUnet4F": {
+  "psnr5": 33.09,
+  "mmac": 12585
+ },
+ "DenoiseUnet6F": {
+  "psnr5": 27.92,
+  "mmac": 3272
+ },
+ "DenoiseUnet7F": {
+  "psnr5": 22.79,
+  "mmac": 30152
+ },
+ "DenoiseUnet8F": {
+  "psnr5": 32.87,
+  "mmac": 2737
+ },
+ "DenoiseUnet9F": {
+  "psnr5": 33.35,
+  "mmac": 9053
+ },
+ "DenoiseUnet10F": {
+  "psnr5": 29.28,
+  "mmac": 29054
+ }
+}

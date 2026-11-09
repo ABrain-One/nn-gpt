@@ -1,0 +1,24 @@
+{
+  "id": "0000_cold_cot",
+  "arm": "cold",
+  "run_id": "20260731-051247",
+  "config": "Denoise_gen_cold_strategies.json",
+  "config_sha256": "d92dcbef70f650fa08f98fab8f1e91d233cbef31663489c0043344c3016b580c",
+  "shared_sha256": "7df230c5c98cf97be30cc7a1d4774c52ddc7eb2a35a2e86e5a0b41ac8690f2cf",
+  "strategy": "cot",
+  "strategy_label": "Zero-shot Chain-of-Thought",
+  "variant_idx": 0,
+  "llm": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "sampling": {
+    "temperature": 0.8,
+    "top_k": 50,
+    "top_p": 0.95,
+    "max_new_tokens": 4096
+  },
+  "prompt_sha256": "9ca4ec2ebe5c013e98d80d57017cd18f6274ee2cad4f7d14862ca0b14aafe922",
+  "prompt_chars": 4512,
+  "primary_seed": null,
+  "supporting_seeds": [],
+  "ts": "2026-07-31T05:12:53.122468",
+  "extracted": null
+}

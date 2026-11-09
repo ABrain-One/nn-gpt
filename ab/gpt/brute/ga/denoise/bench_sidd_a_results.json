@@ -1,0 +1,18 @@
+{
+  "DenoiseUnet7": {
+    "mai_psnr": 37.52,
+    "params_M": null,
+    "macs_MMac": null,
+    "epoch": 50,
+    "psnr_db": 36.114,
+    "sec": 3765
+  },
+  "DenoiseUnet7F": {
+    "mai_psnr": 35.85,
+    "params_M": null,
+    "macs_MMac": null,
+    "epoch": 50,
+    "psnr_db": 35.186,
+    "sec": 3694
+  }
+}

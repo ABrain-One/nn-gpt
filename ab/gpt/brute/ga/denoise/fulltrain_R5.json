@@ -1,0 +1,81 @@
+{
+  "budget_mmac": 9052.61,
+  "epoch": 50,
+  "runs": [
+    {
+      "name": "DenoisePoolDeconvXDenoiseSelfAttnXDenois~db7ec1+s+m+m",
+      "arm": "R5",
+      "checksum": "34bbb50ef41c7ef2",
+      "psnr50": 35.807542177272445,
+      "psnr5_proxy": 34.30148643771934,
+      "eff5_proxy": 34.32511938574766,
+      "macs": 3471469056,
+      "params": 544003,
+      "deployable": true,
+      "hard": [],
+      "edge_pick": false,
+      "epoch": 50,
+      "train_sec": 1683.8
+    },
+    {
+      "name": "DenoiseRestormerLite",
+      "arm": "R5",
+      "checksum": "c5fa6d03cc931d34",
+      "psnr50": 35.830652634401964,
+      "psnr5_proxy": 34.501797940641694,
+      "eff5_proxy": 34.30714649052646,
+      "macs": 7186415616,
+      "params": 696589,
+      "deployable": true,
+      "hard": [],
+      "edge_pick": false,
+      "epoch": 50,
+      "train_sec": 1713.8
+    },
+    {
+      "name": "LiteDenoiseNet+m",
+      "arm": "R5",
+      "checksum": "f68a439488536fac",
+      "psnr50": 36.34125293153547,
+      "psnr5_proxy": 34.53723744458535,
+      "eff5_proxy": 34.28959330582924,
+      "macs": 8574861312,
+      "params": 2161412,
+      "deployable": true,
+      "hard": [],
+      "edge_pick": false,
+      "epoch": 50,
+      "train_sec": 1657.5
+    },
+    {
+      "name": "DenoisePoolDeconvXDenoiseSelfAttnXDenois~715b67+m",
+      "arm": "R5",
+      "checksum": "4567d3ed69162a32",
+      "psnr50": 34.37590282252019,
+      "psnr5_proxy": 34.439114915128634,
+      "eff5_proxy": 34.26051223511799,
+      "macs": 6812073984,
+      "params": 1030601,
+      "deployable": true,
+      "hard": [],
+      "edge_pick": false,
+      "epoch": 50,
+      "train_sec": 1682.3
+    },
+    {
+      "name": "LiteDenoiseNet+m+m+s+m+m+m+m+m+m+m+m+m+m",
+      "arm": "R5",
+      "checksum": "4aacaccbed82a38f",
+      "psnr50": 36.59258150887844,
+      "psnr5_proxy": 34.41441031991555,
+      "eff5_proxy": 34.1687583822708,
+      "macs": 8518107136,
+      "params": 2163615,
+      "deployable": true,
+      "hard": [],
+      "edge_pick": false,
+      "epoch": 50,
+      "train_sec": 1684.0
+    }
+  ]
+}

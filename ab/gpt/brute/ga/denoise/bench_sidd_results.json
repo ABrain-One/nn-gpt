@@ -1,0 +1,42 @@
+{
+  "LiteDenoiseNet": {
+    "mai_psnr": 36.51,
+    "params_M": null,
+    "macs_MMac": null,
+    "epoch": 50,
+    "psnr_db": 36.276,
+    "sec": 3059
+  },
+  "DenoiseUnet7": {
+    "mai_psnr": 37.52,
+    "params_M": null,
+    "macs_MMac": null,
+    "epoch": 50,
+    "psnr_db": 36.114,
+    "sec": 3765
+  },
+  "DenoiseUnet7F": {
+    "mai_psnr": 35.85,
+    "params_M": null,
+    "macs_MMac": null,
+    "epoch": 50,
+    "psnr_db": 35.186,
+    "sec": 3694
+  },
+  "DnSearch-129935": {
+    "mai_psnr": 35.35,
+    "params_M": null,
+    "macs_MMac": null,
+    "epoch": 50,
+    "psnr_db": 37.857,
+    "sec": 3781
+  },
+  "DnSkip-61f5c5": {
+    "mai_psnr": 35.09,
+    "params_M": null,
+    "macs_MMac": null,
+    "epoch": 50,
+    "psnr_db": 36.49,
+    "sec": 3671
+  }
+}

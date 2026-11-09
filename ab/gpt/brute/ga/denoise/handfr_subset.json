@@ -1,0 +1,47 @@
+{
+ "note": "ADDENDUM retrain. These 15 hand-designed models ALREADY completed 50 epochs (full 1->50 curves in stat, best dB matching the corpus screening numbers exactly) but their WEIGHTS were never written: the Optuna entry point never passed save_pth_weights and Const.default_save_pth_weights is False. Retrained at the identical recipe purely to obtain weights for a full-resolution pass.",
+ "arm": "hand50_fr",
+ "protocol": {
+  "epochs": 50,
+  "batch": 16,
+  "lr": 0.0001,
+  "transform": "denoise"
+ },
+ "priority": "the three screening-front models first: DenoiseScaleRec, DenoiseMoE, DenoiseUnfold",
+ "deferred_5epoch": {
+  "note": "these 28-minus-15 stopped at epoch 5, so their corpus screening numbers are 5-epoch numbers; retraining them at 50 would change the budget, not close a gap. Handle separately.",
+  "models": [
+   "DenoiseChanShuffle",
+   "DenoiseDilatedFlat",
+   "DenoiseELUCtx",
+   "DenoiseGroupNorm",
+   "DenoiseLPPool",
+   "DenoiseLapPyr",
+   "DenoiseMBConv",
+   "DenoiseMFDNet",
+   "DenoiseParallelMR",
+   "DenoisePoolDeconv",
+   "DenoiseSelfAttn",
+   "DenoiseSubPixel",
+   "DenoiseThunder"
+  ]
+ },
+ "n": 15,
+ "models": [
+  "DenoiseScaleRec",
+  "DenoiseMoE",
+  "DenoiseUnfold",
+  "DenoiseResDense",
+  "DenoiseLowRank",
+  "DenoiseRecMem",
+  "DenoiseCoupling",
+  "DenoiseKernelMix",
+  "DenoiseDualBranch",
+  "DenoiseFourDir",
+  "DenoiseAxial",
+  "DenoiseNonLocal",
+  "DenoiseKPN",
+  "DenoiseUnshuffle",
+  "DenoiseWaveletMS"
+ ]
+}

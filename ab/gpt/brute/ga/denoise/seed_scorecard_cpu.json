@@ -1,0 +1,184 @@
+{
+ "DenoiseUnet1F": {
+  "cover_rank": 23,
+  "redundancy": 0.923,
+  "xover_capable": true,
+  "distinct_children": 5.5,
+  "xover_attempts": 24
+ },
+ "DenoiseUnet3F": {
+  "cover_rank": 4,
+  "redundancy": 0.859,
+  "xover_capable": false,
+  "distinct_children": 0.0,
+  "xover_attempts": 0
+ },
+ "DenoiseUnet4F": {
+  "cover_rank": 13,
+  "redundancy": 0.859,
+  "xover_capable": true,
+  "distinct_children": 5.5,
+  "xover_attempts": 28
+ },
+ "DenoiseUnet6F": {
+  "cover_rank": 3,
+  "redundancy": 0.923,
+  "xover_capable": true,
+  "distinct_children": 4.0,
+  "xover_attempts": 26
+ },
+ "DenoiseUnet7F": {
+  "cover_rank": 9,
+  "redundancy": 0.884,
+  "xover_capable": true,
+  "distinct_children": 3.0,
+  "xover_attempts": 25
+ },
+ "DenoiseUnet8F": {
+  "cover_rank": 1,
+  "redundancy": 0.742,
+  "xover_capable": true,
+  "distinct_children": 2.0,
+  "xover_attempts": 21
+ },
+ "DenoiseUnet9F": {
+  "cover_rank": 12,
+  "redundancy": 0.853,
+  "xover_capable": true,
+  "distinct_children": 8.5,
+  "xover_attempts": 33
+ },
+ "DenoiseUnet10F": {
+  "cover_rank": 5,
+  "redundancy": 0.853,
+  "xover_capable": true,
+  "distinct_children": 5.0,
+  "xover_attempts": 21
+ },
+ "LiteDenoiseNet": {
+  "cover_rank": 24,
+  "redundancy": 0.932,
+  "xover_capable": false,
+  "distinct_children": 0.0,
+  "xover_attempts": 0
+ },
+ "DenoiseChanShuffle": {
+  "cover_rank": 7,
+  "redundancy": 0.852,
+  "xover_capable": true,
+  "distinct_children": 4.5,
+  "xover_attempts": 26
+ },
+ "DenoiseDilatedFlat": {
+  "cover_rank": 20,
+  "redundancy": 0.916,
+  "xover_capable": true,
+  "distinct_children": 4.5,
+  "xover_attempts": 33
+ },
+ "DenoiseELUCtx": {
+  "cover_rank": 19,
+  "redundancy": 0.902,
+  "xover_capable": true,
+  "distinct_children": 4.0,
+  "xover_attempts": 27
+ },
+ "DenoiseGroupNorm": {
+  "cover_rank": 26,
+  "redundancy": 0.998,
+  "xover_capable": true,
+  "distinct_children": 0.5,
+  "xover_attempts": 26
+ },
+ "DenoiseInstNorm": {
+  "cover_rank": 17,
+  "redundancy": 0.944,
+  "xover_capable": true,
+  "distinct_children": 3.0,
+  "xover_attempts": 26
+ },
+ "DenoiseLPPool": {
+  "cover_rank": 10,
+  "redundancy": 0.902,
+  "xover_capable": true,
+  "distinct_children": 3.0,
+  "xover_attempts": 24
+ },
+ "DenoiseLapPyr": {
+  "cover_rank": 14,
+  "redundancy": 0.912,
+  "xover_capable": true,
+  "distinct_children": 4.5,
+  "xover_attempts": 27
+ },
+ "DenoiseLayerNorm": {
+  "cover_rank": 21,
+  "redundancy": 0.974,
+  "xover_capable": true,
+  "distinct_children": 1.5,
+  "xover_attempts": 21
+ },
+ "DenoiseLinearMix": {
+  "cover_rank": 16,
+  "redundancy": 0.921,
+  "xover_capable": true,
+  "distinct_children": 3.0,
+  "xover_attempts": 24
+ },
+ "DenoiseMBConv": {
+  "cover_rank": 15,
+  "redundancy": 0.908,
+  "xover_capable": true,
+  "distinct_children": 3.0,
+  "xover_attempts": 29
+ },
+ "DenoiseParallelMR": {
+  "cover_rank": 11,
+  "redundancy": 0.907,
+  "xover_capable": true,
+  "distinct_children": 1.5,
+  "xover_attempts": 23
+ },
+ "DenoisePoolDeconv": {
+  "cover_rank": 22,
+  "redundancy": 0.921,
+  "xover_capable": true,
+  "distinct_children": 2.0,
+  "xover_attempts": 24
+ },
+ "DenoiseReflectPad": {
+  "cover_rank": 6,
+  "redundancy": 0.921,
+  "xover_capable": true,
+  "distinct_children": 3.5,
+  "xover_attempts": 22
+ },
+ "DenoiseResBN": {
+  "cover_rank": 25,
+  "redundancy": 0.998,
+  "xover_capable": true,
+  "distinct_children": 1.0,
+  "xover_attempts": 25
+ },
+ "DenoiseSelfAttn": {
+  "cover_rank": 8,
+  "redundancy": 0.811,
+  "xover_capable": true,
+  "distinct_children": 3.0,
+  "xover_attempts": 16
+ },
+ "DenoiseStatNorm": {
+  "cover_rank": 18,
+  "redundancy": 0.932,
+  "xover_capable": true,
+  "distinct_children": 4.0,
+  "xover_attempts": 23
+ },
+ "DenoiseSubPixel": {
+  "cover_rank": 2,
+  "redundancy": 0.916,
+  "xover_capable": true,
+  "distinct_children": 5.0,
+  "xover_attempts": 26
+ }
+}

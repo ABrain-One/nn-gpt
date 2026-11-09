@@ -1,0 +1,23 @@
+[
+  {
+    "arm": "D0",
+    "name": "DenoiseUnet7FXDenoiseUnet9F+m",
+    "mai": 36.30683160860669,
+    "deployable": false,
+    "src": "/home/s493053/thesis/nn-gpt/ab/gpt/brute/ga/denoise/seed_ga_D0_models/635be1a591f23325.py"
+  },
+  {
+    "arm": "C0",
+    "name": "DenoiseUnet9FXDenoiseUnet6F+m",
+    "mai": 34.83259019061049,
+    "deployable": true,
+    "src": "/home/s493053/thesis/nn-gpt/ab/gpt/brute/ga/denoise/seed_ga_C0_models/35973226040aa250.py"
+  },
+  {
+    "arm": "B0",
+    "name": "DenoiseUnet6F+m+m+m",
+    "mai": 35.06991396545822,
+    "deployable": true,
+    "src": "/home/s493053/thesis/nn-gpt/ab/gpt/brute/ga/denoise/seed_ga_B0_models/d6ae2e4b3af76819.py"
+  }
+]

@@ -1,0 +1,25 @@
+{
+  "objective": {
+    "cost_metric": "macs",
+    "cost_mode": "log",
+    "cost_weight": 0.8,
+    "budget": 1309409280
+  },
+  "best_name": "DenoiseThunder+m+s+m+m+m+m+m+m+m+m",
+  "best_eff_db": 34.76359473730968,
+  "best_psnr_db": 33.11479943511566,
+  "best_macs": 166723584,
+  "best_params": 20275,
+  "best_parent": "DenoiseThunder+m+s+m+m+m+m+m+m+m",
+  "seeds": [
+    "DenoiseLapPyr",
+    "DenoiseParallelMR",
+    "DenoiseThunder",
+    "DenoiseMFDNet",
+    "DenoiseSplitterNet",
+    "DenoiseUnet5F"
+  ],
+  "gens": 30,
+  "epoch": 5,
+  "elapsed_sec": 88529.1
+}

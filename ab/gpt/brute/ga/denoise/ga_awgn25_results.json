@@ -1,0 +1,31 @@
+{
+  "objective": {
+    "cost_metric": "macs",
+    "cost_mode": "log",
+    "cost_weight": 0.3,
+    "budget": 5058330624
+  },
+  "best_name": "LLM_Denoise_cold-77ae6899fd1a1e3855044a7f4c8a2573+m",
+  "best_eff_db": 31.793054205756548,
+  "best_psnr_db": 31.887820455245496,
+  "best_macs": 6937378816,
+  "best_params": 105987,
+  "best_parent": "LLM_Denoise_cold-77ae6899fd1a1e3855044a7f4c8a2573",
+  "seeds": [
+    "LLM_Pg15_seeded-8427175997a3bbb1ebfb564cfb2da2f4",
+    "LLM_Denoise_cold-77ae6899fd1a1e3855044a7f4c8a2573",
+    "DnSeedGA-58ea50814ce92855e16864df642cf58f",
+    "DenoiseGA-3907049bdf88b626f69e95c7ef019f8e",
+    "DenoiseSplitterNetF",
+    "DenoiseUnet6",
+    "DenoiseGA-a2ed723e805542155bd8070791210708",
+    "DenoiseGA-e91a31ea12f50f71fd9b2a6c0c6eb8bd",
+    "DnSeedGA-2d592837ae3fafe363b149f898878ff1",
+    "DenoiseUnet9F",
+    "DenoiseUnet3",
+    "DenoiseUnet5"
+  ],
+  "gens": 30,
+  "epoch": 5,
+  "elapsed_sec": 10188.2
+}

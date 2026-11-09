@@ -1,0 +1,58 @@
+================================================================================
+ RESUME THE DENOISE PRODUCTION RUN  (after session expiry / node teardown)
+================================================================================
+The production GA is RESUMABLE. It checkpoints after every generation
+(seed_ga_P1_checkpoint.pkl) and caches every evaluated model
+(seed_ga_P1_cache.json), so restarting CONTINUES from the last completed
+generation — it NEVER starts from generation 0.
+
+--------------------------------------------------------------------------------
+WHAT SURVIVES WHAT
+--------------------------------------------------------------------------------
+- Session (Claude conversation) expires, node stays up  -> the run keeps going
+  (it's nohup-detached). Nothing to do.
+- Node / HPC allocation is TORN DOWN -> the run dies (so does the supervisor).
+  You must re-run ONE command below when the node is back. It resumes from the
+  last checkpoint; at most the in-flight generation's un-cached models re-run.
+
+--------------------------------------------------------------------------------
+TO RESUME (paste this one line; in a Claude Code prompt prefix with `! `):
+--------------------------------------------------------------------------------
+cd /home/s493053/thesis/nn-dataset && PYTHONPATH=/home/s493053/thesis/nn-dataset \
+nohup bash /home/s493053/thesis/nn-gpt/ab/gpt/brute/ga/denoise/production_supervisor.sh \
+  >> /home/s493053/thesis/nn-gpt/ab/gpt/brute/ga/denoise/production_supervisor.log 2>&1 &
+
+The supervisor auto-restarts the run on any crash while the node is up, and stops
+itself once the run prints "=== DONE in".
+
+--------------------------------------------------------------------------------
+OPTIONAL: restart the accuracy-predictor tracker (non-critical, stateless monitor)
+--------------------------------------------------------------------------------
+cd /home/s493053/thesis/nn-dataset && REFRESH_EVERY=3 \
+nohup bash /home/s493053/thesis/nn-gpt/ab/gpt/brute/ga/denoise/track_autorefresh.sh \
+  >> /home/s493053/thesis/nn-gpt/ab/gpt/brute/ga/denoise/track_autorefresh.log 2>&1 &
+# writes predictor_tracking.json + predictor_tracking_history.csv (+ scatter) every 3 gens.
+# stateless: safe to lose/restart anytime; re-running re-scores from the current cache.
+
+--------------------------------------------------------------------------------
+CHECK STATUS
+--------------------------------------------------------------------------------
+# current generation:
+grep -aoE "Generation [0-9]+/30" /home/s493053/thesis/nn-gpt/ab/gpt/brute/ga/denoise/production_run.log | tail -1
+# is it running:
+pgrep -af "run_seed_ga.py.*seed_ga_P1"
+# is the supervisor up:
+pgrep -af production_supervisor.sh
+# how many models evaluated so far:
+python3 -c "import json;print(len(json.load(open('/home/s493053/thesis/nn-gpt/ab/gpt/brute/ga/denoise/seed_ga_P1_cache.json'))))"
+
+--------------------------------------------------------------------------------
+DO NOT
+--------------------------------------------------------------------------------
+- Do NOT delete seed_ga_P1_checkpoint.pkl or seed_ga_P1_cache.json (that forces a
+  restart from gen 0).
+- Do NOT run two production processes at once (the supervisor guards against this;
+  don't also launch launch_production.sh directly).
+- Config: pop 50, gens 30, --save-to-db ON (writes local db/ab.nn.db), NaN-guard
+  auto-injected. Git push/commit stays MANUAL (never automated).
+================================================================================

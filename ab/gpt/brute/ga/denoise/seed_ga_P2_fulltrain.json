@@ -1,0 +1,51 @@
+{
+  "budget_mmac": 9052.61,
+  "epoch": 50,
+  "runs": [
+    {
+      "name": "LiteDenoiseNet+m+m+s+m+m",
+      "arm": "P2",
+      "checksum": "6392d44d8f2bfedb",
+      "psnr50": 35.605385738679686,
+      "psnr5_proxy": 33.98870003683064,
+      "eff5_proxy": 33.824361915225005,
+      "macs": 8574861312,
+      "params": 2167820,
+      "deployable": true,
+      "hard": [],
+      "edge_pick": true,
+      "epoch": 50,
+      "train_sec": 2140.6
+    },
+    {
+      "name": "DenoiseUnet9FXDenoiseUnet9F+m",
+      "arm": "P2",
+      "checksum": "281445839534b390",
+      "psnr50": 0.0,
+      "psnr5_proxy": 33.462743189190924,
+      "eff5_proxy": 33.28451180668662,
+      "macs": 8981309440,
+      "params": 9414979,
+      "deployable": true,
+      "hard": [],
+      "edge_pick": false,
+      "epoch": 50,
+      "train_sec": 169.9
+    },
+    {
+      "name": "DenoiseUnet3F+m+m+m",
+      "arm": "P2",
+      "checksum": "d737ecea229ba3b5",
+      "psnr50": 33.72213448291633,
+      "psnr5_proxy": 33.021077230253375,
+      "eff5_proxy": 32.982995076527786,
+      "macs": 5629280256,
+      "params": 3781507,
+      "deployable": true,
+      "hard": [],
+      "edge_pick": false,
+      "epoch": 50,
+      "train_sec": 2068.3
+    }
+  ]
+}

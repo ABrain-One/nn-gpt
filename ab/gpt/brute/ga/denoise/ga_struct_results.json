@@ -1,0 +1,28 @@
+{
+  "objective": {
+    "cost_metric": "macs",
+    "cost_mode": "log",
+    "cost_weight": 0.2,
+    "budget": 4246732800
+  },
+  "best_name": "DenoiseRestormerLite+m",
+  "best_eff_db": 34.37025738500456,
+  "best_psnr_db": 34.47546590291873,
+  "best_macs": 7186415616,
+  "best_params": 696589,
+  "best_parent": "DenoiseRestormerLite",
+  "seeds": [
+    "DenoiseMBConv",
+    "DenoiseRestormerLite",
+    "DenoiseChanShuffle",
+    "DenoiseNAFNet",
+    "DenoiseSelfAttn",
+    "DenoiseSubPixel",
+    "DenoiseSplitterNetF",
+    "DenoisePoolDeconv",
+    "DenoiseMegvii"
+  ],
+  "gens": 30,
+  "epoch": 5,
+  "elapsed_sec": 26616.8
+}

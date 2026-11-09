@@ -1,0 +1,2620 @@
+{
+  "ts": "2026-07-17 01:12:17",
+  "scored": 326,
+  "viable": 300,
+  "diverged": 26,
+  "spearman_pred_vs_actual": -0.178,
+  "mae_db": 1.803,
+  "mean_pdead_on_diverged": 0.004,
+  "mean_pdead_on_viable": 0.001,
+  "rows": [
+    {
+      "checksum": "2b0dc099a65ee26f",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.29223399262852,
+      "pred": 32.386911334072195,
+      "p_dead": 0.0013176596896252776,
+      "edge_reject": false
+    },
+    {
+      "checksum": "e44241a270a17be5",
+      "name": "LiteDenoiseNet+m+m+s",
+      "actual": 33.62981409118318,
+      "pred": 30.2119472181491,
+      "p_dead": 0.00016256099691366662,
+      "edge_reject": false
+    },
+    {
+      "checksum": "4d7baae228438ebd",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m",
+      "actual": 33.6028014054068,
+      "pred": 29.606977770154167,
+      "p_dead": 0.0002922113269320739,
+      "edge_reject": false
+    },
+    {
+      "checksum": "aa4b3f6454747fbb",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.56296046832448,
+      "pred": 32.51383326099803,
+      "p_dead": 0.0003603948172349774,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9fda666ef79921c4",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.50182319660301,
+      "pred": 32.42309186099032,
+      "p_dead": 0.0005397048945902678,
+      "edge_reject": false
+    },
+    {
+      "checksum": "60c8c897085306dd",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.79759211152126,
+      "pred": 32.41450568967902,
+      "p_dead": 0.0005568562354527517,
+      "edge_reject": false
+    },
+    {
+      "checksum": "c64e8d3a7b859904",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.269190546407245,
+      "pred": 32.59015094411937,
+      "p_dead": 0.0011460680719855055,
+      "edge_reject": false
+    },
+    {
+      "checksum": "6e5e30406c6f2c6d",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.555179404037794,
+      "pred": 32.241136023751785,
+      "p_dead": 0.0011925022504778444,
+      "edge_reject": false
+    },
+    {
+      "checksum": "80665a20668fb5c9",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m",
+      "actual": 34.28976622805965,
+      "pred": 33.615377975081074,
+      "p_dead": 0.0003943303114227283,
+      "edge_reject": false
+    },
+    {
+      "checksum": "57d6c462d0aaf2fb",
+      "name": "LiteDenoiseNet+m+m+m+s",
+      "actual": 33.434808955022916,
+      "pred": 31.441829034649228,
+      "p_dead": 0.0007458767372279223,
+      "edge_reject": false
+    },
+    {
+      "checksum": "ec139c1e04343cea",
+      "name": "LiteDenoiseNet+m",
+      "actual": 33.448099728893304,
+      "pred": 32.9221058467565,
+      "p_dead": 0.0013684204500835381,
+      "edge_reject": false
+    },
+    {
+      "checksum": "188963edf86bd3b6",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m",
+      "actual": 33.997100690439616,
+      "pred": 29.895721464274676,
+      "p_dead": 0.00017962031991336773,
+      "edge_reject": false
+    },
+    {
+      "checksum": "743f01c0bf5b2dd5",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m",
+      "actual": 34.16661897417902,
+      "pred": 32.525458921905084,
+      "p_dead": 0.0003376160421879869,
+      "edge_reject": false
+    },
+    {
+      "checksum": "e7677d183ea7ddf6",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 33.62297504736935,
+      "pred": 30.759856193381225,
+      "p_dead": 0.00011219900289991008,
+      "edge_reject": false
+    },
+    {
+      "checksum": "44d3faf03477317b",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 34.52157203619875,
+      "pred": 32.394473271705394,
+      "p_dead": 0.001377934832997911,
+      "edge_reject": false
+    },
+    {
+      "checksum": "082243b0d0cb29bc",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m",
+      "actual": 33.94864400719674,
+      "pred": 33.16349589406018,
+      "p_dead": 0.00038623189152675266,
+      "edge_reject": false
+    },
+    {
+      "checksum": "8c8aa2e638fd311c",
+      "name": "DenoiseUnet3F+m",
+      "actual": 33.010318879222766,
+      "pred": 32.22188959768559,
+      "p_dead": 0.0006948971780113441,
+      "edge_reject": false
+    },
+    {
+      "checksum": "d8d0d0391b818d4b",
+      "name": "LiteDenoiseNet+m+m+m+s+m",
+      "actual": 33.60656520947651,
+      "pred": 29.883455080141953,
+      "p_dead": 0.00023467445968065236,
+      "edge_reject": false
+    },
+    {
+      "checksum": "c2a7d83e62804ae0",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.88381027929863,
+      "pred": 32.35412803634461,
+      "p_dead": 0.0011487999296920875,
+      "edge_reject": false
+    },
+    {
+      "checksum": "dc91614ddccfa9ec",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.659638268509994,
+      "pred": 32.50465875408209,
+      "p_dead": 0.00020058683662320213,
+      "edge_reject": false
+    },
+    {
+      "checksum": "ba136fa72fee2086",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m",
+      "actual": 33.98613020827079,
+      "pred": 31.696426806922755,
+      "p_dead": 0.00028392125568761715,
+      "edge_reject": false
+    },
+    {
+      "checksum": "fe6d6a22639f201f",
+      "name": "LiteDenoiseNet",
+      "actual": 33.75081378776045,
+      "pred": 32.503405683001866,
+      "p_dead": 0.0024343725433971022,
+      "edge_reject": false
+    },
+    {
+      "checksum": "3c8bb6792abd7bac",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m",
+      "actual": 34.21785801700459,
+      "pred": 31.387507906571102,
+      "p_dead": 9.422731948008643e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "2f70f88992ca9d08",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.41981926541153,
+      "pred": 32.39333556663273,
+      "p_dead": 0.00028607602240396417,
+      "edge_reject": false
+    },
+    {
+      "checksum": "92379986fdb4a833",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.11506537751042,
+      "pred": 32.536313160738786,
+      "p_dead": 0.000921943859869284,
+      "edge_reject": false
+    },
+    {
+      "checksum": "b30ce74e70a4899f",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m",
+      "actual": 34.043815680988104,
+      "pred": 30.56416598378927,
+      "p_dead": 0.0005851599426763105,
+      "edge_reject": false
+    },
+    {
+      "checksum": "e0d12174c6cecac1",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.6543700307231,
+      "pred": 32.82053143069457,
+      "p_dead": 0.0004702889965227459,
+      "edge_reject": false
+    },
+    {
+      "checksum": "1dc1042d7d732df9",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m",
+      "actual": 34.02010428735399,
+      "pred": 32.730695103766664,
+      "p_dead": 0.0003744903522167611,
+      "edge_reject": false
+    },
+    {
+      "checksum": "e42435348a847e8e",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 34.03128537119221,
+      "pred": 32.49663641908455,
+      "p_dead": 0.000501228759169015,
+      "edge_reject": false
+    },
+    {
+      "checksum": "8364760df86c6344",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 32.46592907355095,
+      "p_dead": 0.0001285756211972909,
+      "edge_reject": false
+    },
+    {
+      "checksum": "7787144ec9a0e6a6",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 0.0,
+      "pred": 32.82692491818231,
+      "p_dead": 0.0007296100793678774,
+      "edge_reject": false
+    },
+    {
+      "checksum": "0e4e0ff0dec1975e",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 34.20322616224054,
+      "pred": 32.68591638206139,
+      "p_dead": 0.00012882879303227206,
+      "edge_reject": false
+    },
+    {
+      "checksum": "75e7266cb5e8aede",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.369608624504124,
+      "pred": 32.61991279285038,
+      "p_dead": 0.0010058985302897007,
+      "edge_reject": false
+    },
+    {
+      "checksum": "14124164e8680fd6",
+      "name": "LiteDenoiseNet+m",
+      "actual": 33.843675042351364,
+      "pred": 32.234956607861314,
+      "p_dead": 0.0017280974487875829,
+      "edge_reject": false
+    },
+    {
+      "checksum": "b15534e01298708a",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.354447572922794,
+      "pred": 32.48860926950123,
+      "p_dead": 0.0006001409474613639,
+      "edge_reject": false
+    },
+    {
+      "checksum": "8d2eed3225a75771",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.50833087373612,
+      "pred": 32.43670882142609,
+      "p_dead": 0.0024385059322826275,
+      "edge_reject": false
+    },
+    {
+      "checksum": "a412878d98793e3a",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m",
+      "actual": 33.53358053710377,
+      "pred": 30.046208792269294,
+      "p_dead": 0.0002922113269320739,
+      "edge_reject": false
+    },
+    {
+      "checksum": "b2f9bd2b4f11cf3b",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 33.30191820935659,
+      "pred": 32.33584006961056,
+      "p_dead": 0.0016639721345900354,
+      "edge_reject": false
+    },
+    {
+      "checksum": "1f4ea34d678b10c4",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m",
+      "actual": 33.76058717183818,
+      "pred": 32.5985190743133,
+      "p_dead": 0.00039902440510661383,
+      "edge_reject": false
+    },
+    {
+      "checksum": "4512f1c152733e39",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.28318561875983,
+      "pred": 32.63085239244219,
+      "p_dead": 0.002996093148861441,
+      "edge_reject": false
+    },
+    {
+      "checksum": "68abe7ad997c2013",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m",
+      "actual": 33.27942121529519,
+      "pred": 29.69381489460975,
+      "p_dead": 0.0002922113269320739,
+      "edge_reject": false
+    },
+    {
+      "checksum": "dbd70e3c42e40146",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m",
+      "actual": 33.688838013571356,
+      "pred": 32.06905682819541,
+      "p_dead": 0.00010596507912682382,
+      "edge_reject": false
+    },
+    {
+      "checksum": "c829a93c9ebd9e7b",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m",
+      "actual": 33.84246270785499,
+      "pred": 33.484525253640115,
+      "p_dead": 0.001090630148646574,
+      "edge_reject": false
+    },
+    {
+      "checksum": "5208332173321279",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m",
+      "actual": 0.0,
+      "pred": 30.903129587772156,
+      "p_dead": 5.965059878849467e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "5d32a567b9cd94f9",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m",
+      "actual": 33.963067390106026,
+      "pred": 31.014894996629206,
+      "p_dead": 0.00019291985784716147,
+      "edge_reject": false
+    },
+    {
+      "checksum": "3b4bc4659e5341b1",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.35839428526295,
+      "pred": 32.41053789320507,
+      "p_dead": 0.0006157281870853074,
+      "edge_reject": false
+    },
+    {
+      "checksum": "213ced0df4cb7ed7",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m",
+      "actual": 34.53794185707018,
+      "pred": 31.4426708913871,
+      "p_dead": 0.0001994873925737332,
+      "edge_reject": false
+    },
+    {
+      "checksum": "85e8c7cc89c4f5e1",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 31.161949071496785,
+      "p_dead": 0.0005992901875901282,
+      "edge_reject": false
+    },
+    {
+      "checksum": "19d5d29b73f069eb",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 34.50262687231199,
+      "pred": 32.73524776311703,
+      "p_dead": 0.0005708076785652105,
+      "edge_reject": false
+    },
+    {
+      "checksum": "3923388ccecb7115",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 34.204386144054695,
+      "pred": 32.38967608114981,
+      "p_dead": 0.001471479738387582,
+      "edge_reject": false
+    },
+    {
+      "checksum": "a63625fc8d4404d4",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m",
+      "actual": 34.56650503246178,
+      "pred": 31.153664746987005,
+      "p_dead": 0.0005207548967761928,
+      "edge_reject": false
+    },
+    {
+      "checksum": "43e71e4b1d02a08e",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 30.682692938195636,
+      "p_dead": 0.00034129391049785105,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9bc91f0b21eeb48a",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m",
+      "actual": 33.36730845931642,
+      "pred": 33.13345656253953,
+      "p_dead": 9.422731948008643e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "afcc54b1dde9d21d",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.89676358824944,
+      "pred": 32.72739803121954,
+      "p_dead": 0.001173525597419303,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9f50abc9b9565913",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.91795829618348,
+      "pred": 32.357732335147276,
+      "p_dead": 0.0021801028036849183,
+      "edge_reject": false
+    },
+    {
+      "checksum": "0322bbbd62d2128a",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m",
+      "actual": 33.92885334055296,
+      "pred": 31.885223472529955,
+      "p_dead": 0.0001884979270116845,
+      "edge_reject": false
+    },
+    {
+      "checksum": "5ed80b1ceee29fb3",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 33.68871859877202,
+      "pred": 32.30894103190667,
+      "p_dead": 0.001488292991108343,
+      "edge_reject": false
+    },
+    {
+      "checksum": "4bc778986ca0e2b1",
+      "name": "DenoiseUnet9F",
+      "actual": 0.0,
+      "pred": 33.32896262591866,
+      "p_dead": 0.05219962457519204,
+      "edge_reject": false
+    },
+    {
+      "checksum": "006fe7d23aa7da20",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m",
+      "actual": 34.15532663288778,
+      "pred": 31.891268526807664,
+      "p_dead": 9.144104294700253e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "56300cdb1535735d",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 33.39316983272645,
+      "pred": 32.16778822796735,
+      "p_dead": 0.0009278469559563706,
+      "edge_reject": false
+    },
+    {
+      "checksum": "acb0a0fda831d6c6",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 34.0673876864206,
+      "pred": 31.388929929622442,
+      "p_dead": 0.00021030619683593636,
+      "edge_reject": false
+    },
+    {
+      "checksum": "5a15466bfc7d0b56",
+      "name": "LiteDenoiseNet+m+s",
+      "actual": 32.457688279713636,
+      "pred": 32.15865248338052,
+      "p_dead": 0.0001284415706676346,
+      "edge_reject": false
+    },
+    {
+      "checksum": "40a8c36ba8f85619",
+      "name": "DenoiseUnet1F+s+s",
+      "actual": 25.935911879130327,
+      "pred": 30.90765615163556,
+      "p_dead": 5.23775265097071e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "441c6486c2c6ba75",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 33.17097298185753,
+      "pred": 33.092186772324844,
+      "p_dead": 9.144104294700253e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "cefe2185b0c752d2",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 34.09817774933531,
+      "pred": 33.049051302050444,
+      "p_dead": 0.0004423489425275207,
+      "edge_reject": false
+    },
+    {
+      "checksum": "7bd526924fa5f216",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 33.98243529326864,
+      "pred": 30.514329284735204,
+      "p_dead": 0.0009069226858340569,
+      "edge_reject": false
+    },
+    {
+      "checksum": "e1025630b76c23e4",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.84649411497142,
+      "pred": 32.32673088792906,
+      "p_dead": 0.0003331426157865049,
+      "edge_reject": false
+    },
+    {
+      "checksum": "e64998d28be54fc0",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m",
+      "actual": 33.93911940879212,
+      "pred": 31.373782322494584,
+      "p_dead": 0.0008727046734370266,
+      "edge_reject": false
+    },
+    {
+      "checksum": "286555a2f6dece11",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.661511487104846,
+      "pred": 32.21239922846753,
+      "p_dead": 0.00158988842604206,
+      "edge_reject": false
+    },
+    {
+      "checksum": "3aa6e49764a42d09",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.67306803793426,
+      "pred": 32.549258019021096,
+      "p_dead": 0.001487114503060866,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9f7196dc0912afec",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 34.560263777890725,
+      "pred": 30.96040535095134,
+      "p_dead": 0.00028357237674938224,
+      "edge_reject": false
+    },
+    {
+      "checksum": "d49eb6d79ca6b2e4",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m",
+      "actual": 32.98562536858753,
+      "pred": 30.50007329845358,
+      "p_dead": 0.0001829246038901876,
+      "edge_reject": false
+    },
+    {
+      "checksum": "80d44465cf09c85b",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 34.08508843893175,
+      "pred": 32.58620708110731,
+      "p_dead": 0.0007964069925999265,
+      "edge_reject": false
+    },
+    {
+      "checksum": "8f52381dfa7f3326",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.463697153667795,
+      "pred": 32.51121010839334,
+      "p_dead": 0.00015905670977136798,
+      "edge_reject": false
+    },
+    {
+      "checksum": "e149a422a2552a72",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 33.93458934982208,
+      "pred": 29.884879397792435,
+      "p_dead": 0.0002922113269320739,
+      "edge_reject": false
+    },
+    {
+      "checksum": "f6440fffb17f82e0",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m",
+      "actual": 0.0,
+      "pred": 31.963258192854145,
+      "p_dead": 0.0001115022947316015,
+      "edge_reject": false
+    },
+    {
+      "checksum": "2339c35db953eb01",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.501862418200105,
+      "pred": 32.477022717524136,
+      "p_dead": 0.0005207525856222241,
+      "edge_reject": false
+    },
+    {
+      "checksum": "e1f9c3535de7c194",
+      "name": "LiteDenoiseNet+m",
+      "actual": 33.31093012239384,
+      "pred": 32.503194167737,
+      "p_dead": 0.0008812180799506927,
+      "edge_reject": false
+    },
+    {
+      "checksum": "af2961a6a6efe4a9",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m",
+      "actual": 33.16115282424407,
+      "pred": 30.93536080594243,
+      "p_dead": 0.0002922113269320739,
+      "edge_reject": false
+    },
+    {
+      "checksum": "cbfc4721b349b3d6",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m",
+      "actual": 34.1075928846473,
+      "pred": 30.335081856144303,
+      "p_dead": 0.00016878184425568436,
+      "edge_reject": false
+    },
+    {
+      "checksum": "442d12d7263cf0f3",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.22310131851874,
+      "pred": 32.41383767482861,
+      "p_dead": 0.00042337193219634954,
+      "edge_reject": false
+    },
+    {
+      "checksum": "103bcf512778714f",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.76862584598525,
+      "pred": 32.21967425450284,
+      "p_dead": 0.004677499478299478,
+      "edge_reject": false
+    },
+    {
+      "checksum": "d355c74b8e2f5394",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 30.662298441608257,
+      "p_dead": 0.00019305156158984387,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9dda62f479bbff62",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.458951185326434,
+      "pred": 32.61185817710692,
+      "p_dead": 0.0010193948079243885,
+      "edge_reject": false
+    },
+    {
+      "checksum": "afd4076f2dac84f6",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m",
+      "actual": 33.93037772488672,
+      "pred": 30.762701704052958,
+      "p_dead": 0.0005855934575012863,
+      "edge_reject": false
+    },
+    {
+      "checksum": "70da2008cf1e6f58",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 31.704575741308982,
+      "p_dead": 0.0002230519582916776,
+      "edge_reject": false
+    },
+    {
+      "checksum": "82690fd37509625e",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 30.231600100792,
+      "p_dead": 0.0003457707485842114,
+      "edge_reject": false
+    },
+    {
+      "checksum": "ef4f78563c19b2f4",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.648612565709925,
+      "pred": 33.05579575365712,
+      "p_dead": 0.0017514701936821682,
+      "edge_reject": false
+    },
+    {
+      "checksum": "f19fa3a410ba2e51",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.86475349087875,
+      "pred": 32.391951769310005,
+      "p_dead": 0.0002584386907909715,
+      "edge_reject": false
+    },
+    {
+      "checksum": "c0f13eb800dfe22e",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 34.400170030440044,
+      "pred": 32.300986212830715,
+      "p_dead": 0.0005710564494552911,
+      "edge_reject": false
+    },
+    {
+      "checksum": "f9a79084021808a1",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 34.19241289819924,
+      "pred": 32.626912364768344,
+      "p_dead": 0.0011598438308854978,
+      "edge_reject": false
+    },
+    {
+      "checksum": "da2b24d1eda51da3",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.408194555861364,
+      "pred": 32.66084165231776,
+      "p_dead": 0.00029510382503486227,
+      "edge_reject": false
+    },
+    {
+      "checksum": "1941d57d60b70b52",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 30.46721999831247,
+      "p_dead": 0.0005992901875901282,
+      "edge_reject": false
+    },
+    {
+      "checksum": "e2963188de6ba376",
+      "name": "DenoiseUnet1FXDenoiseUnet6F+s",
+      "actual": 32.95074166470674,
+      "pred": 31.841966117951884,
+      "p_dead": 2.733510118357277e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "c02d77614f8ea7ff",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.84676007680638,
+      "pred": 32.4838856889895,
+      "p_dead": 0.0011925022504778444,
+      "edge_reject": false
+    },
+    {
+      "checksum": "f1888ffe30b81ebf",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m",
+      "actual": 33.73398429050126,
+      "pred": 32.06422512903628,
+      "p_dead": 0.00013155588923496178,
+      "edge_reject": false
+    },
+    {
+      "checksum": "31a4a95bfdf0b8f6",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.76829174339306,
+      "pred": 32.67501421462608,
+      "p_dead": 0.00026178102994154045,
+      "edge_reject": false
+    },
+    {
+      "checksum": "89f6544cc0882238",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.13624298899831,
+      "pred": 32.51364753772051,
+      "p_dead": 0.0010365201215975866,
+      "edge_reject": false
+    },
+    {
+      "checksum": "3da8d6e3180d7a03",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.407744047683266,
+      "pred": 32.432276689277835,
+      "p_dead": 0.0005235506367757639,
+      "edge_reject": false
+    },
+    {
+      "checksum": "d10800643dd8e3f0",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 30.25045221329315,
+      "p_dead": 0.00019305156158984387,
+      "edge_reject": false
+    },
+    {
+      "checksum": "4d997b335080ea77",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 32.74254602891241,
+      "pred": 32.30894103190667,
+      "p_dead": 0.0011979319821815047,
+      "edge_reject": false
+    },
+    {
+      "checksum": "124e4e8b405c83d6",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m",
+      "actual": 34.18251366011279,
+      "pred": 29.190214895858908,
+      "p_dead": 0.00028357237674938224,
+      "edge_reject": false
+    },
+    {
+      "checksum": "33d12ebc7544ac0a",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.27158293584229,
+      "pred": 32.438100676292876,
+      "p_dead": 0.00035625563705351577,
+      "edge_reject": false
+    },
+    {
+      "checksum": "033b35d1078297d9",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m",
+      "actual": 34.0341499044228,
+      "pred": 30.90674646295435,
+      "p_dead": 9.144104294700253e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "de0b8506729bac0b",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.29034763539837,
+      "pred": 32.46928136444032,
+      "p_dead": 0.0008258041342891685,
+      "edge_reject": false
+    },
+    {
+      "checksum": "2991b52f971e326b",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.77776639980547,
+      "pred": 32.54588988069159,
+      "p_dead": 0.0012280012796637508,
+      "edge_reject": false
+    },
+    {
+      "checksum": "4f912dbb26cd3542",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 34.14869862992272,
+      "pred": 32.48374004910922,
+      "p_dead": 0.00016381293539525178,
+      "edge_reject": false
+    },
+    {
+      "checksum": "a87ab57e37b38e0a",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 30.584619954819715,
+      "p_dead": 0.00019305156158984387,
+      "edge_reject": false
+    },
+    {
+      "checksum": "7b76499163aceefa",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.17426273146192,
+      "pred": 32.525975598829916,
+      "p_dead": 0.0009682113937170366,
+      "edge_reject": false
+    },
+    {
+      "checksum": "e33f1807b1c16311",
+      "name": "LiteDenoiseNet+m",
+      "actual": 33.19151603518896,
+      "pred": 32.87042387965882,
+      "p_dead": 0.001172743402187711,
+      "edge_reject": false
+    },
+    {
+      "checksum": "bbea8884089d76e1",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m",
+      "actual": 33.00544940730636,
+      "pred": 29.073871933065004,
+      "p_dead": 0.0005678651646421835,
+      "edge_reject": false
+    },
+    {
+      "checksum": "30fd684c0a8aef0b",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.42242692539814,
+      "pred": 32.42365420671211,
+      "p_dead": 0.0022118717405883743,
+      "edge_reject": false
+    },
+    {
+      "checksum": "696b2febab691e2f",
+      "name": "LiteDenoiseNet+m",
+      "actual": 33.60051753604906,
+      "pred": 32.24427671233529,
+      "p_dead": 0.0013238844505054112,
+      "edge_reject": false
+    },
+    {
+      "checksum": "6fa4aa09b7d36abd",
+      "name": "LiteDenoiseNet+m",
+      "actual": 33.61194562832558,
+      "pred": 32.258330380852165,
+      "p_dead": 0.0009475629218225362,
+      "edge_reject": false
+    },
+    {
+      "checksum": "7432f4a277853719",
+      "name": "LiteDenoiseNet+m+m+m+m+m+s",
+      "actual": 33.664981094173626,
+      "pred": 31.120840341420532,
+      "p_dead": 0.00010027869045304129,
+      "edge_reject": false
+    },
+    {
+      "checksum": "ae79dd017ce2d597",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.6609811255564,
+      "pred": 32.71044253027233,
+      "p_dead": 0.004620886824120611,
+      "edge_reject": false
+    },
+    {
+      "checksum": "67d86eb0ad1e0bb5",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.44569046638076,
+      "pred": 32.18874730654045,
+      "p_dead": 0.002745186792699245,
+      "edge_reject": false
+    },
+    {
+      "checksum": "a1ddcbc702471e9c",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 33.524000840830496,
+      "pred": 32.46351921690477,
+      "p_dead": 0.0006430344110209304,
+      "edge_reject": false
+    },
+    {
+      "checksum": "3420d6a34ece772b",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m",
+      "actual": 33.42194678729048,
+      "pred": 32.66279443109393,
+      "p_dead": 0.0004181934905415121,
+      "edge_reject": false
+    },
+    {
+      "checksum": "7cac46be7ee13c58",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.48320954531843,
+      "pred": 32.819645527562926,
+      "p_dead": 0.001111743950148175,
+      "edge_reject": false
+    },
+    {
+      "checksum": "a06f48a2aef88584",
+      "name": "DenoiseUnet9F+m",
+      "actual": 0.0,
+      "pred": 33.26088305539494,
+      "p_dead": 0.032086339945806404,
+      "edge_reject": false
+    },
+    {
+      "checksum": "df134cb8d90df21a",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.234076532183025,
+      "pred": 32.69967850333374,
+      "p_dead": 0.0008586390667149256,
+      "edge_reject": false
+    },
+    {
+      "checksum": "3f621d49d2931af2",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 34.22251401411503,
+      "pred": 32.697586752388965,
+      "p_dead": 0.009021373420381581,
+      "edge_reject": false
+    },
+    {
+      "checksum": "cb10c44e2a4bca13",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m",
+      "actual": 34.048411720425136,
+      "pred": 31.90694245237042,
+      "p_dead": 0.0004334736302137369,
+      "edge_reject": false
+    },
+    {
+      "checksum": "3b253cdd1b483f7d",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m",
+      "actual": 33.53172097668306,
+      "pred": 32.94475617079292,
+      "p_dead": 0.0002528130732401086,
+      "edge_reject": false
+    },
+    {
+      "checksum": "f405c2b4ed3f61a7",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s",
+      "actual": 34.05654832456373,
+      "pred": 32.280361215718585,
+      "p_dead": 0.0004512194495459175,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9b42d0aebd62a99a",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m",
+      "actual": 34.43332853328083,
+      "pred": 31.08929577035129,
+      "p_dead": 0.0005053626887122761,
+      "edge_reject": false
+    },
+    {
+      "checksum": "ba03076c048fcdb8",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m",
+      "actual": 34.76058422789046,
+      "pred": 32.435828677172225,
+      "p_dead": 0.00016878184425568436,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9e2c4e12aa103ae4",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m",
+      "actual": 34.53732981821537,
+      "pred": 30.379929296372843,
+      "p_dead": 0.00016878184425568436,
+      "edge_reject": false
+    },
+    {
+      "checksum": "2439f514570c0c0f",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m",
+      "actual": 33.89572434793345,
+      "pred": 31.494595991258734,
+      "p_dead": 0.00028392125568761715,
+      "edge_reject": false
+    },
+    {
+      "checksum": "b9d1879bb0d0cad1",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.81120855218913,
+      "pred": 32.679380381249466,
+      "p_dead": 0.0006445857725254354,
+      "edge_reject": false
+    },
+    {
+      "checksum": "0c511ec3638a8059",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m",
+      "actual": 33.80679860598709,
+      "pred": 30.54037836073696,
+      "p_dead": 0.0001884979270116845,
+      "edge_reject": false
+    },
+    {
+      "checksum": "78df0fc5c2cf962c",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m+m+m",
+      "actual": 32.093801538449426,
+      "pred": 31.12496145476623,
+      "p_dead": 0.0002184346236777363,
+      "edge_reject": false
+    },
+    {
+      "checksum": "033d49c4d91c5693",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m",
+      "actual": 33.532211242648344,
+      "pred": 32.65885056808187,
+      "p_dead": 0.0004181934905415121,
+      "edge_reject": false
+    },
+    {
+      "checksum": "8eb654b565fca164",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.63190648584654,
+      "pred": 32.00421990172232,
+      "p_dead": 0.0008060418881973582,
+      "edge_reject": false
+    },
+    {
+      "checksum": "bb1c0d5ccd660652",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.24173025699439,
+      "pred": 32.895158402529724,
+      "p_dead": 0.0010990175324751509,
+      "edge_reject": false
+    },
+    {
+      "checksum": "af4a9f0891d8e0bf",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.76935108461009,
+      "pred": 32.284332853801395,
+      "p_dead": 0.0017262023421263087,
+      "edge_reject": false
+    },
+    {
+      "checksum": "f0f569e51bfa03bf",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.51016716423903,
+      "pred": 32.47050889043381,
+      "p_dead": 0.001559378174569631,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9161f63833603ef1",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 34.553808793673,
+      "pred": 30.16879852993094,
+      "p_dead": 0.00043951214579070826,
+      "edge_reject": false
+    },
+    {
+      "checksum": "13ceaad0c00a1943",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m",
+      "actual": 34.27020149442747,
+      "pred": 32.715734158608576,
+      "p_dead": 0.0003744903522167611,
+      "edge_reject": false
+    },
+    {
+      "checksum": "6925b04eeb25e300",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 34.04031784281745,
+      "pred": 30.402945798417356,
+      "p_dead": 8.713408447503769e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "41b8e2c7ee8275c8",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.56098802322967,
+      "pred": 32.34649296200905,
+      "p_dead": 0.00040076645146306517,
+      "edge_reject": false
+    },
+    {
+      "checksum": "220551ae0e6b70fc",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.39604157364424,
+      "pred": 32.35814917599373,
+      "p_dead": 0.0016318674097522252,
+      "edge_reject": false
+    },
+    {
+      "checksum": "1ede828669b6267f",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.83881628276828,
+      "pred": 32.381255498314744,
+      "p_dead": 0.0015859606145822447,
+      "edge_reject": false
+    },
+    {
+      "checksum": "8549586065bacfae",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.399220724542154,
+      "pred": 32.64802432336826,
+      "p_dead": 0.0010990175324751509,
+      "edge_reject": false
+    },
+    {
+      "checksum": "c988dbe877191960",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.38594393723677,
+      "pred": 32.03774364907909,
+      "p_dead": 0.005206877115827639,
+      "edge_reject": false
+    },
+    {
+      "checksum": "dcadaa7f512b2db3",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m",
+      "actual": 34.080185110221656,
+      "pred": 31.44000329235429,
+      "p_dead": 9.422731948008643e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "077b0cdd20754d57",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m",
+      "actual": 34.1649702913617,
+      "pred": 30.308399060594493,
+      "p_dead": 0.00028357237674938224,
+      "edge_reject": false
+    },
+    {
+      "checksum": "a5d87a00deaed33d",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.261599645522125,
+      "pred": 30.35364684667896,
+      "p_dead": 0.00030485624790069633,
+      "edge_reject": false
+    },
+    {
+      "checksum": "d331e9eb6b26cf6c",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.83435615359086,
+      "pred": 32.44029974193607,
+      "p_dead": 0.00042941628075525196,
+      "edge_reject": false
+    },
+    {
+      "checksum": "448201c26d311f99",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.55317716007978,
+      "pred": 32.61143144214851,
+      "p_dead": 0.001021232312641562,
+      "edge_reject": false
+    },
+    {
+      "checksum": "4a4a99f2a96e6942",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m",
+      "actual": 34.12423305242314,
+      "pred": 30.23761689538453,
+      "p_dead": 0.00010919386550679928,
+      "edge_reject": false
+    },
+    {
+      "checksum": "31b1c23fadae04b5",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.53493500814457,
+      "pred": 32.1474586527847,
+      "p_dead": 0.00020277019924692794,
+      "edge_reject": false
+    },
+    {
+      "checksum": "aaf0a04435824391",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 33.391579298899444,
+      "pred": 32.36835202400216,
+      "p_dead": 0.0012452463310512842,
+      "edge_reject": false
+    },
+    {
+      "checksum": "38af56bb8e2e5a7e",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m",
+      "actual": 34.11081684182519,
+      "pred": 29.08777604493223,
+      "p_dead": 0.0005233327394753938,
+      "edge_reject": false
+    },
+    {
+      "checksum": "020b474e9fa35901",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m",
+      "actual": 33.81525279583302,
+      "pred": 33.08916259661126,
+      "p_dead": 9.422731948008643e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "b25dc5dbf78d32e1",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 29.919071357018215,
+      "p_dead": 0.00022371129153805607,
+      "edge_reject": false
+    },
+    {
+      "checksum": "a4535ca858cd7d6c",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.79621280336074,
+      "pred": 32.212437374640444,
+      "p_dead": 0.0011728364626227888,
+      "edge_reject": false
+    },
+    {
+      "checksum": "02a443bfa0d1ced7",
+      "name": "LiteDenoiseNet+m+m+m+s+m",
+      "actual": 33.044108410783565,
+      "pred": 32.44377177686085,
+      "p_dead": 0.0004186891229102024,
+      "edge_reject": false
+    },
+    {
+      "checksum": "68126c9dffdd98ed",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m",
+      "actual": 33.771414281339474,
+      "pred": 32.31042453661627,
+      "p_dead": 0.0006098635709350679,
+      "edge_reject": false
+    },
+    {
+      "checksum": "847bf6b62b968f48",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 33.68822840477869,
+      "pred": 32.59653813737293,
+      "p_dead": 0.002124341740391748,
+      "edge_reject": false
+    },
+    {
+      "checksum": "6a1cd424e4bdb04b",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m",
+      "actual": 34.17280901053759,
+      "pred": 30.622720478807985,
+      "p_dead": 0.0001994873925737332,
+      "edge_reject": false
+    },
+    {
+      "checksum": "bde03b8cbfcde476",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.0174227126293,
+      "pred": 32.63112838356872,
+      "p_dead": 0.00031923066860460955,
+      "edge_reject": false
+    },
+    {
+      "checksum": "c0116cffb3ed062b",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.53840602886673,
+      "pred": 32.21939783604405,
+      "p_dead": 0.0017329624586731264,
+      "edge_reject": false
+    },
+    {
+      "checksum": "aa127b7d18184194",
+      "name": "LiteDenoiseNet+m",
+      "actual": 33.741947393333064,
+      "pred": 32.13748839172621,
+      "p_dead": 0.007143838908764569,
+      "edge_reject": false
+    },
+    {
+      "checksum": "a01cfcedb0d298ae",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m",
+      "actual": 33.24816737805076,
+      "pred": 30.797239508429108,
+      "p_dead": 0.00010919386550679928,
+      "edge_reject": false
+    },
+    {
+      "checksum": "e18191a255027651",
+      "name": "DenoiseUnet1F+s",
+      "actual": 32.2861408773707,
+      "pred": 32.74859106063863,
+      "p_dead": 2.2549958720128534e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "f108e262a5db414e",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m",
+      "actual": 33.711154556318434,
+      "pred": 33.2621387424669,
+      "p_dead": 0.0009872290339000913,
+      "edge_reject": false
+    },
+    {
+      "checksum": "569814ea613c3a4e",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 33.97403496666912,
+      "pred": 30.80571621877444,
+      "p_dead": 9.144104294700253e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "3df0f731f3719717",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m",
+      "actual": 32.32053673733167,
+      "pred": 30.186083236657435,
+      "p_dead": 0.00028357237674938224,
+      "edge_reject": false
+    },
+    {
+      "checksum": "7513455708f2f5a5",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 33.81291628985387,
+      "pred": 32.63764995151095,
+      "p_dead": 0.0003386425492889165,
+      "edge_reject": false
+    },
+    {
+      "checksum": "fec2d1f5035e41d5",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m",
+      "actual": 34.24925184448079,
+      "pred": 30.267564313543044,
+      "p_dead": 0.00020394561482719423,
+      "edge_reject": false
+    },
+    {
+      "checksum": "8665e2666d433925",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 34.27321804249287,
+      "pred": 32.57687344858425,
+      "p_dead": 0.000501228759169015,
+      "edge_reject": false
+    },
+    {
+      "checksum": "0182859f8e0adf66",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.91100712955312,
+      "pred": 32.71818753212944,
+      "p_dead": 0.00020776740061613372,
+      "edge_reject": false
+    },
+    {
+      "checksum": "b0c28faf0e435a17",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m",
+      "actual": 34.555416065111565,
+      "pred": 32.60474344714227,
+      "p_dead": 9.144104294700253e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "b91532ed3300ea96",
+      "name": "LiteDenoiseNet+m+m+m+m+s",
+      "actual": 33.198554756491625,
+      "pred": 32.70244183905994,
+      "p_dead": 0.00023362941786345934,
+      "edge_reject": false
+    },
+    {
+      "checksum": "87087314fae3699a",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m",
+      "actual": 34.065011337116935,
+      "pred": 30.59017190576009,
+      "p_dead": 0.00016379137156745477,
+      "edge_reject": false
+    },
+    {
+      "checksum": "80a2fdfda8bdff6b",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m",
+      "actual": 33.684202737844195,
+      "pred": 30.892860911779383,
+      "p_dead": 0.0003376160421879869,
+      "edge_reject": false
+    },
+    {
+      "checksum": "a42d8292e90ed29e",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.20546709307036,
+      "pred": 32.578851814461345,
+      "p_dead": 0.0009374525036566544,
+      "edge_reject": false
+    },
+    {
+      "checksum": "71b3275c37b0971b",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.542619421308615,
+      "pred": 32.637854835356926,
+      "p_dead": 0.0013565698081479524,
+      "edge_reject": false
+    },
+    {
+      "checksum": "65d84b145b9cb9ad",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 33.54715520574711,
+      "p_dead": 0.0014144447078271274,
+      "edge_reject": false
+    },
+    {
+      "checksum": "ebf6cfbe2c43db3a",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.53673554946695,
+      "pred": 32.61620449550073,
+      "p_dead": 0.00022177972294987208,
+      "edge_reject": false
+    },
+    {
+      "checksum": "f1432aacae1a5a6f",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m",
+      "actual": 34.22712697812348,
+      "pred": 29.54260879351845,
+      "p_dead": 0.00028357237674938224,
+      "edge_reject": false
+    },
+    {
+      "checksum": "c2e51494759aa080",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 34.41899662636119,
+      "pred": 32.565552451471156,
+      "p_dead": 0.0008337482717871882,
+      "edge_reject": false
+    },
+    {
+      "checksum": "ef36c6e6cb31e0c5",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 34.33712543304244,
+      "pred": 32.35593396865451,
+      "p_dead": 0.00034502531879151613,
+      "edge_reject": false
+    },
+    {
+      "checksum": "6d550dc6ecf7941d",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 34.00008761397845,
+      "pred": 32.630856227780406,
+      "p_dead": 0.0011598438308854978,
+      "edge_reject": false
+    },
+    {
+      "checksum": "2600c3abd2d1f2ea",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.44139366698511,
+      "pred": 32.574799427475476,
+      "p_dead": 0.0014158104417420784,
+      "edge_reject": false
+    },
+    {
+      "checksum": "5c305ea8d66a9032",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.920236184603006,
+      "pred": 32.37383459650063,
+      "p_dead": 0.000389754146180325,
+      "edge_reject": false
+    },
+    {
+      "checksum": "5848dd61584bdcaf",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m",
+      "actual": 34.49464986028926,
+      "pred": 29.89805831563361,
+      "p_dead": 0.0002922113269320739,
+      "edge_reject": false
+    },
+    {
+      "checksum": "c88f45f74abfa77a",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 33.486713014600824,
+      "pred": 32.765900053343906,
+      "p_dead": 0.00016298427600635714,
+      "edge_reject": false
+    },
+    {
+      "checksum": "76958b12e5fbc722",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m",
+      "actual": 33.69335780299125,
+      "pred": 30.046208792269294,
+      "p_dead": 0.0002922113269320739,
+      "edge_reject": false
+    },
+    {
+      "checksum": "db6c70b811865c0d",
+      "name": "LiteDenoiseNet+m",
+      "actual": 33.54705334727187,
+      "pred": 32.154320785907615,
+      "p_dead": 0.0018764537924107739,
+      "edge_reject": false
+    },
+    {
+      "checksum": "dc83acf02f5c85be",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.126963288566614,
+      "pred": 32.491497361039904,
+      "p_dead": 0.0006204265056398681,
+      "edge_reject": false
+    },
+    {
+      "checksum": "35e4e87504f76f0e",
+      "name": "LiteDenoiseNet+m+s",
+      "actual": 33.478565532150526,
+      "pred": 32.28154144219936,
+      "p_dead": 0.0015901508777320464,
+      "edge_reject": false
+    },
+    {
+      "checksum": "0c61eba47bae7362",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m",
+      "actual": 34.128099429832375,
+      "pred": 30.636014415965786,
+      "p_dead": 0.00016379137156745477,
+      "edge_reject": false
+    },
+    {
+      "checksum": "b7758f319342990d",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.916450288934016,
+      "pred": 32.432447732185565,
+      "p_dead": 0.0004801616068836157,
+      "edge_reject": false
+    },
+    {
+      "checksum": "306e9fae9ca019cf",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m",
+      "actual": 33.97366433786465,
+      "pred": 32.726000035339155,
+      "p_dead": 0.00016298427600635714,
+      "edge_reject": false
+    },
+    {
+      "checksum": "7bafe7c4df056cac",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.43208696683149,
+      "pred": 32.46351921690477,
+      "p_dead": 0.0006001409474613639,
+      "edge_reject": false
+    },
+    {
+      "checksum": "bf05b7880ba3be7c",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 32.58620708110731,
+      "p_dead": 0.0005262421989325457,
+      "edge_reject": false
+    },
+    {
+      "checksum": "d405802b4f7b6b54",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.23569259719193,
+      "pred": 32.18090454147439,
+      "p_dead": 0.0015180355331536088,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9525be22fbe2a319",
+      "name": "LiteDenoiseNet+m+m+m+m+m+s",
+      "actual": 33.949009698406186,
+      "pred": 32.83096609191637,
+      "p_dead": 9.977077995831694e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "75b5eb290c360064",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.857195348758935,
+      "pred": 32.197511930525444,
+      "p_dead": 0.0009479099441754125,
+      "edge_reject": false
+    },
+    {
+      "checksum": "fc5740a6eee3304c",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 33.824971568371154,
+      "pred": 32.837237629966715,
+      "p_dead": 0.0036922125283709887,
+      "edge_reject": false
+    },
+    {
+      "checksum": "8457bf6647be7558",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.29664828104129,
+      "pred": 32.325586758327944,
+      "p_dead": 0.010115153680008026,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9ea492fc41e77a02",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.711684057516756,
+      "pred": 32.55414350059607,
+      "p_dead": 0.0017812672881966694,
+      "edge_reject": false
+    },
+    {
+      "checksum": "132c9b3fcad91bff",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.41728365932455,
+      "pred": 32.55573744756092,
+      "p_dead": 0.0010705476540759443,
+      "edge_reject": false
+    },
+    {
+      "checksum": "0679edddce775bd3",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 34.10537118636672,
+      "pred": 30.267564313543044,
+      "p_dead": 0.00020394561482719423,
+      "edge_reject": false
+    },
+    {
+      "checksum": "ed0ba782abf53c59",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m",
+      "actual": 34.401548924651635,
+      "pred": 31.50005707894779,
+      "p_dead": 0.0001884979270116845,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9ee52639d4b055bb",
+      "name": "LiteDenoiseNet+m",
+      "actual": 33.52484877590794,
+      "pred": 32.424545324169586,
+      "p_dead": 0.0001685968714785634,
+      "edge_reject": false
+    },
+    {
+      "checksum": "a47747771c28fd53",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 33.83392672916059,
+      "pred": 29.995417759737435,
+      "p_dead": 0.0003286035604206502,
+      "edge_reject": false
+    },
+    {
+      "checksum": "6c4c50159ef21819",
+      "name": "LiteDenoiseNet+m",
+      "actual": 33.77117759643794,
+      "pred": 32.508957653369514,
+      "p_dead": 0.0001685968714785634,
+      "edge_reject": false
+    },
+    {
+      "checksum": "1d80a7bde79622e0",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.75259077342231,
+      "pred": 32.72739803121954,
+      "p_dead": 0.0013508512544980185,
+      "edge_reject": false
+    },
+    {
+      "checksum": "5bdfef528cf93607",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 33.42499997109009,
+      "pred": 32.72739803121954,
+      "p_dead": 0.0010396034385432057,
+      "edge_reject": false
+    },
+    {
+      "checksum": "40257f1bd2949441",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 30.569315024461808,
+      "pred": 31.20089646219326,
+      "p_dead": 9.144104294700253e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "aa34206bc9345e4b",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m",
+      "actual": 34.1957202886606,
+      "pred": 31.254119268294,
+      "p_dead": 0.0004334736302137369,
+      "edge_reject": false
+    },
+    {
+      "checksum": "8df87e797098f0e1",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m",
+      "actual": 34.01920899639435,
+      "pred": 30.493702014977472,
+      "p_dead": 0.00010596507912682382,
+      "edge_reject": false
+    },
+    {
+      "checksum": "22b5c3bad98cdeed",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 33.87978330817613,
+      "pred": 32.13514419082551,
+      "p_dead": 0.0054270834034102645,
+      "edge_reject": false
+    },
+    {
+      "checksum": "f5d175b0086a80f2",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m+m",
+      "actual": 34.7300529315378,
+      "pred": 30.4614074070093,
+      "p_dead": 0.00020394561482719423,
+      "edge_reject": false
+    },
+    {
+      "checksum": "900c067ae0dc9c11",
+      "name": "DenoiseUnet3F",
+      "actual": 33.04395284698085,
+      "pred": 31.490009390334126,
+      "p_dead": 0.00019479848975832104,
+      "edge_reject": false
+    },
+    {
+      "checksum": "8a7179c157db79ac",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m",
+      "actual": 34.68061691155123,
+      "pred": 32.47669832768817,
+      "p_dead": 0.00038623189152675266,
+      "edge_reject": false
+    },
+    {
+      "checksum": "2e7003679afd71a7",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m",
+      "actual": 33.99416737142529,
+      "pred": 30.662298441608257,
+      "p_dead": 0.0001884979270116845,
+      "edge_reject": false
+    },
+    {
+      "checksum": "825fe980fe8431c6",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 32.33995481057271,
+      "p_dead": 0.0003440672431394397,
+      "edge_reject": false
+    },
+    {
+      "checksum": "a8d74a188473643b",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m",
+      "actual": 34.45726337139516,
+      "pred": 33.71426324956883,
+      "p_dead": 0.00016298427600635714,
+      "edge_reject": false
+    },
+    {
+      "checksum": "6ff20e0b3ee25065",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 34.08610040549086,
+      "pred": 32.682146607922085,
+      "p_dead": 0.0002748081809162099,
+      "edge_reject": false
+    },
+    {
+      "checksum": "a95cffdabc27fedf",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.31292957368559,
+      "pred": 32.525975598829916,
+      "p_dead": 0.0008629083361100964,
+      "edge_reject": false
+    },
+    {
+      "checksum": "f9725bd48e3c1ae7",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.47229624394613,
+      "pred": 32.505184597030556,
+      "p_dead": 0.0012280012796637508,
+      "edge_reject": false
+    },
+    {
+      "checksum": "09b2d02c3fa0432b",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 33.52753434520967,
+      "pred": 32.27361679466556,
+      "p_dead": 0.00136170910443783,
+      "edge_reject": false
+    },
+    {
+      "checksum": "7f587b21846fe24b",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.45443479000684,
+      "pred": 32.57367949006747,
+      "p_dead": 0.0012039410158689785,
+      "edge_reject": false
+    },
+    {
+      "checksum": "1cc64c1f791b0996",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 33.923982198372414,
+      "pred": 32.200071579093745,
+      "p_dead": 0.005212812987293215,
+      "edge_reject": false
+    },
+    {
+      "checksum": "15ccbb69ad91d22b",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.34070178792901,
+      "pred": 32.525975598829916,
+      "p_dead": 0.0010705476540759443,
+      "edge_reject": false
+    },
+    {
+      "checksum": "6510d4c1bc0b3f9c",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 33.62396369472181,
+      "pred": 30.493934035647374,
+      "p_dead": 0.00037779045942074643,
+      "edge_reject": false
+    },
+    {
+      "checksum": "8c7946fb5b34f59e",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.54971304459017,
+      "pred": 32.51620204035924,
+      "p_dead": 0.0034025825645574376,
+      "edge_reject": false
+    },
+    {
+      "checksum": "8b8544c483d9eb81",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m",
+      "actual": 33.91864744117343,
+      "pred": 31.04083397713242,
+      "p_dead": 0.00017871061673859444,
+      "edge_reject": false
+    },
+    {
+      "checksum": "f90720e219cbf8ca",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.30893800479927,
+      "pred": 32.46218564745468,
+      "p_dead": 0.0004674243544294515,
+      "edge_reject": false
+    },
+    {
+      "checksum": "27466277d6b5f426",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.94974291189059,
+      "pred": 32.22769877469522,
+      "p_dead": 0.000491198189803608,
+      "edge_reject": false
+    },
+    {
+      "checksum": "de543eb8937473bd",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m",
+      "actual": 34.201783737178616,
+      "pred": 31.60247169262829,
+      "p_dead": 0.0002925708312554695,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9b2c8e7c9bb570d2",
+      "name": "DenoiseUnet1F",
+      "actual": 28.726481370394715,
+      "pred": 28.10900027092799,
+      "p_dead": 0.0015110446990300893,
+      "edge_reject": false
+    },
+    {
+      "checksum": "d5f57e1b36711e33",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 30.55807099161319,
+      "p_dead": 7.213524876859528e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "23dedbf9c1b4b78b",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 31.34563818734037,
+      "p_dead": 0.000778859304528983,
+      "edge_reject": false
+    },
+    {
+      "checksum": "8791c0bad31de179",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 34.34775508150618,
+      "pred": 31.616167221266892,
+      "p_dead": 0.00016298427600635714,
+      "edge_reject": false
+    },
+    {
+      "checksum": "0b1f4ba0f34beedd",
+      "name": "DenoiseUnet6F",
+      "actual": 28.96369329264931,
+      "pred": 27.962959279038685,
+      "p_dead": 0.007176545540918449,
+      "edge_reject": false
+    },
+    {
+      "checksum": "ed8710c1cb1509fc",
+      "name": "LiteDenoiseNet+m+m+m+s+m+m",
+      "actual": 33.68791249439595,
+      "pred": 32.024003559647426,
+      "p_dead": 0.00013842396750773746,
+      "edge_reject": false
+    },
+    {
+      "checksum": "d4385e838418ffa1",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.99778441891822,
+      "pred": 32.6258563566014,
+      "p_dead": 0.0006532923352444815,
+      "edge_reject": false
+    },
+    {
+      "checksum": "67f059fbad92e7d9",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m",
+      "actual": 33.92569344778822,
+      "pred": 33.05738529617605,
+      "p_dead": 0.0007717481066606295,
+      "edge_reject": false
+    },
+    {
+      "checksum": "6d938be6092a7f23",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m",
+      "actual": 34.47967101267375,
+      "pred": 32.557374083163175,
+      "p_dead": 0.0011959875735668036,
+      "edge_reject": false
+    },
+    {
+      "checksum": "f23d77bada579ab1",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.46020171542528,
+      "pred": 32.45099162586493,
+      "p_dead": 0.0003245165844998094,
+      "edge_reject": false
+    },
+    {
+      "checksum": "276e98587908ce90",
+      "name": "DenoiseUnet1F+s+m",
+      "actual": 33.2511669472328,
+      "pred": 32.71662819786305,
+      "p_dead": 0.0003847236563607354,
+      "edge_reject": false
+    },
+    {
+      "checksum": "72f5683bac55ca04",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.498579747798104,
+      "pred": 32.71208025820386,
+      "p_dead": 0.0002475065924554345,
+      "edge_reject": false
+    },
+    {
+      "checksum": "1a89125c89155fba",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 29.28733375920044,
+      "p_dead": 0.0003457707485842114,
+      "edge_reject": false
+    },
+    {
+      "checksum": "b54ff458e1dfd04f",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m",
+      "actual": 33.48605433442279,
+      "pred": 32.58620708110731,
+      "p_dead": 0.0007728735005861088,
+      "edge_reject": false
+    },
+    {
+      "checksum": "5a589c6e444eae54",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.1796179909142,
+      "pred": 32.46218564745468,
+      "p_dead": 0.0009525255060928874,
+      "edge_reject": false
+    },
+    {
+      "checksum": "391f794b6e5d7c4d",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m+m+m",
+      "actual": 34.199770829965,
+      "pred": 33.815898491511255,
+      "p_dead": 0.000335952698955527,
+      "edge_reject": false
+    },
+    {
+      "checksum": "f85f55fd9ba6b2f2",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m+m",
+      "actual": 34.575813863198064,
+      "pred": 31.936481064034172,
+      "p_dead": 0.0005207548967761928,
+      "edge_reject": false
+    },
+    {
+      "checksum": "2e129379b766f2e2",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m",
+      "actual": 34.13522749721221,
+      "pred": 29.981839815633577,
+      "p_dead": 0.00028357237674938224,
+      "edge_reject": false
+    },
+    {
+      "checksum": "0e3a64a2b613d18d",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m",
+      "actual": 33.49164661572337,
+      "pred": 30.384983058373198,
+      "p_dead": 0.00020394561482719423,
+      "edge_reject": false
+    },
+    {
+      "checksum": "d2e01e2aad25c88b",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m",
+      "actual": 33.86900998718273,
+      "pred": 30.90381549158303,
+      "p_dead": 0.00010596507912682382,
+      "edge_reject": false
+    },
+    {
+      "checksum": "486a01edec969307",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m",
+      "actual": 0.0,
+      "pred": 30.525787275584356,
+      "p_dead": 0.0002663534830637926,
+      "edge_reject": false
+    },
+    {
+      "checksum": "7952ed982779d5bc",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s",
+      "actual": 33.789935645336215,
+      "pred": 29.575323793077725,
+      "p_dead": 9.731349391999707e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "06ad6a76969850d5",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+s+m",
+      "actual": 33.88168542727943,
+      "pred": 29.63481101087983,
+      "p_dead": 0.00030885857210463603,
+      "edge_reject": false
+    },
+    {
+      "checksum": "76a38a53b449b705",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.65690490946652,
+      "pred": 32.5517288433173,
+      "p_dead": 0.000742129880634443,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9a2c6037dfbcb15a",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.83534474903904,
+      "pred": 32.536313160738786,
+      "p_dead": 0.0007079017045442514,
+      "edge_reject": false
+    },
+    {
+      "checksum": "735e1e6975637309",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.422798341470575,
+      "pred": 32.65405112766944,
+      "p_dead": 0.0019664599742134827,
+      "edge_reject": false
+    },
+    {
+      "checksum": "06bc9cbe28850637",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 33.95184386231529,
+      "pred": 29.879033817603595,
+      "p_dead": 0.0001829246038901876,
+      "edge_reject": false
+    },
+    {
+      "checksum": "1de9409ef704e3bf",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.56599569187129,
+      "pred": 32.19464911949833,
+      "p_dead": 0.0012280012796637508,
+      "edge_reject": false
+    },
+    {
+      "checksum": "4a1e80350a1a5c39",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.76072645589712,
+      "pred": 32.795310869972525,
+      "p_dead": 0.020293592139607443,
+      "edge_reject": false
+    },
+    {
+      "checksum": "842d8fbc23d0a94c",
+      "name": "DenoiseUnet1F+s",
+      "actual": 29.16371546264243,
+      "pred": 29.422734503481685,
+      "p_dead": 0.00026284329498817144,
+      "edge_reject": false
+    },
+    {
+      "checksum": "3108b8577049bd69",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.20497776011709,
+      "pred": 32.40173000318987,
+      "p_dead": 0.0008234406738492616,
+      "edge_reject": false
+    },
+    {
+      "checksum": "fe69668aef540297",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m+m+m+m",
+      "actual": 33.91261284065425,
+      "pred": 29.292818949433794,
+      "p_dead": 0.0008801263780321351,
+      "edge_reject": false
+    },
+    {
+      "checksum": "d55b0fe11e2e8db1",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m+m+m",
+      "actual": 34.112571664043145,
+      "pred": 32.2095555618562,
+      "p_dead": 0.0001829246038901876,
+      "edge_reject": false
+    },
+    {
+      "checksum": "610e5b7ae9d2bdca",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m",
+      "actual": 34.03001853748923,
+      "pred": 30.95193242459977,
+      "p_dead": 0.0005851599426763105,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9c8fc523b9ddbdaf",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.55032257378655,
+      "pred": 32.58221247947287,
+      "p_dead": 0.0003419655718492263,
+      "edge_reject": false
+    },
+    {
+      "checksum": "56282e58a2ce1e78",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.40163463867513,
+      "pred": 32.520299588793684,
+      "p_dead": 0.00024654351702256235,
+      "edge_reject": false
+    },
+    {
+      "checksum": "c799d22d8eba253c",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.061552092374725,
+      "pred": 32.77989095089551,
+      "p_dead": 0.0008123282838256796,
+      "edge_reject": false
+    },
+    {
+      "checksum": "e59ac2e64020c8b4",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 34.04985016005133,
+      "pred": 30.36415118696236,
+      "p_dead": 0.0003744827968411003,
+      "edge_reject": false
+    },
+    {
+      "checksum": "7b2afd2faa35bb65",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m+m+m",
+      "actual": 34.298367566123716,
+      "pred": 31.372178615220495,
+      "p_dead": 0.0005053626887122761,
+      "edge_reject": false
+    },
+    {
+      "checksum": "16c4821cfec62068",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.66480080008424,
+      "pred": 32.133445411750046,
+      "p_dead": 0.004816724923037054,
+      "edge_reject": false
+    },
+    {
+      "checksum": "967dd85404f5faf2",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.76564524825743,
+      "pred": 32.7796120856846,
+      "p_dead": 0.0003640608239855473,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9d2c95c767f0b90d",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.42982305590217,
+      "pred": 32.46928136444032,
+      "p_dead": 0.0008509479569038775,
+      "edge_reject": false
+    },
+    {
+      "checksum": "3f05c6eaf48c9a02",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.27216148026632,
+      "pred": 32.39881631348185,
+      "p_dead": 0.002794839420885935,
+      "edge_reject": false
+    },
+    {
+      "checksum": "52b0cee849c34541",
+      "name": "LiteDenoiseNet+m+m+m+s+m+m",
+      "actual": 33.72727624388796,
+      "pred": 33.377009417350386,
+      "p_dead": 0.00036781984932759043,
+      "edge_reject": false
+    },
+    {
+      "checksum": "78c812f6c7139d5a",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.42458634634109,
+      "pred": 32.508366657133315,
+      "p_dead": 0.0004120145544076698,
+      "edge_reject": false
+    },
+    {
+      "checksum": "2fd8c0b58c3e3e03",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.46198925385052,
+      "pred": 32.98757520273142,
+      "p_dead": 0.0015989059188356554,
+      "edge_reject": false
+    },
+    {
+      "checksum": "2233143e8497a167",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 34.149561966814645,
+      "pred": 32.43290743659745,
+      "p_dead": 0.0008464958675441546,
+      "edge_reject": false
+    },
+    {
+      "checksum": "f4e542045deb2f27",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.52112905451833,
+      "pred": 32.525934791060244,
+      "p_dead": 0.00039339501566106326,
+      "edge_reject": false
+    },
+    {
+      "checksum": "927a1bbec3e8c358",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m",
+      "actual": 34.25944369068795,
+      "pred": 30.64554528118274,
+      "p_dead": 0.0005678651646421835,
+      "edge_reject": false
+    },
+    {
+      "checksum": "6b6cf76f5439094f",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m",
+      "actual": 33.78314287875496,
+      "pred": 29.694756344016234,
+      "p_dead": 0.0004334736302137369,
+      "edge_reject": false
+    },
+    {
+      "checksum": "b52b5d6c89f7b7b0",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m+m",
+      "actual": 34.24151613802976,
+      "pred": 31.0220304418038,
+      "p_dead": 9.144104294700253e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "a68a41d659ba8a6a",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m",
+      "actual": 33.69933178366915,
+      "pred": 30.374041906590012,
+      "p_dead": 0.0003827297792811226,
+      "edge_reject": false
+    },
+    {
+      "checksum": "aa0875299f1eaa23",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.26333877183335,
+      "pred": 32.58981768446604,
+      "p_dead": 0.00030469463337958385,
+      "edge_reject": false
+    },
+    {
+      "checksum": "f42cb9e00405a1d9",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m",
+      "actual": 33.97733507439451,
+      "pred": 31.80981986466451,
+      "p_dead": 9.144104294700253e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "4d2ec64642c8b95a",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m+m",
+      "actual": 34.57317774731285,
+      "pred": 33.27621615591143,
+      "p_dead": 0.0001829246038901876,
+      "edge_reject": false
+    },
+    {
+      "checksum": "5d9dba0763b46728",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.79358055808996,
+      "pred": 32.4363174338631,
+      "p_dead": 0.0005207525856222241,
+      "edge_reject": false
+    },
+    {
+      "checksum": "3c1e8c645a6c952d",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.60401372774062,
+      "pred": 32.516985255677874,
+      "p_dead": 0.0008181751296623273,
+      "edge_reject": false
+    },
+    {
+      "checksum": "5dbb105acddd63ac",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m",
+      "actual": 33.58945216475769,
+      "pred": 33.46881637705509,
+      "p_dead": 0.00015128323528321592,
+      "edge_reject": false
+    },
+    {
+      "checksum": "b8edb2b27e7cdc44",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m",
+      "actual": 33.89439197777773,
+      "pred": 30.046208792269294,
+      "p_dead": 0.0002922113269320739,
+      "edge_reject": false
+    },
+    {
+      "checksum": "db89edf383d1363b",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m",
+      "actual": 34.09188132878023,
+      "pred": 31.553290359852802,
+      "p_dead": 9.144104294700253e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "d5634a46233d65a7",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.8790442040258,
+      "pred": 32.58620708110731,
+      "p_dead": 0.0008806001878403293,
+      "edge_reject": false
+    },
+    {
+      "checksum": "4c951b8d30fdbcc0",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m",
+      "actual": 0.0,
+      "pred": 31.54930778976819,
+      "p_dead": 6.832492625156853e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "01920955eeb586eb",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m+m+m",
+      "actual": 33.77375007486631,
+      "pred": 29.161729762021935,
+      "p_dead": 0.0005981458388668755,
+      "edge_reject": false
+    },
+    {
+      "checksum": "b2435c5f8fca2cda",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m",
+      "actual": 33.783055097912055,
+      "pred": 30.619720186193124,
+      "p_dead": 0.00010919386550679928,
+      "edge_reject": false
+    },
+    {
+      "checksum": "2e560781146ddd9b",
+      "name": "LiteDenoiseNet+m",
+      "actual": 34.02215690945157,
+      "pred": 32.44389024997034,
+      "p_dead": 0.00018512241142845892,
+      "edge_reject": false
+    },
+    {
+      "checksum": "5d3694ce512e9634",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m",
+      "actual": 33.78283784614338,
+      "pred": 31.32726964105507,
+      "p_dead": 0.0001829246038901876,
+      "edge_reject": false
+    },
+    {
+      "checksum": "07a4dba1223e6127",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.41088172350776,
+      "pred": 32.46351921690477,
+      "p_dead": 0.00044146812838745527,
+      "edge_reject": false
+    },
+    {
+      "checksum": "5e99bf0cf8e4ec87",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m",
+      "actual": 34.39455445020505,
+      "pred": 33.04667767733603,
+      "p_dead": 9.422731948008643e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "0de1a243d9173489",
+      "name": "LiteDenoiseNet+m",
+      "actual": 33.30275688611873,
+      "pred": 32.45017164852332,
+      "p_dead": 0.0009080475954763256,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9d86fc2b7a7e3b3e",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.67273282017188,
+      "pred": 32.73992195219936,
+      "p_dead": 0.001302202189898358,
+      "edge_reject": false
+    },
+    {
+      "checksum": "94a4cd3e3e7d4125",
+      "name": "LiteDenoiseNet+m+m+s",
+      "actual": 33.942282747636824,
+      "pred": 30.563123910502075,
+      "p_dead": 0.0004041962220394974,
+      "edge_reject": false
+    },
+    {
+      "checksum": "1520b923e42ec20c",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m+m",
+      "actual": 33.57062012083286,
+      "pred": 30.56602624441839,
+      "p_dead": 0.00016878184425568436,
+      "edge_reject": false
+    },
+    {
+      "checksum": "841489bfd3854d20",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m+m+m+m+m",
+      "actual": 34.109974529644965,
+      "pred": 32.08460256645056,
+      "p_dead": 0.0005589095899544105,
+      "edge_reject": false
+    },
+    {
+      "checksum": "199c6605d54bc860",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 31.37800230110026,
+      "p_dead": 0.00026362796533109317,
+      "edge_reject": false
+    },
+    {
+      "checksum": "5e5209b02fba2a0b",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 34.036689187559176,
+      "pred": 31.85741872937685,
+      "p_dead": 0.001199940695476177,
+      "edge_reject": false
+    },
+    {
+      "checksum": "6f60ac6b58109d9b",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m",
+      "actual": 0.0,
+      "pred": 31.294671495142286,
+      "p_dead": 0.00035169071184609914,
+      "edge_reject": false
+    },
+    {
+      "checksum": "3437ec397ec80fff",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.53035085495863,
+      "pred": 32.529512846717715,
+      "p_dead": 0.00044146812838745527,
+      "edge_reject": false
+    },
+    {
+      "checksum": "380e6cd64cc2abfa",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 34.31422685883693,
+      "pred": 29.981839815633577,
+      "p_dead": 0.00028357237674938224,
+      "edge_reject": false
+    },
+    {
+      "checksum": "50d2eb641ce8f765",
+      "name": "LiteDenoiseNet+m+m+m+m+m",
+      "actual": 33.65378311342916,
+      "pred": 32.15680664686441,
+      "p_dead": 0.0009199037251499583,
+      "edge_reject": false
+    },
+    {
+      "checksum": "8b1f06e764bc0b26",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 33.96031444263626,
+      "pred": 32.5517288433173,
+      "p_dead": 0.00027124772998450927,
+      "edge_reject": false
+    },
+    {
+      "checksum": "4de87231c92262fb",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.90628217656623,
+      "pred": 32.03869023204422,
+      "p_dead": 0.004698277688288392,
+      "edge_reject": false
+    },
+    {
+      "checksum": "01296966e07c24ac",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m+m+m+m",
+      "actual": 33.19807542718409,
+      "pred": 31.130303497291873,
+      "p_dead": 0.0001829246038901876,
+      "edge_reject": false
+    },
+    {
+      "checksum": "9ff43cbbb0b81783",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m",
+      "actual": 34.40096665375191,
+      "pred": 29.48809903957158,
+      "p_dead": 9.422731948008643e-05,
+      "edge_reject": false
+    },
+    {
+      "checksum": "f41f867d7d35b7f7",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+s+m+m",
+      "actual": 0.0,
+      "pred": 31.977327453353652,
+      "p_dead": 0.0003464046587693058,
+      "edge_reject": false
+    },
+    {
+      "checksum": "07fb6b0c4554d65b",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m+m+m+m",
+      "actual": 33.9584769392526,
+      "pred": 30.072090839562996,
+      "p_dead": 0.0004206601515912484,
+      "edge_reject": false
+    },
+    {
+      "checksum": "8e44f2c9199a907a",
+      "name": "LiteDenoiseNet+m+m+m",
+      "actual": 34.269907513561705,
+      "pred": 32.62522142121032,
+      "p_dead": 0.0008821115591959123,
+      "edge_reject": false
+    },
+    {
+      "checksum": "09aef1d12287bf06",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.5286983562788,
+      "pred": 32.58951282467621,
+      "p_dead": 0.0002720418943065337,
+      "edge_reject": false
+    },
+    {
+      "checksum": "5a397f46d0996e41",
+      "name": "LiteDenoiseNet+m+m",
+      "actual": 33.34592537332633,
+      "pred": 32.48496926553385,
+      "p_dead": 0.0010291778194951343,
+      "edge_reject": false
+    },
+    {
+      "checksum": "c8c9a9d849ab648a",
+      "name": "LiteDenoiseNet+m+m+m+m",
+      "actual": 33.64055313515246,
+      "pred": 32.642075116827776,
+      "p_dead": 0.005867981526696447,
+      "edge_reject": false
+    },
+    {
+      "checksum": "0b3641a8987cfe8b",
+      "name": "LiteDenoiseNet+m+m+m+m+m+m+m+m+m",
+      "actual": 34.2231520987587,
+      "pred": 31.390527517927314,
+      "p_dead": 0.00019291985784716147,
+      "edge_reject": false
+    }
+  ]
+}

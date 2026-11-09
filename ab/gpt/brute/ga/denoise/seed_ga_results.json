@@ -1,0 +1,25 @@
+{
+  "objective": {
+    "cost_metric": "macs",
+    "cost_mode": "log",
+    "cost_weight": 0.3,
+    "budget": 14004781056
+  },
+  "best_name": "LiteDenoiseNet",
+  "best_eff_db": 33.69464896350323,
+  "best_psnr_db": 33.28117677560939,
+  "best_macs": 3529506816,
+  "best_params": 1963411,
+  "best_parent": null,
+  "seeds": [
+    "LiteDenoiseNet",
+    "DenoiseUnet5F",
+    "DenoiseUnet9F",
+    "DenoiseUnet7F",
+    "DenoiseUnet10F",
+    "DenoiseUnet2F"
+  ],
+  "gens": 5,
+  "epoch": 2,
+  "elapsed_sec": 4767.4
+}

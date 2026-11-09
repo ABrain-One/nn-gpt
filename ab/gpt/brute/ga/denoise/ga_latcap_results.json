@@ -1,0 +1,28 @@
+{
+  "objective": {
+    "cost_metric": "macs",
+    "cost_mode": "soft",
+    "cost_weight": 0.3,
+    "budget": 3529506816.0
+  },
+  "best_name": "DenoiseGA-51622f51571ca812a3013bb5609b20fc+m+m+m+m+m",
+  "best_eff_db": 34.74771019114962,
+  "best_psnr_db": 34.74771019114962,
+  "best_macs": 3202482176,
+  "best_params": 49451,
+  "best_parent": "DenoiseGA-51622f51571ca812a3013bb5609b20fc+m+m+m+m",
+  "seeds": [
+    "DnSeedGA-67d7a72a608765e457ed4611322f94fb",
+    "DenoiseGA-c7fb9b80c8e0eaec339f834a0bb48b07",
+    "DenoiseGA-51622f51571ca812a3013bb5609b20fc",
+    "DenoiseGA-1eb5d8bb77883d58c25fe9d5fe7cdf49",
+    "LiteDenoiseNet",
+    "DnSeedGA-e230a3b4969a3fe867be85d00df3786b",
+    "DnSeedGA-cc887dcdd6582160e9e202ee5b557933",
+    "DenoiseGA-f48739d40278829171b9eea8c7df3433",
+    "DenoiseGA-c9c641143a88fa89e7e3de20a00cb283"
+  ],
+  "gens": 30,
+  "epoch": 5,
+  "elapsed_sec": 47909.5
+}

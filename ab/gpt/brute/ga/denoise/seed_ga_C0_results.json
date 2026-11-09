@@ -1,0 +1,24 @@
+{
+  "objective": {
+    "cost_metric": "macs",
+    "cost_mode": "log",
+    "cost_weight": 0.3,
+    "budget": 9052612608
+  },
+  "best_name": "DenoiseUnet9FXDenoiseUnet6F+mXDenoiseUnet9FXDenoiseUnet1F+m+mXDenoiseUnet9FXDenoiseUnet1F+mXDenoiseUnet1FXDenoiseUnet10F+m+m",
+  "best_eff_db": 34.07860563639548,
+  "best_psnr_db": 34.2535551519921,
+  "best_macs": 16219568640,
+  "best_params": 15824235,
+  "best_parent": "DenoiseUnet9FXDenoiseUnet6F+mXDenoiseUnet9FXDenoiseUnet1F+m+mxDenoiseUnet9FXDenoiseUnet1F+mXDenoiseUnet1FXDenoiseUnet10F+m+m",
+  "seeds": [
+    "DenoiseUnet9F",
+    "DenoiseUnet1F",
+    "DenoiseUnet10F",
+    "DenoiseUnet6F",
+    "DenoiseUnet7F"
+  ],
+  "gens": 6,
+  "epoch": 5,
+  "elapsed_sec": 37291.0
+}

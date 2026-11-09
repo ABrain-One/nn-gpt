@@ -1,0 +1,39 @@
+{
+  "best_chromosome": {
+    "global_residual": true,
+    "fusion": "concat",
+    "depth": 3,
+    "width": 48,
+    "act": "relu"
+  },
+  "best_fitness": 0.5836563870136255,
+  "best_psnr_db": 28.015506576654026,
+  "pop": 6,
+  "gens": 2,
+  "epoch": 1,
+  "elapsed_sec": 3453.0,
+  "search_space": {
+    "global_residual": [
+      true,
+      false
+    ],
+    "fusion": [
+      "add",
+      "concat"
+    ],
+    "depth": [
+      2,
+      3,
+      4
+    ],
+    "width": [
+      16,
+      32,
+      48
+    ],
+    "act": [
+      "relu",
+      "gelu"
+    ]
+  }
+}

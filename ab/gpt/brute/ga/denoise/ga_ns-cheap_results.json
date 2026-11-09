@@ -1,0 +1,38 @@
+{
+  "objective": {
+    "cost_metric": "macs",
+    "cost_mode": "log",
+    "cost_weight": 0.8,
+    "budget": 2217738240
+  },
+  "best_name": "DenoiseLowRankXDenoiseFourier+mXDenoiseN~ef2bf9+m",
+  "best_eff_db": 34.856196382609866,
+  "best_psnr_db": 34.14932701824479,
+  "best_macs": 916586496,
+  "best_params": 16443,
+  "best_parent": "DenoiseLowRankXDenoiseFourier+mXDenoiseN~ef2bf9",
+  "seeds": [
+    "DenoiseAxial",
+    "DenoiseFourier",
+    "DenoiseKernelMix",
+    "DenoiseLowRank",
+    "DenoiseNonLocal",
+    "DenoiseRecMem",
+    "DenoiseNoiseEst",
+    "DenoiseScaleRec",
+    "DenoiseCoupling",
+    "DenoiseMoE",
+    "DenoiseResDense",
+    "DenoiseUnfold",
+    "DenoiseWaveletMS",
+    "DenoiseMultiStage",
+    "DenoiseHalfInstNorm",
+    "DenoiseFourDir",
+    "DenoiseUnshuffle",
+    "DenoiseDualBranch",
+    "DenoiseKPN"
+  ],
+  "gens": 30,
+  "epoch": 5,
+  "elapsed_sec": 42823.3
+}

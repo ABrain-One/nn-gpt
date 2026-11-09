@@ -1,0 +1,294 @@
+{
+ "keep": [
+  "LiteDenoiseNet",
+  "DenoiseMBConv",
+  "DenoiseELUCtx",
+  "DenoiseSelfAttn",
+  "DenoiseParallelMR",
+  "DenoiseChanShuffle",
+  "DenoiseLinearMix",
+  "DenoiseLPPool",
+  "DenoiseDilatedFlat",
+  "DenoiseSubPixel",
+  "DenoiseReflectPad",
+  "DenoiseLapPyr",
+  "DenoisePoolDeconv",
+  "DenoiseStatNorm",
+  "DenoiseUnet9F",
+  "DenoiseInstNorm",
+  "DenoiseUnet8F",
+  "DenoiseUnet3F",
+  "DenoiseUnet6F"
+ ],
+ "cut": {
+  "DenoiseLayerNorm": "R2 near-clone (redund 0.974)",
+  "DenoiseResBN": "R2 near-clone (redund 0.998)",
+  "DenoiseGroupNorm": "R2 near-clone (redund 0.998)",
+  "DenoiseUnet4F": "R1 over MAC cap (12585 MMac; 4F=user, rule uniform)",
+  "DenoiseUnet10F": "R1 over MAC cap (29054 MMac; 4F=user, rule uniform)",
+  "DenoiseUnet1F": "R3 sub-floor + covered (psnr 28.57, redund 0.923)",
+  "DenoiseUnet7F": "R1 over MAC cap (30152 MMac; 4F=user, rule uniform)"
+ },
+ "table": [
+  {
+   "name": "LiteDenoiseNet",
+   "psnr5": 34.11,
+   "mmac": 3530,
+   "eff": 34.39,
+   "cover_rank": 24,
+   "redundancy": 0.932,
+   "children": 0.0,
+   "cut": null
+  },
+  {
+   "name": "DenoiseMBConv",
+   "psnr5": 34.02,
+   "mmac": 4812,
+   "eff": 34.21,
+   "cover_rank": 15,
+   "redundancy": 0.908,
+   "children": 3.0,
+   "cut": null
+  },
+  {
+   "name": "DenoiseELUCtx",
+   "psnr5": 33.92,
+   "mmac": 3965,
+   "eff": 34.17,
+   "cover_rank": 19,
+   "redundancy": 0.902,
+   "children": 4.0,
+   "cut": null
+  },
+  {
+   "name": "DenoiseSelfAttn",
+   "psnr5": 33.68,
+   "mmac": 2112,
+   "eff": 34.12,
+   "cover_rank": 8,
+   "redundancy": 0.811,
+   "children": 3.0,
+   "cut": null
+  },
+  {
+   "name": "DenoiseParallelMR",
+   "psnr5": 33.5,
+   "mmac": 1224,
+   "eff": 34.1,
+   "cover_rank": 11,
+   "redundancy": 0.907,
+   "children": 1.5,
+   "cut": null
+  },
+  {
+   "name": "DenoiseChanShuffle",
+   "psnr5": 33.6,
+   "mmac": 2225,
+   "eff": 34.02,
+   "cover_rank": 7,
+   "redundancy": 0.852,
+   "children": 4.5,
+   "cut": null
+  },
+  {
+   "name": "DenoiseLinearMix",
+   "psnr5": 33.77,
+   "mmac": 4561,
+   "eff": 33.98,
+   "cover_rank": 16,
+   "redundancy": 0.921,
+   "children": 3.0,
+   "cut": null
+  },
+  {
+   "name": "DenoiseLPPool",
+   "psnr5": 33.7,
+   "mmac": 4443,
+   "eff": 33.91,
+   "cover_rank": 10,
+   "redundancy": 0.902,
+   "children": 3.0,
+   "cut": null
+  },
+  {
+   "name": "DenoiseDilatedFlat",
+   "psnr5": 33.64,
+   "mmac": 4162,
+   "eff": 33.87,
+   "cover_rank": 20,
+   "redundancy": 0.916,
+   "children": 4.5,
+   "cut": null
+  },
+  {
+   "name": "DenoiseSubPixel",
+   "psnr5": 33.6,
+   "mmac": 4247,
+   "eff": 33.83,
+   "cover_rank": 2,
+   "redundancy": 0.916,
+   "children": 5.0,
+   "cut": null
+  },
+  {
+   "name": "DenoiseReflectPad",
+   "psnr5": 33.39,
+   "mmac": 3756,
+   "eff": 33.65,
+   "cover_rank": 6,
+   "redundancy": 0.921,
+   "children": 3.5,
+   "cut": null
+  },
+  {
+   "name": "DenoiseLapPyr",
+   "psnr5": 32.95,
+   "mmac": 913,
+   "eff": 33.64,
+   "cover_rank": 14,
+   "redundancy": 0.912,
+   "children": 4.5,
+   "cut": null
+  },
+  {
+   "name": "DenoiseLayerNorm",
+   "psnr5": 33.38,
+   "mmac": 3756,
+   "eff": 33.64,
+   "cover_rank": 21,
+   "redundancy": 0.974,
+   "children": 1.5,
+   "cut": "R2 near-clone (redund 0.974)"
+  },
+  {
+   "name": "DenoisePoolDeconv",
+   "psnr5": 33.49,
+   "mmac": 5618,
+   "eff": 33.63,
+   "cover_rank": 22,
+   "redundancy": 0.921,
+   "children": 2.0,
+   "cut": null
+  },
+  {
+   "name": "DenoiseStatNorm",
+   "psnr5": 33.37,
+   "mmac": 3756,
+   "eff": 33.63,
+   "cover_rank": 18,
+   "redundancy": 0.932,
+   "children": 4.0,
+   "cut": null
+  },
+  {
+   "name": "DenoiseResBN",
+   "psnr5": 33.27,
+   "mmac": 3756,
+   "eff": 33.53,
+   "cover_rank": 25,
+   "redundancy": 0.998,
+   "children": 1.0,
+   "cut": "R2 near-clone (redund 0.998)"
+  },
+  {
+   "name": "DenoiseUnet9F",
+   "psnr5": 33.35,
+   "mmac": 9053,
+   "eff": 33.35,
+   "cover_rank": 12,
+   "redundancy": 0.853,
+   "children": 8.5,
+   "cut": null
+  },
+  {
+   "name": "DenoiseInstNorm",
+   "psnr5": 33.06,
+   "mmac": 3756,
+   "eff": 33.32,
+   "cover_rank": 17,
+   "redundancy": 0.944,
+   "children": 3.0,
+   "cut": null
+  },
+  {
+   "name": "DenoiseGroupNorm",
+   "psnr5": 33.02,
+   "mmac": 3756,
+   "eff": 33.28,
+   "cover_rank": 26,
+   "redundancy": 0.998,
+   "children": 0.5,
+   "cut": "R2 near-clone (redund 0.998)"
+  },
+  {
+   "name": "DenoiseUnet8F",
+   "psnr5": 32.87,
+   "mmac": 2737,
+   "eff": 33.23,
+   "cover_rank": 1,
+   "redundancy": 0.742,
+   "children": 2.0,
+   "cut": null
+  },
+  {
+   "name": "DenoiseUnet3F",
+   "psnr5": 32.96,
+   "mmac": 4958,
+   "eff": 33.14,
+   "cover_rank": 4,
+   "redundancy": 0.859,
+   "children": 0.0,
+   "cut": null
+  },
+  {
+   "name": "DenoiseUnet4F",
+   "psnr5": 33.09,
+   "mmac": 12585,
+   "eff": 32.99,
+   "cover_rank": 13,
+   "redundancy": 0.859,
+   "children": 5.5,
+   "cut": "R1 over MAC cap (12585 MMac; 4F=user, rule uniform)"
+  },
+  {
+   "name": "DenoiseUnet10F",
+   "psnr5": 29.28,
+   "mmac": 29054,
+   "eff": 28.93,
+   "cover_rank": 5,
+   "redundancy": 0.853,
+   "children": 5.0,
+   "cut": "R1 over MAC cap (29054 MMac; 4F=user, rule uniform)"
+  },
+  {
+   "name": "DenoiseUnet1F",
+   "psnr5": 28.57,
+   "mmac": 3944,
+   "eff": 28.82,
+   "cover_rank": 23,
+   "redundancy": 0.923,
+   "children": 5.5,
+   "cut": "R3 sub-floor + covered (psnr 28.57, redund 0.923)"
+  },
+  {
+   "name": "DenoiseUnet6F",
+   "psnr5": 27.92,
+   "mmac": 3272,
+   "eff": 28.23,
+   "cover_rank": 3,
+   "redundancy": 0.923,
+   "children": 4.0,
+   "cut": null
+  },
+  {
+   "name": "DenoiseUnet7F",
+   "psnr5": 22.79,
+   "mmac": 30152,
+   "eff": 22.43,
+   "cover_rank": 9,
+   "redundancy": 0.884,
+   "children": 3.0,
+   "cut": "R1 over MAC cap (30152 MMac; 4F=user, rule uniform)"
+  }
+ ]
+}

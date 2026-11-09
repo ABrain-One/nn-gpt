@@ -1,0 +1,28 @@
+{
+  "id": "0000_seeded_constraint_based",
+  "arm": "seeded",
+  "run_id": "20260731-051247",
+  "config": "Denoise_alter_seeded_strategies.json",
+  "config_sha256": "cde7dbe8c594168d5abc5a81402a18ca2a16c8415b8b0a640be798783141bf0e",
+  "shared_sha256": "7df230c5c98cf97be30cc7a1d4774c52ddc7eb2a35a2e86e5a0b41ac8690f2cf",
+  "strategy": "constraint_based",
+  "strategy_label": "Constraint-based",
+  "variant_idx": 0,
+  "llm": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "sampling": {
+    "temperature": 0.8,
+    "top_k": 50,
+    "top_p": 0.95,
+    "max_new_tokens": 4096
+  },
+  "prompt_sha256": "cc0b2cd7a1c5aad5fee5a6d9d197aa291f07b2a4b7b74e0853528c7c7765a692",
+  "prompt_chars": 23486,
+  "primary_seed": "DenoiseUnet9F",
+  "supporting_seeds": [
+    "DenoiseSubPixel",
+    "DenoiseDilatedFlat",
+    "DenoiseLPPool"
+  ],
+  "ts": "2026-07-31T05:12:53.134666",
+  "extracted": null
+}

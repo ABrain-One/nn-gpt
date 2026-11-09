@@ -1,0 +1,24 @@
+{
+  "id": "0001_cold_hint",
+  "arm": "cold",
+  "run_id": "20260731-051247",
+  "config": "Denoise_gen_cold_strategies.json",
+  "config_sha256": "d92dcbef70f650fa08f98fab8f1e91d233cbef31663489c0043344c3016b580c",
+  "shared_sha256": "7df230c5c98cf97be30cc7a1d4774c52ddc7eb2a35a2e86e5a0b41ac8690f2cf",
+  "strategy": "hint",
+  "strategy_label": "Progressive Hint",
+  "variant_idx": 0,
+  "llm": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "sampling": {
+    "temperature": 0.8,
+    "top_k": 50,
+    "top_p": 0.95,
+    "max_new_tokens": 4096
+  },
+  "prompt_sha256": "58d00e69f2d9c0cb658bd74a32690b2fa460c8adc9fae443bc3a725df65d84c4",
+  "prompt_chars": 4525,
+  "primary_seed": null,
+  "supporting_seeds": [],
+  "ts": "2026-07-31T05:12:53.127953",
+  "extracted": null
+}

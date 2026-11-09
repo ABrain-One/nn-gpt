@@ -1,0 +1,30 @@
+{
+  "DenoiseSplitterNetL": {
+    "name": "DenoiseSplitterNetL",
+    "dataset": "denoise",
+    "epoch": 50,
+    "params_M": null,
+    "macs_MMac": null,
+    "psnr_db": 35.166,
+    "sec": 2296
+  },
+  "DenoiseSplitterNetF": {
+    "name": "DenoiseSplitterNetF",
+    "dataset": "denoise",
+    "epoch": 50,
+    "params_M": null,
+    "macs_MMac": null,
+    "psnr_db": 35.0,
+    "sec": 2595
+  },
+  "SplitterNetF_MIDD_rgb": {
+    "name": "SplitterNetF_MIDD_rgb",
+    "dataset": "midd",
+    "epoch": 50,
+    "metric": "psnr_rgb",
+    "params_M": null,
+    "macs_MMac": null,
+    "error": "SyntaxError: Caught SyntaxError in DataLoader worker process 5.\nOriginal Traceback (most recent call last):\n  File \"/home/s493053/thesis/nn-dataset/.venv/lib/python3.13/site-packages/torch/util",
+    "sec": 105
+  }
+}

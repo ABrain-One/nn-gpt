@@ -1,0 +1,25 @@
+{
+  "objective": {
+    "cost_metric": "macs",
+    "cost_mode": "log",
+    "cost_weight": 0.8,
+    "budget": 3529506816
+  },
+  "best_name": "DnSeedGA-e230a3b4969a3fe867be85d00df3786b+m+m+m+m+m+m+m",
+  "best_eff_db": 34.86465888847765,
+  "best_psnr_db": 34.18871971085201,
+  "best_macs": 1516240896,
+  "best_params": 673171,
+  "best_parent": "DnSeedGA-e230a3b4969a3fe867be85d00df3786b+m+m+m+m+m+m",
+  "seeds": [
+    "DnSeedGA-e230a3b4969a3fe867be85d00df3786b",
+    "DnSeedGA-cc887dcdd6582160e9e202ee5b557933",
+    "DnSeedGA-02d4928faae3980e4ba69359e9543255",
+    "DnSeedGA-adfa1d6bc5a85d701ae49f572642f562",
+    "DnSeedGA-500fa835825df1c6977b7976ec2cc253",
+    "DnSeedGA-0b1bc4aeac1ea3730f087b846df4d221"
+  ],
+  "gens": 30,
+  "epoch": 5,
+  "elapsed_sec": 142979.0
+}

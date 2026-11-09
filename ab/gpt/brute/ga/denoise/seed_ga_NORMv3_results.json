@@ -1,0 +1,28 @@
+{
+  "objective": {
+    "cost_metric": "macs",
+    "cost_mode": "log",
+    "cost_weight": 0.3,
+    "budget": 3755999232
+  },
+  "best_name": "DenoiseELUCtx+mXDenoiseLPPoolXDenoiseELU~104a8f+m",
+  "best_eff_db": 34.53294918922592,
+  "best_psnr_db": 34.722310303008264,
+  "best_macs": 7060797952,
+  "best_params": 1824355,
+  "best_parent": "DenoiseELUCtx+mXDenoiseLPPoolXDenoiseELU~104a8f",
+  "seeds": [
+    "DenoiseSubPixel",
+    "DenoiseLPPool",
+    "DenoiseELUCtx",
+    "DenoiseThunder",
+    "DenoiseSelfAttn",
+    "DenoiseGroupNorm",
+    "DenoiseResBN",
+    "DenoiseLayerNorm",
+    "DenoiseInstNorm"
+  ],
+  "gens": 30,
+  "epoch": 5,
+  "elapsed_sec": 76338.2
+}

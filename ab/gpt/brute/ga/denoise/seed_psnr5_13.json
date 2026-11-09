@@ -1,0 +1,54 @@
+{
+ "DenoiseChanShuffle": {
+  "psnr5": 33.6,
+  "mmac": 2225
+ },
+ "DenoiseELUCtx": {
+  "psnr5": 33.92,
+  "mmac": 3965
+ },
+ "DenoiseGroupNorm": {
+  "psnr5": 33.02,
+  "mmac": 3756
+ },
+ "DenoiseInstNorm": {
+  "psnr5": 33.06,
+  "mmac": 3756
+ },
+ "DenoiseLPPool": {
+  "psnr5": 33.7,
+  "mmac": 4443
+ },
+ "DenoiseLayerNorm": {
+  "psnr5": 33.38,
+  "mmac": 3756
+ },
+ "DenoiseLinearMix": {
+  "psnr5": 33.77,
+  "mmac": 4561
+ },
+ "DenoiseMBConv": {
+  "psnr5": 34.02,
+  "mmac": 4812
+ },
+ "DenoisePoolDeconv": {
+  "psnr5": 33.49,
+  "mmac": 5618
+ },
+ "DenoiseReflectPad": {
+  "psnr5": 33.39,
+  "mmac": 3756
+ },
+ "DenoiseResBN": {
+  "psnr5": 33.27,
+  "mmac": 3756
+ },
+ "DenoiseSelfAttn": {
+  "psnr5": 33.68,
+  "mmac": 2112
+ },
+ "DenoiseStatNorm": {
+  "psnr5": 33.37,
+  "mmac": 3756
+ }
+}

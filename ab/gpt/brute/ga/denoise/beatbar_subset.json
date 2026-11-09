@@ -1,0 +1,44 @@
+{
+ "models": [
+  "DenoiseGA-b26cc3873e693dd0cd769d95f04e0fb1",
+  "DenoiseGA-9074790435e16607ab3f5dd6609f82d3",
+  "DenoiseGA-42249e3b8b552b50b9cf435c5e0e8752",
+  "DenoiseGA-f1a38b213c706dc750309e85c9f67308",
+  "DenoiseGA-d833b29697db5d4d5593153ca25b5b26",
+  "DenoiseGA-cc235773e606e0c0f1b8e405c44545f9",
+  "LLM_Pg31_seeded-597512acef42bb90faf6d7b0559b4931",
+  "LLM_Pg33_seeded-60dc536e655fa5656b76c4d2a5ce01c6",
+  "LLM_Pg30_seeded-e58236cedf5187eff43be547df911b53",
+  "LLM_Pg33_seeded-8a7b5df05979c13cca993e6077d797ad",
+  "LLM_Pg8_seeded-056bf7c92481879920b71b0026260701",
+  "LLM_Pg22_seeded-e5c05188a9015ed8f0e57993c02c6db8"
+ ],
+ "ep5_dB": {
+  "DenoiseGA-b26cc3873e693dd0cd769d95f04e0fb1": 34.93,
+  "DenoiseGA-9074790435e16607ab3f5dd6609f82d3": 34.86,
+  "DenoiseGA-42249e3b8b552b50b9cf435c5e0e8752": 34.85,
+  "DenoiseGA-f1a38b213c706dc750309e85c9f67308": 34.8,
+  "DenoiseGA-d833b29697db5d4d5593153ca25b5b26": 34.75,
+  "DenoiseGA-cc235773e606e0c0f1b8e405c44545f9": 34.74,
+  "LLM_Pg31_seeded-597512acef42bb90faf6d7b0559b4931": 34.76,
+  "LLM_Pg33_seeded-60dc536e655fa5656b76c4d2a5ce01c6": 34.63,
+  "LLM_Pg30_seeded-e58236cedf5187eff43be547df911b53": 34.54,
+  "LLM_Pg33_seeded-8a7b5df05979c13cca993e6077d797ad": 34.45,
+  "LLM_Pg8_seeded-056bf7c92481879920b71b0026260701": 34.43,
+  "LLM_Pg22_seeded-e5c05188a9015ed8f0e57993c02c6db8": 34.41
+ },
+ "pred50": {
+  "DenoiseGA-b26cc3873e693dd0cd769d95f04e0fb1": 37.05,
+  "DenoiseGA-9074790435e16607ab3f5dd6609f82d3": 36.98,
+  "DenoiseGA-42249e3b8b552b50b9cf435c5e0e8752": 36.97,
+  "DenoiseGA-f1a38b213c706dc750309e85c9f67308": 36.91,
+  "DenoiseGA-d833b29697db5d4d5593153ca25b5b26": 36.87,
+  "DenoiseGA-cc235773e606e0c0f1b8e405c44545f9": 36.85,
+  "LLM_Pg31_seeded-597512acef42bb90faf6d7b0559b4931": 36.88,
+  "LLM_Pg33_seeded-60dc536e655fa5656b76c4d2a5ce01c6": 36.74,
+  "LLM_Pg30_seeded-e58236cedf5187eff43be547df911b53": 36.65,
+  "LLM_Pg33_seeded-8a7b5df05979c13cca993e6077d797ad": 36.56,
+  "LLM_Pg8_seeded-056bf7c92481879920b71b0026260701": 36.54,
+  "LLM_Pg22_seeded-e5c05188a9015ed8f0e57993c02c6db8": 36.52
+ }
+}

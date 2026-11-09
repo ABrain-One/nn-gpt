@@ -1,0 +1,165 @@
+{
+  "run_id": "20260731-051247",
+  "argv": [
+    "llm_denoise.py",
+    "--mode",
+    "both",
+    "--n",
+    "2",
+    "--dry-run"
+  ],
+  "mode": "both",
+  "n_per_arm": 2,
+  "llm": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "dry_run": true,
+  "seed_set": "named",
+  "sampling": {
+    "temperature": 0.8,
+    "top_k": 50,
+    "top_p": 0.95,
+    "max_new_tokens": 4096
+  },
+  "configs": {
+    "Denoise_shared_blocks.json": {
+      "sha256": "7df230c5c98cf97be30cc7a1d4774c52ddc7eb2a35a2e86e5a0b41ac8690f2cf"
+    },
+    "Denoise_gen_cold_strategies.json": {
+      "sha256": "d92dcbef70f650fa08f98fab8f1e91d233cbef31663489c0043344c3016b580c",
+      "strategies": [
+        "cot",
+        "hint",
+        "persona",
+        "rci",
+        "zeroshot"
+      ]
+    },
+    "Denoise_alter_seeded_strategies.json": {
+      "sha256": "cde7dbe8c594168d5abc5a81402a18ca2a16c8415b8b0a640be798783141bf0e",
+      "strategies": [
+        "constraint_based",
+        "conversational",
+        "direct_instruction",
+        "step_by_step"
+      ]
+    },
+    "Denoise_gen_cold.json": {
+      "path": "/shared/ssd/home/b-b-ahmed/thesis/nn-gpt/ab/gpt/conf/prompt/test/Denoise_gen_cold.json",
+      "sha256": "156a6cbced8df2aa88945a9f85a1fa023fc57a93c14b6220147cfc0975a7dc63",
+      "legacy": true
+    },
+    "Denoise_alter_seeded.json": {
+      "path": "/shared/ssd/home/b-b-ahmed/thesis/nn-gpt/ab/gpt/conf/prompt/test/Denoise_alter_seeded.json",
+      "sha256": "d0a55f5a1b9e02074ec0bc2ce06d04256df1214c33d456d05e5fe61d4ad326b2",
+      "legacy": true
+    }
+  },
+  "contract_drift": [],
+  "seed_corpus": [
+    {
+      "name": "DenoiseUnet9F",
+      "db": 35.429
+    },
+    {
+      "name": "DenoiseSubPixel",
+      "db": 35.246
+    },
+    {
+      "name": "DenoiseDilatedFlat",
+      "db": 35.147
+    },
+    {
+      "name": "DenoiseLPPool",
+      "db": 35.118
+    },
+    {
+      "name": "DenoiseELUCtx",
+      "db": 35.108
+    },
+    {
+      "name": "DenoiseMBConv",
+      "db": 35.083
+    },
+    {
+      "name": "DenoisePoolDeconv",
+      "db": 35.045
+    },
+    {
+      "name": "DenoiseLinearMix",
+      "db": 34.996
+    },
+    {
+      "name": "DenoiseSelfAttn",
+      "db": 34.984
+    },
+    {
+      "name": "DenoiseThunder",
+      "db": 34.983
+    },
+    {
+      "name": "DenoiseGroupNorm",
+      "db": 34.927
+    },
+    {
+      "name": "DenoiseChanShuffle",
+      "db": 34.908
+    },
+    {
+      "name": "DenoiseSplitterNet",
+      "db": 34.893
+    },
+    {
+      "name": "DenoiseMFDNet",
+      "db": 34.893
+    },
+    {
+      "name": "LiteDenoiseNet",
+      "db": 34.883
+    },
+    {
+      "name": "DenoiseSplitterNetF",
+      "db": 34.877
+    },
+    {
+      "name": "DenoiseParallelMR",
+      "db": 34.832
+    },
+    {
+      "name": "DenoiseUnet8F",
+      "db": 34.825
+    },
+    {
+      "name": "DenoiseUnet5F",
+      "db": 34.736
+    },
+    {
+      "name": "DenoiseReflectPad",
+      "db": 34.716
+    },
+    {
+      "name": "DenoiseLapPyr",
+      "db": 34.663
+    },
+    {
+      "name": "DenoiseUnet1F",
+      "db": 34.367
+    },
+    {
+      "name": "DenoiseUnet6F",
+      "db": 33.757
+    },
+    {
+      "name": "DenoiseUnet3F",
+      "db": 33.181
+    }
+  ],
+  "git": {
+    "nn-gpt": "b3be3648",
+    "nn-dataset": "b4af36b9de"
+  },
+  "started": "2026-07-31T05:12:53.109400",
+  "finished": "2026-07-31T05:12:53.143224",
+  "extracted_per_arm": {
+    "cold": 0,
+    "seeded": 0
+  }
+}

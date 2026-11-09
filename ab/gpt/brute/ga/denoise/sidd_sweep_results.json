@@ -1,0 +1,44 @@
+[
+  {
+    "name": "9F+m+m",
+    "dataset": "sidd",
+    "epoch": 50,
+    "sidd_psnr": 37.005,
+    "mai_psnr": 35.38,
+    "delta": 1.625,
+    "train_sec": 3370,
+    "error": null,
+    "arm": "A0",
+    "deployable": true
+  },
+  {
+    "name": "DenoiseUnet7FXDenoiseUnet9F+m",
+    "arm": "D0",
+    "deployable": false,
+    "mai_psnr": 36.30683160860669,
+    "sidd_psnr": 37.446,
+    "delta": 1.139,
+    "train_sec": 3402,
+    "error": null
+  },
+  {
+    "name": "DenoiseUnet9FXDenoiseUnet6F+m",
+    "arm": "C0",
+    "deployable": true,
+    "mai_psnr": 34.83259019061049,
+    "sidd_psnr": 36.307,
+    "delta": 1.474,
+    "train_sec": 3350,
+    "error": null
+  },
+  {
+    "name": "DenoiseUnet6F+m+m+m",
+    "arm": "B0",
+    "deployable": true,
+    "mai_psnr": 35.06991396545822,
+    "sidd_psnr": 36.765,
+    "delta": 1.695,
+    "train_sec": 3338,
+    "error": null
+  }
+]

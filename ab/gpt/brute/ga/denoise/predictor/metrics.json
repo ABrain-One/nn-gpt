@@ -1,0 +1,144 @@
+{
+  "metrics": {
+    "gate": {
+      "auc": 0.7137254901960783,
+      "ap": 0.23631070255307288,
+      "n_dead": 17,
+      "n": 197
+    },
+    "viable_kfold": {
+      "spearman": 0.6927765260244658,
+      "kendall": 0.5026691495965239,
+      "mae": 1.425345903277988,
+      "rmse": 2.2250202986428396,
+      "n": 180
+    },
+    "viable_logo": {
+      "spearman": 0.5369286469015742,
+      "kendall": 0.34651437151625203,
+      "mae": 1.7337080968366352,
+      "rmse": 2.5354457593287885
+    },
+    "retrieval": {
+      "top10_in_pred_top20": 8,
+      "top20_in_pred_top40": 13,
+      "top30_in_pred_top60": 23
+    },
+    "spearman": 0.6927765260244658,
+    "kendall": 0.5026691495965239,
+    "mae": 1.425345903277988,
+    "rmse": 2.2250202986428396
+  },
+  "top_features": [
+    [
+      "zc_act_std",
+      0.8658406698071427
+    ],
+    [
+      "zc_jacob_cov",
+      0.15573586260635774
+    ],
+    [
+      "zc_grad_norm",
+      0.06900516291951686
+    ],
+    [
+      "zc_synflow",
+      0.06687483287735914
+    ],
+    [
+      "zc_snip",
+      0.04416967436374722
+    ],
+    [
+      "n_mul",
+      0.033187197075274635
+    ],
+    [
+      "zc_grasp",
+      0.029235773932213077
+    ],
+    [
+      "n_add",
+      0.024685119156055715
+    ],
+    [
+      "lin_depth",
+      0.022482388387184735
+    ],
+    [
+      "n_forward_stmts",
+      0.019154721941094507
+    ],
+    [
+      "macs",
+      0.018237954939658088
+    ],
+    [
+      "params",
+      0.015636781247779563
+    ]
+  ],
+  "cols": [
+    "n_Conv2d",
+    "n_ConvTranspose2d",
+    "n_Linear",
+    "n_BatchNorm2d",
+    "n_GroupNorm",
+    "n_LayerNorm",
+    "n_InstanceNorm2d",
+    "n_ReLU",
+    "n_LeakyReLU",
+    "n_GELU",
+    "n_SiLU",
+    "n_PReLU",
+    "n_ELU",
+    "n_Sigmoid",
+    "n_Tanh",
+    "n_PixelShuffle",
+    "n_PixelUnshuffle",
+    "n_Upsample",
+    "n_MaxPool2d",
+    "n_AvgPool2d",
+    "n_AdaptiveAvgPool2d",
+    "n_Dropout",
+    "n_Softmax",
+    "n_Identity",
+    "n_cat",
+    "n_add",
+    "n_mul",
+    "n_interpolate",
+    "n_chunk",
+    "n_getitem",
+    "n_layers_total",
+    "n_classes",
+    "n_functiondefs",
+    "n_init_assigns",
+    "n_forward_stmts",
+    "src_lines",
+    "kern_max",
+    "kern_mean",
+    "n_conv_k1",
+    "n_conv_k3",
+    "n_conv_kbig",
+    "ch_max",
+    "ch_mean",
+    "macs",
+    "params",
+    "log_macs",
+    "log_params",
+    "macs_per_param",
+    "lin_crossovers",
+    "lin_mutations",
+    "lin_skipops",
+    "lin_depth",
+    "zc_grad_norm",
+    "zc_snip",
+    "zc_grasp",
+    "zc_synflow",
+    "zc_jacob_cov",
+    "zc_act_std"
+  ],
+  "zero_cost": true,
+  "n": 197
+}

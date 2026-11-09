@@ -1,0 +1,26 @@
+{
+  "DenoiseSplitterNet": {
+    "mai_psnr": null,
+    "params_M": null,
+    "macs_MMac": null,
+    "epoch": 50,
+    "psnr_db": 36.79,
+    "sec": 3370
+  },
+  "DenoiseMFDNet": {
+    "mai_psnr": null,
+    "params_M": null,
+    "macs_MMac": null,
+    "epoch": 50,
+    "psnr_db": 36.29,
+    "sec": 2905
+  },
+  "DenoiseThunder": {
+    "mai_psnr": null,
+    "params_M": null,
+    "macs_MMac": null,
+    "epoch": 50,
+    "psnr_db": 36.836,
+    "sec": 2877
+  }
+}

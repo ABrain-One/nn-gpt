@@ -1,0 +1,24 @@
+{
+  "objective": {
+    "cost_metric": "macs",
+    "cost_mode": "log",
+    "cost_weight": 0.3,
+    "budget": 9052612608
+  },
+  "best_name": "DenoiseUnet6F+m+m+m",
+  "best_eff_db": 33.71732741922124,
+  "best_psnr_db": 33.91962798653147,
+  "best_macs": 17767814144,
+  "best_params": 13197443,
+  "best_parent": "DenoiseUnet6F+m+m",
+  "seeds": [
+    "DenoiseUnet1F",
+    "DenoiseUnet6F",
+    "DenoiseUnet7F",
+    "DenoiseUnet9F",
+    "DenoiseUnet10F"
+  ],
+  "gens": 6,
+  "epoch": 5,
+  "elapsed_sec": 5148.6
+}

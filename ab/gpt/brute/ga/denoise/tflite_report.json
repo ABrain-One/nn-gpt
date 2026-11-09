@@ -1,0 +1,101 @@
+[
+ {
+  "tflite_kb": 16555.7,
+  "macs": null,
+  "latency_ms": 116.64,
+  "parity_db": 99.0,
+  "ok": true,
+  "error": null,
+  "model": "DenoiseUnet1F"
+ },
+ {
+  "tflite_kb": 30703.8,
+  "macs": null,
+  "latency_ms": 419.38,
+  "parity_db": 99.0,
+  "ok": true,
+  "error": null,
+  "model": "DenoiseUnet2F"
+ },
+ {
+  "tflite_kb": 13965.4,
+  "macs": null,
+  "latency_ms": 114.88,
+  "parity_db": 99.0,
+  "ok": true,
+  "error": null,
+  "model": "DenoiseUnet3F"
+ },
+ {
+  "tflite_kb": null,
+  "macs": null,
+  "latency_ms": null,
+  "parity_db": null,
+  "ok": false,
+  "error": "NotImplementedError: Output padding on convolution is not implemented.\n\nWhile executing %convolution_12 : [num_users=1] = call_function[targe",
+  "model": "DenoiseUnet4F"
+ },
+ {
+  "tflite_kb": null,
+  "macs": null,
+  "latency_ms": null,
+  "parity_db": null,
+  "ok": false,
+  "error": "NotImplementedError: Output padding on convolution is not implemented.\n\nWhile executing %convolution_9 : [num_users=1] = call_function[target",
+  "model": "DenoiseUnet5F"
+ },
+ {
+  "tflite_kb": 10738.8,
+  "macs": null,
+  "latency_ms": 93.85,
+  "parity_db": 99.0,
+  "ok": true,
+  "error": null,
+  "model": "DenoiseUnet6F"
+ },
+ {
+  "tflite_kb": null,
+  "macs": null,
+  "latency_ms": null,
+  "parity_db": null,
+  "ok": false,
+  "error": "NotImplementedError: Output padding on convolution is not implemented.\n\nWhile executing %convolution_18 : [num_users=1] = call_function[targe",
+  "model": "DenoiseUnet7F"
+ },
+ {
+  "tflite_kb": null,
+  "macs": null,
+  "latency_ms": null,
+  "parity_db": null,
+  "ok": false,
+  "error": "NotImplementedError: Output padding on convolution is not implemented.\n\nWhile executing %convolution_95 : [num_users=1] = call_function[targe",
+  "model": "DenoiseUnet8F"
+ },
+ {
+  "tflite_kb": 36973.6,
+  "macs": null,
+  "latency_ms": 240.64,
+  "parity_db": 99.0,
+  "ok": true,
+  "error": null,
+  "model": "DenoiseUnet9F"
+ },
+ {
+  "tflite_kb": 85665.8,
+  "macs": null,
+  "latency_ms": 663.38,
+  "parity_db": 99.0,
+  "ok": true,
+  "error": null,
+  "model": "DenoiseUnet10F"
+ },
+ {
+  "tflite_kb": 7700.7,
+  "macs": null,
+  "latency_ms": 95.64,
+  "parity_db": 99.0,
+  "ok": true,
+  "error": null,
+  "model": "LiteDenoiseNet"
+ }
+]

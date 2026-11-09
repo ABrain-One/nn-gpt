@@ -1,0 +1,17 @@
+{
+  "best_name": "DenoiseUnet9F",
+  "best_fitness": 0.693683877497488,
+  "best_psnr_db": 33.29682611987943,
+  "best_parent": null,
+  "seeds": [
+    "DenoiseUnet9F",
+    "LiteDenoiseNet",
+    "DenoiseUnet5F",
+    "DenoiseUnet7F",
+    "DenoiseUnet10F",
+    "DenoiseUnet2F"
+  ],
+  "gens": 5,
+  "epoch": 2,
+  "elapsed_sec": 5906.5
+}

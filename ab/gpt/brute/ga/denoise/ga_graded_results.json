@@ -1,0 +1,28 @@
+{
+  "objective": {
+    "cost_metric": "macs",
+    "cost_mode": "log",
+    "cost_weight": 0.3,
+    "budget": 3964665856
+  },
+  "best_name": "DenoiseELUCtxXDenoiseLPPool+mXDenoiseELU~b94671+m",
+  "best_eff_db": 34.186492296794064,
+  "best_psnr_db": 34.066819984525466,
+  "best_macs": 2660499456,
+  "best_params": 474467,
+  "best_parent": "DenoiseELUCtxXDenoiseLPPool+mXDenoiseELU~b94671",
+  "seeds": [
+    "DenoiseLPPool",
+    "DenoiseMBConv",
+    "DenoiseELUCtx",
+    "DenoiseLinearMix",
+    "DenoiseDilatedFlat",
+    "DenoiseReflectPad",
+    "DenoiseResBN",
+    "DenoiseLayerNorm",
+    "DenoiseInstNorm"
+  ],
+  "gens": 30,
+  "epoch": 5,
+  "elapsed_sec": 4180.2
+}
