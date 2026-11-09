@@ -63,7 +63,6 @@ class AgentState(BaseModel):
     only_best_accuracy: Optional[bool] = None
     max_prompts: Optional[int] = None
     trans_mode: Optional[bool] = None
-    aug_mode: Optional[bool] = None
     classification_mode: Optional[bool] = None
     context_length: Optional[int] = None
     use_unsloth: Optional[bool] = None

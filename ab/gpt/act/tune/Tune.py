@@ -68,7 +68,6 @@ TEST_METRIC = None  # 'bleu' or other metric for evaluation
 ONNX_RUN = False
 USE_UNSLOTH = False
 TRANS_MODE = False  # only transform fine-tuning
-AUG_MODE = False  # only augment fine-tuning
 PROMPT_BATCH = 2
 
 # --- LangGraph Agent Defaults ---
@@ -182,7 +181,7 @@ def main(num_train_epochs=NUM_TRAIN_EPOCHS, lr_scheduler=LR_SCHEDULER, max_grad_
          # Pipeline-specific overrides (for backward compatibility with iterative_finetune.py)
          evaluation_strategy=None, eval_steps=None, save_strategy=None, save_steps=None,
          save_total_limit=None, load_best_model_at_end=LOAD_BEST_MODEL_AT_END, metric_for_best_model=None, weight_decay=None,
-         per_device_eval_batch_size=None, onnx_run=ONNX_RUN, use_unsloth=USE_UNSLOTH, trans_mode=TRANS_MODE, aug_mode=AUG_MODE,
+         per_device_eval_batch_size=None, onnx_run=ONNX_RUN, use_unsloth=USE_UNSLOTH, trans_mode=TRANS_MODE,
          prompt_batch=PROMPT_BATCH, enable_merge=ENABLE_MERGE,
          # --- Pipeline Hyperparameters ---
          run_iterative_pipeline=RUN_ITERATIVE_PIPELINE, cycles=CYCLES, models_per_cycle=MODELS_PER_CYCLE,
@@ -444,7 +443,7 @@ llm_conf={llm_conf}, test_nn={test_nn}, nn_train_epochs={nn_train_epochs}, peft=
 per_device_train_batch_size={per_device_train_batch_size}, gradient_accumulation_steps={gradient_accumulation_steps}, warmup_steps={warmup_steps},
 logging_steps={logging_steps}, optimizer={optimizer}, max_prompts={max_prompts}, save_llm_output={save_llm_output}, max_new_tokens={max_new_tokens},
 use_deepspeed={use_deepspeed}, nn_name_prefix={nn_name_prefix}, temperature={temperature}, top_k={top_k}, top_p={top_p}, onnx_run={onnx_run},
-use_unsloth={use_unsloth}, trans_mode={trans_mode}, aug_mode={aug_mode}, prompt_batch={prompt_batch}, use_agents={use_agents}, use_predictor={use_predictor},
+use_unsloth={use_unsloth}, trans_mode={trans_mode}, prompt_batch={prompt_batch}, use_agents={use_agents}, use_predictor={use_predictor},
 use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={classification_mode}, pin_seeds={pin_seeds}''')
 
     test_prm = {
@@ -651,7 +650,6 @@ use_backbone={use_backbone}, enable_merge={enable_merge}, classification_mode={c
             llmatic=({"crossover_every": llmatic_crossover_every} if llmatic else None),
             dataset=dataset,
             nn_prefixes=nn_prefixes,
-            aug_mode=aug_mode,
         )
 
         # Normal completion - auto merge best
@@ -865,8 +863,6 @@ if __name__ == '__main__':
                         help="[Pipeline] Weight decay (default: None).")
     parser.add_argument('--trans_mode', action='store_true',
                         help=f"Transform mode only (default: {TRANS_MODE}).")
-    parser.add_argument('--aug_mode', action='store_true',
-                        help=f"Augment mode only (default: {AUG_MODE}).")
     parser.add_argument('--onnx_run', action='store_true',
                         help=f"ONNX format (default: {ONNX_RUN}).")
     parser.add_argument('--use_unsloth', action='store_true',
