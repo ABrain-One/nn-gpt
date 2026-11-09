@@ -241,6 +241,18 @@ def extract_transform(txt):
                               (('<tr>', '</tr>'),))
 
 
+def extract_schedule(txt):
+    
+    txt = txt.replace('< sched >', '<sched>').replace('<.sched>', '<sched>').replace('</ sched >', '</sched>')
+    res = next(filter(None, map(lambda l: extract_str(txt, *l),
+                                (('<sched>', '</sched>'), ('```json', '```')))), None)
+    if res:
+        print(f'Found augmentation schedule: {len(res)} chars')
+    else:
+        print('No augmentation schedule found')
+    return res
+
+
 def extract_all_to_train(txt):
     return extract_code(txt), extract_hyperparam(txt), extract_transform(txt)
 

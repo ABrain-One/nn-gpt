@@ -1,0 +1,11 @@
+{
+  "accuracy": 0.0578,
+  "batch": 64,
+  "duration": 143314484104,
+  "lr": 0.01,
+  "momentum": 0.9,
+  "transform": "RandomCrop_ColorJitter_GaussianBlur",
+  "uid": "a838aadbca40bfbb8b7a5262a16aa859",
+  "dataset": "cifar-100",
+  "model": "ResNet"
+}

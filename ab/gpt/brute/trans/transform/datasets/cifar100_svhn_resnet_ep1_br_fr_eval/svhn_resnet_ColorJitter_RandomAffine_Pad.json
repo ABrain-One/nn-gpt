@@ -1,0 +1,11 @@
+{
+  "accuracy": 0.719998463429625,
+  "batch": 64,
+  "duration": 174740574137,
+  "lr": 0.01,
+  "momentum": 0.9,
+  "transform": "ColorJitter_RandomAffine_Pad",
+  "uid": "fa862e8b73eb944e634c967026f5603b",
+  "dataset": "svhn",
+  "model": "ResNet"
+}
