@@ -1,0 +1,11 @@
+{
+  "accuracy": 0.1349,
+  "batch": 64,
+  "duration": 63272599647,
+  "lr": 0.01,
+  "momentum": 0.9,
+  "transform": "RandomResizedCrop_RandomInvert_5",
+  "uid": "e2743d83e3fb86625132549e25e8b9ce",
+  "dataset": "cifar-100",
+  "model": "ResNet"
+}

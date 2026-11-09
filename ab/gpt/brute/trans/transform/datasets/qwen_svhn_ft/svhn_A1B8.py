@@ -1,0 +1,5 @@
+import torch
+import torchvision.transforms as transforms
+
+def transform(norm):
+    return transforms.Compose([transforms.CenterCrop(size=27), transforms.RandomAdjustSharpness(sharpness_factor=1.85, p=0.27), transforms.RandomEqualize(p=0.69), transforms.Resize((64, 64)), transforms.ToTensor(), transforms.Normalize(*norm)])
