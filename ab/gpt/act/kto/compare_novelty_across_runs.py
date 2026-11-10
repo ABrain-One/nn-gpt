@@ -51,10 +51,10 @@ def _trace_worker(job: Tuple[str, dict]) -> Tuple[str, Optional[str]]:
 
 
 def discover_runs(explicit: List[str], runs_root: Optional[str], prefix: Optional[str] = None,
-                  seed: int = 43) -> List[Tuple[str, Path]]:
+                  seed: int = 43, configs: Optional[List[str]] = None) -> List[Tuple[str, Path]]:
     """(label, path) for each run output_subdir holding cycle_*/nneval/. With a prefix, only
     out_<prefix>_<config>_s<seed>/nngpt/* are taken, labelled <config> (v2 runs all share
-    the subdir name pref_v2)."""
+    the subdir name pref_v2), restricted to `configs` when given."""
     runs: List[Tuple[str, Path]] = []
     seen = set()
 
@@ -75,8 +75,10 @@ def discover_runs(explicit: List[str], runs_root: Optional[str], prefix: Optiona
         pat = re.compile(rf"^out_{re.escape(prefix)}_(.+)_s{seed}$")
         for d in sorted(Path(runs_root).glob(f"out_{prefix}_*_s{seed}")):
             m = pat.match(d.name)
+            if not m or (configs and m.group(1) not in configs):
+                continue
             for p in sorted((d / "nngpt").glob("*")):
-                if m and p.is_dir():
+                if p.is_dir():
                     add(p, m.group(1))
     elif runs_root:
         for p in sorted(Path(runs_root).glob("out_*/nngpt/*")):
@@ -250,6 +252,8 @@ def main() -> None:
                    help="Auto-discover out_*/nngpt/*/ under this dir")
     p.add_argument("--prefix", type=str, default=None,
                    help="With --runs_root: only out_<prefix>_<config>_s<seed>/nngpt/*, labelled <config>")
+    p.add_argument("--configs", nargs="*", default=None,
+                   help="With --prefix: only these <config> runs (default: every matching run)")
     p.add_argument("--seed", type=int, default=43)
     p.add_argument("--out_dir", type=str, default="novelty_compare")
     p.add_argument("--max_cycle", type=int, default=20)
@@ -264,7 +268,7 @@ def main() -> None:
     p.add_argument("--workers", type=int, default=min(12, (mp.cpu_count() or 4)))
     args = p.parse_args()
 
-    runs = discover_runs(args.run, args.runs_root, args.prefix, args.seed)
+    runs = discover_runs(args.run, args.runs_root, args.prefix, args.seed, args.configs)
     if not runs:
         raise SystemExit("No runs found (use --run <path> and/or --runs_root <dir>).")
     out_dir = Path(args.out_dir); out_dir.mkdir(parents=True, exist_ok=True)
