@@ -15,6 +15,7 @@ use check_nn_split(nn_code, task, dataset, metric, prm, use_val_split=False)
 
 """
 
+import contextlib
 import functools
 from typing import Optional, Union
 
@@ -54,6 +55,25 @@ def _load_and_split(task: str, dataset: str, transform_name: str, transform_dir:
     return out_shape, minimum_accuracy, test_set, train_sub, val_sub
 
 
+@contextlib.contextmanager
+def _db_writes_disabled():
+    """Keep the trainer's numbered statistics files, but skip every LEMUR database write.
+
+    ab.nn's trainer writes the per-epoch statistics files and the database rows under the same
+    save_to_db switch. The database calls are replaced for the duration of one run only.
+    """
+    saved = {n: getattr(DB_Write, n) for n in ("save_results", "save_nn") if hasattr(DB_Write, n)}
+    if "save_results" in saved:
+        DB_Write.save_results = lambda *a, **k: None
+    if "save_nn" in saved:
+        DB_Write.save_nn = lambda *a, force_name=None, **k: force_name
+    try:
+        yield
+    finally:
+        for n, fn in saved.items():
+            setattr(DB_Write, n, fn)
+
+
 def clear_split_cache():
     """ for a fresh split rather than reuse the cache."""
     _load_and_split.cache_clear()
@@ -75,6 +95,7 @@ def check_nn_split(
     transform_dir: Optional[str] = None,
     val_fraction: float = DEFAULT_VAL_FRACTION,
     split_seed: int = DEFAULT_SPLIT_SEED,
+    write_db: bool = True,
 ) -> tuple[str, float, float, float]:
     """
     Drop-in replacement for ab.nn.api.check_nn().
@@ -94,6 +115,9 @@ def check_nn_split(
     create_file(tmp_dir, '__init__.py')
     temp_file_path = tmp_dir / f"{model_name}.py"
 
+    stack = contextlib.ExitStack()
+    if save_to_db and not write_db:
+        stack.enter_context(_db_writes_disabled())
     trainer = None
     accuracy, accuracy_to_time, duration = 0.0, 0.0, 0
     res = None
@@ -141,6 +165,7 @@ def check_nn_split(
         print(f"Error during training: {e}")
         raise
     finally:
+        stack.close()
         remove(temp_file_path)
         # Unlike ab.nn.util.Train.train_new(), do not del train_set/test_set
         try:

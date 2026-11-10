@@ -1432,8 +1432,9 @@ def sched_gen(epoch, out_path, chat_bot, conf_keys, prompt_dict_global, test_nn,
         canonical, full_out = None, ''
         current_prompt = prompt_text
         for attempt in range(2):  # one feedback retry
-            _, _, sched_str, full_out = chat_bot.chat(
+            _, _, _, full_out = chat_bot.chat(
                 current_prompt, engineer_prompt=False, max_new_tokens=max_new_tokens)
+            sched_str = extract_schedule(full_out)
             if not sched_str:
                 error_msg = 'No <sched>...</sched> block found in output.'
             else:
@@ -1521,6 +1522,14 @@ def _has_generated_output(out_path) -> bool:
     return False
 
 
+def _has_generated_schedule(out_path) -> bool:
+    """True when at least one synthesized directory B*/ contains schedule.json (aug_mode)."""
+    models_dir = synth_dir(out_path)
+    if not exists(models_dir):
+        return False
+    return any(isfile(p) for p in glob.glob(str(models_dir / "B*" / "schedule.json")))
+
+
 def _vllm_peft_warning(vllm_engine, llm_path, init_adapter):
     """Warning for vLLM generation with --peft but without NNGPT_CARRY_ADAPTER=1, else None.
 
@@ -1604,9 +1613,14 @@ def generate_step(state: AgentState) -> dict:
 
     # Classification prompts may intentionally emit labels or structured output
     # without generating a runnable new_nn.py file.
+    # after
     classification_mode = state.get("classification_mode", False)
-    has_output = _has_generated_output(
-        out_path) if classification_mode else _has_generated_nn_code(out_path)
+    if state.get("aug_mode", False):
+        has_output = _has_generated_schedule(out_path)
+    elif classification_mode:
+        has_output = _has_generated_output(out_path)
+    else:
+        has_output = _has_generated_nn_code(out_path)
     if not has_output:
         print(
             f"[INFO] No code generated at epoch {epoch}, skipping evaluation")
@@ -1756,7 +1770,7 @@ def _evaluate_epoch_inner(epoch, out_path, nn_name_prefix, nn_train_epochs,
             results[f"epoch_{epoch + 1}_accuracy"] = cls_result["accuracy"]
         elif trans_mode:
             try:
-                run_eval(ft_mode=True, epoch_num=epoch)
+                run_eval(ft_mode=True, epoch_num=epoch, submit=True)
                 print('[DEBUG] Release_memory.')
             except Exception as e:
                 print(f"Error running evaluation main(): {e}", flush=True)
@@ -1766,7 +1780,7 @@ def _evaluate_epoch_inner(epoch, out_path, nn_name_prefix, nn_train_epochs,
             if (AUG_CONFIG_DIR / cfg_name).exists():
                 from ab.gpt.brute.trans.augment.AugEval import run_eval as aug_run_eval
                 try:
-                    aug_run_eval(config_file=cfg_name)
+                    aug_run_eval(config_file=cfg_name, submit=True)
                 except Exception as e:
                     print(f'Error running schedule evaluation: {e}', flush=True)
                 print('[DEBUG] Release_memory.')
@@ -2148,9 +2162,10 @@ def finetune_step(state: AgentState) -> dict:
         state.get("sft_nn_prefixes"),
         state.get("sft_dataset"),
         state.get("data_dir"),
-        state.get("aug_mode", False),
+        aug_mode=state.get("aug_mode", False),
         budget_tokens=getattr(_prev_bot, "budget_tokens", None),
         suppress_thinking=getattr(_prev_bot, "suppress_thinking", False),
+       
     )
 
     if vllm_engine is not None:
@@ -2508,6 +2523,7 @@ def tune(
                 data_dir=data_dir,
                 budget_tokens=budget_tokens,
                 suppress_thinking=suppress_thinking,
+                aug_mode=aug_mode
             )
             trainer_resume_checkpoint = None
             if vllm_engine is not None:
