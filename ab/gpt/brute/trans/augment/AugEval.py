@@ -11,14 +11,15 @@ import torch
 import ab.nn.api as api
 from ab.gpt.util.CheckNNSplit import check_nn_split
 from ab.gpt.util.Const import trans_dir, out_dir
-from ab.gpt.util.Util import read_py_file_as_string
+from ab.gpt.util.Util import (read_py_file_as_string, stage_stats_for_submission,
+                              archive_evaluator_submission)
 
 # Search-phase calls (use_val_split=True, the default) train on a 90/10 train set and score against the 10% validation.
 # Only a --final_judgment run (use_val_split=False) scores against test set.
 
 
-RESULT_DIR = trans_dir / 'test'
-CONFIG_DIR = trans_dir / 'test'
+RESULT_DIR = trans_dir / 'augment/gen_result/test'
+CONFIG_DIR = trans_dir / 'augment/config'
 CONFIG_FILE = "aug_config_offgrid_seed42_n3.json"
 
 #RESNET_FILE = trans_dir / 'augment/config/Resnet.py'
@@ -130,7 +131,12 @@ def extract_history(summary):
 
 
 def run_eval(start_from=0, seed=SEED, config_file=CONFIG_FILE,
-             nn_file=None, num_epochs=NUM_EPOCHS, use_val_split=True):
+             nn_file=None, num_epochs=NUM_EPOCHS, use_val_split=True, submit=False, write_db=False):
+    if write_db:
+        submit = True  # the database run also generates the folders
+    if submit and use_val_split:
+        print("[WARN] submitting results scored on the validation split, not the test set "
+              "(add --final_judgment to submit test-set scores)", flush=True)
     RESULT_DIR.mkdir(parents=True, exist_ok=True)
 
     best_model = get_model_from_file(nn_file) if nn_file else get_best_model_from_db()
@@ -161,6 +167,12 @@ def run_eval(start_from=0, seed=SEED, config_file=CONFIG_FILE,
         prm['epoch'] = num_epochs   
         prm['seed'] = seed          
 
+        # submit: the trainer writes its numbered per-epoch statistics (and a DB row)
+        # only with save_to_db, into save_path; keep them per candidate
+        stats_dir = RESULT_DIR / f"_stats_{cand_tag}" if submit else None
+        if stats_dir:
+            stats_dir.mkdir(parents=True, exist_ok=True)
+
         result, err, validity = None, None, "ok"
         t0 = time.monotonic()
         for attempt in range(INFRA_RETRIES + 1):
@@ -168,8 +180,9 @@ def run_eval(start_from=0, seed=SEED, config_file=CONFIG_FILE,
                 result = check_nn_split(
                     nn_code=best_model['nn_code'], task=TASK, dataset=DATASET,
                     metric=METRIC, prm=prm, use_val_split=use_val_split,
-                    save_to_db=False,
-                    prefix="augment_data_collect", save_path=RESULT_DIR)
+                    save_to_db=submit, write_db=write_db,
+                    prefix=None if submit else "augment_data_collect",
+                    save_path=stats_dir if submit else RESULT_DIR)
                 break
             except Exception as e:
                 err, validity = e, classify_error(e)
@@ -226,6 +239,14 @@ def run_eval(start_from=0, seed=SEED, config_file=CONFIG_FILE,
         print(f"  Config {config_num}/{total} | Acc={accuracy} "
               f"| lr={lr_schedule} | {gpu_seconds:.0f}s")
 
+        if submit:
+            stage_stats_for_submission(stats_dir, best_model['nn'], TASK, DATASET, METRIC,
+                                       suffix='_augment')
+            print(f"  [submission] staged statistics for schedule {config_id} (train/ ... _augment)")
+
+    if submit:
+        archive_evaluator_submission()  # same archiving as the NN pipeline: -> out/ab_lemur_submission
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -239,10 +260,14 @@ if __name__ == "__main__":
     parser.add_argument('--nn_file', type=str, default=None)
     parser.add_argument('--final_judgment', action='store_true', default=False,
                         help="score against the test set instead of the validation split.")
+    parser.add_argument('--submit', action='store_true', default=False,
+                        help="stage the statistics in train/ (suffix _augment) and archive them; the database is NOT updated.")
+    parser.add_argument('--submit_db', action='store_true', default=False,
+                        help="as --submit, and also write the statistics rows to the LEMUR database.")
     args = parser.parse_args()
     run_eval(start_from=args.start_from, seed=args.seed,
              config_file=args.config_file,
              nn_file=args.nn_file,
              num_epochs=args.num_epochs,
-             use_val_split=not args.final_judgment)
+             use_val_split=not args.final_judgment, submit=args.submit or args.submit_db, write_db=args.submit_db)
     

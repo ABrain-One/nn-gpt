@@ -595,3 +595,84 @@ def evaluate_delimited_formulas(text: str, para_dict: dict) -> str:
     return re.sub(pattern, replace_match, text)
 # =================================================
 
+def submit_transform_code(code):
+    """Stage a transform's source in the submission and return the name it goes by.
+
+    The name comes from resolve_transform_name, so a transform the dataset (or
+    an earlier cycle) already holds keeps its existing name and is not copied
+    again.
+    """
+    name, is_new = resolve_transform_name(code)
+    if is_new:
+        Path(new_lemur_transform_dir).mkdir(parents=True, exist_ok=True)
+        target = new_lemur_transform_dir / f'{name}.py'
+        if not target.exists():
+            target.write_text(code, encoding='utf-8')
+    return name
+
+
+def stage_stats_for_submission(stats_dir, nn_name, task, dataset, metric, overrides=None, suffix=''):
+    """Stage statistics measured by TransformEval / AugEval in the submission's train/ folder.
+    """
+    import json as _json
+    try:
+        stats = sorted((f for f in os.listdir(stats_dir) if re.match(r'[0-9]+\.json$', f)),
+                       key=lambda f: int(f[:-5]))
+    except OSError as exc:
+        print(f'[submission] {nn_name} skipped: cannot read {stats_dir} ({exc})', flush=True)
+        return None
+    if not stats:
+        print(f'[submission] {nn_name} skipped: no statistics in {stats_dir}', flush=True)
+        return None
+    dr_nm = Path(new_lemur_stat_dir) / f"{task}_{dataset}_{metric}_{nn_name}_{suffix}"
+    dr_nm.mkdir(parents=True, exist_ok=True)
+    taken = [int(f[:-5]) for f in os.listdir(dr_nm) if re.match(r'[0-9]+\.json$', f)]
+    nxt = max(taken, default=0) + 1
+    for f in stats:
+        record = _json.loads((Path(stats_dir) / f).read_text(encoding='utf-8'))
+        for rec in (record if isinstance(record, list) else [record]):
+            if isinstance(rec, dict):
+                rec.update(overrides or {})
+        (dr_nm / f'{nxt}.json').write_text(_json.dumps(record, indent=2), encoding='utf-8')
+        nxt += 1
+    return dr_nm
+
+def install_into_lemur_package(kind, name, source):
+    """Write a transform or schedule into the installed LEMUR package.
+
+     'transform' -> ab/nn/transform/<name>.py
+     'schedule'  -> ab/nn/transform/schedules/<name>.py
+    Returns the path written, or None when ab.nn cannot be located.
+    """
+    import importlib.util
+    spec = importlib.util.find_spec("ab.nn")
+    roots = []
+    if spec is not None:
+        if spec.origin:
+            roots.append(Path(spec.origin).parent)
+        roots.extend(Path(loc) for loc in (spec.submodule_search_locations or ()))
+    if not roots:
+        print(f'[lemur] ab.nn not found; {kind} {name} not installed', flush=True)
+        return None
+    target_dir = roots[0] / "transform"
+    if kind == "schedule":
+        target_dir = target_dir / "schedules"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    if kind == "schedule" and not (target_dir / "__init__.py").exists():
+        (target_dir / "__init__.py").write_text("", encoding="utf-8")
+    target = target_dir / f"{name}.py"
+    if not target.exists():
+        target.write_text(source, encoding="utf-8")
+    print(f'[lemur] {kind} {name} installed at {target}', flush=True)
+    return target
+
+
+def archive_evaluator_submission():
+    """Archive what TransformEval / AugEval staged,
+
+    """
+    from ab.gpt.util.Const import nngpt_dir
+    from ab.gpt.util.data.LemurSubmission import SUBMISSION_PARTS, archive_submission
+    return archive_submission(nngpt_dir, parts=tuple(SUBMISSION_PARTS) + ("transform",))
+
+

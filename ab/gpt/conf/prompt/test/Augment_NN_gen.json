@@ -5,16 +5,12 @@
         "system": [
             "You are an expert in batch-level data augmentation schedules and PyTorch neural network architecture for computer vision.",
             "Follow LEMUR NN Dataset conventions: class name 'Net', a standalone function 'supported_hyperparameters' (outside the class), and the required methods __init__, forward, train_setup, and learn.",
-            "Output only the requested XML tags (<sched>, <nn>) in the correct order, with no explanation and no markdown."
+            "Output only the requested XML tags (<tr>, <nn>) in the correct order, with no explanation and no markdown."
         ],
         "input_list": [
             {
                 "para": "accuracy",
                 "value": "accuracy"
-            },
-            {
-                "para": "schedule",
-                "value": "schedule_json"
             },
             {
                 "para": "nn_code",
@@ -27,12 +23,12 @@
                 "value": "accuracy"
             },
             {
-                "para": "addon_schedule",
-                "value": "schedule_json"
+                "para": "addon_nn_code",
+                "value": "nn_code"
             }
         ],
         "no_repeat": [
-            "schedule_json"
+            "schedule_json", "nn_code"
         ],
         "keep_same": [],
         "prompt": [
@@ -54,13 +50,13 @@
             "Use null (not None) for the alpha of 'none' segments.",
             "",
             "PART 2 - NEURAL NETWORK",
-            "Use common patterns and ideas from the following two reference schedules and the reference network.",
-            "Reference 1 (Accuracy: {accuracy}):",
-            "<sched>{schedule}</sched>",
-            "Reference 2 (Accuracy: {addon_accuracy}):",
-            "<sched>{addon_schedule}</sched>",
-            "Reference network (trained with Reference 1):",
+            "Use common patterns and ideas from the following two reference schedules and two reference networks.",
+            "Reference schedule 1: <tr>[['mixup', 0.730448, 0.485246], ['resizemix', 0.676683, 0.346812], ['cutout', 0.291103, 0.167942]]</tr>",
+            "Reference schedule 2: <tr>[['resizemix', 0.4, 0.4], ['cutout', 0.35, 0.6]]</tr>",
+            "Reference 1 for NN (Accuracy: {accuracy}):",
             "<nn>{nn_code}</nn>",
+            "Reference 2 for NN (Accuracy: {addon_accuracy}):",
+            "<nn>{addon_nn_code}</nn>",
             "Design a DIFFERENT architecture of your own for 'imagenette' (task: 'img-classification'), trained with batch 64, lr 0.01, momentum 0.9. Do NOT copy the reference verbatim.",
             "The code inside <nn>...</nn> MUST follow this LEMUR interface:",
             "  1. Start with `import torch` and `import torch.nn as nn` (add `import torch.nn.functional as F` only if you use F.*).",
@@ -96,7 +92,7 @@
             "",
             "        if prm.get('augment'):",
             "            try:",
-            "                from ab.nn.transform.base.BatchTransform import BatchTransform as bt_mod",
+            "                from ab.nn.transform.base import BatchTransform as bt_mod",
             "                batch_transform = bt_mod.batch_transform",
             "                # determine schedule validator",
             "                validate_schedule = getattr(bt_mod, 'validate_schedule', None)",
@@ -148,11 +144,11 @@
             "        if getattr(self, 'scheduler', None) is not None:",
             "            self.scheduler.step()",
             "Provide a single COMPLETE Python file. Do not truncate, do not use '...' as a placeholder, and make sure every opening parenthesis has a matching closing one.",
-            "Your response MUST contain exactly two XML blocks in this order: first <sched>...</sched> holding ONLY the JSON list, then <nn>...</nn> holding ONLY the Python code.",
+            "Your response MUST contain exactly two XML blocks in this order: first <tr>...</tr> holding ONLY the JSON list, then <nn>...</nn> holding ONLY the Python code.",
             "DO NOT include any leading or trailing text, markdown fences (```), comments outside the code, or any other XML tags."
         ],
         "output": [
-            "<sched>{schedule}</sched>",
+            "<tr>{schedule}</tr>",
             "<nn>{nn_code}</nn>"
         ]
     }

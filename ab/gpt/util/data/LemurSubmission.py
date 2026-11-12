@@ -112,17 +112,21 @@ def _prune_empty_records(train_dir: Path) -> int:
     return removed
 
 
-def archive_submission(base_dir, archive=None):
+def archive_submission(base_dir, archive=None, parts=None):
     """Move submission-ready networks and statistics out of the run directory.
 
     Call this before the run directory is deleted. Returns the archive path when
     anything was moved, else None. Never raises: losing a run reset to a file
     permission problem would be a worse failure than an unarchived model.
+    
+    ``parts`` defaults to SUBMISSION_PARTS. TransformEval / AugEval pass a longer
+    tuple so their transform/ and schedule/ folders are kept as well.
     """
+    parts = SUBMISSION_PARTS if parts is None else parts
     source = Path(base_dir) / submission_dir_name
     if not source.is_dir():
         return None
-    present = [p for p in SUBMISSION_PARTS if (source / p).is_dir()]
+    present = [p for p in parts if (source / p).is_dir()]
     if not present:
         return None
 
