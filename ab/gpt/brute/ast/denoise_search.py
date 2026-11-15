@@ -14,8 +14,8 @@ PSNR note: stored accuracy x48 = real dB (ab/nn/metric/psnr.py).
 Baselines: best manual F = 35.56 dB (DenoiseUnet7F); LiteDenoiseNet = 37.66 dB (MAI2026).
 
 Run from this dir with nn-dataset on PYTHONPATH, e.g.:
-  PYTHONPATH=/home/s493053/thesis/nn-dataset \
-    /home/s493053/thesis/nn-dataset/.venv/bin/python denoise_search.py proxy --epoch 4 --limit 40
+  PYTHONPATH=/a/mm/nn-dataset \
+    python denoise_search.py proxy --epoch 4 --limit 40
   ... full --topk 3 --epoch 50 --results denoise_search_results.json
 """
 import argparse
@@ -28,7 +28,7 @@ import traceback
 # LEMUR root is derived from the CWD at ab.nn import time (ab/nn/util/Const.py walks up
 # from cwd to a dir with ab/+README.md). Force CWD to the nn-dataset repo BEFORE importing
 # ab.nn so we always hit the populated DB, regardless of where this script is invoked from.
-_NN_DATASET_ROOT = os.environ.get("NN_DATASET_ROOT", "/home/s493053/thesis/nn-dataset")
+_NN_DATASET_ROOT = os.environ.get("NN_DATASET_ROOT", "/a/mm/nn-dataset")
 os.chdir(_NN_DATASET_ROOT)
 
 import ab.nn.api as api

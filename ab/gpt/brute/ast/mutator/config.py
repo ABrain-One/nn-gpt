@@ -2,14 +2,16 @@ import multiprocessing
 import os
 
 # List of specific models to mutate (leave empty to mutate all)
-# Denoise NAS seeds — GOOD models (all have global residual + decent PSNR), free from the
-# existing pool. 7F best, 9F 2nd, 5F tiny/efficient, 8F mobile, 3F/4F/10F mid, LiteDenoiseNet
-# the group's strongest (37.66 dB). WEAK seeds 1F/2F/6F (no global residual) are intentionally
-# EXCLUDED until the skip-connection operator exists — they're reserved for the
-# skip before/after experiment (see plan), since the current operators can't add the residual.
+# Denoise NAS seeds — the 8 strongest, ALL mobile-GPU-clean (objective = PSNR / mobile
+# latency). Current best PSNR (dB, 50ep): LiteDenoiseNet 36.51, 7F 35.85, 10F 35.71,
+# 9F 35.48, 4F 34.89, 8F 34.83, 5F 34.76 (tiny/efficient), 3F 33.19.
+# Weak seeds 1F/2F/6F are DROPPED: low PSNR, and the skip before/after experiment they were
+# reserved for is DONE (the skip operator now exists; 2F+residual reached 35.09 — see the
+# skip-experiment memory note / DnSkip-* DB rows). Re-add their DnSkip-fixed variants if a
+# future run wants those architectures represented.
 SPECIFIC_MODELS = [
-    "DenoiseUnet7F", "DenoiseUnet9F", "DenoiseUnet5F", "DenoiseUnet8F",
-    "DenoiseUnet3F", "DenoiseUnet4F", "DenoiseUnet10F", "LiteDenoiseNet",
+    "LiteDenoiseNet", "DenoiseUnet7F", "DenoiseUnet10F", "DenoiseUnet9F",
+    "DenoiseUnet8F", "DenoiseUnet5F", "DenoiseUnet4F", "DenoiseUnet3F",
 ]
 
 DEBUG_MODE = True  # smoke run: single-process + verbose so rejection reasons are visible
@@ -66,13 +68,38 @@ ACTIVATION_MUTATIONS = {
 
 # Layer type mutation mappings  
 LAYER_TYPE_MUTATIONS = {
-    'BatchNorm2d': ['GroupNorm', 'LayerNorm', 'InstanceNorm2d'],
-    'GroupNorm': ['BatchNorm2d', 'LayerNorm', 'InstanceNorm2d'],
-    'LayerNorm': ['BatchNorm2d', 'GroupNorm'],
-    'InstanceNorm2d': ['BatchNorm2d', 'GroupNorm'],
+    'BatchNorm2d': ['GroupNorm', 'LayerNorm', 'InstanceNorm2d', 'Identity'],
+    'GroupNorm': ['BatchNorm2d', 'LayerNorm', 'InstanceNorm2d', 'Identity'],
+    'LayerNorm': ['BatchNorm2d', 'GroupNorm', 'Identity'],
+    'InstanceNorm2d': ['BatchNorm2d', 'GroupNorm', 'Identity'],
+    # Identity <-> a real norm is what lets the normalisation axis move in BOTH directions.
+    # Without this entry the operator can only ever REMOVE structure, never restore it.
+    'Identity': ['BatchNorm2d', 'GroupNorm', 'InstanceNorm2d'],
     'MaxPool2d': ['AvgPool2d', 'AdaptiveMaxPool2d', 'AdaptiveAvgPool2d'],
     'AvgPool2d': ['MaxPool2d', 'AdaptiveMaxPool2d', 'AdaptiveAvgPool2d'],
 }
+
+# --- EDGE-SAFE NORM TARGETS (BRUTE_NORM_SAFE=1) ------------------------------------
+# WHY. Measured on the d10v2 run: 88 of 89 generated sources are norm-free, 1 BatchNorm.
+# The normalisation axis is frozen, and the cause is NOT a missing operator -- `layer_type`
+# exists and runs at weight 0.15. It is that `layer_type` can only SWAP a norm that is
+# already present, and 9 of the 10 seeds have no norm module at all, so it no-ops on them.
+#
+# Two consequences, fixed separately:
+#   1. 'Identity' added above, as both source and target, so a norm can be dropped AND
+#      reintroduced. (True INSERTION into a model with no norm module at all still needs a
+#      new AST operator -- this only helps once a model has a norm slot. Seeding with
+#      norm-bearing models, e.g. BEST10_V3_DB, is the interim fix.)
+#   2. Every target of BatchNorm2d above is GroupNorm/LayerNorm/InstanceNorm2d -- all three
+#      force a CPU fallback on the TFLite GPU delegate (see edge_deploy.py SOFT list). So
+#      the operator, when it DID fire, actively converted mobile-clean models into
+#      edge-hostile ones. With BRUTE_NORM_SAFE=1 the norm targets are restricted to the
+#      mobile-safe set {BatchNorm2d (folds into the preceding conv), Identity (no-op)}.
+#      Pool swaps are untouched -- they are delegate-clean either way.
+#
+# Default OFF so existing runs are bit-identical; set BRUTE_NORM_SAFE=1 for edge targets.
+_NORM_KEYS = ('BatchNorm2d', 'GroupNorm', 'LayerNorm', 'InstanceNorm2d', 'Identity')
+_EDGE_SAFE_NORMS = ('BatchNorm2d', 'Identity')
 
 # Mutation type weights (probability distribution)
 # Phase 1 (component mutations): biased toward shape-preserving ops (activation, norm
@@ -145,6 +172,13 @@ if _only:
     MUTATION_TYPE_WEIGHTS.setdefault(_only, 1.0)
 
 # BRUTE_WEIGHTS="skip:1.0,activation:0.5" overrides individual operator weights.
+if _os.environ.get('BRUTE_NORM_SAFE') not in (None, '', '0', 'false', 'False'):
+    LAYER_TYPE_MUTATIONS = {
+        k: ([t for t in v if t in _EDGE_SAFE_NORMS] if k in _NORM_KEYS else list(v))
+        for k, v in LAYER_TYPE_MUTATIONS.items()
+    }
+    LAYER_TYPE_MUTATIONS = {k: v for k, v in LAYER_TYPE_MUTATIONS.items() if v}
+
 _weights = _os.environ.get('BRUTE_WEIGHTS')
 if _weights:
     for _pair in _weights.split(','):
