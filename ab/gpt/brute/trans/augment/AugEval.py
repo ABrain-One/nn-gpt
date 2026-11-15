@@ -241,7 +241,7 @@ def run_eval(start_from=0, seed=SEED, config_file=CONFIG_FILE,
 
         if submit:
             stage_stats_for_submission(stats_dir, best_model['nn'], TASK, DATASET, METRIC,
-                                       suffix='_augment')
+                                       suffix='')
             print(f"  [submission] staged statistics for schedule {config_id} (train/ ... _augment)")
 
     if submit:
