@@ -1,11 +1,7 @@
 """Generate (augmentation schedule, network) pairs with an LLM.
-
-Same shape as AlterNN.alter(): build prompts, generate, save every valid answer to
-epoch_dir(e)/synth_nn/B<i>/ (new_nn.py, full_output.txt, original_<nn>.py, dataframe.df).
-
 """
+
 import ast
-import hashlib
 import json
 import random
 import re
@@ -16,22 +12,17 @@ import torch
 from tqdm import tqdm
 
 import ab.nn.api as nn_dataset
-from ab.nn.util.Util import create_file, uuid4
+from ab.nn.util.Util import create_file
 from ab.gpt.brute.trans.augment.ScheduleValidate import validate_schedule, ScheduleError
-from ab.gpt.util.Const import conf_test_dir, epoch_dir, new_nn_file, synth_dir, new_out_file, new_lemur_nn_dir, new_lemur_transform_dir
+from ab.gpt.util.Const import conf_test_dir, epoch_dir, new_nn_file, synth_dir, new_out_file
 from ab.gpt.util.llm.LLM import LLM
 from ab.gpt.util.llm.VLLMClient import VLLMClient
-from ab.gpt.util.Util import extract_code, copy_to_lemur, archive_evaluator_submission
-from ab.gpt.util.CheckNNSplit import check_nn_split
-
-import gc
-import pandas as pd
+from ab.gpt.util.Util import extract_code
 
 
 # Same training protocol as AugEval, so generated candidates are comparable with the schedule
 
 PROTOCOL = {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256'}
-EVAL_SEED = 42
 # The generated Net must carry the train_setup/learn 
 
 REQUIRED_NN_PARTS = ('def supported_hyperparameters', 'def train_setup', 'def learn', 'batch_transform_fn')
@@ -117,9 +108,8 @@ def save_candidate(out_path, idx, out, schedule, nn_code, ref1, ref2, task, data
     row = ref1.copy()
     # NNEval reads task/dataset/metric from the row; without them it falls back to cifar-10.
     row['task'], row['dataset'], row['metric'] = task, dataset, metric
-    prm = dict(row['prm']) if isinstance(row.get('prm'), dict) else {}
-    prm.update(PROTOCOL)                   # not the reference network's own lr/batch/dropout
-    prm['augment'] = schedule              # NNEval merges dataframe.df's prm into the training prm
+    prm = dict(PROTOCOL)                                  
+    prm['augment'] = schedule             
     row['prm'] = prm
     row.to_pickle(model_dir / 'dataframe.df')
 
@@ -146,37 +136,9 @@ def _generate(prompts, remote, model, tokenizer, temperature, top_k, max_new_tok
     return outs
 
 
-def schedule_hash(schedule):
-    """The 12-char schedule id AugEval uses."""
-    raw = json.dumps(schedule, sort_keys=False, separators=(",", ":")).encode()
-    return hashlib.md5(raw).hexdigest()[:12]
-
-
-def stage_generated(out_paths):
-    """After generation: copy each candidate's network into nn/ and its schedule into transform/.
-
-    """
-    new_lemur_nn_dir.mkdir(parents=True, exist_ok=True)
-    new_lemur_transform_dir.mkdir(parents=True, exist_ok=True)
-    staged = 0
-    for out_path in out_paths:
-        for model_dir in sorted(synth_dir(out_path).glob('B*'), key=lambda p: int(p.name[1:])):
-            code = (model_dir / new_nn_file).read_text()
-            schedule = json.loads((model_dir / 'sched.json').read_text())
-            row = pd.read_pickle(model_dir / 'dataframe.df')
-            nn_name = f"{str(row['nn']).split('-')[0]}-{uuid4(code)}"
-            sched_name = f"sched_cfg{schedule_hash(schedule)}"
-            shutil.copyfile(model_dir / new_nn_file, new_lemur_nn_dir / f"{nn_name}.py")
-            shutil.copyfile(model_dir / 'sched.json', new_lemur_transform_dir / f"{sched_name}.json")
-            print(f"[stage] {model_dir.name}: nn/{nn_name}.py, transform/{sched_name}.json")
-            staged += 1
-    print(f"[stage] staged {staged} candidate(s)")
-    return staged
-
-
 def alter_aug(epochs, test_conf, llm_name, gguf_file=None, n_prompts=10, pool_top=30, nn_prefixes=None,
               dataset='imagenette', metric='acc', max_ref_chars=6000, temperature=0.8, top_k=100,
-              max_new_tokens=8 * 1024, seed=None, stage_submission=True, **kwargs):
+              max_new_tokens=8 * 1024, seed=None, **kwargs):
     with open(conf_test_dir / test_conf) as f:
         prompt_dict = json.load(f)
     assert isinstance(prompt_dict, dict)
@@ -196,7 +158,6 @@ def alter_aug(epochs, test_conf, llm_name, gguf_file=None, n_prompts=10, pool_to
         print("Load Model Complete, Start Loop...")
 
     shutil.rmtree(epoch_dir(), ignore_errors=True)
-    generated = []
     for epoch in range(epochs):
         out_path = epoch_dir(epoch)
 
@@ -223,8 +184,3 @@ def alter_aug(epochs, test_conf, llm_name, gguf_file=None, n_prompts=10, pool_to
             save_candidate(out_path, saved, out, schedule, nn_code, ref1, ref2, task, dataset, metric)
             saved += 1
         print(f"[alter_aug] epoch {epoch}: {len(jobs)} prompts, {saved} saved, rejected {dict(rejected)}")
-        if saved:                                
-            generated.append(out_path)            
-
-    if stage_submission and generated:           
-        stage_generated(generated)   

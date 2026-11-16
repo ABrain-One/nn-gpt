@@ -1,4 +1,5 @@
 import argparse
+import copy
 import json
 import random
 import shutil
@@ -9,13 +10,15 @@ import numpy as np
 import torch
 
 import ab.nn.api as api
+from ab.nn.util.Util import uuid4
 from ab.gpt.util.CheckNNSplit import check_nn_split
 from ab.gpt.util.Const import trans_dir, out_dir
 from ab.gpt.util.Util import (read_py_file_as_string, stage_stats_for_submission,
                               archive_evaluator_submission)
 
-# Search-phase calls (use_val_split=True, the default) train on a 90/10 train set and score against the 10% validation.
-# Only a --final_judgment run (use_val_split=False) scores against test set.
+# Search-phase calls (use_val_split=True, the function default used by the Tune loop) train on a 90/10
+# train set and score against the 10% validation. The command line defaults to the real test set
+# (--final_judgment); --no-final_judgment gives the validation split.
 
 
 RESULT_DIR = trans_dir / 'augment/gen_result/test'
@@ -58,6 +61,46 @@ def classify_error(exc: Exception) -> str:
         return "infra_error"
     msg = str(exc).lower()
     return "infra_error" if any(m in msg for m in INFRA_MARKERS) else "code_error"
+
+
+def encode_augment(schedule):
+    """A schedule as compact JSON text, e.g. [["mixup",0.5,0.4],["cutout",0.3,0.6]].
+
+    The dataset stores a hyperparameter as a single value: its importer drops list values and the
+    database cannot bind one. Text survives both, and json.loads gives the list back."""
+    return json.dumps(schedule, separators=(',', ':'))
+
+
+def make_record_rewrite(prm):
+    """Function that turns a trial written by the trainer into the form submitted to the dataset.
+
+    The trainer needs prm['augment'] as a list, so only the written record is changed, never the training
+    parameters. The record's uid is a hash of its hyperparameters (the dataset's rule: the parameters
+    without uid, duration, accuracy and epoch), so it is recomputed over the parameters as they are now
+    stored, with the schedule as text.
+
+    prm must be the parameters as they were BEFORE training: the trainer adds its results (uid, duration,
+    train_stat, metric_acc, ...) to the dict it is given, in place. The result is one uid per trial, the same
+    in every epoch file. The trainer's own uid is only comparable in epoch 1: from epoch 2 on it also hashes
+    the previous epoch's leftovers, so the check below looks at epoch 1 only; a difference there is reported."""
+    prm = copy.deepcopy(prm)
+    only_list = {k: v for k, v in prm.items() if k not in {'uid', 'duration', 'accuracy', 'epoch'}}
+    stored = dict(only_list)                      # same key order as the trainer's hash input
+    stored['augment'] = encode_augment(prm['augment'])
+    new_uid, trainer_uid = uuid4(stored), uuid4(only_list)
+    warned = []
+
+    def rewrite(rec):
+        rec = dict(rec)
+        if rec.get('epoch') == 1 and rec.get('uid') != trainer_uid and not warned:
+            warned.append(True)
+            print("  [WARN] the trainer's epoch-1 uid differs from the one recomputed from the parameters; "
+                  "the submitted uid is computed from the stored form of the parameters", flush=True)
+        rec['augment'] = stored['augment']
+        rec['uid'] = new_uid
+        return rec
+
+    return rewrite
 
 
 def get_best_model_from_db():
@@ -131,12 +174,25 @@ def extract_history(summary):
 
 
 def run_eval(start_from=0, seed=SEED, config_file=CONFIG_FILE,
-             nn_file=None, num_epochs=NUM_EPOCHS, use_val_split=True, submit=False, write_db=False):
-    if write_db:
-        submit = True  # the database run also generates the folders
+             nn_file=None, num_epochs=NUM_EPOCHS, use_val_split=True, submit=False):
+    """Evaluate the schedules in config_file. With submit=True the statistics are merged into the
+    submission and archived afterwards -- also when the run is interrupted or the caller (the Tune
+    loop) stops early, so no staged file is left behind for the shared run-reset archive to rename.
+
+    use_val_split=True (the function default, used by the Tune search loop) scores on the seeded
+    validation split; the command line defaults to the real test set (see --final_judgment)."""
+    try:
+        _run_eval(start_from=start_from, seed=seed, config_file=config_file, nn_file=nn_file,
+                  num_epochs=num_epochs, use_val_split=use_val_split, submit=submit)
+    finally:
+        if submit:
+            archive_evaluator_submission()   # staged files -> out/ab_lemur_submission
+
+
+def _run_eval(start_from=0, seed=SEED, config_file=CONFIG_FILE,
+              nn_file=None, num_epochs=NUM_EPOCHS, use_val_split=True, submit=False):
     if submit and use_val_split:
-        print("[WARN] submitting results scored on the validation split, not the test set "
-              "(add --final_judgment to submit test-set scores)", flush=True)
+        print("[WARN] submitting results scored on the validation split, not the test set", flush=True)
     RESULT_DIR.mkdir(parents=True, exist_ok=True)
 
     best_model = get_model_from_file(nn_file) if nn_file else get_best_model_from_db()
@@ -166,8 +222,9 @@ def run_eval(start_from=0, seed=SEED, config_file=CONFIG_FILE,
         prm['augment'] = augment
         prm['epoch'] = num_epochs   
         prm['seed'] = seed          
+        prm_before = copy.deepcopy(prm)   # the trainer adds its results to prm in place; the uid needs this state
 
-        # submit: the trainer writes its numbered per-epoch statistics (and a DB row)
+        # submit: the trainer writes its numbered per-epoch statistics
         # only with save_to_db, into save_path; keep them per candidate
         stats_dir = RESULT_DIR / f"_stats_{cand_tag}" if submit else None
         if stats_dir:
@@ -180,7 +237,7 @@ def run_eval(start_from=0, seed=SEED, config_file=CONFIG_FILE,
                 result = check_nn_split(
                     nn_code=best_model['nn_code'], task=TASK, dataset=DATASET,
                     metric=METRIC, prm=prm, use_val_split=use_val_split,
-                    save_to_db=submit, write_db=write_db,
+                    save_to_db=submit, write_db=False,   # save_to_db writes the numbered statistics
                     prefix=None if submit else "augment_data_collect",
                     save_path=stats_dir if submit else RESULT_DIR)
                 break
@@ -241,11 +298,8 @@ def run_eval(start_from=0, seed=SEED, config_file=CONFIG_FILE,
 
         if submit:
             stage_stats_for_submission(stats_dir, best_model['nn'], TASK, DATASET, METRIC,
-                                       suffix='')
-            print(f"  [submission] staged statistics for schedule {config_id} (train/ ... _augment)")
-
-    if submit:
-        archive_evaluator_submission()  # same archiving as the NN pipeline: -> out/ab_lemur_submission
+                                       rewrite=make_record_rewrite(prm_before))
+            print(f"  [submission] staged statistics for schedule {config_id} (train/)")
 
 
 if __name__ == "__main__":
@@ -258,16 +312,15 @@ if __name__ == "__main__":
                         help="training epochs")
     parser.add_argument('--config_file', type=str, default=CONFIG_FILE)
     parser.add_argument('--nn_file', type=str, default=None)
-    parser.add_argument('--final_judgment', action='store_true', default=False,
-                        help="score against the test set instead of the validation split.")
+    parser.add_argument('--final_judgment', action=argparse.BooleanOptionalAction, default=True,
+                        help="score against the real test set (default). --no-final_judgment uses the "
+                             "seeded 90/10 validation split instead.")
     parser.add_argument('--submit', action='store_true', default=False,
-                        help="stage the statistics in train/ (suffix _augment) and archive them; the database is NOT updated.")
-    parser.add_argument('--submit_db', action='store_true', default=False,
-                        help="as --submit, and also write the statistics rows to the LEMUR database.")
+                        help="merge the statistics into train/ and archive them to out/ab_lemur_submission; "
+                             "the database is NOT updated.")
     args = parser.parse_args()
     run_eval(start_from=args.start_from, seed=args.seed,
              config_file=args.config_file,
              nn_file=args.nn_file,
              num_epochs=args.num_epochs,
-             use_val_split=not args.final_judgment, submit=args.submit or args.submit_db, write_db=args.submit_db)
-    
+             use_val_split=not args.final_judgment, submit=args.submit)
