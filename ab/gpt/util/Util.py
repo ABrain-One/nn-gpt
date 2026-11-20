@@ -10,7 +10,7 @@ from pathlib import Path
 from ab.nn.util.Util import uuid4
 from ab.gpt.util.Const import (hp_file, new_lemur_nn_dir, new_lemur_stat_dir,
                                new_lemur_transform_dir, new_nn_file,
-                               transformer_file)
+                               transformer_file, new_dataset_dir)
 
 from ab.gpt.util.nn.Code import *
 
@@ -595,12 +595,12 @@ def evaluate_delimited_formulas(text: str, para_dict: dict) -> str:
     return re.sub(pattern, replace_match, text)
 # =================================================
 
+# Files TransformEval / AugEval staged
+_STAGED = []
+
+
 def submit_transform_code(code):
     """Stage a transform's source in the submission and return the name it goes by.
-
-    The name comes from resolve_transform_name, so a transform the dataset (or
-    an earlier cycle) already holds keeps its existing name and is not copied
-    again.
     """
     name, is_new = resolve_transform_name(code)
     if is_new:
@@ -608,71 +608,82 @@ def submit_transform_code(code):
         target = new_lemur_transform_dir / f'{name}.py'
         if not target.exists():
             target.write_text(code, encoding='utf-8')
+        _STAGED.append(target)
     return name
 
 
-def stage_stats_for_submission(stats_dir, nn_name, task, dataset, metric, overrides=None, suffix=''):
-    """Stage statistics measured by TransformEval / AugEval in the submission's train/ folder.
-    """
+def _load_trials(path):
+    """A statistics file as a list of trial dicts."""
     import json as _json
+    raw = re.sub(r'\b(NaN|Infinity|-Infinity)\b', 'null', Path(path).read_text(encoding='utf-8'))
+    trials = _json.loads(raw)
+    return [t for t in (trials if isinstance(trials, list) else [trials]) if isinstance(t, dict)]
+
+
+def stage_stats_for_submission(stats_dir, nn_name, task, dataset, metric, rewrite=None):
+    """Merge the trials the trainer just wrote into the submission's train/ folder, epoch by epoch."""
+    from ab.nn.util.Const import config_splitter, stat_train_dir
+    from ab.nn.util.db.Calc import save_results
+    from ab.gpt.util.data.LemurSubmission import archive_dir_path
     try:
-        stats = sorted((f for f in os.listdir(stats_dir) if re.match(r'[0-9]+\.json$', f)),
+        files = sorted((f for f in os.listdir(stats_dir) if re.match(r'[0-9]+\.json$', f)),
                        key=lambda f: int(f[:-5]))
     except OSError as exc:
         print(f'[submission] {nn_name} skipped: cannot read {stats_dir} ({exc})', flush=True)
         return None
-    if not stats:
+    if not files:
         print(f'[submission] {nn_name} skipped: no statistics in {stats_dir}', flush=True)
         return None
-    dr_nm = Path(new_lemur_stat_dir) / f"{task}_{dataset}_{metric}_{nn_name}_{suffix}"
+    folder = config_splitter.join((task, dataset, metric, nn_name))
+    dr_nm = Path(new_lemur_stat_dir) / folder
     dr_nm.mkdir(parents=True, exist_ok=True)
-    taken = [int(f[:-5]) for f in os.listdir(dr_nm) if re.match(r'[0-9]+\.json$', f)]
-    nxt = max(taken, default=0) + 1
-    for f in stats:
-        record = _json.loads((Path(stats_dir) / f).read_text(encoding='utf-8'))
-        for rec in (record if isinstance(record, list) else [record]):
-            if isinstance(rec, dict):
-                rec.update(overrides or {})
-        (dr_nm / f'{nxt}.json').write_text(_json.dumps(record, indent=2), encoding='utf-8')
-        nxt += 1
+    dataset_base = Path(os.environ.get('LEMUR_STAT_BASE') or stat_train_dir) / folder
+    bases = (Path(archive_dir_path()) / 'train' / folder, dataset_base)
+    added = 0
+    for f in files:
+        target = dr_nm / f
+        if not target.exists():
+            base = next((b / f for b in bases if (b / f).is_file()), None)
+            if base is not None:
+                shutil.copyfile(base, target)
+            else:
+                print(f'[WARN] no existing {folder}/{f} in the archive or the dataset ({dataset_base}); '
+                      f'the staged file holds only the new trials, do not copy it over an existing file',
+                      flush=True)
+        # trials without a uid cannot be recognised, so they are always added
+        known = {t.get('uid') for t in _load_trials(target) if t.get('uid') is not None} \
+            if target.exists() else set()
+        for rec in _load_trials(Path(stats_dir) / f):
+            if rewrite is not None:
+                rec = rewrite(rec)
+            uid = rec.get('uid')
+            if uid is not None and uid in known:
+                continue
+            save_results((task, dataset, metric, nn_name, int(f[:-5])), str(target), rec)
+            if uid is not None:
+                known.add(uid)
+            added += 1
+        _STAGED.append(target)
+    print(f'[submission] {nn_name}: {added} trial(s) merged into {dr_nm}', flush=True)
     return dr_nm
 
-def install_into_lemur_package(kind, name, source):
-    """Write a transform or schedule into the installed LEMUR package.
-
-     'transform' -> ab/nn/transform/<name>.py
-     'schedule'  -> ab/nn/transform/schedules/<name>.py
-    Returns the path written, or None when ab.nn cannot be located.
-    """
-    import importlib.util
-    spec = importlib.util.find_spec("ab.nn")
-    roots = []
-    if spec is not None:
-        if spec.origin:
-            roots.append(Path(spec.origin).parent)
-        roots.extend(Path(loc) for loc in (spec.submodule_search_locations or ()))
-    if not roots:
-        print(f'[lemur] ab.nn not found; {kind} {name} not installed', flush=True)
-        return None
-    target_dir = roots[0] / "transform"
-    if kind == "schedule":
-        target_dir = target_dir / "schedules"
-    target_dir.mkdir(parents=True, exist_ok=True)
-    if kind == "schedule" and not (target_dir / "__init__.py").exists():
-        (target_dir / "__init__.py").write_text("", encoding="utf-8")
-    target = target_dir / f"{name}.py"
-    if not target.exists():
-        target.write_text(source, encoding="utf-8")
-    print(f'[lemur] {kind} {name} installed at {target}', flush=True)
-    return target
 
 
 def archive_evaluator_submission():
-    """Archive what TransformEval / AugEval staged,
-
+    """Move what TransformEval / AugEval staged into the persistent archive (out/ab_lemur_submission).
     """
-    from ab.gpt.util.Const import nngpt_dir
-    from ab.gpt.util.data.LemurSubmission import SUBMISSION_PARTS, archive_submission
-    return archive_submission(nngpt_dir, parts=tuple(SUBMISSION_PARTS) + ("transform",))
+    from ab.gpt.util.data.LemurSubmission import archive_dir_path
+    staging, archive, moved = Path(new_dataset_dir), Path(archive_dir_path()), 0
+    for p in dict.fromkeys(_STAGED):
+        if not p.is_file():
+            continue
+        target = archive / p.relative_to(staging)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(p), str(target))
+        moved += 1
+    _STAGED.clear()
+    print(f'[submission] moved {moved} file(s) to {archive}', flush=True)
+    return archive if moved else None
+
 
 

@@ -32,7 +32,7 @@ DEFAULT_VAL_FRACTION = 0.1
 DEFAULT_SPLIT_SEED = 42
 
 
-@functools.lru_cache(maxsize=64)
+@functools.lru_cache(maxsize=4)
 def _load_and_split(task: str, dataset: str, transform_name: str, transform_dir: Optional[str],
                      val_fraction: float, split_seed: int):
     """
@@ -57,16 +57,18 @@ def _load_and_split(task: str, dataset: str, transform_name: str, transform_dir:
 
 @contextlib.contextmanager
 def _db_writes_disabled():
-    """Keep the trainer's numbered statistics files, but skip every LEMUR database write.
+    """Keep the trainer's statistics files
 
     ab.nn's trainer writes the per-epoch statistics files and the database rows under the same
-    save_to_db switch. The database calls are replaced for the duration of one run only.
+    save_to_db switch
     """
-    saved = {n: getattr(DB_Write, n) for n in ("save_results", "save_nn") if hasattr(DB_Write, n)}
+    saved = {n: getattr(DB_Write, n) for n in ("save_results", "save_nn", "save_layer_stat") if hasattr(DB_Write, n)}
     if "save_results" in saved:
         DB_Write.save_results = lambda *a, **k: None
     if "save_nn" in saved:
         DB_Write.save_nn = lambda *a, force_name=None, **k: force_name
+    if "save_layer_stat" in saved:
+        DB_Write.save_layer_stat = lambda *a, **k: None
     try:
         yield
     finally:
@@ -190,7 +192,8 @@ def score_selected_winners(winners: list[dict], val_fraction: float = DEFAULT_VA
     """
     scored = []
     for w in winners:
-        model_name, accuracy, accuracy_to_time = check_nn_split(
+        # check_nn_split returns four values (name, accuracy, accuracy_to_time, code score)
+        model_name, accuracy, accuracy_to_time, _ = check_nn_split(
             w['nn_code'], w['task'], w['dataset'], w['metric'], w['prm'],
             use_val_split=False,  # the real test set
             save_to_db=False,

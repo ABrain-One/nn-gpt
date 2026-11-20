@@ -1,9 +1,6 @@
 """Generate (augmentation schedule, network) pairs with an LLM.
-
-Same shape as AlterNN.alter(): build prompts, generate, save every valid answer to
-epoch_dir(e)/synth_nn/B<i>/ (new_nn.py, full_output.txt, original_<nn>.py, dataframe.df).
-
 """
+
 import ast
 import json
 import random
@@ -22,10 +19,10 @@ from ab.gpt.util.llm.LLM import LLM
 from ab.gpt.util.llm.VLLMClient import VLLMClient
 from ab.gpt.util.Util import extract_code
 
+
 # Same training protocol as AugEval, so generated candidates are comparable with the schedule
 
 PROTOCOL = {'lr': 0.01, 'batch': 64, 'dropout': 0.2, 'momentum': 0.9, 'transform': 'norm_256'}
-
 # The generated Net must carry the train_setup/learn 
 
 REQUIRED_NN_PARTS = ('def supported_hyperparameters', 'def train_setup', 'def learn', 'batch_transform_fn')
@@ -111,9 +108,8 @@ def save_candidate(out_path, idx, out, schedule, nn_code, ref1, ref2, task, data
     row = ref1.copy()
     # NNEval reads task/dataset/metric from the row; without them it falls back to cifar-10.
     row['task'], row['dataset'], row['metric'] = task, dataset, metric
-    prm = dict(row['prm']) if isinstance(row.get('prm'), dict) else {}
-    prm.update(PROTOCOL)                   # not the reference network's own lr/batch/dropout
-    prm['augment'] = schedule              # NNEval merges dataframe.df's prm into the training prm
+    prm = dict(PROTOCOL)                                  
+    prm['augment'] = schedule             
     row['prm'] = prm
     row.to_pickle(model_dir / 'dataframe.df')
 
@@ -173,6 +169,7 @@ def alter_aug(epochs, test_conf, llm_name, gguf_file=None, n_prompts=10, pool_to
                 a, b = rng.sample(range(len(pool)), 2)
                 ref1, ref2 = pool.iloc[a], pool.iloc[b]
                 jobs.append(((system_text, build_prompt(cfg, ref1, ref2)), ref1, ref2, cfg['task']))
+                
 
         outs = _generate([j[0] for j in jobs], remote, model, tokenizer, temperature, top_k, max_new_tokens)
 

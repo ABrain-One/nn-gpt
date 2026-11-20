@@ -12,9 +12,9 @@ import torch
 import ab.nn.api as api
 from ab.gpt.util.CheckNNSplit import check_nn_split
 from ab.gpt.util.Const import epoch_dir, synth_dir, trans_dir, out_dir
-from ab.gpt.util.Util import (read_py_file_as_string, generated_transform_name,
+from ab.gpt.util.Util import (read_py_file_as_string, generated_transform_name, resolve_transform_name,
                               submit_transform_code, stage_stats_for_submission,
-                              install_into_lemur_package, archive_evaluator_submission)
+                              archive_evaluator_submission)
 
 # DEFAULT CONFIGURATION
 RESULT_DIR = trans_dir / 'transform/ft_test'
@@ -138,13 +138,26 @@ def extract_history(summary):
 
 
 def run_eval(ft_mode=False, epoch_num=None, num_epochs=NUM_EPOCHS,
-             seed=SEED, start_from=1, nn_file=None, use_val_split=True, submit=False, write_db=False):
+             seed=SEED, start_from=1, nn_file=None, use_val_split=True, submit=False):
+    """Evaluate the candidate transforms. With submit=True the results are staged for the LEMUR
+    submission and archived afterwards -- also when the run is interrupted or the caller stops early,
+    so no staged file is left behind for the shared run-reset archive to rename.
 
-    if write_db:
-        submit = True  # the database run also generates the folders
+    use_val_split=True (the function default, used by the Tune search loop) scores on the seeded
+    validation split; the command line defaults to the real test set (see --final_score)."""
+    try:
+        _run_eval(ft_mode=ft_mode, epoch_num=epoch_num, num_epochs=num_epochs, seed=seed,
+                  start_from=start_from, nn_file=nn_file, use_val_split=use_val_split, submit=submit)
+    finally:
+        if submit:
+            archive_evaluator_submission()   # staged files -> out/ab_lemur_submission
+
+
+def _run_eval(ft_mode=False, epoch_num=None, num_epochs=NUM_EPOCHS,
+              seed=SEED, start_from=1, nn_file=None, use_val_split=True, submit=False):
+
     if submit and use_val_split:
-        print("[WARN] submitting results scored on the validation split, not the test set "
-              "(add --final_score to submit test-set scores)", flush=True)
+        print("[WARN] submitting results scored on the validation split, not the test set", flush=True)
     RESULT_DIR.mkdir(parents=True, exist_ok=True)
     best_model = get_model_from_file(nn_file) if nn_file else get_best_model_from_db()
     model_source = f"file:{nn_file}" if nn_file else "lemur_db"
@@ -178,11 +191,23 @@ def run_eval(ft_mode=False, epoch_num=None, num_epochs=NUM_EPOCHS,
         prm.update({'transform': cand['transform_param'],
                     'epoch': num_epochs, 'seed': seed})
 
-        # submit: the trainer writes its numbered per-epoch statistics (and a DB row)
+        # submit: the trainer writes its numbered per-epoch statistics
         # only with save_to_db, into save_path; keep them per candidate
         stats_dir = context_dir / f"_stats_{cand_tag}" if submit else None
         if stats_dir:
             stats_dir.mkdir(parents=True, exist_ok=True)
+
+        # submit: train under the transform's final name (the one the dataset will hold), so the trainer
+        # records that name and hashes it into the uid. Only the name is resolved here; the transform file
+        # is staged below, after a successful run, so a failed candidate leaves nothing behind.
+        tr_dir = context_dir
+        tr_name = None
+        if submit and transform_code:
+            tr_name, _ = resolve_transform_name(transform_code)
+            tr_dir = stats_dir / '_tr'
+            tr_dir.mkdir(parents=True, exist_ok=True)
+            (tr_dir / f"{tr_name}.py").write_text(transform_code)
+            prm['transform'] = tr_name
 
         result, err = None, None
         t0 = time.monotonic()
@@ -190,9 +215,9 @@ def run_eval(ft_mode=False, epoch_num=None, num_epochs=NUM_EPOCHS,
             result = check_nn_split(
                 nn_code=best_model['nn_code'], task=TASK, dataset=DATASET,
                 metric=METRIC, prm=prm, use_val_split=use_val_split,
-                save_to_db=submit, write_db=write_db,
+                save_to_db=submit, write_db=False,   # save_to_db writes the numbered statistics
                 prefix=None if submit else f"{best_model['nn']}_eval_{cand['name']}",
-                save_path=stats_dir if submit else context_dir, transform_dir=context_dir)
+                save_path=stats_dir if submit else context_dir, transform_dir=tr_dir)
         except Exception as e:
             err = e
         gpu_seconds = time.monotonic() - t0
@@ -241,7 +266,6 @@ def run_eval(ft_mode=False, epoch_num=None, num_epochs=NUM_EPOCHS,
         print(f"  Result: Acc={accuracy} | best@{best_epoch} | {gpu_seconds:.0f}s")
 
         if ft_mode:
-            # promoted under a name derived from the code, not the cycle folder (B1)
             name = generated_transform_name(transform_code) if transform_code else cand['name']
             shutil.copy(cand['source_file'], RESULT_DIR/f"{name}.py")
             promoted = {**base, "transform": name, "candidate": cand['name']}
@@ -249,15 +273,9 @@ def run_eval(ft_mode=False, epoch_num=None, num_epochs=NUM_EPOCHS,
                 json.dump(promoted, f, indent=2)
 
         if submit and transform_code:
-            tr_name = submit_transform_code(transform_code)
-            stage_stats_for_submission(stats_dir, best_model['nn'], TASK, DATASET, METRIC,
-                                       overrides={'transform': tr_name})
+            submit_transform_code(transform_code)     # stage the transform file, only for a successful run
+            stage_stats_for_submission(stats_dir, best_model['nn'], TASK, DATASET, METRIC)
             print(f"  [submission] staged transform {tr_name} (folders transform/ and train/)")
-            if write_db:
-                install_into_lemur_package('transform', tr_name, transform_code)
-
-    if submit:
-        archive_evaluator_submission()  # same archiving as the NN pipeline: -> out/ab_lemur_submission
 
 
 if __name__ == "__main__":
@@ -272,17 +290,15 @@ if __name__ == "__main__":
     ap.add_argument('--start_from', type=int, default=1)
     ap.add_argument('--nn_file', type=str, default=None,
                     help="path to a local model .py if omitted, the best model from the lemur db is used")
-    ap.add_argument('--final_score', action='store_true', default=False,
-                    help="score against the REAL test set instead of the validation split.")
+    ap.add_argument('--final_score', action=argparse.BooleanOptionalAction, default=True,
+                    help="score against the REAL test set (default). --no-final_score uses the "
+                         "seeded 90/10 validation split instead, for search-phase scoring.")
     ap.add_argument('--submit', action='store_true', default=False,
-                    help="generate the submission folders (transform/, train/); the database is NOT updated.")
-    ap.add_argument('--submit_db', action='store_true', default=False,
-                    help="generate the folders AND update the LEMUR database (statistics rows, and the "
-                         "transform in ab.nn.transform).")
+                    help="generate the submission folders (transform/, train/) and archive them to "
+                         "out/ab_lemur_submission; the database is NOT updated.")
     args = ap.parse_args()
-    
+
     run_eval(ft_mode=args.ft_mode, epoch_num=args.epoch_num,
              num_epochs=args.num_epochs, seed=args.seed,
              start_from=args.start_from, nn_file=args.nn_file,
-             use_val_split=not args.final_score, submit=args.submit or args.submit_db, write_db=args.submit_db)
-            
+             use_val_split=not args.final_score, submit=args.submit)
