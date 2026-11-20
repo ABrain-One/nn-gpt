@@ -1,0 +1,34 @@
+[CYCLE] config: base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c3fix algo=ppo run_dir=/home/umair/nn-gpt-main/out_qwen/cycles/c4fix_A_ppo prompts=/home/umair/train_prompts_v3.json n_prompts=32 prompts_per_step=2 g=8 max_steps=0 max_new=4096 seed=0 temperature=0.8 top_p=0.9 top_k=50 lr=5e-05 lora_r=16 lora_alpha=32 lora_dropout=0.05 kl=0.05 ent=0.0 update_epochs=1 clip_low=0.2 clip_high=0.2 va
+[CYCLE] Gradient checkpointing enforcement: roots=4 modules=33 use_reentrant=False
+  [1/16] gen 1: forward:AttributeError reward=-0.200 tokens=1228 stop
+  [1/16] gen 4: forward:RuntimeError reward=-0.200 tokens=710 stop
+  [1/16] gen 7: training_failed:RuntimeError reward=-0.100 tokens=940 stop
+  [1/16] gen 8: forward:RuntimeError reward=-0.200 tokens=1086 stop
+  [1/16] gen 15: forward:RuntimeError reward=-0.200 tokens=889 stop
+[CYCLE] step 1/16: valid 11/16 (69% [44,86]) acc 62.7 best 82.0 | used 16 skipped_groups 0 masked 0 kl 0.0000 ent 0.637 | time gen 1.5 reward 8.2 update 0.3 min
+[CYCLE] best checkpoint -> adapter of step 1 (mean reward over last 1 steps 0.375)
+  [2/16] gen 19: forward:RuntimeError reward=-0.200 tokens=605 stop
+  [2/16] gen 21: init:TypeError reward=-0.300 tokens=690 stop
+  [2/16] gen 23: init:TypeError reward=-0.300 tokens=855 stop
+  [2/16] gen 27: forward:RuntimeError reward=-0.200 tokens=391 stop
+[CYCLE] step 2/16: valid 12/16 (75% [51,90]) acc 66.3 best 79.3 | used 16 skipped_groups 0 masked 0 kl 0.0004 ent 0.628 | time gen 1.3 reward 9.1 update 0.3 min
+[CYCLE] best checkpoint -> adapter of step 2 (mean reward over last 2 steps 0.399)
+  [3/16] gen 35: forward:RuntimeError reward=-0.200 tokens=1277 stop
+  [3/16] gen 44: init:KeyError reward=-0.300 tokens=1012 stop
+  [3/16] gen 46: init:TypeError reward=-0.300 tokens=1156 stop
+[CYCLE] step 3/16: valid 13/16 (81% [57,93]) acc 60.1 best 75.9 | used 16 skipped_groups 0 masked 0 kl 0.0007 ent 0.643 | time gen 1.4 reward 8.3 update 0.3 min
+[CYCLE] best checkpoint -> adapter of step 3 (mean reward over last 3 steps 0.408)
+  [4/16] gen 55: forward:AttributeError reward=-0.200 tokens=2005 stop
+  [4/16] gen 59: forward:RuntimeError reward=-0.200 tokens=1998 stop
+  [4/16] gen 60: forward:RuntimeError reward=-0.200 tokens=632 stop
+  [4/16] gen 63: forward:NameError reward=-0.200 tokens=843 stop
+[CYCLE] step 4/16: valid 12/16 (75% [51,90]) acc 63.6 best 77.7 | used 16 skipped_groups 0 masked 0 kl 0.0021 ent 0.943 | time gen 2.1 reward 7.7 update 0.4 min
+[CYCLE] best checkpoint -> adapter of step 4 (mean reward over last 4 steps 0.410)
+  [5/16] gen 66: forward:AttributeError reward=-0.200 tokens=667 stop
+[CYCLE] step 5/16: valid 15/16 (94% [72,99]) acc 63.6 best 75.8 | used 16 skipped_groups 0 masked 0 kl 0.0026 ent 0.668 | time gen 1.2 reward 10.0 update 0.3 min
+[CYCLE] best checkpoint -> adapter of step 5 (mean reward over last 4 steps 0.459)
+  [6/16] gen 82: forward:AttributeError reward=-0.200 tokens=667 stop
+  [6/16] gen 85: forward:RuntimeError reward=-0.200 tokens=2957 stop
+  [6/16] gen 87: exec:IndentationError reward=-0.400 tokens=830 stop
+  [6/16] gen 92: exec:SyntaxError reward=-0.400 tokens=4096 length
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 486.00 MiB. GPU 0 has a total capacity of 23.49 GiB of which 69.44 MiB is free. Including non-PyTorch memory, this process has 23.11 GiB memory in use. Of the allocated memory 20.61 GiB is allocated by PyTorch, and 2.03 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC

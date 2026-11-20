@@ -1,0 +1,19 @@
+nohup: ignoring input
+===== CYCLE 4 RERUN START Sa 31. Okt 10:19:40 CET 2026 =====
+===== START c4fix_A_ppo algo=ppo base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c3fix env=[ENT_COEF=0 CLIP_HIGH=0.2 MASK_TRUNC=1 BEST_WINDOW=4 STOP_ENT_FACTOR=3 STOP_ENT_ABS=1.2] attempt=1 Sa 31. Okt 10:19:45 CET 2026 =====
+===== END c4fix_A_ppo exit=1 Sa 31. Okt 11:33:34 CET 2026 =====
+failed - retry in 5 min
+===== START c4fix_A_ppo algo=ppo base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c3fix env=[ENT_COEF=0 CLIP_HIGH=0.2 MASK_TRUNC=1 BEST_WINDOW=4 STOP_ENT_FACTOR=3 STOP_ENT_ABS=1.2] attempt=2 Sa 31. Okt 11:38:39 CET 2026 =====
+===== END c4fix_A_ppo exit=1 Sa 31. Okt 12:42:54 CET 2026 =====
+failed - retry in 5 min
+===== START c4fix_A_ppo algo=ppo base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c3fix env=[ENT_COEF=0 CLIP_HIGH=0.2 MASK_TRUNC=1 BEST_WINDOW=4 STOP_ENT_FACTOR=3 STOP_ENT_ABS=1.2] attempt=3 Sa 31. Okt 12:47:59 CET 2026 =====
+===== END c4fix_A_ppo exit=0 Sa 31. Okt 16:10:42 CET 2026 =====
+===== MERGED /home/umair/nn-gpt-main/out_qwen/cycles/merged_c4fix_A Sa 31. Okt 16:11:23 CET 2026 =====
+===== START frozen eval c4fixA model=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c4fix_A Sa 31. Okt 16:11:28 CET 2026 =====
+===== EVAL c4fixA DONE Sa 31. Okt 18:37:40 CET 2026 =====
+===== START c4fix_B_grpo algo=grpo base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c4fix_A env=[ENT_COEF=0 CLIP_HIGH=0.2 MASK_TRUNC=1 BEST_WINDOW=4 STOP_ENT_FACTOR=3 STOP_ENT_ABS=1.2] attempt=1 Sa 31. Okt 18:37:45 CET 2026 =====
+===== END c4fix_B_grpo exit=0 So 1. Nov 01:45:04 CET 2026 =====
+===== MERGED /home/umair/nn-gpt-main/out_qwen/cycles/merged_c4fix So 1. Nov 01:45:35 CET 2026 =====
+===== START frozen eval c4fix model=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c4fix So 1. Nov 01:45:41 CET 2026 =====
+===== EVAL c4fix DONE So 1. Nov 04:01:15 CET 2026 =====
+===== CYCLE 4 RERUN DONE So 1. Nov 04:01:15 CET 2026 =====

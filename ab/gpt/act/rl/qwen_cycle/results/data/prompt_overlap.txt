@@ -1,0 +1,17 @@
+training prompts used (distinct): 32
+frozen prompts (distinct): 97
+identical prompts in both: 13
+same task text (before the instruction block) in both: 13
+  You are a machine learning model designer. Generate a PyTorch neural network class Net(nn.Module) that achieves at least 0.9487 accuracy at epoch 3 on 'celeba-gender' for img-classification. Input: 3x
+  You are a machine learning model designer. Generate a PyTorch neural network class Net(nn.Module) that achieves at least 0.9540 accuracy at epoch 7 on 'celeba-gender' for img-classification. Input: 3x
+  You are a machine learning model designer. Generate a PyTorch neural network class Net(nn.Module) that achieves at least 0.9543 accuracy at epoch 8 on 'celeba-gender' for img-classification. Input: 3x
+  You are a machine learning model designer. Generate a PyTorch neural network class Net(nn.Module) that achieves at least 0.9551 accuracy at epoch 9 on 'celeba-gender' for img-classification. Input: 3x
+  You are a machine learning model designer. Generate a PyTorch neural network class Net(nn.Module) that achieves at least 0.9719 accuracy at epoch 2 on 'celeba-gender' for img-classification. Input: 3x
+  You are a machine learning model designer. Generate a PyTorch neural network class Net(nn.Module) that achieves at least 0.9764 accuracy at epoch 11 on 'celeba-gender' for img-classification. Input: 3
+  You are a machine learning model designer. Generate a PyTorch neural network class Net(nn.Module) that achieves at least 0.9771 accuracy at epoch 6 on 'celeba-gender' for img-classification. Input: 3x
+  You are a machine learning model designer. Generate a PyTorch neural network class Net(nn.Module) that achieves at least 0.9788 accuracy at epoch 8 on 'celeba-gender' for img-classification. Input: 3x
+  You are a machine learning model designer. Generate a PyTorch neural network class Net(nn.Module) that achieves at least 0.9796 accuracy at epoch 12 on 'celeba-gender' for img-classification. Input: 3
+  You are a machine learning model designer. Generate a PyTorch neural network class Net(nn.Module) that achieves at least 0.9804 accuracy at epoch 29 on 'celeba-gender' for img-classification. Input: 3
+  You are a machine learning model designer. Generate a PyTorch neural network class Net(nn.Module) that achieves at least 0.9807 accuracy at epoch 40 on 'celeba-gender' for img-classification. Input: 3
+  You are a machine learning model designer. Generate a PyTorch neural network class Net(nn.Module) that achieves at least 0.9809 accuracy at epoch 43 on 'celeba-gender' for img-classification. Input: 3
+  You are a machine learning model designer. Generate a PyTorch neural network class Net(nn.Module) that achieves at least 0.9814 accuracy at epoch 46 on 'celeba-gender' for img-classification. Input: 3

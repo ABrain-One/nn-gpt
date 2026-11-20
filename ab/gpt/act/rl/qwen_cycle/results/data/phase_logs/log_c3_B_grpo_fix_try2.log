@@ -1,0 +1,21 @@
+[CYCLE] config: base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c3_A algo=grpo run_dir=/home/umair/nn-gpt-main/out_qwen/cycles/c3_B_grpo_fix prompts=/home/umair/train_prompts_v3.json n_prompts=32 prompts_per_step=2 g=8 max_steps=0 max_new=4096 seed=0 temperature=0.8 top_p=0.9 top_k=50 lr=5e-05 lora_r=16 lora_alpha=32 lora_dropout=0.05 kl=0.05 ent=0.0 update_epochs=1 clip_low=0.2 clip_high=0.2
+[CYCLE] Gradient checkpointing enforcement: roots=4 modules=33 use_reentrant=False
+  [1/16] gen 2: forward:RuntimeError reward=-0.200 tokens=1749 stop
+  [1/16] gen 5: forward:RuntimeError reward=-0.200 tokens=498 stop
+  [1/16] gen 10: init:AttributeError reward=-0.300 tokens=1185 stop
+  [1/16] gen 16: forward:RuntimeError reward=-0.200 tokens=594 stop
+[CYCLE] step 1/16: valid 12/16 (75% [51,90]) acc 55.1 best 78.5 | used 16 skipped_groups 0 masked 0 kl 0.0000 ent 0.617 | time gen 1.8 reward 12.6 update 0.3 min
+[CYCLE] best checkpoint -> adapter of step 1 (mean reward over last 1 steps 0.357)
+  [2/16] gen 17: forward:RuntimeError reward=-0.200 tokens=835 stop
+  [2/16] gen 18: forward:AttributeError reward=-0.200 tokens=799 stop
+  [2/16] gen 26: init:AttributeError reward=-0.300 tokens=856 stop
+  [2/16] gen 30: forward:RuntimeError reward=-0.200 tokens=575 stop
+  [2/16] gen 31: forward:AttributeError reward=-0.200 tokens=682 stop
+[CYCLE] step 2/16: valid 11/16 (69% [44,86]) acc 61.1 best 75.1 | used 16 skipped_groups 0 masked 0 kl 0.0003 ent 0.609 | time gen 2.0 reward 11.4 update 0.3 min
+  [3/16] gen 37: forward:RuntimeError reward=-0.200 tokens=1134 stop
+  [3/16] gen 39: forward:NameError reward=-0.200 tokens=890 stop
+  [3/16] gen 44: forward:RuntimeError reward=-0.200 tokens=1898 stop
+  [3/16] gen 45: forward:RuntimeError reward=-0.200 tokens=604 stop
+[CYCLE] step 3/16: valid 12/16 (75% [51,90]) acc 62.8 best 78.1 | used 16 skipped_groups 0 masked 0 kl 0.0006 ent 0.536 | time gen 1.9 reward 9.0 update 0.3 min
+[CYCLE] best checkpoint -> adapter of step 3 (mean reward over last 3 steps 0.377)
+  [4/16] gen 49: forward:RuntimeError reward=-0.200 tokens=921 stop

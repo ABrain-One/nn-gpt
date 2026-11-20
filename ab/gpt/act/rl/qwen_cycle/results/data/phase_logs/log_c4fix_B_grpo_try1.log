@@ -1,0 +1,49 @@
+[CYCLE] config: base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c4fix_A algo=grpo run_dir=/home/umair/nn-gpt-main/out_qwen/cycles/c4fix_B_grpo prompts=/home/umair/train_prompts_v3.json n_prompts=32 prompts_per_step=2 g=8 max_steps=0 max_new=4096 seed=0 temperature=0.8 top_p=0.9 top_k=50 lr=5e-05 lora_r=16 lora_alpha=32 lora_dropout=0.05 kl=0.05 ent=0.0 update_epochs=1 clip_low=0.2 clip_high=0.
+[CYCLE] Gradient checkpointing enforcement: roots=4 modules=33 use_reentrant=False
+  [1/16] gen 15: forward:RuntimeError reward=-0.200 tokens=1288 stop
+[CYCLE] step 1/16: valid 15/16 (94% [72,99]) acc 61.0 best 73.2 | used 16 skipped_groups 0 masked 0 kl 0.0000 ent 0.313 | time gen 1.5 reward 30.8 update 0.3 min
+[CYCLE] best checkpoint -> adapter of step 1 (mean reward over last 1 steps 0.560)
+  [2/16] gen 22: forward:RuntimeError reward=-0.200 tokens=481 stop
+[CYCLE] step 2/16: valid 15/16 (94% [72,99]) acc 61.1 best 74.0 | used 16 skipped_groups 0 masked 0 kl 0.0002 ent 0.297 | time gen 1.8 reward 29.9 update 0.3 min
+[CYCLE] best checkpoint -> adapter of step 2 (mean reward over last 2 steps 0.560)
+[CYCLE] step 3/16: valid 16/16 (100% [81,100]) acc 59.7 best 77.8 | used 16 skipped_groups 0 masked 0 kl 0.0005 ent 0.329 | time gen 1.2 reward 10.7 update 0.3 min
+[CYCLE] best checkpoint -> adapter of step 3 (mean reward over last 3 steps 0.564)
+  [4/16] gen 52: init:AttributeError reward=-0.300 tokens=732 stop
+  [4/16] gen 57: init:TypeError reward=-0.300 tokens=493 stop
+[CYCLE] step 4/16: valid 14/16 (88% [64,97]) acc 62.8 best 76.1 | used 16 skipped_groups 0 masked 0 kl 0.0007 ent 0.316 | time gen 1.5 reward 10.2 update 0.3 min
+  [5/16] gen 65: forward:RuntimeError reward=-0.200 tokens=729 stop
+  [5/16] gen 80: forward:RuntimeError reward=-0.200 tokens=931 stop
+[CYCLE] step 5/16: valid 14/16 (88% [64,97]) acc 67.8 best 78.1 | used 16 skipped_groups 0 masked 0 kl 0.0010 ent 0.264 | time gen 1.2 reward 39.9 update 0.3 min
+  [6/16] gen 81: forward:RuntimeError reward=-0.200 tokens=714 stop
+  [6/16] gen 86: forward:RuntimeError reward=-0.200 tokens=912 stop
+[CYCLE] step 6/16: valid 14/16 (88% [64,97]) acc 69.6 best 82.5 | used 16 skipped_groups 0 masked 0 kl 0.0015 ent 0.294 | time gen 4.2 reward 68.7 update 0.3 min
+[CYCLE] step 7/16: valid 16/16 (100% [81,100]) acc 65.6 best 81.5 | used 16 skipped_groups 0 masked 0 kl 0.0020 ent 0.275 | time gen 1.6 reward 41.6 update 0.3 min
+[CYCLE] step 8/16: valid 16/16 (100% [81,100]) acc 73.1 best 82.2 | used 16 skipped_groups 0 masked 0 kl 0.0020 ent 0.288 | time gen 1.6 reward 25.0 update 0.3 min
+[CYCLE] best checkpoint -> adapter of step 8 (mean reward over last 4 steps 0.616)
+  [9/16] gen 129: exec:IndentationError reward=-0.400 tokens=1292 stop
+  [9/16] gen 130: forward:RuntimeError reward=-0.200 tokens=682 stop
+  [9/16] gen 133: forward:RuntimeError reward=-0.200 tokens=773 stop
+  [9/16] gen 143: forward:RuntimeError reward=-0.200 tokens=655 stop
+[CYCLE] step 9/16: valid 12/16 (75% [51,90]) acc 71.0 best 78.9 | used 16 skipped_groups 0 masked 0 kl 0.0026 ent 0.309 | time gen 1.7 reward 40.6 update 0.3 min
+  [10/16] gen 157: training_failed:TypeError reward=-0.100 tokens=795 stop
+[CYCLE] step 10/16: valid 15/16 (94% [72,99]) acc 71.8 best 82.0 | used 16 skipped_groups 0 masked 0 kl 0.0028 ent 0.272 | time gen 3.1 reward 11.9 update 0.3 min
+[CYCLE] best checkpoint -> adapter of step 10 (mean reward over last 4 steps 0.619)
+  [11/16] gen 166: init:AttributeError reward=-0.300 tokens=4096 length
+[CYCLE] step 11/16: valid 15/16 (94% [72,99]) acc 69.9 best 80.1 | used 15 skipped_groups 0 masked 1 kl 0.0024 ent 0.292 | time gen 3.9 reward 21.3 update 0.3 min
+  [12/16] gen 184: init:TypeError reward=-0.300 tokens=939 stop
+  [12/16] gen 187: exec:IndentationError reward=-0.400 tokens=655 stop
+  [12/16] gen 192: init:AttributeError reward=-0.300 tokens=893 stop
+[CYCLE] step 12/16: valid 13/16 (81% [57,93]) acc 70.8 best 80.1 | used 16 skipped_groups 0 masked 0 kl 0.0026 ent 0.282 | time gen 1.4 reward 18.5 update 0.3 min
+[CYCLE] step 13/16: valid 16/16 (100% [81,100]) acc 68.2 best 79.2 | used 16 skipped_groups 0 masked 0 kl 0.0029 ent 0.256 | time gen 1.9 reward 12.6 update 0.3 min
+  [14/16] gen 210: forward:RuntimeError reward=-0.200 tokens=690 stop
+  [14/16] gen 218: forward:RuntimeError reward=-0.200 tokens=700 stop
+  [14/16] gen 221: exec:NameError reward=-0.400 tokens=1377 stop
+[CYCLE] step 14/16: valid 13/16 (81% [57,93]) acc 71.1 best 80.1 | used 16 skipped_groups 0 masked 0 kl 0.0028 ent 0.293 | time gen 1.5 reward 7.4 update 0.3 min
+  [15/16] gen 225: forward:RuntimeError reward=-0.200 tokens=1099 stop
+  [15/16] gen 233: init:AttributeError reward=-0.300 tokens=935 stop
+[CYCLE] step 15/16: valid 14/16 (88% [64,97]) acc 69.5 best 80.7 | used 16 skipped_groups 0 masked 0 kl 0.0030 ent 0.262 | time gen 1.5 reward 9.0 update 0.3 min
+  [16/16] gen 244: forward:RuntimeError reward=-0.200 tokens=1053 stop
+  [16/16] gen 249: forward:ValueError reward=-0.200 tokens=1193 stop
+[CYCLE] step 16/16: valid 14/16 (88% [64,97]) acc 65.5 best 79.2 | used 16 skipped_groups 0 masked 0 kl 0.0031 ent 0.234 | time gen 1.5 reward 13.0 update 0.3 min
+[CYCLE] phase adapter = best checkpoint {'step': 10, 'window': 4, 'mean_reward': 0.61851328125}
+[CYCLE] PHASE DONE
