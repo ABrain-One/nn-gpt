@@ -1,0 +1,86 @@
+[CYCLE] config: base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c2_A algo=grpo run_dir=/home/umair/nn-gpt-main/out_qwen/cycles/c2_B_grpo prompts=/home/umair/train_prompts_v3.json n_prompts=32 prompts_per_step=2 g=8 max_steps=0 max_new=4096 seed=0 temperature=0.8 top_p=0.9 top_k=50 lr=5e-05 lora_r=16 lora_alpha=32 lora_dropout=0.05 kl=0.05 ent=0.01 update_epochs=1 clip_low=0.2 clip_high=0.28 va
+[CYCLE] Gradient checkpointing enforcement: roots=4 modules=33 use_reentrant=False
+  [1/16] gen 5: exec:SyntaxError reward=-0.400 tokens=2694 stop
+  [1/16] gen 8: forward:RuntimeError reward=-0.200 tokens=2651 stop
+  [1/16] gen 16: forward:AttributeError reward=-0.200 tokens=2090 stop
+[CYCLE] step 1/16: valid 13/16 (81% [57,93]) acc 67.1 best 78.3 | used 16 skipped_groups 0 masked 0 kl 0.0000 ent 0.308 | time gen 2.8 reward 10.3 update 0.8 min
+  [2/16] gen 19: forward:RuntimeError reward=-0.200 tokens=2288 stop
+  [2/16] gen 23: forward:RuntimeError reward=-0.200 tokens=1588 stop
+  [2/16] gen 27: exec:IndentationError reward=-0.400 tokens=1539 stop
+[CYCLE] step 2/16: valid 13/16 (81% [57,93]) acc 68.1 best 79.8 | used 16 skipped_groups 0 masked 0 kl 0.0002 ent 0.348 | time gen 2.9 reward 12.5 update 0.7 min
+  [3/16] gen 33: init:AttributeError reward=-0.300 tokens=2307 stop
+  [3/16] gen 38: forward:RuntimeError reward=-0.200 tokens=960 stop
+  [3/16] gen 40: forward:RuntimeError reward=-0.200 tokens=1861 stop
+  [3/16] gen 42: forward:RuntimeError reward=-0.200 tokens=2667 stop
+[CYCLE] step 3/16: valid 12/16 (75% [51,90]) acc 62.0 best 75.9 | used 16 skipped_groups 0 masked 0 kl 0.0004 ent 0.339 | time gen 2.6 reward 9.1 update 0.7 min
+  [4/16] gen 51: exec:SyntaxError reward=-0.400 tokens=4096 length
+  [4/16] gen 52: forward:RuntimeError reward=-0.200 tokens=2110 stop
+  [4/16] gen 53: forward:RuntimeError reward=-0.200 tokens=1742 stop
+  [4/16] gen 58: forward:RuntimeError reward=-0.200 tokens=1957 stop
+  [4/16] gen 61: forward:RuntimeError reward=-0.200 tokens=1325 stop
+  [4/16] gen 63: forward:RuntimeError reward=-0.200 tokens=2619 stop
+[CYCLE] step 4/16: valid 10/16 (62% [39,82]) acc 68.1 best 80.5 | used 15 skipped_groups 0 masked 1 kl 0.0008 ent 0.349 | time gen 3.7 reward 7.5 update 0.7 min
+  [5/16] gen 66: forward:RuntimeError reward=-0.200 tokens=1245 stop
+  [5/16] gen 72: init:AttributeError reward=-0.300 tokens=2132 stop
+  [5/16] gen 75: forward:RuntimeError reward=-0.200 tokens=1786 stop
+  [5/16] gen 78: forward:RuntimeError reward=-0.200 tokens=2138 stop
+[CYCLE] step 5/16: valid 12/16 (75% [51,90]) acc 66.2 best 81.0 | used 16 skipped_groups 0 masked 0 kl 0.0012 ent 0.368 | time gen 3.2 reward 8.9 update 0.8 min
+  [6/16] gen 81: forward:RuntimeError reward=-0.200 tokens=1604 stop
+  [6/16] gen 85: forward:RuntimeError reward=-0.200 tokens=2544 stop
+  [6/16] gen 91: training_failed:TypeError reward=-0.100 tokens=1553 stop
+  [6/16] gen 94: training_failed:RecursionError reward=-0.100 tokens=2238 stop
+  [6/16] gen 95: forward:RuntimeError reward=-0.200 tokens=1579 stop
+[CYCLE] step 6/16: valid 11/16 (69% [44,86]) acc 63.5 best 70.9 | used 16 skipped_groups 0 masked 0 kl 0.0017 ent 0.376 | time gen 2.7 reward 8.2 update 0.7 min
+  [7/16] gen 105: exec:SyntaxError reward=-0.400 tokens=2150 stop
+  [7/16] gen 106: init:TypeError reward=-0.300 tokens=1674 stop
+  [7/16] gen 109: exec:TypeError reward=-0.400 tokens=2736 stop
+[CYCLE] step 7/16: valid 12/16 (75% [51,90]) acc 68.2 best 79.6 | used 16 skipped_groups 0 masked 0 kl 0.0021 ent 0.374 | time gen 3.4 reward 8.4 update 0.8 min
+  [8/16] gen 115: forward:RuntimeError reward=-0.200 tokens=2050 stop
+  [8/16] gen 123: init:TypeError reward=-0.300 tokens=2161 stop
+  [8/16] gen 126: forward:RuntimeError reward=-0.200 tokens=2825 stop
+[CYCLE] step 8/16: valid 13/16 (81% [57,93]) acc 62.0 best 74.1 | used 16 skipped_groups 0 masked 0 kl 0.0028 ent 0.389 | time gen 3.0 reward 9.3 update 0.8 min
+  [9/16] gen 133: forward:RuntimeError reward=-0.200 tokens=2838 stop
+  [9/16] gen 143: forward:RuntimeError reward=-0.200 tokens=1651 stop
+[CYCLE] step 9/16: valid 14/16 (88% [64,97]) acc 65.6 best 81.8 | used 16 skipped_groups 0 masked 0 kl 0.0036 ent 0.442 | time gen 3.0 reward 11.1 update 0.8 min
+  [10/16] gen 146: forward:RuntimeError reward=-0.200 tokens=2333 stop
+  [10/16] gen 147: forward:RuntimeError reward=-0.200 tokens=2573 stop
+  [10/16] gen 151: forward:RuntimeError reward=-0.200 tokens=2148 stop
+  [10/16] gen 154: forward:RuntimeError reward=-0.200 tokens=1404 stop
+  [10/16] gen 155: forward:RuntimeError reward=-0.200 tokens=1134 stop
+  [10/16] gen 160: forward:RuntimeError reward=-0.200 tokens=1696 stop
+[CYCLE] step 10/16: valid 10/16 (62% [39,82]) acc 67.4 best 76.6 | used 16 skipped_groups 0 masked 0 kl 0.0045 ent 0.405 | time gen 2.7 reward 7.3 update 0.7 min
+  [11/16] gen 161: exec:SyntaxError reward=-0.400 tokens=2352 stop
+  [11/16] gen 162: init:AttributeError reward=-0.300 tokens=1904 stop
+  [11/16] gen 163: forward:AttributeError reward=-0.200 tokens=2103 stop
+  [11/16] gen 167: forward:RuntimeError reward=-0.200 tokens=1647 stop
+  [11/16] gen 170: forward:RuntimeError reward=-0.200 tokens=2095 stop
+[CYCLE] step 11/16: valid 11/16 (69% [44,86]) acc 65.3 best 77.3 | used 16 skipped_groups 0 masked 0 kl 0.0053 ent 0.388 | time gen 2.7 reward 8.7 update 0.8 min
+  [12/16] gen 177: exec:SyntaxError reward=-0.400 tokens=1327 stop
+  [12/16] gen 182: init:TypeError reward=-0.300 tokens=2476 stop
+  [12/16] gen 183: forward:RuntimeError reward=-0.200 tokens=1459 stop
+  [12/16] gen 187: init:AttributeError reward=-0.300 tokens=1799 stop
+  [12/16] gen 190: forward:RuntimeError reward=-0.200 tokens=2136 stop
+  [12/16] gen 191: forward:AttributeError reward=-0.200 tokens=2348 stop
+[CYCLE] step 12/16: valid 10/16 (62% [39,82]) acc 63.3 best 71.3 | used 16 skipped_groups 0 masked 0 kl 0.0076 ent 0.442 | time gen 2.4 reward 7.4 update 0.7 min
+  [13/16] gen 200: init:AttributeError reward=-0.300 tokens=2042 stop
+[CYCLE] step 13/16: valid 15/16 (94% [72,99]) acc 64.5 best 75.8 | used 16 skipped_groups 0 masked 0 kl 0.0083 ent 0.402 | time gen 2.5 reward 11.2 update 0.6 min
+  [14/16] gen 211: forward:RuntimeError reward=-0.200 tokens=1738 stop
+[CYCLE] step 14/16: valid 15/16 (94% [72,99]) acc 65.9 best 75.2 | used 16 skipped_groups 0 masked 0 kl 0.0099 ent 0.434 | time gen 2.7 reward 14.2 update 0.7 min
+  [15/16] gen 225: init:RuntimeError reward=-0.300 tokens=3530 stop
+  [15/16] gen 227: init:AttributeError reward=-0.300 tokens=3011 stop
+  [15/16] gen 231: forward:ValueError reward=-0.200 tokens=1913 stop
+  [15/16] gen 232: init:AttributeError reward=-0.300 tokens=2325 stop
+  [15/16] gen 233: forward:RuntimeError reward=-0.200 tokens=1143 stop
+  [15/16] gen 234: exec:AttributeError reward=-0.400 tokens=1901 stop
+  [15/16] gen 235: exec:NameError reward=-0.400 tokens=2539 stop
+  [15/16] gen 236: init:ValueError reward=-0.300 tokens=1308 stop
+  [15/16] gen 240: forward:RuntimeError reward=-0.200 tokens=1416 stop
+[CYCLE] step 15/16: valid 7/16 (44% [23,67]) acc 64.4 best 69.9 | used 16 skipped_groups 0 masked 0 kl 0.0125 ent 0.519 | time gen 3.3 reward 5.3 update 0.8 min
+  [16/16] gen 242: forward:RuntimeError reward=-0.200 tokens=4096 length
+  [16/16] gen 246: forward:TypeError reward=-0.200 tokens=1932 stop
+  [16/16] gen 248: forward:RuntimeError reward=-0.200 tokens=2345 stop
+  [16/16] gen 250: forward:RuntimeError reward=-0.200 tokens=1829 stop
+  [16/16] gen 252: forward:RuntimeError reward=-0.200 tokens=2019 stop
+  [16/16] gen 254: forward:RuntimeError reward=-0.200 tokens=1357 stop
+[CYCLE] step 16/16: valid 10/16 (62% [39,82]) acc 68.0 best 76.2 | used 15 skipped_groups 0 masked 1 kl 0.0138 ent 0.496 | time gen 3.7 reward 7.6 update 0.6 min
+[CYCLE] PHASE DONE

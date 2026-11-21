@@ -1,0 +1,27 @@
+nohup: ignoring input
+===== FIX RUN: waiting for eval_c3 to finish Fr 30. Okt 16:54:21 CET 2026 =====
+===== MERGED /home/umair/nn-gpt-main/out_qwen/cycles/merged_c3_A Fr 30. Okt 16:55:04 CET 2026 =====
+===== START frozen eval c3A model=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c3_A Fr 30. Okt 16:55:09 CET 2026 =====
+===== EVAL c3A DONE Fr 30. Okt 18:44:18 CET 2026 =====
+===== START c3_B_grpo_fix algo=grpo base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c3_A env=[ENT_COEF=0 CLIP_HIGH=0.2 MASK_TRUNC=0 BEST_WINDOW=4 STOP_ENT_FACTOR=3] attempt=1 Fr 30. Okt 18:44:23 CET 2026 =====
+===== END c3_B_grpo_fix exit=1 Fr 30. Okt 20:17:44 CET 2026 =====
+failed - retry in 5 min
+===== START c3_B_grpo_fix algo=grpo base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c3_A env=[ENT_COEF=0 CLIP_HIGH=0.2 MASK_TRUNC=0 BEST_WINDOW=4 STOP_ENT_FACTOR=3] attempt=2 Fr 30. Okt 20:22:49 CET 2026 =====
+nohup: ignoring input
+===== FIX RUN: waiting for eval_c3 to finish Fr 30. Okt 21:09:05 CET 2026 =====
+skip merge /home/umair/nn-gpt-main/out_qwen/cycles/merged_c3_A (done)
+skip eval c3A (done)
+===== START c3_B_grpo_fix algo=grpo base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c3_A env=[ENT_COEF=0 CLIP_HIGH=0.2 MASK_TRUNC=1 BEST_WINDOW=4 STOP_ENT_FACTOR=3] attempt=1 Fr 30. Okt 21:09:10 CET 2026 =====
+===== END c3_B_grpo_fix exit=0 Sa 31. Okt 00:29:36 CET 2026 =====
+===== MERGED /home/umair/nn-gpt-main/out_qwen/cycles/merged_c3fix Sa 31. Okt 00:30:10 CET 2026 =====
+===== START frozen eval c3fix model=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c3fix Sa 31. Okt 00:30:16 CET 2026 =====
+===== EVAL c3fix DONE Sa 31. Okt 02:31:39 CET 2026 =====
+===== START c4_A_ppo algo=ppo base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c3fix env=[] attempt=1 Sa 31. Okt 02:31:44 CET 2026 =====
+===== END c4_A_ppo exit=0 Sa 31. Okt 04:49:22 CET 2026 =====
+===== MERGED /home/umair/nn-gpt-main/out_qwen/cycles/merged_c4_A Sa 31. Okt 04:49:54 CET 2026 =====
+===== START c4_B_grpo algo=grpo base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c4_A env=[ENT_COEF=0 CLIP_HIGH=0.2 MASK_TRUNC=1 BEST_WINDOW=4 STOP_ENT_FACTOR=3] attempt=1 Sa 31. Okt 04:49:59 CET 2026 =====
+===== END c4_B_grpo exit=0 Sa 31. Okt 06:40:20 CET 2026 =====
+===== MERGED /home/umair/nn-gpt-main/out_qwen/cycles/merged_c4 Sa 31. Okt 06:40:51 CET 2026 =====
+===== START frozen eval c4 model=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c4 Sa 31. Okt 06:40:57 CET 2026 =====
+===== EVAL c4 DONE Sa 31. Okt 08:13:57 CET 2026 =====
+===== FIX RUN DONE Sa 31. Okt 08:13:57 CET 2026 =====

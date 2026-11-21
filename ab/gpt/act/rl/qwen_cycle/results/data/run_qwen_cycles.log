@@ -1,0 +1,24 @@
+===== START c1_A_ppo algo=ppo base=Qwen/Qwen3.5-9B attempt=1 Do 29. Okt 04:37:08 CET 2026 =====
+===== END c1_A_ppo exit=0 Do 29. Okt 08:14:50 CET 2026 =====
+===== MERGED /home/umair/nn-gpt-main/out_qwen/cycles/merged_c1_A Do 29. Okt 08:15:25 CET 2026 =====
+===== START c1_B_grpo algo=grpo base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c1_A attempt=1 Do 29. Okt 08:15:30 CET 2026 =====
+===== END c1_B_grpo exit=0 Do 29. Okt 11:54:10 CET 2026 =====
+===== MERGED /home/umair/nn-gpt-main/out_qwen/cycles/merged_c1 Do 29. Okt 11:54:42 CET 2026 =====
+===== START frozen eval c1 Do 29. Okt 11:54:48 CET 2026 =====
+===== EVAL c1 DONE Do 29. Okt 14:05:31 CET 2026 =====
+===== START c2_A_ppo algo=ppo base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c1 attempt=1 Do 29. Okt 14:05:36 CET 2026 =====
+===== END c2_A_ppo exit=0 Do 29. Okt 17:50:04 CET 2026 =====
+===== MERGED /home/umair/nn-gpt-main/out_qwen/cycles/merged_c2_A Do 29. Okt 17:50:35 CET 2026 =====
+===== START c2_B_grpo algo=grpo base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c2_A attempt=1 Do 29. Okt 17:50:40 CET 2026 =====
+===== END c2_B_grpo exit=0 Do 29. Okt 21:16:53 CET 2026 =====
+===== MERGED /home/umair/nn-gpt-main/out_qwen/cycles/merged_c2 Do 29. Okt 21:17:24 CET 2026 =====
+===== START frozen eval c2 Do 29. Okt 21:17:30 CET 2026 =====
+===== EVAL c2 DONE Do 29. Okt 23:03:32 CET 2026 =====
+===== START c3_A_ppo algo=ppo base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c2 attempt=1 Do 29. Okt 23:03:37 CET 2026 =====
+===== END c3_A_ppo exit=0 Fr 30. Okt 02:30:40 CET 2026 =====
+===== MERGED /home/umair/nn-gpt-main/out_qwen/cycles/merged_c3_A Fr 30. Okt 02:31:11 CET 2026 =====
+===== START c3_B_grpo algo=grpo base=/home/umair/nn-gpt-main/out_qwen/cycles/merged_c3_A attempt=1 Fr 30. Okt 02:31:16 CET 2026 =====
+===== END c3_B_grpo exit=0 Fr 30. Okt 05:12:59 CET 2026 =====
+===== MERGED /home/umair/nn-gpt-main/out_qwen/cycles/merged_c3 Fr 30. Okt 05:13:31 CET 2026 =====
+===== START frozen eval c3 Fr 30. Okt 05:13:37 CET 2026 =====
+./run_qwen_cycles.sh: line 34: 747698 Killed                  python check_strict.py $E/run0.jsonl $E/run1.jsonl $E/run2.jsonl > $E/strict.log 2>&1
